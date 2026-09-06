@@ -1,0 +1,152 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Lobby.gd" id="1_lobby"]
+
+[node name="Lobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_lobby")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -170.0
+offset_right = 150.0
+offset_bottom = 170.0
+theme_override_constants/separation = 14
+
+[node name="TitleLabel" type="Label" parent="VBox"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 26
+text = "Match Setup"
+
+[node name="RaceRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="VBox/RaceRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+text = "Race"
+
+[node name="OptionButton" type="OptionButton" parent="VBox/RaceRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+item_count = 1
+selected = 0
+popup/item_0/text = "Human"
+
+[node name="ItemRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="VBox/ItemRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+text = "Starting Item"
+
+[node name="OptionButton" type="OptionButton" parent="VBox/ItemRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+item_count = 1
+selected = 0
+popup/item_0/text = "None"
+
+[node name="MapRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="VBox/MapRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+text = "Map"
+
+[node name="OptionButton" type="OptionButton" parent="VBox/MapRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+item_count = 1
+selected = 0
+popup/item_0/text = "Grasslands"
+
+[node name="AIRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="VBox/AIRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+text = "AI Opponents"
+
+[node name="OptionButton" type="OptionButton" parent="VBox/AIRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+item_count = 1
+selected = 0
+popup/item_0/text = "None"
+
+[node name="PlayersRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="VBox/PlayersRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+text = "Play As"
+
+[node name="Player1Button" type="Button" parent="VBox/PlayersRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+theme_override_colors/font_color = Color(0.2, 0.45, 0.9, 1)
+theme_override_colors/font_pressed_color = Color(0.2, 0.45, 0.9, 1)
+theme_override_colors/font_hover_color = Color(0.2, 0.45, 0.9, 1)
+text = "Player 1"
+
+[node name="Player2Button" type="Button" parent="VBox/PlayersRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+theme_override_colors/font_color = Color(0.85, 0.2, 0.2, 1)
+theme_override_colors/font_pressed_color = Color(0.85, 0.2, 0.2, 1)
+theme_override_colors/font_hover_color = Color(0.85, 0.2, 0.2, 1)
+text = "Player 2"
+
+[node name="StartingUnitsRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Label" type="Label" parent="VBox/StartingUnitsRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(110, 0)
+text = "Starting Units"
+
+[node name="SpinBox" type="SpinBox" parent="VBox/StartingUnitsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OptionsButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "Options"
+
+[node name="ButtonRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BackButton" type="Button" parent="VBox/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Back"
+
+[node name="StartButton" type="Button" parent="VBox/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Start Match"

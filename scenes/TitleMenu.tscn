@@ -1,0 +1,86 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/TitleMenu.gd" id="1_title"]
+
+[node name="TitleMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_title")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -80.0
+offset_top = -90.0
+offset_right = 80.0
+offset_bottom = 90.0
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+text = "DarKnight"
+
+[node name="PlayButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "New Game"
+
+[node name="LoadButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "Load Game"
+
+[node name="OptionsButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "Options"
+
+[node name="QuitButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "Quit"
+
+[node name="LoadListPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -180.0
+offset_right = 160.0
+offset_bottom = 180.0
+
+[node name="OuterVBox" type="VBoxContainer" parent="LoadListPanel"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = 306.0
+offset_bottom = 346.0
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="LoadListPanel/OuterVBox"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 20
+text = "Load Game"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="LoadListPanel/OuterVBox"]
+custom_minimum_size = Vector2(0, 250)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SavesList" type="VBoxContainer" parent="LoadListPanel/OuterVBox/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="CloseButton" type="Button" parent="LoadListPanel/OuterVBox"]
+layout_mode = 2
+text = "Close"

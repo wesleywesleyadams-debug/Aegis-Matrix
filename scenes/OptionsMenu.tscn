@@ -1,0 +1,123 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/OptionsMenu.gd" id="1_options"]
+
+[node name="OptionsMenu" type="CanvasLayer"]
+script = ExtResource("1_options")
+
+[node name="Background" type="ColorRect" parent="."]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.6)
+mouse_filter = 0
+
+[node name="Panel" type="Panel" parent="Background"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = -320.0
+offset_right = 240.0
+offset_bottom = 320.0
+grow_horizontal = 2
+grow_vertical = 2
+clip_contents = true
+
+[node name="VBox" type="VBoxContainer" parent="Background/Panel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 464.0
+offset_bottom = 624.0
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="Background/Panel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+text = "Options"
+
+[node name="TabContainer" type="TabContainer" parent="Background/Panel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Audio" type="Control" parent="Background/Panel/VBox/TabContainer"]
+layout_mode = 2
+
+[node name="MasterVolumeRow" type="VBoxContainer" parent="Background/Panel/VBox/TabContainer/Audio"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 396.0
+offset_bottom = 60.0
+theme_override_constants/separation = 6
+
+[node name="MasterVolumeLabel" type="Label" parent="Background/Panel/VBox/TabContainer/Audio/MasterVolumeRow"]
+layout_mode = 2
+text = "Master Volume"
+
+[node name="MasterSlider" type="HSlider" parent="Background/Panel/VBox/TabContainer/Audio/MasterVolumeRow"]
+layout_mode = 2
+min_value = -40.0
+max_value = 6.0
+step = 1.0
+
+[node name="MusicVolumeRow" type="VBoxContainer" parent="Background/Panel/VBox/TabContainer/Audio"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 72.0
+offset_right = 396.0
+offset_bottom = 120.0
+theme_override_constants/separation = 6
+
+[node name="MusicVolumeLabel" type="Label" parent="Background/Panel/VBox/TabContainer/Audio/MusicVolumeRow"]
+layout_mode = 2
+text = "Music Volume"
+
+[node name="MusicSlider" type="HSlider" parent="Background/Panel/VBox/TabContainer/Audio/MusicVolumeRow"]
+layout_mode = 2
+min_value = -40.0
+max_value = 6.0
+step = 1.0
+
+[node name="Hotkeys" type="Control" parent="Background/Panel/VBox/TabContainer"]
+visible = false
+layout_mode = 2
+
+[node name="HotkeysList" type="GridContainer" parent="Background/Panel/VBox/TabContainer/Hotkeys"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="Visuals" type="Control" parent="Background/Panel/VBox/TabContainer"]
+visible = false
+layout_mode = 2
+
+[node name="ShowGridCheckBox" type="CheckBox" parent="Background/Panel/VBox/TabContainer/Visuals"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 260.0
+offset_bottom = 44.0
+text = "Show Debug Grid"
+
+[node name="CloseButtonRow" type="CenterContainer" parent="Background/Panel/VBox"]
+layout_mode = 2
+
+[node name="CloseButton" type="Button" parent="Background/Panel/VBox/CloseButtonRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(140, 0)
+text = "Close"

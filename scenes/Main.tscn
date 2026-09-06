@@ -1,0 +1,475 @@
+[gd_scene load_steps=22 format=3]
+
+[ext_resource type="Script" path="res://scripts/RTSController.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/RTSCamera.gd" id="2_cam"]
+[ext_resource type="Script" path="res://scripts/NavGroundSetup.gd" id="3_nav"]
+[ext_resource type="Script" path="res://scripts/SelectionBox.gd" id="4_box"]
+[ext_resource type="Script" path="res://scripts/SelectionPanel.gd" id="7_panel"]
+[ext_resource type="Shader" path="res://shaders/debug_grid.gdshader" id="6_grid_shader"]
+[ext_resource type="Script" path="res://scripts/PortraitPanel.gd" id="8_portrait_panel"]
+[ext_resource type="Script" path="res://scripts/PortraitCamera.gd" id="9_portrait_cam"]
+[ext_resource type="PackedScene" path="res://scenes/ParentUnit.tscn" id="10_sprite_unit"]
+[ext_resource type="Script" path="res://scripts/IconCapture.gd" id="11_icon_capture"]
+[ext_resource type="Script" path="res://scripts/MainMenu.gd" id="12_main_menu"]
+[ext_resource type="Script" path="res://scripts/GameTimer.gd" id="13_game_timer"]
+[ext_resource type="Script" path="res://scripts/ResourceHUD.gd" id="14_resource_hud"]
+[ext_resource type="PackedScene" path="res://scenes/Dwelling.tscn" id="15_dwelling"]
+[ext_resource type="PackedScene" path="res://scenes/ParentBuilding.tscn" id="16_parent_building"]
+[ext_resource type="PackedScene" path="res://scenes/Tree.tscn" id="17_tree"]
+[ext_resource type="PackedScene" path="res://scenes/SwordPickup.tscn" id="18_sword_pickup"]
+[ext_resource type="Script" path="res://scripts/EquipmentPanel.gd" id="20_equipment_panel"]
+[ext_resource type="PackedScene" path="res://scenes/CrossbowPickup.tscn" id="21_crossbow_pickup"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+size = Vector3(60, 0.2, 60)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.24, 0.34, 0.2, 1)
+roughness = 0.9
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(60, 0.2, 60)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall"]
+size = Vector3(3, 3, 0.4)
+
+[sub_resource type="StandardMaterial3D" id="Mat_wall"]
+albedo_color = Color(0.42, 0.4, 0.38, 1)
+roughness = 0.85
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall"]
+size = Vector3(3, 3, 0.4)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_grid"]
+size = Vector2(60, 60)
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_grid"]
+shader = ExtResource("6_grid_shader")
+shader_parameter/cell_size = 2.6
+shader_parameter/line_color = Color(1, 1, 1, 0.45)
+shader_parameter/major_line_color = Color(1, 0.85, 0.2, 0.6)
+shader_parameter/major_every = 5
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky_main"]
+sky_top_color = Color(0.38, 0.52, 0.75, 1)
+sky_horizon_color = Color(0.7, 0.75, 0.78, 1)
+ground_bottom_color = Color(0.2, 0.2, 0.2, 1)
+ground_horizon_color = Color(0.7, 0.75, 0.78, 1)
+
+[sub_resource type="Sky" id="Sky_res"]
+sky_material = SubResource("Sky_main")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_res")
+ambient_light_source = 2
+ambient_light_color = Color(0.6, 0.65, 0.7, 1)
+ambient_light_energy = 0.6
+glow_enabled = true
+glow_intensity = 1.2
+glow_bloom = 0.3
+glow_blend_mode = 1
+glow_hdr_threshold = 0.9
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.7, 0.7, -0.7, -0.5, 0.5, 0, 12, 0)
+shadow_enabled = true
+
+[node name="CameraRig" type="Node3D" parent="."]
+transform = Transform3D(0.7071068, 0, -0.7071068, 0, 1, 0, 0.7071068, 0, 0.7071068, 0, 0, 0)
+script = ExtResource("2_cam")
+
+[node name="Camera3D" type="Camera3D" parent="CameraRig"]
+transform = Transform3D(1, 0, 0, 0, 0.819, 0.574, 0, -0.574, 0.819, 0, 14, 10)
+projection = 1
+size = 16.0
+
+[node name="Ground" type="StaticBody3D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("BoxMesh_ground")
+surface_material_override/0 = SubResource("Mat_ground")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("BoxShape3D_ground")
+
+[node name="Wall" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 1.5, -6.5)
+collision_layer = 8
+collision_mask = 0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Wall"]
+mesh = SubResource("BoxMesh_wall")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Wall"]
+shape = SubResource("BoxShape3D_wall")
+
+[node name="DebugGrid" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.11, 0)
+mesh = SubResource("PlaneMesh_grid")
+material_override = SubResource("ShaderMat_grid")
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+script = ExtResource("3_nav")
+
+[node name="Units" type="Node3D" parent="."]
+
+[node name="ParentUnit" parent="Units" instance=ExtResource("10_sprite_unit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.2, 0, -5.2)
+
+[node name="Human" parent="Units" instance=ExtResource("10_sprite_unit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -5.2)
+
+[node name="Darkling" parent="Units" instance=ExtResource("10_sprite_unit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.2, 0, -5.2)
+
+[node name="Elf" parent="Units" instance=ExtResource("10_sprite_unit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.8, 0, -2.6)
+
+[node name="Iron Dwarf" parent="Units" instance=ExtResource("10_sprite_unit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0, -2.6)
+
+[node name="Orc" parent="Units" instance=ExtResource("10_sprite_unit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0, -2.6)
+
+[node name="Dragonborn" parent="Units" instance=ExtResource("10_sprite_unit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0, -2.6)
+
+[node name="Giant" parent="Units" instance=ExtResource("10_sprite_unit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Buildings" type="Node3D" parent="."]
+
+[node name="ParentBuilding" parent="Buildings" instance=ExtResource("16_parent_building")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -6)
+
+[node name="Dwelling" parent="Buildings/ParentBuilding" instance=ExtResource("15_dwelling")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, 4)
+
+[node name="Dwelling2" parent="Buildings/ParentBuilding" instance=ExtResource("15_dwelling")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, -5)
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="Tree" parent="World" instance=ExtResource("17_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 6)
+
+[node name="SwordPickup" parent="World" instance=ExtResource("18_sword_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 10)
+
+[node name="CrossbowPickup" parent="World" instance=ExtResource("21_crossbow_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.5, 10)
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="ResourceHUD" type="Label" parent="UI"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = 154.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+horizontal_alignment = 0
+text = "Gold: 500"
+mouse_filter = 2
+script = ExtResource("14_resource_hud")
+
+[node name="GameTimer" type="Label" parent="UI"]
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.0
+anchor_bottom = 0.0
+offset_left = -50.0
+offset_top = 14.0
+offset_right = 50.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 1
+text = "0:00"
+mouse_filter = 2
+script = ExtResource("13_game_timer")
+
+[node name="SelectionBox" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("4_box")
+
+[node name="SelectionPanel" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("7_panel")
+icon_capture_path = NodePath("IconCaptureViewport")
+
+[node name="IconCaptureViewport" type="SubViewport" parent="UI/SelectionPanel"]
+transparent_bg = true
+size = Vector2i(96, 96)
+render_target_update_mode = 4
+script = ExtResource("11_icon_capture")
+
+[node name="IconCamera" type="Camera3D" parent="UI/SelectionPanel/IconCaptureViewport"]
+cull_mask = 2
+fov = 35.0
+
+[node name="PortraitPanel" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("8_portrait_panel")
+
+[node name="Background" type="Panel" parent="UI/PortraitPanel"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = -174.0
+offset_right = 174.0
+offset_bottom = -14.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+
+[node name="TextureRect" type="TextureRect" parent="UI/PortraitPanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = -168.0
+offset_right = 168.0
+offset_bottom = -20.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PortraitViewport" type="SubViewport" parent="UI/PortraitPanel"]
+transparent_bg = true
+size = Vector2i(200, 200)
+render_target_update_mode = 4
+
+[node name="PortraitCamera" type="Camera3D" parent="UI/PortraitPanel/PortraitViewport"]
+cull_mask = 2
+fov = 35.0
+script = ExtResource("9_portrait_cam")
+
+[node name="EquipmentPanel" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Background" type="Panel" parent="UI/EquipmentPanel"]
+layout_mode = 0
+offset_left = 180.0
+offset_top = -174.0
+offset_right = 340.0
+offset_bottom = -14.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+script = ExtResource("20_equipment_panel")
+
+[node name="VBox" type="VBoxContainer" parent="UI/EquipmentPanel/Background"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 150.0
+offset_bottom = 150.0
+
+[node name="MainMenu" type="Control" parent="UI"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("12_main_menu")
+
+[node name="MenuButton" type="Button" parent="UI/MainMenu"]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -104.0
+offset_top = 14.0
+offset_right = -14.0
+offset_bottom = 50.0
+text = "Menu"
+
+[node name="MenuPanel" type="Panel" parent="UI/MainMenu"]
+visible = false
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -184.0
+offset_top = 58.0
+offset_right = -14.0
+offset_bottom = 332.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/MainMenu/MenuPanel"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 160.0
+offset_bottom = 264.0
+theme_override_constants/separation = 8
+
+[node name="PauseButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Pause"
+
+[node name="SaveButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Save"
+
+[node name="OptionsButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Options"
+
+[node name="RestartButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Restart"
+
+[node name="SurrenderButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Surrender"
+
+[node name="QuitButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox"]
+layout_mode = 2
+text = "Quit"
+
+[node name="SaveConfirmLabel" type="Label" parent="UI/MainMenu"]
+visible = false
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -184.0
+offset_top = 58.0
+offset_right = -14.0
+offset_bottom = 82.0
+theme_override_colors/font_color = Color(0.4, 1, 0.5, 1)
+horizontal_alignment = 1
+text = "Game saved"
+
+[node name="SaveNamePanel" type="Panel" parent="UI/MainMenu"]
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -130.0
+offset_top = -55.0
+offset_right = 130.0
+offset_bottom = 55.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/MainMenu/SaveNamePanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 244.0
+offset_bottom = 98.0
+theme_override_constants/separation = 10
+
+[node name="PromptLabel" type="Label" parent="UI/MainMenu/SaveNamePanel/VBox"]
+layout_mode = 2
+text = "Save name:"
+
+[node name="NameInput" type="LineEdit" parent="UI/MainMenu/SaveNamePanel/VBox"]
+layout_mode = 2
+placeholder_text = "My Save"
+max_length = 40
+
+[node name="ButtonRow" type="HBoxContainer" parent="UI/MainMenu/SaveNamePanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ConfirmSaveButton" type="Button" parent="UI/MainMenu/SaveNamePanel/VBox/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Save"
+
+[node name="CancelSaveButton" type="Button" parent="UI/MainMenu/SaveNamePanel/VBox/ButtonRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cancel"
+
+[node name="PausedPanel" type="Panel" parent="UI/MainMenu"]
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -110.0
+offset_top = -40.0
+offset_right = 110.0
+offset_bottom = 40.0
+
+[node name="PausedLabel" type="Label" parent="UI/MainMenu/PausedPanel"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 210.0
+offset_bottom = 70.0
+theme_override_font_sizes/font_size = 26
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "PAUSED"
+
+[node name="EndStatePanel" type="Panel" parent="UI/MainMenu"]
+visible = false
+layout_mode = 0
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = -140.0
+offset_top = -90.0
+offset_right = 140.0
+offset_bottom = 90.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/MainMenu/EndStatePanel"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 16.0
+offset_right = 260.0
+offset_bottom = 164.0
+theme_override_constants/separation = 12
+
+[node name="EndStateLabel" type="Label" parent="UI/MainMenu/EndStatePanel/VBox"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+text = "You Surrendered"
+
+[node name="RestartButton" type="Button" parent="UI/MainMenu/EndStatePanel/VBox"]
+layout_mode = 2
+text = "Restart"
+
+[node name="QuitButton" type="Button" parent="UI/MainMenu/EndStatePanel/VBox"]
+layout_mode = 2
+text = "Quit"
+
+[editable path="Units/ParentUnit"]
+[editable path="Units/Unit2"]
+[editable path="Units/Unit3"]
+[editable path="Units/Unit4"]
+[editable path="Units/Unit5"]
+[editable path="Units/Unit6"]
+[editable path="Units/Unit7"]
+[editable path="Units/Unit8"]

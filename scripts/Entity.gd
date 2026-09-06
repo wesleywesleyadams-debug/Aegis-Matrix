@@ -1,0 +1,350 @@
+extends CharacterBody3D
+class_name Entity
+## Shared base for anything with health, a team color, and can be
+## selected/attacked -- Unit (mobile) and Building (stationary) both
+## extend this. Everything movement-related (nav agent, pathing, chasing)
+## lives in Unit only; Entity's own default attack()/_physics_process()
+## assume a stationary defender, which is exactly what Building wants
+## unmodified and what Unit overrides to add chasing on top of.
+
+const DIRECTION_COUNT: int = 8
+const TURN_SPEED: float = 12.0
+
+## Identifies this entity's type for UI purposes -- e.g. the selection
+## tray groups same-type units into one icon with a count badge rather
+## than one tile per individual unit.
+@export var unit_type_id: String = "entity"
+
+@export var max_health: float = 100.0
+var current_health: float
+
+## How much damage one swing deals, and the minimum time between swings.
+@export var attack_damage: float = 10.0
+## Idle time between swings is this minus ATTACK_ACTIVE_DURATION (the hit
+## window) -- 2.0 total = 0.15s hit window + 1.85s idle.
+@export var attack_cooldown: float = 2.0
+## How close (center to center) counts as "in range to swing" --
+## generous enough to cover both entities' collision radii plus the
+## hitbox's own reach.
+@export var attack_range: float = 1.2
+## How far this entity can see -- used by fog of war (see RTSController's
+## _update_fog_of_war) to decide whether enemy entities within range (and
+## with a clear has_line_of_sight()) should be revealed. 4 tiles at the
+## debug grid's 2.6-unit cell size (see Main.tscn's DebugGrid shader).
+@export var vision_range: float = 10.4
+## How long the hitbox stays active (able to land a hit) once a swing
+## starts, before switching off again for the rest of the cooldown.
+const ATTACK_ACTIVE_DURATION: float = 0.15
+
+## Collision layer terrain/wall obstacles sit on (see Main.tscn "Wall" nodes)
+## -- separate from GROUND_MASK/UNIT_MASK in RTSController.gd, which are
+## about click targeting, not sight blocking.
+const SIGHT_OBSTACLE_MASK: int = 8
+## Ray height for line-of-sight checks -- roughly chest height, so a low
+## obstacle (like the ground itself) doesn't spuriously block sight between
+## two entities standing on it.
+const SIGHT_RAY_HEIGHT: float = 1.0
+
+## Entity currently being attacked/defended against, or null for none.
+## Set by attack() and cleared automatically once the target dies or is
+## freed, or (for Unit) as soon as it's given an ordinary move order.
+var attack_target: Node3D = null
+
+@onready var model_root: Node3D = $ModelRoot
+## A ring (Unit) or a square frame (Building) -- shape doesn't matter here,
+## only `visible` is ever touched, so this is typed as the common Node3D
+## base rather than MeshInstance3D specifically.
+@onready var selection_ring: Node3D = $SelectionRing
+@onready var unit_sprite: Sprite3D = model_root.get_node_or_null("UnitSprite")
+@onready var health_bar: Node3D = $HealthBar
+## Forward-facing melee hitbox (see ParentUnit.tscn's ModelRoot/AttackHitbox)
+## -- lives under model_root so it turns to face the same direction as the
+## entity, including for billboard sprite units whose visible facing comes
+## from swapping textures rather than actually rotating.
+@onready var attack_hitbox: Area3D = model_root.get_node_or_null("AttackHitbox")
+## Purely visual -- a translucent box matching the hitbox's own shape,
+## shown only while the hitbox is actually active (see perform_attack()) so
+## a swing's actual hit window is visible instead of invisible collision
+## math. Null for anything without an AttackHitbox to begin with.
+@onready var attack_hitbox_mesh: MeshInstance3D = (
+	attack_hitbox.get_node_or_null("HitboxMesh") if attack_hitbox != null else null
+)
+## Waist-level (or base-level, for buildings) ring recolored per
+## player_id -- the one visible marker of which player owns this entity.
+@onready var belt: MeshInstance3D = model_root.get_node_or_null("Belt")
+
+var _attack_cooldown_remaining: float = 0.0
+var _attacking: bool = false
+
+## Real light, not a fake overlay -- fog of war works by killing the sun/
+## ambient light (see RTSController._darken_world_lighting) and having only
+## human-owned entities (and remembered enemy buildings) actually cast
+## light, sized to vision_range. Whoever owns this light is decided by
+## RTSController._update_fog_of_war (toggles .visible), not here -- Entity
+## has no business knowing about GameState/human_player_id.
+var vision_light: OmniLight3D
+
+## Debug visualization of the has_line_of_sight() check against attack_target
+## -- a thin line from this entity to its target, green when clear and red
+## when something on SIGHT_OBSTACLE_MASK is blocking it. Only shown while an
+## attack_target is actually within attack_range (i.e. exactly when the LOS
+## check is the thing deciding whether a swing lands).
+var _sight_line: MeshInstance3D
+var _sight_line_mesh: ImmediateMesh
+var _sight_line_mat: StandardMaterial3D
+
+## Players 3+ (Nature, Mob) are non-playable factions -- see
+## GameState.NATURE_PLAYER_ID/MOB_PLAYER_ID -- with no lobby control ever
+## offering them as a Play As choice (only Player 1/Player 2 exist).
+const PLAYER_COLORS: Dictionary = {
+	1: Color(0.2, 0.45, 0.9), # blue
+	2: Color(0.85, 0.2, 0.2), # red
+	3: Color(0.45, 0.62, 0.28), # Nature -- neutral green
+	4: Color(0.55, 0.4, 0.35), # Mob -- neutral brown
+}
+
+const PLAYER_NAMES: Dictionary = {
+	1: "Player 1",
+	2: "Player 2",
+	3: "Nature",
+	4: "Mob",
+}
+
+## Which player owns this entity. Only Player 1's units can currently be
+## selected/ordered (see RTSController) -- Player 2's exist and are
+## visually distinct (red belt, red health bar fill) but nothing controls
+## them yet.
+@export var player_id: int = 1:
+	set(value):
+		player_id = value
+		_update_belt_color()
+		if health_bar:
+			health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
+
+## Pre-rendered 8-directional sprite frames (index 0 = facing angle 0,
+## index i = facing angle i * 45 deg), used instead of rotating model_root
+## when this entity has a UnitSprite child -- a classic 2.5D
+## sprite-billboard look rather than a live rotating 3D model. Left empty
+## for ordinary (3D model) entities.
+@export var sprite_frames: Array[Texture2D] = []
+
+var selected: bool = false:
+	set(value):
+		selected = value
+		if selection_ring:
+			selection_ring.visible = value
+		_update_health_bar_visibility()
+		_on_selection_changed()
+
+## Hook for subclasses that need to react to selection changes beyond the
+## selection ring/health bar handled above -- e.g. Building shows/hides its
+## gather-point flag only while selected.
+func _on_selection_changed() -> void:
+	pass
+
+## Only shows the health bar when it's actually informative -- damaged or
+## selected -- rather than always-on. With many units standing close
+## together (the default spawn grid, melee range during combat), an
+## always-visible bar per unit crowds and visually overlaps neighboring
+## units' bars from this camera's angle; hiding it for untouched, unselected
+## units removes most of that clutter since full-health idle units are the
+## common case.
+func _update_health_bar_visibility() -> void:
+	if health_bar:
+		health_bar.visible = selected or current_health < max_health
+
+func _ready() -> void:
+	selection_ring.visible = false
+	current_health = max_health
+	health_bar.set_health_fraction(1.0)
+	_update_health_bar_visibility()
+	if attack_hitbox != null:
+		attack_hitbox.body_entered.connect(_on_attack_hitbox_body_entered)
+	_update_belt_color()
+	health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
+
+	vision_light = OmniLight3D.new()
+	vision_light.omni_range = vision_range
+	vision_light.light_energy = 3.0
+	vision_light.shadow_enabled = false
+	vision_light.visible = false
+	add_child(vision_light)
+	vision_light.position = Vector3(0, 1.0, 0)
+
+	_sight_line_mesh = ImmediateMesh.new()
+	_sight_line_mat = StandardMaterial3D.new()
+	_sight_line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_sight_line = MeshInstance3D.new()
+	_sight_line.mesh = _sight_line_mesh
+	_sight_line.material_override = _sight_line_mat
+	_sight_line.visible = false
+	add_child(_sight_line)
+
+## Recolors this entity's own belt material by team. The belt's material is
+## a single Resource shared by every instance of this scene until
+## duplicated here -- mutating it directly (without duplicating first)
+## would recolor every entity's belt at once instead of just this one.
+func _update_belt_color() -> void:
+	if belt == null:
+		return
+	var material := belt.get_surface_override_material(0)
+	if material == null:
+		return
+	material = material.duplicate()
+	material.albedo_color = PLAYER_COLORS.get(player_id, Color.WHITE)
+	belt.set_surface_override_material(0, material)
+
+## Reduces health by `amount` (clamped at 0) and updates the floating bar.
+## No death handling yet -- there's no combat system to call this from
+## yet, but the plumbing is here for when there is.
+func take_damage(amount: float) -> void:
+	current_health = maxf(current_health - amount, 0.0)
+	health_bar.set_health_fraction(current_health / max_health)
+	_update_health_bar_visibility()
+
+func heal(amount: float) -> void:
+	current_health = minf(current_health + amount, max_health)
+	health_bar.set_health_fraction(current_health / max_health)
+	_update_health_bar_visibility()
+
+func can_attack() -> bool:
+	return attack_hitbox != null and not _attacking and _attack_cooldown_remaining <= 0.0
+
+## True when nothing on SIGHT_OBSTACLE_MASK sits between this entity and
+## `target` -- used to stop an in-range target from being attacked (or
+## acquired) through a wall.
+func has_line_of_sight(target: Node3D) -> bool:
+	var space_state := get_world_3d().direct_space_state
+	var from := global_position + Vector3(0, SIGHT_RAY_HEIGHT, 0)
+	var to := target.global_position + Vector3(0, SIGHT_RAY_HEIGHT, 0)
+	var query := PhysicsRayQueryParameters3D.create(from, to, SIGHT_OBSTACLE_MASK)
+	query.exclude = [self, target]
+	var result := space_state.intersect_ray(query)
+	return result.is_empty()
+
+## Swings: briefly turns the attack hitbox on so it can land a hit on
+## whatever it's overlapping during that window, then off again for the
+## rest of the cooldown. No self-check needed against the hitbox catching
+## its own body -- collision_mask only picks up the UNIT_MASK layer, which
+## this entity's own body is on, and Area3D still reports overlaps with a
+## body that's a sibling/ancestor of it, so _on_attack_hitbox_body_entered
+## explicitly ignores `self`.
+func perform_attack() -> void:
+	if not can_attack():
+		return
+	_attacking = true
+	_attack_cooldown_remaining = attack_cooldown
+	attack_hitbox.monitoring = true
+	if attack_hitbox_mesh != null:
+		attack_hitbox_mesh.visible = true
+	await get_tree().create_timer(ATTACK_ACTIVE_DURATION).timeout
+	if is_instance_valid(attack_hitbox):
+		attack_hitbox.monitoring = false
+	if attack_hitbox_mesh != null and is_instance_valid(attack_hitbox_mesh):
+		attack_hitbox_mesh.visible = false
+	_attacking = false
+
+func _on_attack_hitbox_body_entered(body: Node) -> void:
+	if body == self:
+		return
+	if body.has_method("take_damage"):
+		body.take_damage(attack_damage)
+
+## Base version: just marks `target` as what to defend against, since a
+## stationary Entity can't chase. Unit overrides this to also move toward
+## the target first.
+func attack(target: Node3D) -> void:
+	attack_target = target
+
+## Default per-frame behavior for a stationary Entity: tick the attack
+## cooldown and handle an in-progress attack_target (face it and swing
+## once it's in range). Unit overrides this entirely to add movement.
+func _physics_process(delta: float) -> void:
+	if _attack_cooldown_remaining > 0.0:
+		_attack_cooldown_remaining = maxf(_attack_cooldown_remaining - delta, 0.0)
+	_update_attack_target(delta)
+
+## Handles an in-progress attack_target: clears it once the target dies or
+## is freed, otherwise faces it and swings once close enough. Returns true
+## when in range and actively attacking this frame -- Unit uses that to
+## suppress its ordinary chase-movement and velocity-driven facing, since
+## both would otherwise fight with standing still to swing.
+func _update_attack_target(delta: float) -> bool:
+	if attack_target == null:
+		_sight_line.visible = false
+		return false
+	if not is_instance_valid(attack_target) or attack_target.current_health <= 0.0:
+		attack_target = null
+		_sight_line.visible = false
+		return false
+
+	var to_target := attack_target.global_position - global_position
+	to_target.y = 0.0
+	var dist := to_target.length()
+	if dist > attack_range:
+		_sight_line.visible = false
+		return false
+
+	var in_los := has_line_of_sight(attack_target)
+	_draw_sight_line(attack_target, in_los)
+	if not in_los:
+		return false
+
+	if dist > 0.01:
+		_face_direction(to_target.normalized(), delta)
+	perform_attack()
+	return true
+
+## Redraws the green/red debug sight line toward `target` -- see _sight_line.
+func _draw_sight_line(target: Node3D, clear: bool) -> void:
+	_sight_line.visible = true
+	_sight_line_mat.albedo_color = Color(0.2, 1.0, 0.3) if clear else Color(1.0, 0.2, 0.2)
+	_sight_line_mesh.clear_surfaces()
+	_sight_line_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	_sight_line_mesh.surface_add_vertex(to_local(global_position + Vector3(0, SIGHT_RAY_HEIGHT, 0)))
+	_sight_line_mesh.surface_add_vertex(to_local(target.global_position + Vector3(0, SIGHT_RAY_HEIGHT, 0)))
+	_sight_line_mesh.surface_end()
+
+func _face_direction(dir: Vector3, delta: float) -> void:
+	var angle := atan2(dir.x, dir.z)
+	_turn_toward_snapped(angle, delta)
+
+func _face_snapped_angle(angle: float, delta: float) -> void:
+	_turn_toward_snapped(angle, delta)
+
+func _turn_toward_snapped(angle: float, delta: float) -> void:
+	var snapped_angle := snap_angle(angle)
+	if unit_sprite != null and not sprite_frames.is_empty():
+		# Sprite-billboard entity: there's no in-between frame to interpolate
+		# toward, so just switch straight to whichever pre-rendered frame
+		# matches this facing -- the classic instant-swap look, not a
+		# smooth turn. Still record the angle on model_root (a billboard
+		# sprite ignores inherited rotation when rendering, so this has no
+		# visual effect) purely so anything reading facing off model_root
+		# -- e.g. PortraitCamera -- keeps working the same regardless of
+		# which kind of entity it's looking at.
+		unit_sprite.texture = sprite_frames[_facing_index(snapped_angle)]
+		model_root.rotation.y = snapped_angle
+	else:
+		# Ordinary 3D-model entity: smoothly turn the model toward the
+		# nearest of 8 cardinal facings.
+		model_root.rotation.y = lerp_angle(model_root.rotation.y, snapped_angle, TURN_SPEED * delta)
+
+## Maps a snapped angle back to a 0..7 sprite-frame index, matching the
+## order sprite_frames was rendered in (index i = i * 45 degrees).
+func _facing_index(snapped_angle: float) -> int:
+	var step := TAU / DIRECTION_COUNT
+	var index := int(round(snapped_angle / step)) % DIRECTION_COUNT
+	if index < 0:
+		index += DIRECTION_COUNT
+	return index
+
+## Static (and public, via the subclass name) so RTSController can snap
+## the group's travel angle to the same 8 directions before using it to
+## orient the formation grid -- otherwise the grid ends up rotated to
+## whatever raw angle points at the target, which usually isn't one of the
+## 8 angles movement actually snaps to, leaving the formation visibly
+## skewed relative to the path the group actually takes.
+static func snap_angle(angle: float) -> float:
+	var step := TAU / DIRECTION_COUNT
+	return round(angle / step) * step
