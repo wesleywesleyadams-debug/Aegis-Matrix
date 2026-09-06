@@ -1,6 +1,6 @@
 [gd_scene load_steps=6 format=3]
 
-[ext_resource type="Script" path="res://scripts/WaypointFlag.gd" id="1_flag_script"]
+[ext_resource type="Script" path="res://scripts/ui/WaypointFlag.gd" id="1_flag_script"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_pole"]
 top_radius = 0.02

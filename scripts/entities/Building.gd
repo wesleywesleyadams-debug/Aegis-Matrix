@@ -8,8 +8,6 @@ class_name Building
 ## that lives in Entity; Entity's own defaults already never move it,
 ## so there's nothing left to override here beyond group membership.
 
-const WAYPOINT_FLAG_SCENE: PackedScene = preload("res://scenes/WaypointFlag.tscn")
-
 ## Where units produced by this building (once production exists) should
 ## walk to after spawning -- in order, same as a unit's queued waypoints.
 ## Set by right-clicking while this building is selected (plain click
@@ -52,10 +50,7 @@ func clear_gather_point() -> void:
 	_clear_gather_flags()
 
 func _spawn_gather_flag(world_position: Vector3, number: int) -> Node3D:
-	var flag: Node3D = WAYPOINT_FLAG_SCENE.instantiate()
-	add_child(flag)
-	flag.global_position = world_position
-	flag.set_number(number)
+	var flag := WaypointFlag.spawn(self, world_position, number)
 	flag.visible = selected
 	return flag
 

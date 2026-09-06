@@ -22,14 +22,6 @@ const ITEM_MASK: int = 16
 ## through this, so they stay their plain, unlit material.
 const GLOW_ENERGY: float = 3.0
 
-## World pickup scene for each item type -- the reverse of
-## Unit.WEAPON_VISUALS. Used by spawn_pickup() below, shared by both this
-## script (dropping a unit's old weapon when it picks up a new one) and
-## RTSController (dropping an item from the equipment panel).
-const ITEM_PICKUP_SCENES: Dictionary = {
-	"sword": preload("res://scenes/SwordPickup.tscn"),
-	"crossbow": preload("res://scenes/CrossbowPickup.tscn"),
-}
 ## How far above the ground a dropped item floats once it lands -- same
 ## offset the map's pre-placed pickups use (see Main.tscn), so a dropped
 ## item looks the same as one that was always sitting there.
@@ -144,7 +136,7 @@ func collect(unit: Unit) -> void:
 ## rotation.y) rather than just appearing there. No-op (returns null) for
 ## an unknown item_type.
 static func spawn_pickup(item_type: String, near_position: Vector3, facing_angle: float, parent: Node) -> Node3D:
-	var scene: PackedScene = ITEM_PICKUP_SCENES.get(item_type)
+	var scene: PackedScene = ItemDefs.get_pickup_scene(item_type)
 	if scene == null:
 		return null
 	var pickup: Node3D = scene.instantiate()

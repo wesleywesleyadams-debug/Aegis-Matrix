@@ -20,13 +20,6 @@ const SEGMENT_ARRIVE_DISTANCE: float = 0.25
 ## walks away from the target instead of toward it.
 const MAX_SEGMENT_DEVIATION: float = 0.75
 
-## Visual scene for each equippable item type -- see equip_weapon(). Keyed
-## by the same item_type strings GameState's inventories store.
-const WEAPON_VISUALS: Dictionary = {
-	"sword": preload("res://scenes/Sword.tscn"),
-	"crossbow": preload("res://scenes/Crossbow.tscn"),
-}
-
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
 ## Where an equipped weapon's visual attaches -- see ParentUnit.tscn.
 @onready var weapon_slot: Node3D = model_root.get_node_or_null("WeaponSlot")
@@ -124,7 +117,7 @@ func equip_weapon(item_type: String) -> void:
 	if _weapon_visual != null and is_instance_valid(_weapon_visual):
 		_weapon_visual.queue_free()
 	equipped_weapon = item_type
-	var visual_scene: PackedScene = WEAPON_VISUALS.get(item_type)
+	var visual_scene: PackedScene = ItemDefs.get_visual_scene(item_type)
 	if visual_scene != null and weapon_slot != null:
 		_weapon_visual = visual_scene.instantiate()
 		weapon_slot.add_child(_weapon_visual)

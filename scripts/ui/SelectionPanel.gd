@@ -14,6 +14,11 @@ const MAX_VISIBLE_SLOTS := 12
 const BOTTOM_MARGIN := 14.0
 const HEALTH_BAR_HEIGHT := 5.0
 const HEALTH_BAR_GAP := 3.0
+## Health bars only need to look reasonably live, not literally 60fps --
+## redrawing at this rate instead of every _process() frame cuts the
+## per-frame _draw() cost (a rect/circle/text draw per visible slot) by
+## most of that, with no visible difference for a UI element like this.
+const HEALTH_REDRAW_INTERVAL := 0.1
 
 @export var icon_capture_path: NodePath
 @onready var icon_capture = get_node_or_null(icon_capture_path)
@@ -35,6 +40,7 @@ var _icon_cache: Dictionary = {}
 ## them race over its position and the frame it renders.
 var _capture_queue: Array[Dictionary] = []
 var _capturing: bool = false
+var _redraw_elapsed: float = 0.0
 
 func _ready() -> void:
 	# Never intercept clicks -- selection/move-order input is handled by
@@ -44,8 +50,12 @@ func _ready() -> void:
 ## Health can change (combat) without this panel being told directly, so
 ## keep redrawing each icon's health bar live while anything is selected
 ## rather than only on selection-change events.
-func _process(_delta: float) -> void:
-	if not _selected_units.is_empty():
+func _process(delta: float) -> void:
+	if _selected_units.is_empty():
+		return
+	_redraw_elapsed += delta
+	if _redraw_elapsed >= HEALTH_REDRAW_INTERVAL:
+		_redraw_elapsed = 0.0
 		queue_redraw()
 
 func set_selected_units(units: Array) -> void:
@@ -138,7 +148,7 @@ func _draw() -> void:
 		var fraction: float = clampf(unit.current_health / unit.max_health, 0.0, 1.0)
 		if fraction > 0.0:
 			var fill_rect := Rect2(bar_rect.position, Vector2(bar_rect.size.x * fraction, bar_rect.size.y))
-			draw_rect(fill_rect, Unit.PLAYER_COLORS.get(unit.player_id, Color.WHITE), true)
+			draw_rect(fill_rect, Entity.PLAYER_COLORS.get(unit.player_id, Color.WHITE), true)
 
 	if count > MAX_VISIBLE_SLOTS:
 		var overflow_text := "+%d more" % (count - MAX_VISIBLE_SLOTS)

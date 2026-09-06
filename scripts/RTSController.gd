@@ -13,12 +13,17 @@ const FORMATION_SPACING: float = 2.6
 ## still fully wired up, just skipped, so flipping this back to true is all
 ## it takes to bring it back.
 const ENABLE_FORMATIONS: bool = false
-const WAYPOINT_FLAG_SCENE: PackedScene = preload("res://scenes/WaypointFlag.tscn")
 ## How far above a building's own origin its gather-point flag sits when
 ## the gather point is set directly onto that building (itself or another)
 ## -- buildings' global_position is at ground level, so without this the
 ## flag would plant at the building's base instead of visibly on top of it.
 const GATHER_FLAG_BUILDING_HEIGHT: float = 2.0
+## How often fog-of-war visibility is recomputed. It's an O(friendly x
+## enemy) sweep with a line-of-sight raycast per pair (see
+## _update_fog_of_war/_is_seen_by_any) -- units and vision don't change
+## fast enough to need that every single frame at 60fps, so this throttles
+## it to a still-responsive but far cheaper rate instead.
+const FOG_UPDATE_INTERVAL: float = 0.15
 
 @onready var camera: Camera3D = $CameraRig/Camera3D
 @onready var selection_box: Control = $UI/SelectionBox
@@ -32,6 +37,7 @@ const GATHER_FLAG_BUILDING_HEIGHT: float = 2.0
 var _selected_units: Array[Node] = []
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
+var _fog_update_elapsed: float = 0.0
 
 ## Waypoint queues currently in progress, one entry per group of units
 ## that has outstanding shift-clicked waypoints:
@@ -152,8 +158,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		selection_box.drag_end = event.position
 		selection_box.queue_redraw()
 
-func _process(_delta: float) -> void:
-	_update_fog_of_war()
+func _process(delta: float) -> void:
+	_fog_update_elapsed += delta
+	if _fog_update_elapsed >= FOG_UPDATE_INTERVAL:
+		_fog_update_elapsed = 0.0
+		_update_fog_of_war()
 
 	for i in range(_move_queues.size() - 1, -1, -1):
 		var q: Dictionary = _move_queues[i]
@@ -218,11 +227,7 @@ func _free_flag(flag: Node3D) -> void:
 		flag.queue_free()
 
 func _spawn_flag(world_position: Vector3) -> Node3D:
-	var flag: Node3D = WAYPOINT_FLAG_SCENE.instantiate()
-	add_child(flag)
-	flag.add_to_group("waypoint_flags")
-	flag.global_position = world_position
-	return flag
+	return WaypointFlag.spawn(self, world_position)
 
 ## Keeps each flag's number matching its position in the route: 1 for the
 ## leg currently being traveled to, 2 for the next one queued after it,
@@ -590,7 +595,7 @@ func _group_travel_angle(target: Vector3, units: Array[Node]) -> float:
 	# usually isn't one of those 8 angles, which would rotate the grid to
 	# an arbitrary orientation the group's real (quantized) path never
 	# actually matches, leaving it visibly skewed relative to the movement.
-	return Unit.snap_angle(atan2(travel.x, travel.z))
+	return Entity.snap_angle(atan2(travel.x, travel.z))
 
 func _rotate_offset(offset: Vector3, angle: float) -> Vector3:
 	var s := sin(angle)
@@ -853,21 +858,21 @@ func _issue_pickup_order(units: Array[Node], item: WorldItem, append_to_queue: b
 ## WorldItem.ITEM_MASK (an Area3D, not a body), so this needs its own query
 ## with collide_with_areas on, unlike the body-only lookups above.
 func _raycast_item(screen_pos: Vector2) -> WorldItem:
-	var space_state := get_world_3d().direct_space_state
-	var from := camera.project_ray_origin(screen_pos)
-	var to := from + camera.project_ray_normal(screen_pos) * 1000.0
-	var query := PhysicsRayQueryParameters3D.create(from, to, WorldItem.ITEM_MASK)
-	query.collide_with_areas = true
-	query.collide_with_bodies = false
-	var hit := space_state.intersect_ray(query)
+	var hit := _raycast(screen_pos, WorldItem.ITEM_MASK, true, false)
 	if hit.is_empty():
 		return null
 	var collider: Object = hit["collider"]
 	return collider if collider is WorldItem else null
 
-func _raycast(screen_pos: Vector2, mask: int) -> Dictionary:
+## Shared camera-ray builder for every screen-position raycast in this
+## file. Items live on Area3D (see WorldItem.ITEM_MASK), everything else
+## (ground/units/buildings) on ordinary PhysicsBody3D, hence the two
+## collide_with_* flags -- default to the body-only case everyone else uses.
+func _raycast(screen_pos: Vector2, mask: int, collide_with_areas: bool = false, collide_with_bodies: bool = true) -> Dictionary:
 	var space_state := get_world_3d().direct_space_state
 	var from := camera.project_ray_origin(screen_pos)
 	var to := from + camera.project_ray_normal(screen_pos) * 1000.0
 	var query := PhysicsRayQueryParameters3D.create(from, to, mask)
+	query.collide_with_areas = collide_with_areas
+	query.collide_with_bodies = collide_with_bodies
 	return space_state.intersect_ray(query)
