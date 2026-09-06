@@ -110,16 +110,23 @@ const PLAYER_NAMES: Dictionary = {
 	4: "Mob",
 }
 
-## Which player owns this entity. Only Player 1's units can currently be
-## selected/ordered (see RTSController) -- Player 2's exist and are
-## visually distinct (red belt, red health bar fill) but nothing controls
-## them yet.
+## Which player owns this entity. Whichever of Player 1/2 the human chose
+## in the lobby (see GameState.human_player_id) can be selected/ordered
+## (see RTSController) -- the other exists and is visually distinct (red
+## vs. blue belt/health-bar fill) but nothing controls it yet.
 @export var player_id: int = 1:
 	set(value):
 		player_id = value
 		_update_belt_color()
 		if health_bar:
 			health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
+
+## Whether this is one of the human player's own entities (per
+## GameState.human_player_id, set by the lobby's Play As choice) --
+## RTSController uses this everywhere it needs "is this mine to command"
+## rather than re-deriving the same comparison at each call site.
+func is_player_controlled() -> bool:
+	return player_id == GameState.human_player_id
 
 ## Pre-rendered 8-directional sprite frames (index 0 = facing angle 0,
 ## index i = facing angle i * 45 deg), used instead of rotating model_root

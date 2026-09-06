@@ -692,7 +692,7 @@ func _clear_item_selection() -> void:
 func _select_unit(unit: Node) -> void:
 	if unit is World:
 		return
-	if unit.player_id != GameState.human_player_id:
+	if not unit.is_player_controlled():
 		return
 	if unit in _selected_units:
 		return
@@ -744,13 +744,12 @@ func _darken_world_lighting() -> void:
 ## position/state (Building.ever_seen) since they don't move -- unlike
 ## units, "remembering" a building costs nothing extra to get right.
 func _update_fog_of_war() -> void:
-	var human_id: int = GameState.human_player_id
 	var friendly: Array = []
 	for entity in get_tree().get_nodes_in_group("units"):
-		if entity.player_id == human_id:
+		if entity.is_player_controlled():
 			friendly.append(entity)
 	for entity in get_tree().get_nodes_in_group("buildings"):
-		if entity.player_id == human_id:
+		if entity.is_player_controlled():
 			friendly.append(entity)
 
 	# Human-owned entities are the actual light sources -- always lit.
@@ -758,12 +757,12 @@ func _update_fog_of_war() -> void:
 		entity.vision_light.visible = true
 
 	for unit in get_tree().get_nodes_in_group("units"):
-		if unit.player_id == human_id:
+		if unit.is_player_controlled():
 			continue
 		unit.visible = _is_seen_by_any(unit, friendly)
 
 	for building in get_tree().get_nodes_in_group("buildings"):
-		if building.player_id == human_id:
+		if building.is_player_controlled():
 			continue
 		if _is_seen_by_any(building, friendly):
 			building.ever_seen = true
@@ -789,7 +788,7 @@ func _is_seen_by_any(entity: Node3D, friendly: Array) -> bool:
 ## real faction/ally system.
 func _raycast_enemy_unit(screen_pos: Vector2) -> Node3D:
 	var unit := _raycast_unit(screen_pos)
-	if unit == null or unit.player_id == GameState.human_player_id:
+	if unit == null or unit.is_player_controlled():
 		return null
 	return unit
 
