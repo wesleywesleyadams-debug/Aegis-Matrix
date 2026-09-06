@@ -172,8 +172,14 @@ func _ready() -> void:
 
 	vision_light = OmniLight3D.new()
 	vision_light.omni_range = vision_range
-	vision_light.light_energy = 3.0
-	vision_light.shadow_enabled = false
+	vision_light.light_energy = 4.0
+	vision_light.light_color = Color(1.0, 0.85, 0.6) # warm torchlight, not a flat white glow
+	# High attenuation exponent = light stays near full strength for most of
+	# omni_range then drops off sharply right near the edge, instead of a
+	# smooth gradual fade -- reads as a defined boundary (where sight
+	# actually ends) rather than a soft glow with no clear edge.
+	vision_light.omni_attenuation = 4.0
+	vision_light.shadow_enabled = true # obstacles (Wall, buildings, ...) actually block vision light
 	vision_light.visible = false
 	add_child(vision_light)
 	vision_light.position = Vector3(0, 1.0, 0)
