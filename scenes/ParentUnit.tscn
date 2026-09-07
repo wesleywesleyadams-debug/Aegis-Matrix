@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/entities/Unit.gd" id="1_unit"]
 [ext_resource type="Script" path="res://scripts/ui/HealthBar.gd" id="10_health_bar"]
 [ext_resource type="Texture2D" path="res://assets/textures/white_pixel.png" id="11_white_pixel"]
-[ext_resource type="PackedScene" path="res://assets/models/peasant/peasant.glb" id="2_peasant_model"]
+[ext_resource type="PackedScene" path="res://assets/models/human_male/human_male.glb" id="2_human_male_model"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.25
@@ -58,10 +58,10 @@ shape = SubResource("CapsuleShape3D_body")
 
 [node name="ModelRoot" type="Node3D" parent="."]
 
-[node name="PeasantModel" parent="ModelRoot" instance=ExtResource("2_peasant_model")]
-transform = Transform3D(0.8428, 0, 0, 0, 0.8428, 0, 0, 0, 0.8428, 0, 0.8012, 0)
+[node name="HumanMaleModel" parent="ModelRoot" instance=ExtResource("2_human_male_model")]
+transform = Transform3D(0.9549, 0, 0, 0, 0.9549, 0, 0, 0, 0.9549, 0, -0.0286, 0)
 
-[node name="mesh_0" parent="ModelRoot/PeasantModel/Node" index="0"]
+[node name="HumanMale" parent="ModelRoot/HumanMaleModel" index="0"]
 layers = 3
 
 [node name="WeaponSlot" type="Node3D" parent="ModelRoot"]
