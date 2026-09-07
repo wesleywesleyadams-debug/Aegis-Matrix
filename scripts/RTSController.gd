@@ -711,7 +711,10 @@ func _on_storage_item_right_clicked(item_type: String) -> void:
 ## Unit.throw_item/_on_unit_item_thrown) -- the unit has to actually walk
 ## within throwing range before the item leaves its hand, rather than it
 ## teleporting there instantly. A building can't walk anywhere, so a
-## building source places the item immediately instead.
+## building source throws immediately instead, but that throw is capped to
+## the same one-tile range a unit has to close in to (see
+## _throw_from_building) -- a building can eject an item to its own
+## doorstep, not fling it anywhere on the map.
 func handle_item_drag_drop(item_type: String, source_unit: Unit, source_building: Building, screen_pos: Vector2) -> void:
 	if is_instance_valid(source_unit):
 		if source_unit.equipped_weapon != item_type:
@@ -723,7 +726,7 @@ func handle_item_drag_drop(item_type: String, source_unit: Unit, source_building
 			return
 		_refresh_storage_panel()
 		var target := _resolve_drop_target(screen_pos, source_building)
-		_place_item_instantly(item_type, target)
+		_throw_from_building(item_type, source_building, target)
 
 ## Resolves what's at `screen_pos` in the world for a drag-drop -- a
 ## unit/building to hand the item to, or bare ground otherwise. Shared by
@@ -731,40 +734,50 @@ func handle_item_drag_drop(item_type: String, source_unit: Unit, source_building
 ## cases. exclude_node keeps dragging an item onto its own source (e.g. a
 ## unit dragging its weapon onto itself) from being treated as a valid
 ## target, falling through to the ground instead, same as the
-## pre-drag-and-drop right-click-to-drop behavior would.
+## pre-drag-and-drop right-click-to-drop behavior would. Same fallback for
+## anything not player-controlled -- items can't be handed to another
+## player's (or Nature/Mob's) units/buildings, only placed on the ground
+## near them.
 func _resolve_drop_target(screen_pos: Vector2, exclude_node: Node3D) -> Dictionary:
 	var target_node := _raycast_unit(screen_pos)
-	if target_node is Unit and target_node != exclude_node:
+	if target_node is Unit and target_node != exclude_node and target_node.is_player_controlled():
 		return {"position": target_node.global_position, "unit": target_node, "building": null}
-	if target_node is Building and target_node != exclude_node:
+	if target_node is Building and target_node != exclude_node and target_node.is_player_controlled():
 		return {"position": target_node.global_position, "unit": null, "building": target_node}
 	var ground_hit := _raycast(screen_pos, GROUND_MASK)
 	var position: Vector3 = ground_hit["position"] if not ground_hit.is_empty() else exclude_node.global_position
 	return {"position": position, "unit": null, "building": null}
 
-## Places an item straight away, no throw/travel time -- the
-## building-storage drag source's counterpart to a unit's throw_item()
-## order, since a stationary building has no way to walk closer first.
-func _place_item_instantly(item_type: String, target: Dictionary) -> void:
+## The building-storage drag source's counterpart to a unit's throw_item()
+## order -- a stationary building can't walk closer first, so it throws
+## right away, but the throw is capped to Unit.THROW_RANGE (one tile) from
+## the building itself. A target beyond that range is unreachable: the
+## hand-off to whatever was aimed at is dropped, and the throw lands short,
+## at the building's max range in that direction, as a plain ground pickup
+## instead -- the same "can't reach it" outcome a unit would have if it
+## simply couldn't move any closer.
+func _throw_from_building(item_type: String, building: Building, target: Dictionary) -> void:
 	var target_unit: Unit = target["unit"]
 	var target_building: Building = target["building"]
-	if target_unit != null:
-		if not target_unit.equipped_weapon.is_empty():
-			var displaced: String = target_unit.unequip_weapon()
-			WorldItem.spawn_pickup(displaced, target_unit.global_position, target_unit.model_root.rotation.y, $World)
-		target_unit.equip_weapon(item_type)
-		_refresh_equipment_panel()
-	elif target_building != null:
-		target_building.store_item(item_type)
-		_refresh_storage_panel()
-	else:
-		WorldItem.spawn_dropped(item_type, target["position"], $World)
+	var target_position: Vector3 = target["position"]
+
+	var offset := target_position - building.global_position
+	offset.y = 0.0
+	if offset.length() > Unit.THROW_RANGE:
+		target_unit = null
+		target_building = null
+		target_position = building.global_position + offset.normalized() * Unit.THROW_RANGE
+
+	WorldItem.spawn_thrown(
+		item_type, building.global_position, target_position, $World,
+		_on_thrown_item_landed.bind(target_unit, target_building)
+	)
 
 ## A unit's throw_item() order actually landing (see Unit.item_thrown) --
 ## spawns the visible thrown item traveling from the unit to the target
 ## point, and hands it off to whatever the throw was aimed at once the
 ## animation finishes (see _on_thrown_item_landed), same end states
-## _place_item_instantly reaches, just with travel time first.
+## _throw_from_building reaches, just with walking time first.
 func _on_unit_item_thrown(unit: Unit, item_type: String, target_position: Vector3, target_unit: Unit, target_building: Building) -> void:
 	_refresh_equipment_panel()
 	WorldItem.spawn_thrown(
@@ -772,22 +785,23 @@ func _on_unit_item_thrown(unit: Unit, item_type: String, target_position: Vector
 		_on_thrown_item_landed.bind(target_unit, target_building)
 	)
 
-## Re-checks target_unit/target_building are still valid at landing time
-## (either could've died/been destroyed during the throw's travel time)
-## before handing the item over -- otherwise it just stays a normal ground
-## pickup where it landed, same as aiming at bare ground in the first place.
+## Re-checks target_unit/target_building are still valid (and still
+## player-controlled -- see _resolve_drop_target) at landing time, in case
+## either died/was destroyed during the throw's travel time, before handing
+## the item over -- otherwise it just stays a normal ground pickup where it
+## landed, same as aiming at bare ground in the first place.
 func _on_thrown_item_landed(pickup: Node3D, target_unit: Unit, target_building: Building) -> void:
 	if not is_instance_valid(pickup):
 		return
 	var item_type: String = pickup.item_type
-	if is_instance_valid(target_unit):
+	if is_instance_valid(target_unit) and target_unit.is_player_controlled():
 		if not target_unit.equipped_weapon.is_empty():
 			var displaced: String = target_unit.unequip_weapon()
 			WorldItem.spawn_pickup(displaced, target_unit.global_position, target_unit.model_root.rotation.y, $World)
 		target_unit.equip_weapon(item_type)
 		pickup.queue_free()
 		_refresh_equipment_panel()
-	elif is_instance_valid(target_building):
+	elif is_instance_valid(target_building) and target_building.is_player_controlled():
 		target_building.store_item(item_type)
 		pickup.queue_free()
 		_refresh_storage_panel()
