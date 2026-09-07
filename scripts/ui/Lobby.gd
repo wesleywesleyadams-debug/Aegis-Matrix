@@ -36,9 +36,11 @@ const MAX_STARTING_UNITS: int = 8
 @onready var back_button: Button = $MainHBox/SettingsPanel/SettingsVBox/ButtonRow/BackButton
 @onready var options_button: Button = $MainHBox/SettingsPanel/SettingsVBox/OptionsButton
 
-## The local player's OS username, shown as the slot-dropdown option for
-## "this slot is me" -- falls back to "Player" if the OS doesn't report one
-## (e.g. some non-Windows/Linux environments).
+## Shown as the slot-dropdown option for "this slot is me" -- the signed-in
+## account's name (see GameState.active_account) if there is one, since
+## that's the identity actually driving everything else (saves, settings),
+## otherwise falls back to the OS username, or "Player" if even that isn't
+## available (e.g. some non-Windows/Linux environments).
 var _username: String = ""
 
 ## One entry per slot: {"badge": Label, "slot": OptionButton, "race":
@@ -48,11 +50,7 @@ var _slot_rows: Array = []
 
 func _ready() -> void:
 	Music.play_track(Music.LOBBY_TRACK)
-	_username = OS.get_environment("USERNAME")
-	if _username.is_empty():
-		_username = OS.get_environment("USER")
-	if _username.is_empty():
-		_username = "Player"
+	_username = _resolve_username()
 
 	starting_units_spinbox.min_value = 1
 	starting_units_spinbox.max_value = MAX_STARTING_UNITS
@@ -64,6 +62,24 @@ func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 
 	_populate_players_grid()
+
+	# Signing in/out (e.g. via the Account panel) while the lobby is open
+	# should update "this slot is me"'s label live, not just next time the
+	# lobby loads.
+	GameState.active_account_changed.connect(_on_active_account_changed)
+
+func _resolve_username() -> String:
+	if not GameState.active_account.is_empty():
+		return GameState.active_account
+	var os_name := OS.get_environment("USERNAME")
+	if os_name.is_empty():
+		os_name = OS.get_environment("USER")
+	return os_name if not os_name.is_empty() else "Player"
+
+func _on_active_account_changed() -> void:
+	_username = _resolve_username()
+	for row in _slot_rows:
+		row["slot"].set_item_text(0, _username)
 
 ## Every lobby control saves immediately on change (not just when Start is
 ## pressed) so whatever was last set is still there even if the player
