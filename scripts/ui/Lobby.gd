@@ -62,11 +62,33 @@ func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 
 	_populate_players_grid()
+	_claim_slot_for_self()
 
 	# Signing in/out (e.g. via the Account panel) while the lobby is open
 	# should update "this slot is me"'s label live, not just next time the
 	# lobby loads.
 	GameState.active_account_changed.connect(_on_active_account_changed)
+
+## Guarantees whoever's signed in actually has a claimed slot on entering
+## the lobby -- a no-op in the common case (slot 1 defaults to "human"),
+## but a real safety net for whenever real multiplayer exists: a player
+## joining a hosted lobby should land in an open slot as themselves, not
+## silently control nothing because some earlier session left every slot
+## set to "ai"/"open". Only takes over an Open slot, never an AI one --
+## claiming a slot someone deliberately set to AI would bump that choice
+## without asking.
+func _claim_slot_for_self() -> void:
+	for slot in GameState.player_slots:
+		if slot["slot_type"] == "human":
+			return
+	for i in GameState.player_slots.size():
+		if GameState.player_slots[i]["slot_type"] == "open":
+			GameState.player_slots[i]["slot_type"] = "human"
+			_slot_rows[i]["slot"].selected = _slot_type_index("human")
+			_sync_human_player_id()
+			_update_row_visuals(i)
+			GameState.save_settings()
+			return
 
 func _resolve_username() -> String:
 	if not GameState.active_account.is_empty():
