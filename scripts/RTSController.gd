@@ -670,6 +670,34 @@ func _on_equipment_item_right_clicked(item_type: String) -> void:
 	_refresh_equipment_panel()
 	WorldItem.spawn_pickup(item_type, unit.global_position, unit.model_root.rotation.y, $World)
 
+## Dragging an equipped item out of the equipment panel (see
+## ItemDropTarget/EquipmentItemButton) and releasing it at `screen_pos`:
+## hands it straight to another unit if one's under the cursor (swapping
+## out whatever that unit already had equipped, same as walking onto a
+## WorldItem pickup does), or otherwise drops it at the raycasted ground
+## point -- including when a building (no equipment slot of its own to
+## receive it) or empty space is under the cursor.
+func handle_equipment_item_drop(item_type: String, source_unit: Unit, screen_pos: Vector2) -> void:
+	if not is_instance_valid(source_unit) or source_unit.equipped_weapon != item_type:
+		return
+
+	var target_node := _raycast_unit(screen_pos)
+	if target_node is Unit and target_node != source_unit:
+		var target_unit: Unit = target_node
+		source_unit.unequip_weapon()
+		if not target_unit.equipped_weapon.is_empty():
+			var displaced: String = target_unit.unequip_weapon()
+			WorldItem.spawn_pickup(displaced, target_unit.global_position, target_unit.model_root.rotation.y, $World)
+		target_unit.equip_weapon(item_type)
+		_refresh_equipment_panel()
+		return
+
+	var ground_hit := _raycast(screen_pos, GROUND_MASK)
+	var drop_position: Vector3 = ground_hit["position"] if not ground_hit.is_empty() else source_unit.global_position
+	source_unit.unequip_weapon()
+	_refresh_equipment_panel()
+	WorldItem.spawn_dropped(item_type, drop_position, $World)
+
 ## Shows `item`'s selection frame, clearing any unit/building selection
 ## first -- items and units/buildings are never selected at the same time,
 ## since an item selection can't be given orders anyway.

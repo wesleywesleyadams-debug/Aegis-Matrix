@@ -157,6 +157,28 @@ static func spawn_pickup(item_type: String, near_position: Vector3, facing_angle
 
 	return pickup
 
+## Instantiates `item_type`'s pickup scene at the exact world `position`
+## given -- for placing an item wherever the player actually dropped it
+## (see RTSController.handle_equipment_item_drop's ground-drop case),
+## unlike spawn_pickup's fixed "one tile behind the unit" landing spot.
+## Just a short drop-and-bounce rather than spawn_pickup's travel arc, since
+## there's no "ejected from" point to travel away from here. No-op (returns
+## null) for an unknown item_type.
+static func spawn_dropped(item_type: String, position: Vector3, parent: Node) -> Node3D:
+	var scene: PackedScene = ItemDefs.get_pickup_scene(item_type)
+	if scene == null:
+		return null
+	var pickup: Node3D = scene.instantiate()
+	parent.add_child(pickup)
+
+	var landing_position := position + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
+	pickup.global_position = landing_position + Vector3(0, EJECT_HEIGHT, 0)
+
+	var hop_tween := pickup.create_tween()
+	hop_tween.tween_property(pickup, "global_position:y", landing_position.y, EJECT_DURATION).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+
+	return pickup
+
 ## Recursively duplicates and lights up every StandardMaterial3D under this
 ## pickup, so the shared material resource (also used by the equipped
 ## visual) is untouched -- only this specific pickup instance glows.

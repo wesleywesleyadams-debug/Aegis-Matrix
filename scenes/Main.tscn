@@ -19,6 +19,7 @@
 [ext_resource type="PackedScene" path="res://scenes/SwordPickup.tscn" id="18_sword_pickup"]
 [ext_resource type="Script" path="res://scripts/ui/EquipmentPanel.gd" id="20_equipment_panel"]
 [ext_resource type="PackedScene" path="res://scenes/CrossbowPickup.tscn" id="21_crossbow_pickup"]
+[ext_resource type="Script" path="res://scripts/ui/ItemDropTarget.gd" id="22_item_drop_target"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 size = Vector3(60, 0.2, 60)
@@ -474,6 +475,14 @@ text = "Restart"
 [node name="QuitButton" type="Button" parent="UI/MainMenu/EndStatePanel/VBox"]
 layout_mode = 2
 text = "Quit"
+
+[node name="ItemDropTarget" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+script = ExtResource("22_item_drop_target")
 
 [editable path="Units/ParentUnit"]
 [editable path="Units/Unit2"]
