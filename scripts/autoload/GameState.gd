@@ -47,6 +47,32 @@ static func _default_player_slots() -> Array:
 		slots.append({"slot_type": slot_type, "race": "human", "team": 0})
 	return slots
 
+## Local user accounts (see TitleMenu's Account/NewAccount/SignIn panels) --
+## one dict per account: {"name": String, "password_hash": String}. This is
+## a purely local, single-player profile switcher, not real authentication
+## against any server, so the "password" is just a locally-checked
+## SHA-256 hash (see TitleMenu._hash_password) rather than anything sent
+## anywhere -- enough to stop someone else picking your name, not meant to
+## be actual account security. Capped at MAX_ACCOUNTS the same way the
+## lobby caps player slots at 8: a fixed, small limit rather than an
+## unbounded list.
+const MAX_ACCOUNTS: int = 5
+var accounts: Array = []
+## Which account is currently signed in for this session, or "" for none.
+## Cleared on every fresh launch unless stay_signed_in restores it (see
+## load_settings()) -- signing in is a per-session thing by default, the
+## same as the Steam/Windows-account pattern "stay signed in" is modeled
+## after.
+var active_account: String = ""
+## Whether to auto-restore `remembered_account` as active_account on the
+## next launch -- set from the Sign In / Create Account panels' "Stay
+## signed in" checkbox.
+var stay_signed_in: bool = false
+## Which account to auto-sign-in as on launch when stay_signed_in is true.
+## Kept separate from active_account so signing out mid-session doesn't
+## silently change what a future "stay signed in" launch would restore.
+var remembered_account: String = ""
+
 ## Persists across matches/scenes -- OptionsMenu's Visuals tab checkbox and
 ## RTSController's debug_grid (both the 'G' hotkey and its own _ready()
 ## initial state) read/write this so the setting sticks between games
@@ -96,6 +122,9 @@ func save_settings() -> void:
 	config.set_value("lobby", "starting_unit_count", starting_unit_count)
 	config.set_value("lobby", "human_player_id", human_player_id)
 	config.set_value("lobby", "player_slots", player_slots)
+	config.set_value("accounts", "list", accounts)
+	config.set_value("accounts", "stay_signed_in", stay_signed_in)
+	config.set_value("accounts", "remembered_account", remembered_account)
 	config.save(SETTINGS_PATH)
 
 ## Loads whatever was saved last, leaving each var's already-declared
@@ -114,3 +143,16 @@ func load_settings() -> void:
 	starting_unit_count = config.get_value("lobby", "starting_unit_count", starting_unit_count)
 	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)
 	player_slots = config.get_value("lobby", "player_slots", player_slots)
+	accounts = config.get_value("accounts", "list", accounts)
+	stay_signed_in = config.get_value("accounts", "stay_signed_in", stay_signed_in)
+	remembered_account = config.get_value("accounts", "remembered_account", remembered_account)
+	## Auto-restore whoever "Stay signed in" remembered, same as a browser
+	## or Steam staying logged in across a restart -- active_account is
+	## otherwise session-only (see its own doc comment), so without this a
+	## stay-signed-in player would still have to re-enter their password
+	## every single launch, defeating the point of the checkbox.
+	if stay_signed_in and not remembered_account.is_empty():
+		for account in accounts:
+			if account["name"] == remembered_account:
+				active_account = remembered_account
+				break
