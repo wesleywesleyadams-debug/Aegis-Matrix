@@ -59,7 +59,7 @@ shape = SubResource("CapsuleShape3D_body")
 [node name="ModelRoot" type="Node3D" parent="."]
 
 [node name="HumanMaleModel" parent="ModelRoot" instance=ExtResource("2_human_male_model")]
-transform = Transform3D(0.9549, 0, 0, 0, 0.9549, 0, 0, 0, 0.9549, 0, -0.0286, 0)
+transform = Transform3D(0.9718, 0, 0, 0, 0.9718, 0, 0, 0, 0.9718, 0, 0.012, 0)
 
 [node name="HumanMale" parent="ModelRoot/HumanMaleModel" index="0"]
 layers = 3
