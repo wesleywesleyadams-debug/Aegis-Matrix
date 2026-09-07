@@ -3,6 +3,10 @@ extends Node
 ## change, since change_scene_to_file() gives the new scene no way to
 ## receive an argument directly.
 
+## Fired whenever active_account changes -- SignedInLabel (shown top-right
+## on every scene) listens for this instead of polling every frame.
+signal active_account_changed
+
 var load_on_start: bool = false
 ## Which save file to load, e.g. "user://saves/save_1234567890.json".
 ## Only meaningful when load_on_start is true.
@@ -63,7 +67,12 @@ var accounts: Array = []
 ## load_settings()) -- signing in is a per-session thing by default, the
 ## same as the Steam/Windows-account pattern "stay signed in" is modeled
 ## after.
-var active_account: String = ""
+var active_account: String = "":
+	set(value):
+		if value == active_account:
+			return
+		active_account = value
+		active_account_changed.emit()
 ## Whether to auto-restore `remembered_account` as active_account on the
 ## next launch -- set from the Sign In / Create Account panels' "Stay
 ## signed in" checkbox.

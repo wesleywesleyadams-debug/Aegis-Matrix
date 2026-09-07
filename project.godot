@@ -20,6 +20,8 @@ config/icon="res://icon.svg"
 GameState="*res://scripts/autoload/GameState.gd"
 Music="*res://scenes/Music.tscn"
 OptionsMenu="*res://scenes/OptionsMenu.tscn"
+AccountMenu="*res://scenes/AccountMenu.tscn"
+SignedInLabel="*res://scenes/SignedInLabel.tscn"
 
 [display]
 
