@@ -31,6 +31,10 @@ var human_player_id: int = 1
 ## rather than always resetting to visible.
 var show_debug_grid: bool = true
 
+## Which UI font is applied to the shared theme (see OptionsMenu._apply_font)
+## -- one of OptionsMenu.FONT_OPTIONS' keys.
+var ui_font: String = "medieval"
+
 ## Audio settings -- authoritative values OptionsMenu's sliders and Music.gd
 ## read at startup and write back on every change (see save_settings()
 ## callers). Kept here rather than read directly off AudioServer/the music
@@ -57,6 +61,7 @@ func save_settings() -> void:
 	config.set_value("audio", "master_volume_db", master_volume_db)
 	config.set_value("audio", "music_volume_db", music_volume_db)
 	config.set_value("visuals", "show_debug_grid", show_debug_grid)
+	config.set_value("visuals", "ui_font", ui_font)
 	config.set_value("lobby", "starting_unit_count", starting_unit_count)
 	config.set_value("lobby", "human_player_id", human_player_id)
 	config.save(SETTINGS_PATH)
@@ -71,5 +76,6 @@ func load_settings() -> void:
 	master_volume_db = config.get_value("audio", "master_volume_db", master_volume_db)
 	music_volume_db = config.get_value("audio", "music_volume_db", music_volume_db)
 	show_debug_grid = config.get_value("visuals", "show_debug_grid", show_debug_grid)
+	ui_font = config.get_value("visuals", "ui_font", ui_font)
 	starting_unit_count = config.get_value("lobby", "starting_unit_count", starting_unit_count)
 	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)

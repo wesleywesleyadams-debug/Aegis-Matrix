@@ -35,8 +35,22 @@ const HARDCODED_HOTKEYS: Array = [
 @onready var music_slider: HSlider = $Background/Panel/VBox/TabContainer/Audio/MusicVolumeRow/MusicSlider
 @onready var hotkeys_list: GridContainer = $Background/Panel/VBox/TabContainer/Hotkeys/HotkeysList
 @onready var show_grid_checkbox: CheckBox = $Background/Panel/VBox/TabContainer/Visuals/ShowGridCheckBox
+@onready var font_option: OptionButton = $Background/Panel/VBox/TabContainer/Visuals/FontRow/FontOption
 
 var _master_bus_index: int = 0
+
+## UI font choices for the Visuals tab's Font dropdown -- key (see
+## GameState.ui_font) -> [display name, font resource]. null means "Default"
+## (falls back to Godot's own built-in font instead of overriding it).
+const FONT_OPTIONS: Dictionary = {
+	"medieval": ["Medieval Sharp", preload("res://assets/fonts/MedievalSharp.ttf")],
+	"default": ["Default", null],
+}
+## Insertion order of FONT_OPTIONS' keys -- Dictionary iteration order in
+## GDScript matches insertion order, but this makes that assumption explicit
+## and gives _populate_font_options/index<->key lookups something to zip
+## against, rather than relying on it silently.
+const FONT_OPTION_KEYS: Array = ["medieval", "default"]
 
 func _ready() -> void:
 	layer = 10
@@ -54,6 +68,10 @@ func _ready() -> void:
 
 	show_grid_checkbox.button_pressed = GameState.show_debug_grid
 	show_grid_checkbox.toggled.connect(_on_show_grid_toggled)
+
+	_populate_font_options()
+	_apply_font(GameState.ui_font)
+	font_option.item_selected.connect(_on_font_selected)
 
 	_populate_hotkeys()
 
@@ -88,6 +106,26 @@ func _on_show_grid_toggled(pressed: bool) -> void:
 	var scene := get_tree().current_scene
 	if scene != null and scene.has_node("DebugGrid"):
 		scene.get_node("DebugGrid").visible = pressed
+
+func _populate_font_options() -> void:
+	for key in FONT_OPTION_KEYS:
+		font_option.add_item(FONT_OPTIONS[key][0])
+	var current_index := FONT_OPTION_KEYS.find(GameState.ui_font)
+	font_option.selected = maxi(current_index, 0)
+
+func _on_font_selected(index: int) -> void:
+	var key: String = FONT_OPTION_KEYS[index]
+	GameState.ui_font = key
+	GameState.save_settings()
+	_apply_font(key)
+
+## Swaps the shared theme's default_font -- every Control using
+## res://themes/hud_theme.tres (the whole UI, see project.godot's
+## gui/theme/custom) picks this up live via Theme's theme_changed signal,
+## no per-scene work needed.
+func _apply_font(key: String) -> void:
+	var hud_theme: Theme = load("res://themes/hud_theme.tres")
+	hud_theme.default_font = FONT_OPTIONS[key][1]
 
 func _populate_hotkeys() -> void:
 	for pair in LISTED_ACTIONS:
