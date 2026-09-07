@@ -64,6 +64,13 @@ var ui_font: String = "medieval"
 ## independent of whichever bus/player object happens to represent it.
 var master_volume_db: float = 0.0
 var music_volume_db: float = -8.0
+## Independent on/off switches, separate from the volume sliders above --
+## OptionsMenu's Audio tab checkboxes (see _apply_audio_enabled/
+## _apply_music_enabled) mute the Master bus / pause Music.player rather
+## than touching these dB values, so turning audio back on restores
+## whatever volume was set before, instead of forgetting it.
+var audio_enabled: bool = true
+var music_enabled: bool = true
 
 ## Where user-chosen settings (this whole section, above) survive to disk --
 ## everything here is meant to still be true the next time the game is
@@ -82,6 +89,8 @@ func save_settings() -> void:
 	var config := ConfigFile.new()
 	config.set_value("audio", "master_volume_db", master_volume_db)
 	config.set_value("audio", "music_volume_db", music_volume_db)
+	config.set_value("audio", "audio_enabled", audio_enabled)
+	config.set_value("audio", "music_enabled", music_enabled)
 	config.set_value("visuals", "show_debug_grid", show_debug_grid)
 	config.set_value("visuals", "ui_font", ui_font)
 	config.set_value("lobby", "starting_unit_count", starting_unit_count)
@@ -98,6 +107,8 @@ func load_settings() -> void:
 		return
 	master_volume_db = config.get_value("audio", "master_volume_db", master_volume_db)
 	music_volume_db = config.get_value("audio", "music_volume_db", music_volume_db)
+	audio_enabled = config.get_value("audio", "audio_enabled", audio_enabled)
+	music_enabled = config.get_value("audio", "music_enabled", music_enabled)
 	show_debug_grid = config.get_value("visuals", "show_debug_grid", show_debug_grid)
 	ui_font = config.get_value("visuals", "ui_font", ui_font)
 	starting_unit_count = config.get_value("lobby", "starting_unit_count", starting_unit_count)

@@ -33,6 +33,8 @@ const HARDCODED_HOTKEYS: Array = [
 @onready var close_button: Button = $Background/Panel/VBox/CloseButtonRow/CloseButton
 @onready var master_slider: HSlider = $Background/Panel/VBox/TabContainer/Audio/MasterVolumeRow/MasterSlider
 @onready var music_slider: HSlider = $Background/Panel/VBox/TabContainer/Audio/MusicVolumeRow/MusicSlider
+@onready var audio_enabled_checkbox: CheckBox = $Background/Panel/VBox/TabContainer/Audio/ToggleRow/AudioEnabledCheckBox
+@onready var music_enabled_checkbox: CheckBox = $Background/Panel/VBox/TabContainer/Audio/ToggleRow/MusicEnabledCheckBox
 @onready var hotkeys_list: GridContainer = $Background/Panel/VBox/TabContainer/Hotkeys/HotkeysList
 @onready var show_grid_checkbox: CheckBox = $Background/Panel/VBox/TabContainer/Visuals/ShowGridCheckBox
 @onready var font_option: OptionButton = $Background/Panel/VBox/TabContainer/Visuals/FontRow/FontOption
@@ -66,6 +68,13 @@ func _ready() -> void:
 	music_slider.value = GameState.music_volume_db
 	music_slider.value_changed.connect(_on_music_slider_changed)
 
+	audio_enabled_checkbox.button_pressed = GameState.audio_enabled
+	_apply_audio_enabled(GameState.audio_enabled)
+	audio_enabled_checkbox.toggled.connect(_on_audio_enabled_toggled)
+	music_enabled_checkbox.button_pressed = GameState.music_enabled
+	_apply_music_enabled(GameState.music_enabled)
+	music_enabled_checkbox.toggled.connect(_on_music_enabled_toggled)
+
 	show_grid_checkbox.button_pressed = GameState.show_debug_grid
 	show_grid_checkbox.toggled.connect(_on_show_grid_toggled)
 
@@ -95,6 +104,29 @@ func _on_music_slider_changed(value: float) -> void:
 	Music.player.volume_db = value
 	GameState.music_volume_db = value
 	GameState.save_settings()
+
+func _on_audio_enabled_toggled(pressed: bool) -> void:
+	GameState.audio_enabled = pressed
+	_apply_audio_enabled(pressed)
+	GameState.save_settings()
+
+func _on_music_enabled_toggled(pressed: bool) -> void:
+	GameState.music_enabled = pressed
+	_apply_music_enabled(pressed)
+	GameState.save_settings()
+
+## Mutes the whole Master bus -- everything routes through it (see
+## Music.player.bus), so this is a hard "all game audio off" switch,
+## independent of (and layered on top of) the master volume slider's dB
+## value, which stays untouched and takes effect again once unmuted.
+func _apply_audio_enabled(enabled: bool) -> void:
+	AudioServer.set_bus_mute(_master_bus_index, not enabled)
+
+## Pauses/resumes just the music player rather than touching the Master
+## bus -- so Music On/Off doesn't also silence the (not yet used) SFX this
+## bus will eventually carry.
+func _apply_music_enabled(enabled: bool) -> void:
+	Music.player.stream_paused = not enabled
 
 ## Persists the setting (see GameState.show_debug_grid) and, if the current
 ## scene actually has a debug grid to show/hide (only true in Main -- the

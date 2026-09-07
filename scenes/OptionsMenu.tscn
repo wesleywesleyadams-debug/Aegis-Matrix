@@ -85,6 +85,28 @@ min_value = -40.0
 max_value = 6.0
 step = 1.0
 
+[node name="ToggleRow" type="HBoxContainer" parent="Background/Panel/VBox/TabContainer/Audio"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -50.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 1
+theme_override_constants/separation = 30
+
+[node name="AudioEnabledCheckBox" type="CheckBox" parent="Background/Panel/VBox/TabContainer/Audio/ToggleRow"]
+layout_mode = 2
+text = "Audio On"
+
+[node name="MusicEnabledCheckBox" type="CheckBox" parent="Background/Panel/VBox/TabContainer/Audio/ToggleRow"]
+layout_mode = 2
+text = "Music On"
+
 [node name="Hotkeys" type="Control" parent="Background/Panel/VBox/TabContainer"]
 visible = false
 layout_mode = 2
