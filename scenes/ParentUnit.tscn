@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" path="res://assets/models/paladin/paladin.glb" id="2_paladin_model"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
-radius = 0.25
+radius = 0.38
 height = 1.6
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_attack"]
@@ -92,7 +92,7 @@ mesh = SubResource("TorusMesh_belt")
 surface_material_override/0 = SubResource("Mat_belt")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
-radius = 0.25
+radius = 0.38
 path_desired_distance = 0.5
 target_desired_distance = 0.15
 avoidance_enabled = true

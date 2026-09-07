@@ -24,13 +24,16 @@ var current_health: float
 ## window) -- 2.0 total = 0.15s hit window + 1.85s idle.
 @export var attack_cooldown: float = 2.0
 ## How close (center to center) counts as "in range to swing". Kept tight
-## (barely past both entities' collision radii) because the melee hitbox
-## now tracks the actual fist through the swing (see AttackHitbox in
-## ParentUnit.tscn) instead of sitting in a big fixed box in front of the
-## chest -- facing is quantized to 8 directions, so at a longer range the
-## up-to-22.5-degree worst-case facing error swings the fist wide of a
-## small hitbox entirely.
-@export var attack_range: float = 0.7
+## (barely past both entities' combined collision radii, 0.76 for two
+## Units at radius 0.38 -- see CollisionShape3D/NavigationAgent3D in
+## ParentUnit.tscn) because the melee hitbox now tracks the actual fist
+## through the swing (see AttackHitbox in ParentUnit.tscn) instead of
+## sitting in a big fixed box in front of the chest -- facing is quantized
+## to 8 directions, so at a longer range the up-to-22.5-degree worst-case
+## facing error swings the fist wide of a small hitbox entirely. Must stay
+## above the combined collision radii or units would physically collide
+## before ever reaching attack range.
+@export var attack_range: float = 0.85
 ## How far this entity can see -- used by fog of war (see RTSController's
 ## _update_fog_of_war) to decide whether enemy entities within range (and
 ## with a clear has_line_of_sight()) should be revealed. 4 tiles at the
@@ -48,8 +51,8 @@ const ATTACK_ACTIVE_DURATION: float = 0.15
 const ATTACK_IMPACT_FRACTION: float = 0.409
 ## How close the hitbox needs to be to a target's approximate body center
 ## (see _land_hit_if_in_reach) to actually land a hit -- roughly the
-## target's own capsule radius (0.25) plus the fist hitbox's own reach.
-const MELEE_REACH: float = 0.45
+## target's own capsule radius (0.38) plus the fist hitbox's own reach.
+const MELEE_REACH: float = 0.58
 
 ## Collision layer terrain/wall obstacles sit on (see Main.tscn "Wall" nodes)
 ## -- separate from GROUND_MASK/UNIT_MASK in RTSController.gd, which are
