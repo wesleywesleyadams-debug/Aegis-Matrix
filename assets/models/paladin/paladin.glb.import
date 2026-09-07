@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://epyh2tibs2ao"
-path="res://.godot/imported/human_male.glb-7d94eacd0da0b0370716987026150244.scn"
+uid="uid://bbsh3qnbyebgp"
+path="res://.godot/imported/paladin.glb-c3a68bda2443b0be1bb72a13b7c6bd0c.scn"
 
 [deps]
 
-source_file="res://assets/models/human_male/human_male.glb"
-dest_files=["res://.godot/imported/human_male.glb-7d94eacd0da0b0370716987026150244.scn"]
+source_file="res://assets/models/paladin/paladin.glb"
+dest_files=["res://.godot/imported/paladin.glb-c3a68bda2443b0be1bb72a13b7c6bd0c.scn"]
 
 [params]
 

@@ -22,7 +22,7 @@ const MAX_SEGMENT_DEVIATION: float = 0.75
 
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
 ## Where an equipped weapon's visual attaches -- see ParentUnit.tscn.
-@onready var weapon_slot: Node3D = model_root.get_node_or_null("WeaponSlot")
+@onready var weapon_slot: Node3D = model_root.find_child("WeaponSlot", true, false)
 
 ## Item type currently in this unit's weapon slot, or "" for none. Set via
 ## equip_weapon() -- purely visual for now, no stat effect.
@@ -298,10 +298,24 @@ func _physics_process(_delta: float) -> void:
 
 	if not attacking_in_range:
 		var flat_velocity := Vector3(velocity.x, 0.0, velocity.z)
-		if flat_velocity.length() > 0.05:
+		var is_moving := flat_velocity.length() > 0.05
+		if is_moving:
 			_face_direction(flat_velocity.normalized(), get_physics_process_delta_time())
 		elif not is_nan(_order_facing_angle):
 			_face_snapped_angle(_order_facing_angle, get_physics_process_delta_time())
+		_update_locomotion_animation(is_moving)
+
+## Plays Walk while actually translating and Idle otherwise (arriving,
+## standing between orders, mid-attack-approach before it's in range) --
+## guarded by current_animation so it doesn't restart the clip every single
+## frame. No-op for entities with no AnimationPlayer (e.g. the older
+## sprite-billboard peasant, if one still exists).
+func _update_locomotion_animation(is_moving: bool) -> void:
+	if animation_player == null:
+		return
+	var target_animation := "Walk" if is_moving else "Idle"
+	if animation_player.current_animation != target_animation and animation_player.has_animation(target_animation):
+		animation_player.play(target_animation)
 
 func _on_velocity_computed(safe_velocity: Vector3) -> void:
 	_safe_velocity = safe_velocity

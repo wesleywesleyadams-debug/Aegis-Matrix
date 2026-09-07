@@ -56,6 +56,10 @@ var attack_target: Node3D = null
 ## base rather than MeshInstance3D specifically.
 @onready var selection_ring: Node3D = $SelectionRing
 @onready var unit_sprite: Sprite3D = model_root.get_node_or_null("UnitSprite")
+## Present only for entities using a real rigged/skinned model with baked
+## animations (e.g. Unit's paladin model) -- null for sprite-billboard
+## entities and for Building, which never plays Walk/Idle.
+@onready var animation_player: AnimationPlayer = model_root.find_child("AnimationPlayer", true, false)
 @onready var health_bar: Node3D = $HealthBar
 ## Forward-facing melee hitbox (see ParentUnit.tscn's ModelRoot/AttackHitbox)
 ## -- lives under model_root so it turns to face the same direction as the
