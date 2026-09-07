@@ -436,6 +436,7 @@ offset_top = 10.0
 offset_right = 210.0
 offset_bottom = 70.0
 theme_override_font_sizes/font_size = 26
+theme_override_colors/font_color = Color(0.6, 0.42, 0.1, 1)
 horizontal_alignment = 1
 vertical_alignment = 1
 text = "PAUSED"
@@ -464,6 +465,7 @@ theme_override_constants/separation = 12
 layout_mode = 2
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.6, 0.42, 0.1, 1)
 text = "You Surrendered"
 
 [node name="RestartButton" type="Button" parent="UI/MainMenu/EndStatePanel/VBox"]
