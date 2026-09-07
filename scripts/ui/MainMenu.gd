@@ -5,8 +5,6 @@ extends Control
 ## even while the game tree is paused -- otherwise a paused SceneTree
 ## would freeze the very button that's supposed to unpause it.
 
-const SAVES_DIR := "user://saves"
-
 @onready var dim: ColorRect = $Dim
 @onready var menu_button: Button = $MenuButton
 @onready var menu_panel: Panel = $MenuPanel
@@ -123,8 +121,9 @@ func _on_confirm_save_pressed() -> void:
 		"units": units_data,
 	}
 
-	DirAccess.make_dir_recursive_absolute(SAVES_DIR)
-	var save_path := "%s/save_%d.json" % [SAVES_DIR, int(timestamp * 1000)]
+	var saves_dir := GameState.saves_dir()
+	DirAccess.make_dir_recursive_absolute(saves_dir)
+	var save_path := "%s/save_%d.json" % [saves_dir, int(timestamp * 1000)]
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	file.store_string(JSON.stringify(save_data))
 	file.close()

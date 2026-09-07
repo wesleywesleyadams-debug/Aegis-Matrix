@@ -135,11 +135,7 @@ func _on_sign_in_button_pressed() -> void:
 	if _selected_account_name.is_empty():
 		return
 	if _selected_account_name == GameState.active_account:
-		GameState.active_account = ""
-		GameState.stay_signed_in = false
-		GameState.remembered_account = ""
-		GameState.save_settings()
-		_refresh_accounts_list()
+		_sign_in_as("", false)
 		return
 
 	var account := _find_account(_selected_account_name)
@@ -162,13 +158,18 @@ func _on_sign_in_button_pressed() -> void:
 	sign_in_panel.visible = true
 	sign_in_password_input.grab_focus()
 
-## Shared by the password sign-in flow and the Steam/instant flow --
-## everything past "which account, and are we staying signed in" is
-## identical either way.
+## Shared by every way the active account can change -- password sign-in,
+## Steam sign-in, a brand-new account just created, and signing out
+## (account_name = "") all funnel through here. Reloads that account's own
+## settings (audio/visuals/lobby -- see GameState.load_account_settings())
+## and pushes them onto the live systems immediately, rather than only
+## taking effect the next time the game launches.
 func _sign_in_as(account_name: String, stay_signed_in: bool) -> void:
 	GameState.active_account = account_name
 	GameState.stay_signed_in = stay_signed_in
 	GameState.remembered_account = account_name if stay_signed_in else ""
+	GameState.load_account_settings()
+	OptionsMenu.apply_current_settings()
 	GameState.save_settings()
 	sign_in_panel.visible = false
 	account_status_label.text = ""
@@ -223,14 +224,9 @@ func _on_new_account_confirm_pressed() -> void:
 		new_account_status_label.text = "Max of %d accounts reached." % GameState.MAX_ACCOUNTS
 		return
 	GameState.accounts.append({"name": new_name, "password_hash": _hash_password(password)})
-	GameState.active_account = new_name
-	GameState.stay_signed_in = new_account_stay_checkbox.button_pressed
-	GameState.remembered_account = new_name if GameState.stay_signed_in else ""
-	GameState.save_settings()
-	new_account_panel.visible = false
 	_selected_account_name = new_name
-	account_status_label.text = ""
-	_refresh_accounts_list()
+	new_account_panel.visible = false
+	_sign_in_as(new_name, new_account_stay_checkbox.button_pressed)
 
 func _on_new_account_cancel_pressed() -> void:
 	new_account_panel.visible = false

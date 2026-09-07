@@ -1,7 +1,5 @@
 extends Control
 
-const SAVES_DIR := "user://saves"
-
 @onready var play_button: Button = $VBox/PlayButton
 @onready var load_button: Button = $VBox/LoadButton
 @onready var account_button: Button = $VBox/AccountButton
@@ -29,6 +27,11 @@ func _ready() -> void:
 	load_list_panel.visibility_changed.connect(_update_dim)
 	_update_dim()
 
+	# Which saves exist (and which are even visible in the open load list)
+	# depends on who's signed in -- see GameState.saves_dir() -- so refresh
+	# both whenever the active account changes mid-session.
+	GameState.active_account_changed.connect(_on_active_account_changed)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and load_list_panel.visible:
 		_on_close_load_list_pressed()
@@ -37,6 +40,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _update_dim() -> void:
 	dim.visible = load_list_panel.visible
 
+func _on_active_account_changed() -> void:
+	load_button.disabled = _list_saves().is_empty()
+	if load_list_panel.visible:
+		_on_load_pressed()
+
 func _on_play_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
 
@@ -44,13 +52,14 @@ func _on_play_pressed() -> void:
 ## save file, newest first.
 func _list_saves() -> Array:
 	var saves: Array = []
-	var dir := DirAccess.open(SAVES_DIR)
+	var saves_dir := GameState.saves_dir()
+	var dir := DirAccess.open(saves_dir)
 	if dir == null:
 		return saves
-	for file_name in DirAccess.get_files_at(SAVES_DIR):
+	for file_name in DirAccess.get_files_at(saves_dir):
 		if not file_name.ends_with(".json"):
 			continue
-		var path := "%s/%s" % [SAVES_DIR, file_name]
+		var path := "%s/%s" % [saves_dir, file_name]
 		var file := FileAccess.open(path, FileAccess.READ)
 		var parsed = JSON.parse_string(file.get_as_text())
 		file.close()

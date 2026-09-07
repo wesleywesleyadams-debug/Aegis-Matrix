@@ -110,20 +110,66 @@ var music_volume_db: float = -8.0
 var audio_enabled: bool = true
 var music_enabled: bool = true
 
-## Where user-chosen settings (this whole section, above) survive to disk --
-## everything here is meant to still be true the next time the game is
-## launched, not just the next time a scene loads within one run.
-const SETTINGS_PATH: String = "user://settings.cfg"
+## Root folder every account's saves live under -- see saves_dir().
+const SAVES_ROOT: String = "user://saves"
+## Subfolder saves_dir() falls back to when nobody's signed in, rather than
+## blocking Save/Load entirely just because there's no account active.
+const GUEST_SAVES_KEY: String = "_guest"
+
+## Which folder to read/write save files in for whoever is currently
+## signed in (see AccountMenu) -- each account gets its own subfolder so
+## accounts don't see each other's saves. TitleMenu/MainMenu both call this
+## instead of hardcoding "user://saves" so they can't drift out of sync
+## with each other on where a save actually lives.
+func saves_dir() -> String:
+	var key := _sanitize_for_path(active_account) if not active_account.is_empty() else GUEST_SAVES_KEY
+	return "%s/%s" % [SAVES_ROOT, key]
+
+## Account names are free-form user text (spaces, unicode, ...) but folder
+## names can't contain path separators or the handful of characters
+## Windows forbids -- swap those out rather than letting DirAccess silently
+## fail to create/find the folder.
+func _sanitize_for_path(value: String) -> String:
+	var result := value
+	for ch in ["/", "\\", ":", "*", "?", "\"", "<", ">", "|"]:
+		result = result.replace(ch, "_")
+	return result
+
+## Where account bookkeeping (the account list itself, stay-signed-in)
+## survives to disk -- global, not per-account, since you need to know who
+## the accounts even are before any per-account file could be picked.
+const GLOBAL_SETTINGS_PATH: String = "user://settings.cfg"
+
+## Where the *currently active* account's own preferences (audio, visuals,
+## lobby setup) survive to disk -- one file per account (see saves_dir()
+## for the same per-account-folder idea applied to save games), so signing
+## in as a different account gets that account's own volume/font/lobby
+## setup back, not whoever last touched the settings.
+func account_settings_path() -> String:
+	var key := _sanitize_for_path(active_account) if not active_account.is_empty() else GUEST_SAVES_KEY
+	return "user://accounts/%s/settings.cfg" % key
 
 func _ready() -> void:
 	load_settings()
 
-## Writes every persisted setting to disk immediately. Called right after
-## each individual setting changes (a slider drag, a lobby selection, ...)
-## rather than once at some "on quit" hook, so it survives a force-quit or
-## crash the same as a clean exit -- there's no window where a change is
-## only in memory and not yet safe on disk.
+## Writes both the global (account bookkeeping) and the active account's own
+## settings file. Called right after each individual setting changes (a
+## slider drag, a lobby selection, ...) rather than once at some "on quit"
+## hook, so it survives a force-quit or crash the same as a clean exit --
+## there's no window where a change is only in memory and not yet safe on
+## disk.
 func save_settings() -> void:
+	save_global_settings()
+	save_account_settings()
+
+func save_global_settings() -> void:
+	var config := ConfigFile.new()
+	config.set_value("accounts", "list", accounts)
+	config.set_value("accounts", "stay_signed_in", stay_signed_in)
+	config.set_value("accounts", "remembered_account", remembered_account)
+	config.save(GLOBAL_SETTINGS_PATH)
+
+func save_account_settings() -> void:
 	var config := ConfigFile.new()
 	config.set_value("audio", "master_volume_db", master_volume_db)
 	config.set_value("audio", "music_volume_db", music_volume_db)
@@ -134,27 +180,22 @@ func save_settings() -> void:
 	config.set_value("lobby", "starting_unit_count", starting_unit_count)
 	config.set_value("lobby", "human_player_id", human_player_id)
 	config.set_value("lobby", "player_slots", player_slots)
-	config.set_value("accounts", "list", accounts)
-	config.set_value("accounts", "stay_signed_in", stay_signed_in)
-	config.set_value("accounts", "remembered_account", remembered_account)
-	config.save(SETTINGS_PATH)
+	var path := account_settings_path()
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	config.save(path)
 
 ## Loads whatever was saved last, leaving each var's already-declared
 ## default in place for anything missing (first run, or an older save
-## missing a newer key).
+## missing a newer key). Global bookkeeping first (so we know who's
+## signed in), then that account's own settings.
 func load_settings() -> void:
+	load_global_settings()
+	load_account_settings()
+
+func load_global_settings() -> void:
 	var config := ConfigFile.new()
-	if config.load(SETTINGS_PATH) != OK:
+	if config.load(GLOBAL_SETTINGS_PATH) != OK:
 		return
-	master_volume_db = config.get_value("audio", "master_volume_db", master_volume_db)
-	music_volume_db = config.get_value("audio", "music_volume_db", music_volume_db)
-	audio_enabled = config.get_value("audio", "audio_enabled", audio_enabled)
-	music_enabled = config.get_value("audio", "music_enabled", music_enabled)
-	show_debug_grid = config.get_value("visuals", "show_debug_grid", show_debug_grid)
-	ui_font = config.get_value("visuals", "ui_font", ui_font)
-	starting_unit_count = config.get_value("lobby", "starting_unit_count", starting_unit_count)
-	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)
-	player_slots = config.get_value("lobby", "player_slots", player_slots)
 	accounts = config.get_value("accounts", "list", accounts)
 	stay_signed_in = config.get_value("accounts", "stay_signed_in", stay_signed_in)
 	remembered_account = config.get_value("accounts", "remembered_account", remembered_account)
@@ -168,3 +209,38 @@ func load_settings() -> void:
 			if account["name"] == remembered_account:
 				active_account = remembered_account
 				break
+
+## Loads whichever account is currently active's own settings (falling
+## back to the shared guest file if nobody's signed in). Called again by
+## AccountMenu every time active_account changes mid-session -- not just
+## at startup -- so switching accounts actually picks up that account's
+## own audio/visuals/lobby setup live, instead of only on next launch.
+func load_account_settings() -> void:
+	_reset_account_settings_to_defaults()
+	var config := ConfigFile.new()
+	if config.load(account_settings_path()) != OK:
+		return
+	master_volume_db = config.get_value("audio", "master_volume_db", master_volume_db)
+	music_volume_db = config.get_value("audio", "music_volume_db", music_volume_db)
+	audio_enabled = config.get_value("audio", "audio_enabled", audio_enabled)
+	music_enabled = config.get_value("audio", "music_enabled", music_enabled)
+	show_debug_grid = config.get_value("visuals", "show_debug_grid", show_debug_grid)
+	ui_font = config.get_value("visuals", "ui_font", ui_font)
+	starting_unit_count = config.get_value("lobby", "starting_unit_count", starting_unit_count)
+	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)
+	player_slots = config.get_value("lobby", "player_slots", player_slots)
+
+## Resets every per-account field to this class's own declared defaults --
+## called before loading a (possibly nonexistent) account settings file so
+## a brand-new account starts clean instead of inheriting whatever the
+## previously-active account happened to have in memory.
+func _reset_account_settings_to_defaults() -> void:
+	show_debug_grid = true
+	ui_font = "medieval"
+	master_volume_db = 0.0
+	music_volume_db = -8.0
+	audio_enabled = true
+	music_enabled = true
+	starting_unit_count = 8
+	human_player_id = 1
+	player_slots = _default_player_slots()

@@ -58,31 +58,42 @@ func _ready() -> void:
 	layer = 10
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	background.visible = false
-
 	_master_bus_index = AudioServer.get_bus_index("Master")
-	AudioServer.set_bus_volume_db(_master_bus_index, GameState.master_volume_db)
 
 	close_button.pressed.connect(close)
-	master_slider.value = GameState.master_volume_db
 	master_slider.value_changed.connect(_on_master_slider_changed)
-	music_slider.value = GameState.music_volume_db
 	music_slider.value_changed.connect(_on_music_slider_changed)
+	audio_enabled_checkbox.toggled.connect(_on_audio_enabled_toggled)
+	music_enabled_checkbox.toggled.connect(_on_music_enabled_toggled)
+	show_grid_checkbox.toggled.connect(_on_show_grid_toggled)
+	_populate_font_options()
+	font_option.item_selected.connect(_on_font_selected)
+	_populate_hotkeys()
+
+	apply_current_settings()
+
+## Pushes every GameState audio/visuals setting onto both the live systems
+## (audio bus, music player, shared theme font, debug grid) and this
+## panel's own controls (sliders/checkboxes/dropdown) -- called at startup
+## and again by AccountMenu whenever the signed-in account changes, so
+## switching accounts actually takes effect immediately instead of only on
+## next launch.
+func apply_current_settings() -> void:
+	AudioServer.set_bus_volume_db(_master_bus_index, GameState.master_volume_db)
+	master_slider.value = GameState.master_volume_db
+	Music.player.volume_db = GameState.music_volume_db
+	music_slider.value = GameState.music_volume_db
 
 	audio_enabled_checkbox.button_pressed = GameState.audio_enabled
 	_apply_audio_enabled(GameState.audio_enabled)
-	audio_enabled_checkbox.toggled.connect(_on_audio_enabled_toggled)
 	music_enabled_checkbox.button_pressed = GameState.music_enabled
 	_apply_music_enabled(GameState.music_enabled)
-	music_enabled_checkbox.toggled.connect(_on_music_enabled_toggled)
 
 	show_grid_checkbox.button_pressed = GameState.show_debug_grid
-	show_grid_checkbox.toggled.connect(_on_show_grid_toggled)
+	_apply_show_debug_grid(GameState.show_debug_grid)
 
-	_populate_font_options()
+	font_option.selected = maxi(FONT_OPTION_KEYS.find(GameState.ui_font), 0)
 	_apply_font(GameState.ui_font)
-	font_option.item_selected.connect(_on_font_selected)
-
-	_populate_hotkeys()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if background.visible and event.is_action_pressed("ui_cancel"):
@@ -128,13 +139,15 @@ func _apply_audio_enabled(enabled: bool) -> void:
 func _apply_music_enabled(enabled: bool) -> void:
 	Music.player.stream_paused = not enabled
 
-## Persists the setting (see GameState.show_debug_grid) and, if the current
-## scene actually has a debug grid to show/hide (only true in Main -- the
-## title screen and lobby don't have one), updates it live too instead of
-## only taking effect the next time Main loads.
 func _on_show_grid_toggled(pressed: bool) -> void:
 	GameState.show_debug_grid = pressed
 	GameState.save_settings()
+	_apply_show_debug_grid(pressed)
+
+## If the current scene actually has a debug grid to show/hide (only true
+## in Main -- the title screen and lobby don't have one), updates it live
+## too instead of only taking effect the next time Main loads.
+func _apply_show_debug_grid(pressed: bool) -> void:
 	var scene := get_tree().current_scene
 	if scene != null and scene.has_node("DebugGrid"):
 		scene.get_node("DebugGrid").visible = pressed
@@ -142,8 +155,6 @@ func _on_show_grid_toggled(pressed: bool) -> void:
 func _populate_font_options() -> void:
 	for key in FONT_OPTION_KEYS:
 		font_option.add_item(FONT_OPTIONS[key][0])
-	var current_index := FONT_OPTION_KEYS.find(GameState.ui_font)
-	font_option.selected = maxi(current_index, 0)
 
 func _on_font_selected(index: int) -> void:
 	var key: String = FONT_OPTION_KEYS[index]
