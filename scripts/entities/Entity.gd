@@ -73,10 +73,22 @@ const SIGHT_RAY_HEIGHT: float = 1.0
 var attack_target: Node3D = null
 
 @onready var model_root: Node3D = $ModelRoot
-## A ring (Unit) or a square frame (Building) -- shape doesn't matter here,
-## only `visible` is ever touched, so this is typed as the common Node3D
-## base rather than MeshInstance3D specifically.
+## A ring (Unit) or a square frame (Building) -- shape doesn't matter here.
+## Normally only `visible` is touched (hence typed as the common Node3D
+## base rather than MeshInstance3D specifically); blink_attack_target()
+## below also recolors it, since that needs to work across both shapes.
 @onready var selection_ring: Node3D = $SelectionRing
+## The ring's normal (non-blinking) color -- matches Mat_ring/the
+## Building selection frame's material in both ParentUnit.tscn and
+## ParentBuilding.tscn. Restored after blink_attack_target() finishes.
+const SELECTION_RING_COLOR: Color = Color(0.3, 1, 0.4, 1)
+## Flash color for blink_attack_target() -- distinct red, unmistakable
+## against the ring's normal green.
+const ATTACK_TARGET_BLINK_COLOR: Color = Color(1, 0.15, 0.15, 1)
+## How long each on/off phase of blink_attack_target() lasts -- same
+## rhythm WorldItem.blink_selection() uses for "you just right-clicked
+## this item".
+const ATTACK_BLINK_INTERVAL: float = 0.12
 @onready var unit_sprite: Sprite3D = model_root.get_node_or_null("UnitSprite")
 ## Present only for entities using a real rigged/skinned model with baked
 ## animations (e.g. Unit's paladin model) -- null for sprite-billboard
@@ -223,6 +235,53 @@ func _update_tabard_color() -> void:
 	material = material.duplicate()
 	material.albedo_color = PLAYER_COLORS.get(player_id, Color.WHITE)
 	tabard.set_surface_override_material(1, material)
+
+## Flashes this entity's own selection ring red twice -- the feedback for
+## "a unit just targeted you for melee" (see
+## RTSController._issue_attack_order), reusing WorldItem.blink_selection()'s
+## on/off rhythm for "you just right-clicked this". Forces the ring
+## visible+red for the blink regardless of whether this entity is actually
+## selected, then restores it to whatever `selected` actually is (and its
+## normal green) once done, so blinking an unselected enemy's ring doesn't
+## leave it stuck visible, and blinking a selected one doesn't leave it red.
+func blink_attack_target(times: int = 2) -> void:
+	if selection_ring == null:
+		return
+	_recolor_selection_ring(ATTACK_TARGET_BLINK_COLOR)
+	for i in times:
+		selection_ring.visible = true
+		await get_tree().create_timer(ATTACK_BLINK_INTERVAL).timeout
+		if not is_instance_valid(self):
+			return
+		selection_ring.visible = false
+		await get_tree().create_timer(ATTACK_BLINK_INTERVAL).timeout
+		if not is_instance_valid(self):
+			return
+	selection_ring.visible = selected
+	_recolor_selection_ring(SELECTION_RING_COLOR)
+
+## Recolors every mesh surface under selection_ring -- a single
+## MeshInstance3D torus for Unit, or a Node3D holding four bar
+## MeshInstance3D children for Building (see ParentUnit.tscn/
+## ParentBuilding.tscn) -- so blink_attack_target() works the same way
+## regardless of which shape this entity actually has.
+func _recolor_selection_ring(color: Color) -> void:
+	_recolor_mesh_recursive(selection_ring, color)
+
+func _recolor_mesh_recursive(node: Node, color: Color) -> void:
+	if node is MeshInstance3D:
+		var material: Material = node.get_surface_override_material(0)
+		if material == null:
+			material = node.mesh.surface_get_material(0)
+		if material != null:
+			material = material.duplicate()
+			if material is StandardMaterial3D:
+				material.albedo_color = color
+				if material.emission_enabled:
+					material.emission = color
+			node.set_surface_override_material(0, material)
+	for child in node.get_children():
+		_recolor_mesh_recursive(child, color)
 
 ## Reduces health by `amount` (clamped at 0) and updates the floating bar.
 ## No death handling yet -- there's no combat system to call this from

@@ -850,14 +850,46 @@ func _clear_selection() -> void:
 
 func _raycast_unit(screen_pos: Vector2) -> Node3D:
 	var hit := _raycast(screen_pos, UNIT_MASK)
-	if hit.is_empty():
-		return null
-	var collider: Node3D = hit["collider"]
-	# Fog of war hides this entity (see _update_fog_of_war) -- an entity you
-	# can't see shouldn't be clickable either.
-	if not collider.visible:
-		return null
-	return collider
+	if not hit.is_empty():
+		var collider: Node3D = hit["collider"]
+		# Fog of war hides this entity (see _update_fog_of_war) -- an entity
+		# you can't see shouldn't be clickable either.
+		if collider.visible:
+			return collider
+	return _find_nearest_unit_to_ray(screen_pos)
+
+## Widens the effective click target for units/buildings beyond their
+## exact collision capsule (radius 0.38 for a Unit -- see
+## CollisionShape3D/NavigationAgent3D in ParentUnit.tscn -- noticeably
+## narrower than the visible armor at its shoulders/edges), only used once
+## a direct raycast against that capsule has already missed. Finds
+## whichever visible entity's world position passes closest to the click
+## ray (not the capsule's own surface), within UNIT_CLICK_TOLERANCE,
+## measured at roughly chest height (SIGHT_RAY_HEIGHT-ish) rather than at
+## the feet, since that's where most of a standing entity's visible bulk
+## actually is.
+const UNIT_CLICK_TOLERANCE: float = 0.5
+const UNIT_CLICK_HEIGHT: float = 0.9
+
+func _find_nearest_unit_to_ray(screen_pos: Vector2) -> Node3D:
+	var origin := camera.project_ray_origin(screen_pos)
+	var dir := camera.project_ray_normal(screen_pos)
+	var best: Node3D = null
+	var best_dist := UNIT_CLICK_TOLERANCE
+	var candidates: Array = get_tree().get_nodes_in_group("units") + get_tree().get_nodes_in_group("buildings")
+	for entity in candidates:
+		if not is_instance_valid(entity) or not entity.visible:
+			continue
+		var target_point: Vector3 = entity.global_position + Vector3(0, UNIT_CLICK_HEIGHT, 0)
+		var t := (target_point - origin).dot(dir)
+		if t <= 0.0:
+			continue
+		var closest_point_on_ray := origin + dir * t
+		var dist := closest_point_on_ray.distance_to(target_point)
+		if dist < best_dist:
+			best_dist = dist
+			best = entity
+	return best
 
 ## Reveals/hides every non-human-owned unit and building based on whether
 ## any human-owned entity currently has it within vision_range and a clear
@@ -927,6 +959,8 @@ func _issue_attack_order(units: Array[Node], target: Node3D) -> void:
 		_move_queues.remove_at(existing_index)
 	for unit in units:
 		unit.attack(target)
+	if target is Entity:
+		target.blink_attack_target()
 
 ## Sends every unit in the group to walk to and collect `item` (see
 ## Unit.pick_up_item). Same append_to_queue convention as
