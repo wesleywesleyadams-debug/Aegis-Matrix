@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#1a2632"/>
+      <stop offset="60%" stop-color="#0c141c"/>
+      <stop offset="100%" stop-color="#05090d"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="42%" cy="38%" r="65%">
+      <stop offset="0%" stop-color="#fff8e6"/>
+      <stop offset="55%" stop-color="#f0dfae"/>
+      <stop offset="100%" stop-color="#cba969"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="42%" r="46%">
+      <stop offset="0%" stop-color="#f0dfae" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#f0dfae" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="40" fill="url(#bg)"/>
+
+  <circle cx="128" cy="104" r="92" fill="url(#glow)"/>
+  <circle cx="128" cy="104" r="58" fill="url(#moon)"/>
+  <circle cx="108" cy="86" r="7" fill="#cba969" opacity="0.5"/>
+  <circle cx="146" cy="70" r="4" fill="#cba969" opacity="0.4"/>
+  <circle cx="150" cy="118" r="9" fill="#cba969" opacity="0.4"/>
+
+  <!-- hooded knight, one continuous silhouette for small-size legibility -->
+  <path fill="#05070a" d="M128,64 C150,64 168,82 168,104 C168,118 162,130 152,138
+    C170,148 184,166 190,190 L196,230 C197,235 193,240 188,240
+    L68,240 C63,240 59,235 60,230 L66,190 C72,166 86,148 104,138
+    C94,130 88,118 88,104 C88,82 106,64 128,64 Z"/>
+
+  <!-- sword held diagonally point-down in front, gold outline so it reads against the dark robe -->
+  <g stroke="#e4c887" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" transform="rotate(18 128 180)">
+    <line x1="128" y1="146" x2="128" y2="224"/>
+    <line x1="103" y1="156" x2="153" y2="156"/>
+    <path d="M118,146 L128,130 L138,146 Z" fill="#e4c887" stroke="none"/>
+  </g>
+</svg>
