@@ -30,6 +30,7 @@ const FOG_UPDATE_INTERVAL: float = 0.15
 @onready var selection_panel: Control = $UI/SelectionPanel
 @onready var portrait_panel: Control = $UI/PortraitPanel
 @onready var equipment_panel: Control = $UI/EquipmentPanel/Background
+@onready var storage_panel: Control = $UI/BuildingStoragePanel/Background
 @onready var debug_grid: MeshInstance3D = $DebugGrid
 
 var _selected_units: Array[Node] = []
@@ -70,12 +71,18 @@ func _ready() -> void:
 
 	equipment_panel.item_right_clicked.connect(_on_equipment_item_right_clicked)
 	_refresh_equipment_panel()
+	storage_panel.item_right_clicked.connect(_on_storage_item_right_clicked)
+	_refresh_storage_panel()
 
 	# So a pickup landing directly in a unit's weapon slot (see WorldItem.gd)
 	# updates the equipment panel immediately if that unit happens to be
 	# selected, without the panel needing to poll every frame.
 	for unit in get_tree().get_nodes_in_group("units"):
 		unit.weapon_changed.connect(_on_unit_weapon_changed)
+	# Same idea for a building's storage panel -- a drag-drop landing an
+	# item in storage updates the panel live if that building is selected.
+	for building in get_tree().get_nodes_in_group("buildings"):
+		building.storage_changed.connect(_on_building_storage_changed)
 
 ## Splits whatever roster remains (after trimming/loading) evenly between
 ## the two players -- first half Player 1, second half Player 2 (Player 1
@@ -653,11 +660,27 @@ func _first_selected_unit() -> Unit:
 			return entity
 	return null
 
+func _first_selected_building() -> Building:
+	for entity in _selected_units:
+		if entity is Building:
+			return entity
+	return null
+
 ## Refreshes the equipment panel to show the first selected unit's equipped
 ## weapon (or empty, if no unit -- just a building/World object, or nothing
 ## at all -- is selected).
 func _refresh_equipment_panel() -> void:
 	equipment_panel.refresh(_first_selected_unit())
+
+## Refreshes the storage panel to show the first selected building's stored
+## items (or hides it entirely -- see BuildingStoragePanel.refresh -- if no
+## building is selected).
+func _refresh_storage_panel() -> void:
+	storage_panel.refresh(_first_selected_building())
+
+func _on_building_storage_changed(building: Building) -> void:
+	if building == _first_selected_building():
+		_refresh_storage_panel()
 
 ## Right-clicking the equipped item in the equipment panel: takes it off
 ## the unit and drops it on the ground at the unit's feet as a pickup again
@@ -670,21 +693,46 @@ func _on_equipment_item_right_clicked(item_type: String) -> void:
 	_refresh_equipment_panel()
 	WorldItem.spawn_pickup(item_type, unit.global_position, unit.model_root.rotation.y, $World)
 
-## Dragging an equipped item out of the equipment panel (see
-## ItemDropTarget/EquipmentItemButton) and releasing it at `screen_pos`:
-## hands it straight to another unit if one's under the cursor (swapping
-## out whatever that unit already had equipped, same as walking onto a
-## WorldItem pickup does), or otherwise drops it at the raycasted ground
-## point -- including when a building (no equipment slot of its own to
-## receive it) or empty space is under the cursor.
-func handle_equipment_item_drop(item_type: String, source_unit: Unit, screen_pos: Vector2) -> void:
-	if not is_instance_valid(source_unit) or source_unit.equipped_weapon != item_type:
+## Right-clicking a stored item in the storage panel: takes it out of the
+## building and drops it on the ground at the building's feet, same
+## "opposite of walking onto one" pattern as the equipment panel's version.
+func _on_storage_item_right_clicked(item_type: String) -> void:
+	var building := _first_selected_building()
+	if building == null or not building.take_item(item_type):
 		return
+	_refresh_storage_panel()
+	WorldItem.spawn_pickup(item_type, building.global_position, building.model_root.rotation.y, $World)
 
-	var target_node := _raycast_unit(screen_pos)
-	if target_node is Unit and target_node != source_unit:
-		var target_unit: Unit = target_node
+## Dragging an item out of the equipment panel or building storage panel
+## (see ItemDropTarget/ItemSlotButton) and releasing it at `screen_pos`.
+## Exactly one of source_unit/source_building is set (whichever panel it
+## came from); pulls the item out of that source first, then hands it off
+## via _place_dragged_item -- to a unit under the cursor (equipping it,
+## swapping out whatever that unit already had), into a building under the
+## cursor (storing it), or onto the ground at the raycasted point otherwise.
+func handle_item_drag_drop(item_type: String, source_unit: Unit, source_building: Building, screen_pos: Vector2) -> void:
+	if is_instance_valid(source_unit):
+		if source_unit.equipped_weapon != item_type:
+			return
 		source_unit.unequip_weapon()
+		_refresh_equipment_panel()
+		_place_dragged_item(item_type, screen_pos, source_unit.global_position, source_unit)
+	elif is_instance_valid(source_building):
+		if not source_building.take_item(item_type):
+			return
+		_refresh_storage_panel()
+		_place_dragged_item(item_type, screen_pos, source_building.global_position, source_building)
+
+## Shared "where does the item actually end up" half of a drag-drop, once
+## it's already been removed from its source -- exclude_node keeps
+## dragging an item onto its own source (e.g. a unit dragging its weapon
+## onto itself) from being treated as a valid unit/building target, falling
+## through to a ground drop instead, same as the pre-drag-and-drop
+## right-click-to-drop behavior would.
+func _place_dragged_item(item_type: String, screen_pos: Vector2, fallback_position: Vector3, exclude_node: Node3D) -> void:
+	var target_node := _raycast_unit(screen_pos)
+	if target_node is Unit and target_node != exclude_node:
+		var target_unit: Unit = target_node
 		if not target_unit.equipped_weapon.is_empty():
 			var displaced: String = target_unit.unequip_weapon()
 			WorldItem.spawn_pickup(displaced, target_unit.global_position, target_unit.model_root.rotation.y, $World)
@@ -692,10 +740,14 @@ func handle_equipment_item_drop(item_type: String, source_unit: Unit, screen_pos
 		_refresh_equipment_panel()
 		return
 
+	if target_node is Building and target_node != exclude_node:
+		var target_building: Building = target_node
+		target_building.store_item(item_type)
+		_refresh_storage_panel()
+		return
+
 	var ground_hit := _raycast(screen_pos, GROUND_MASK)
-	var drop_position: Vector3 = ground_hit["position"] if not ground_hit.is_empty() else source_unit.global_position
-	source_unit.unequip_weapon()
-	_refresh_equipment_panel()
+	var drop_position: Vector3 = ground_hit["position"] if not ground_hit.is_empty() else fallback_position
 	WorldItem.spawn_dropped(item_type, drop_position, $World)
 
 ## Shows `item`'s selection frame, clearing any unit/building selection
@@ -726,6 +778,7 @@ func _select_unit(unit: Node) -> void:
 	selection_panel.set_selected_units(_selected_units)
 	portrait_panel.set_subject(_selected_units[0])
 	_refresh_equipment_panel()
+	_refresh_storage_panel()
 
 func _clear_selection() -> void:
 	for unit in _selected_units:
@@ -735,6 +788,7 @@ func _clear_selection() -> void:
 	selection_panel.set_selected_units(_selected_units)
 	portrait_panel.set_subject(null)
 	_refresh_equipment_panel()
+	_refresh_storage_panel()
 
 func _raycast_unit(screen_pos: Vector2) -> Node3D:
 	var hit := _raycast(screen_pos, UNIT_MASK)

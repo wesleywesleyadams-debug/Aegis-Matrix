@@ -20,6 +20,7 @@
 [ext_resource type="Script" path="res://scripts/ui/EquipmentPanel.gd" id="20_equipment_panel"]
 [ext_resource type="PackedScene" path="res://scenes/CrossbowPickup.tscn" id="21_crossbow_pickup"]
 [ext_resource type="Script" path="res://scripts/ui/ItemDropTarget.gd" id="22_item_drop_target"]
+[ext_resource type="Script" path="res://scripts/ui/BuildingStoragePanel.gd" id="23_building_storage"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 size = Vector3(60, 0.2, 60)
@@ -292,6 +293,44 @@ offset_left = 10.0
 offset_top = 10.0
 offset_right = 150.0
 offset_bottom = 150.0
+
+[node name="BuildingStoragePanel" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Background" type="Panel" parent="UI/BuildingStoragePanel"]
+visible = false
+layout_mode = 0
+offset_left = 350.0
+offset_top = -270.0
+offset_right = 560.0
+offset_bottom = -14.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+script = ExtResource("23_building_storage")
+
+[node name="TitleLabel" type="Label" parent="UI/BuildingStoragePanel/Background"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = 200.0
+offset_bottom = 32.0
+text = "Storage"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="UI/BuildingStoragePanel/Background"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 36.0
+offset_right = 200.0
+offset_bottom = 246.0
+
+[node name="VBox" type="VBoxContainer" parent="UI/BuildingStoragePanel/Background/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
 
 [node name="MainMenu" type="Control" parent="UI"]
 process_mode = 3

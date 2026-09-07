@@ -17,6 +17,30 @@ class_name Building
 var gather_points: Array[Vector3] = []
 var _gather_flags: Array[Node3D] = []
 
+## Items this building is holding (see BuildingStoragePanel, shown while
+## this building is selected) -- one entry per item, no stacking/count or
+## capacity limit yet, in the order they were stored. Units drop equipped
+## items in here by dragging them onto the building (see
+## RTSController._place_dragged_item) instead of the item landing on the
+## ground the way dropping on empty space or another unit does.
+signal storage_changed(building: Building)
+var stored_items: Array[String] = []
+
+func store_item(item_type: String) -> void:
+	stored_items.append(item_type)
+	storage_changed.emit(self)
+
+## Removes the first entry matching `item_type`, if any, and reports
+## whether one was actually found -- caller (see BuildingStoragePanel's
+## drag-out/right-click handlers) decides what happens to the item next.
+func take_item(item_type: String) -> bool:
+	var index := stored_items.find(item_type)
+	if index == -1:
+		return false
+	stored_items.remove_at(index)
+	storage_changed.emit(self)
+	return true
+
 ## Once an enemy building has been seen at least once, fog of war keeps it
 ## visible (at its last-known position) even after it drops out of vision
 ## again -- unlike enemy units, which vanish immediately. Set by

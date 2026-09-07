@@ -1,10 +1,11 @@
 extends Control
 ## Bottom HUD panel showing whichever (single) selected unit's equipped
 ## weapon, if any. Right-clicking the item drops it on the ground; dragging
-## it out (see EquipmentItemButton) lets the player place it anywhere in
-## the world or hand it to another unit. Same division of responsibility as
-## the other HUD panels -- this only displays and reports the interaction,
-## RTSController owns the actual unequip/drop/transfer logic.
+## it out (see ItemSlotButton) lets the player place it anywhere in the
+## world, hand it to another unit, or store it in a building. Same
+## division of responsibility as the other HUD panels -- this only
+## displays and reports the interaction, RTSController owns the actual
+## unequip/drop/transfer logic.
 
 signal item_right_clicked(item_type: String)
 
@@ -18,7 +19,7 @@ func refresh(unit: Unit) -> void:
 	if unit == null or unit.equipped_weapon.is_empty():
 		return
 	var item_type := unit.equipped_weapon
-	var button := EquipmentItemButton.new()
+	var button := ItemSlotButton.new()
 	button.item_type = item_type
 	button.source_unit = unit
 	button.text = item_type.capitalize()
