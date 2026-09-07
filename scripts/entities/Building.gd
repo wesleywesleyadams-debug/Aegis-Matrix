@@ -51,6 +51,15 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("buildings")
 
+## Buildings present a much bigger box footprint (2x2x2, half-extent 1.0
+## -- see BoxShape3D_body in ParentBuilding.tscn) than the Unit-sized
+## opponent attack_range/MELEE_REACH are tuned for -- an attacking unit's
+## own collision capsule physically can't reach anywhere near
+## attack_range=1.0 of this building's *center* before colliding with its
+## wall first. See Entity.get_engage_radius_bonus()'s doc comment.
+func get_engage_radius_bonus() -> float:
+	return 1.3
+
 ## Replaces the whole gather-point queue with a single point -- a plain
 ## (non-shift) right-click, same as how a fresh unit move order drops
 ## whatever waypoints that group already had queued.

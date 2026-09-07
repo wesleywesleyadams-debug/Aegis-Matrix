@@ -36,6 +36,20 @@ var current_health: float
 ## 22.5-degree worst-case facing error swing the fist wide of a small
 ## hitbox entirely (see MELEE_REACH below).
 @export var attack_range: float = 1.0
+## Extra distance added to the ATTACKER's attack_range and MELEE_REACH
+## when deciding whether it's close enough to swing at (and land a hit
+## on) THIS entity as a target -- accounts for how big a footprint this
+## entity itself presents, since attack_range's own tuning only assumed a
+## Unit-sized opponent. Default 0 (Unit doesn't override this -- two
+## Units' engagement already accounts for their combined size directly in
+## attack_range/MELEE_REACH's own tuning). Building overrides this to its
+## own much larger box footprint, since a Unit's collision capsule
+## physically can't get anywhere near attack_range=1.0 of a Building's
+## *center* -- it collides with the box's face first, at combined-radius
+## distance box_half_extent + unit_radius (roughly 1.0 + 0.38 = 1.38),
+## already past attack_range on its own.
+func get_engage_radius_bonus() -> float:
+	return 0.0
 ## How far this entity can see -- used by fog of war (see RTSController's
 ## _update_fog_of_war) to decide whether enemy entities within range (and
 ## with a clear has_line_of_sight()) should be revealed. 4 tiles at the
@@ -373,7 +387,8 @@ func _land_hit_if_in_reach() -> bool:
 	if not is_instance_valid(attack_target) or not attack_target.has_method("take_damage"):
 		return false
 	var target_center: Vector3 = attack_target.global_position + Vector3(0, 0.8, 0)
-	if attack_hitbox.global_position.distance_to(target_center) <= MELEE_REACH:
+	var reach: float = MELEE_REACH + attack_target.get_engage_radius_bonus()
+	if attack_hitbox.global_position.distance_to(target_center) <= reach:
 		attack_target.take_damage(attack_damage)
 		return true
 	return false
@@ -409,7 +424,7 @@ func _update_attack_target(delta: float) -> bool:
 	var to_target := attack_target.global_position - global_position
 	to_target.y = 0.0
 	var dist := to_target.length()
-	if dist > attack_range:
+	if dist > attack_range + attack_target.get_engage_radius_bonus():
 		_sight_line.visible = false
 		return false
 
