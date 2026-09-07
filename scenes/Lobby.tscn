@@ -9,144 +9,142 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1_lobby")
 
-[node name="VBox" type="VBoxContainer" parent="."]
+[node name="MainHBox" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_right = 0.5
 anchor_top = 0.5
 anchor_bottom = 0.5
-offset_left = -200.0
-offset_top = -320.0
-offset_right = 200.0
-offset_bottom = 320.0
-theme_override_constants/separation = 14
+offset_left = -502.0
+offset_top = -310.0
+offset_right = 502.0
+offset_bottom = 310.0
+theme_override_constants/separation = 24
 
-[node name="TitleLabel" type="Label" parent="VBox"]
+[node name="PlayersPanel" type="Panel" parent="MainHBox"]
+custom_minimum_size = Vector2(640, 0)
+layout_mode = 2
+
+[node name="PlayersVBox" type="VBoxContainer" parent="MainHBox/PlayersPanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 624.0
+offset_bottom = 604.0
+theme_override_constants/separation = 10
+
+[node name="PlayersTitle" type="Label" parent="MainHBox/PlayersPanel/PlayersVBox"]
 layout_mode = 2
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 26
-text = "Match Setup"
+theme_override_font_sizes/font_size = 22
+text = "Players"
 
-[node name="RaceRow" type="HBoxContainer" parent="VBox"]
+[node name="PlayersGrid" type="GridContainer" parent="MainHBox/PlayersPanel/PlayersVBox"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 8
+columns = 4
 
-[node name="Label" type="Label" parent="VBox/RaceRow"]
+[node name="PlayerHeader" type="Label" parent="MainHBox/PlayersPanel/PlayersVBox/PlayersGrid"]
+custom_minimum_size = Vector2(50, 0)
 layout_mode = 2
-custom_minimum_size = Vector2(110, 0)
+horizontal_alignment = 1
+text = "Player"
+
+[node name="SlotHeader" type="Label" parent="MainHBox/PlayersPanel/PlayersVBox/PlayersGrid"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+
+[node name="RaceHeader" type="Label" parent="MainHBox/PlayersPanel/PlayersVBox/PlayersGrid"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+horizontal_alignment = 1
 text = "Race"
 
-[node name="OptionButton" type="OptionButton" parent="VBox/RaceRow"]
+[node name="TeamHeader" type="Label" parent="MainHBox/PlayersPanel/PlayersVBox/PlayersGrid"]
+custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
-size_flags_horizontal = 3
-item_count = 1
-selected = 0
-popup/item_0/text = "Human"
+horizontal_alignment = 1
+text = "Team"
 
-[node name="ItemRow" type="HBoxContainer" parent="VBox"]
+[node name="SettingsPanel" type="Panel" parent="MainHBox"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+
+[node name="SettingsVBox" type="VBoxContainer" parent="MainHBox/SettingsPanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 324.0
+offset_bottom = 604.0
+theme_override_constants/separation = 14
+
+[node name="SettingsTitle" type="Label" parent="MainHBox/SettingsPanel/SettingsVBox"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+text = "Match Settings"
+
+[node name="ItemRow" type="HBoxContainer" parent="MainHBox/SettingsPanel/SettingsVBox"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Label" type="Label" parent="VBox/ItemRow"]
+[node name="Label" type="Label" parent="MainHBox/SettingsPanel/SettingsVBox/ItemRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(110, 0)
 text = "Starting Item"
 
-[node name="OptionButton" type="OptionButton" parent="VBox/ItemRow"]
+[node name="OptionButton" type="OptionButton" parent="MainHBox/SettingsPanel/SettingsVBox/ItemRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 item_count = 1
 selected = 0
 popup/item_0/text = "None"
 
-[node name="MapRow" type="HBoxContainer" parent="VBox"]
+[node name="MapRow" type="HBoxContainer" parent="MainHBox/SettingsPanel/SettingsVBox"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Label" type="Label" parent="VBox/MapRow"]
+[node name="Label" type="Label" parent="MainHBox/SettingsPanel/SettingsVBox/MapRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(110, 0)
 text = "Map"
 
-[node name="OptionButton" type="OptionButton" parent="VBox/MapRow"]
+[node name="OptionButton" type="OptionButton" parent="MainHBox/SettingsPanel/SettingsVBox/MapRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 item_count = 1
 selected = 0
 popup/item_0/text = "Grasslands"
 
-[node name="AIRow" type="HBoxContainer" parent="VBox"]
+[node name="StartingUnitsRow" type="HBoxContainer" parent="MainHBox/SettingsPanel/SettingsVBox"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Label" type="Label" parent="VBox/AIRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(110, 0)
-text = "AI Opponents"
-
-[node name="OptionButton" type="OptionButton" parent="VBox/AIRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-item_count = 1
-selected = 0
-popup/item_0/text = "None"
-
-[node name="PlayersRow" type="HBoxContainer" parent="VBox"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Label" type="Label" parent="VBox/PlayersRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(110, 0)
-text = "Play As"
-
-[node name="Player1Button" type="Button" parent="VBox/PlayersRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-toggle_mode = true
-button_pressed = true
-theme_override_colors/font_color = Color(0.2, 0.45, 0.9, 1)
-theme_override_colors/font_pressed_color = Color(0.2, 0.45, 0.9, 1)
-theme_override_colors/font_hover_color = Color(0.2, 0.45, 0.9, 1)
-text = "Player 1"
-
-[node name="Player2Button" type="Button" parent="VBox/PlayersRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-toggle_mode = true
-theme_override_colors/font_color = Color(0.85, 0.2, 0.2, 1)
-theme_override_colors/font_pressed_color = Color(0.85, 0.2, 0.2, 1)
-theme_override_colors/font_hover_color = Color(0.85, 0.2, 0.2, 1)
-text = "Player 2"
-
-[node name="StartingUnitsRow" type="HBoxContainer" parent="VBox"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Label" type="Label" parent="VBox/StartingUnitsRow"]
+[node name="Label" type="Label" parent="MainHBox/SettingsPanel/SettingsVBox/StartingUnitsRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(110, 0)
 text = "Starting Units"
 
-[node name="SpinBox" type="SpinBox" parent="VBox/StartingUnitsRow"]
+[node name="SpinBox" type="SpinBox" parent="MainHBox/SettingsPanel/SettingsVBox/StartingUnitsRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="OptionsButton" type="Button" parent="VBox"]
+[node name="OptionsButton" type="Button" parent="MainHBox/SettingsPanel/SettingsVBox"]
 layout_mode = 2
 text = "Options"
 
-[node name="ButtonRow" type="HBoxContainer" parent="VBox"]
+[node name="ButtonRow" type="HBoxContainer" parent="MainHBox/SettingsPanel/SettingsVBox"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="BackButton" type="Button" parent="VBox/ButtonRow"]
+[node name="BackButton" type="Button" parent="MainHBox/SettingsPanel/SettingsVBox/ButtonRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Back"
 
-[node name="StartButton" type="Button" parent="VBox/ButtonRow"]
+[node name="StartButton" type="Button" parent="MainHBox/SettingsPanel/SettingsVBox/ButtonRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Start Match"

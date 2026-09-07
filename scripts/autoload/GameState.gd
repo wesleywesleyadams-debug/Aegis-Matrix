@@ -22,8 +22,30 @@ const NATURE_PLAYER_ID: int = 3
 const MOB_PLAYER_ID: int = 4
 
 ## Which player the human controls -- 1 or 2. RTSController checks this
-## instead of hardcoding "player 1" for what can be selected/ordered.
+## instead of hardcoding "player 1" for what can be selected/ordered. Kept
+## in sync with player_slots (see below) by Lobby -- whichever slot is set
+## to "human" there is mirrored into this, since RTSController/Entity's
+## actual match logic only knows about a single human-controlled player id,
+## not the full per-slot lobby setup.
 var human_player_id: int = 1
+
+## Up to 8 pre-match player slots (see Lobby.gd's Players panel), one dict
+## per slot: {"slot_type": "human"/"ai"/"open", "race": String, "team": int
+## (1-4, or 0 for "No Team")}. Purely lobby-captured intent right now --
+## there's no AI opponent, race-differentiated units, or team-alliance
+## combat system yet for anything beyond the single human player (slot 1 by
+## default) and the one enemy side the match actually spawns (see
+## RTSController._assign_players), the same "wired up for real, not
+## implemented yet" placeholder status the old Race/AI Opponents fields had.
+const MAX_PLAYER_SLOTS: int = 8
+var player_slots: Array = _default_player_slots()
+
+static func _default_player_slots() -> Array:
+	var slots: Array = []
+	for i in MAX_PLAYER_SLOTS:
+		var slot_type := "human" if i == 0 else ("ai" if i == 1 else "open")
+		slots.append({"slot_type": slot_type, "race": "human", "team": 0})
+	return slots
 
 ## Persists across matches/scenes -- OptionsMenu's Visuals tab checkbox and
 ## RTSController's debug_grid (both the 'G' hotkey and its own _ready()
@@ -64,6 +86,7 @@ func save_settings() -> void:
 	config.set_value("visuals", "ui_font", ui_font)
 	config.set_value("lobby", "starting_unit_count", starting_unit_count)
 	config.set_value("lobby", "human_player_id", human_player_id)
+	config.set_value("lobby", "player_slots", player_slots)
 	config.save(SETTINGS_PATH)
 
 ## Loads whatever was saved last, leaving each var's already-declared
@@ -79,3 +102,4 @@ func load_settings() -> void:
 	ui_font = config.get_value("visuals", "ui_font", ui_font)
 	starting_unit_count = config.get_value("lobby", "starting_unit_count", starting_unit_count)
 	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)
+	player_slots = config.get_value("lobby", "player_slots", player_slots)
