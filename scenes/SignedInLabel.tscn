@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/autoload/SignedInLabel.gd" id="1_signed_in"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_none"]
 
 [node name="SignedInLabel" type="CanvasLayer"]
 script = ExtResource("1_signed_in")
@@ -9,8 +11,17 @@ script = ExtResource("1_signed_in")
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -434.0
-offset_top = 14.0
-offset_right = -134.0
-offset_bottom = 68.0
+offset_left = -700.0
+offset_top = 6.0
+offset_right = -14.0
+offset_bottom = 48.0
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxEmpty_none")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_none")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_none")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_none")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_none")
+theme_override_colors/font_disabled_color = Color(0.25, 0.75, 0.3, 1)
+alignment = 2
+clip_text = true
 text = "Sign In"

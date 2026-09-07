@@ -1,17 +1,22 @@
 extends CanvasLayer
 ## Autoload -- top-right account status shown on every scene (title, lobby,
-## in-game), left of Main's own Menu button rather than overlapping it (see
-## StatusButton's offsets, tuned to sit just left of that button's corner
-## position). Reads "Signed in as: "User"" when signed in (inert -- see
-## _refresh's disabled toggle) or a clickable "Sign In" that opens
-## AccountMenu when not. Listens to GameState.active_account_changed
-## rather than polling every frame.
+## in-game), sitting above Main's own Menu button rather than overlapping
+## it (see StatusButton's offsets). Plain text, no button box -- reads
+## "Signed in as: "User"" in green when signed in (inert; see _refresh's
+## disabled toggle), or a clickable "Sign In" that opens AccountMenu when
+## not. Width is generous but still bounded, with clip_text + ellipsis
+## trimming, so an unusually long account name can't run off-screen.
+## Listens to GameState.active_account_changed rather than polling every
+## frame.
+
+const SIGNED_IN_COLOR := Color(0.25, 0.75, 0.3, 1)
 
 @onready var status_button: Button = $StatusButton
 
 func _ready() -> void:
 	layer = 5
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	status_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_button.pressed.connect(AccountMenu.open)
 	GameState.active_account_changed.connect(_refresh)
 	_refresh()
@@ -24,3 +29,4 @@ func _refresh() -> void:
 	# to sign out). Signed out: a real button, so its hover/press styling
 	# actually reads as "click me to sign in".
 	status_button.disabled = signed_in
+	status_button.add_theme_color_override("font_disabled_color", SIGNED_IN_COLOR)

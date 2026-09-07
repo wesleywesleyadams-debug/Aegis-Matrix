@@ -315,9 +315,9 @@ layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -124.0
-offset_top = 14.0
+offset_top = 54.0
 offset_right = -14.0
-offset_bottom = 68.0
+offset_bottom = 108.0
 text = "Menu"
 
 [node name="MenuPanel" type="Panel" parent="UI/MainMenu"]
@@ -326,9 +326,9 @@ layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -234.0
-offset_top = 76.0
+offset_top = 116.0
 offset_right = -14.0
-offset_bottom = 488.0
+offset_bottom = 528.0
 
 [node name="VBox" type="VBoxContainer" parent="UI/MainMenu/MenuPanel"]
 layout_mode = 0
@@ -368,9 +368,9 @@ layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -184.0
-offset_top = 76.0
+offset_top = 116.0
 offset_right = -14.0
-offset_bottom = 100.0
+offset_bottom = 140.0
 theme_override_colors/font_color = Color(0.4, 1, 0.5, 1)
 horizontal_alignment = 1
 text = "Game saved"
