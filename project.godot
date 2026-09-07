@@ -17,6 +17,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+SteamService="*res://scripts/autoload/SteamService.gd"
 GameState="*res://scripts/autoload/GameState.gd"
 Music="*res://scenes/Music.tscn"
 OptionsMenu="*res://scenes/OptionsMenu.tscn"

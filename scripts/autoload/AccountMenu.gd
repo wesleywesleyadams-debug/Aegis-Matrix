@@ -95,8 +95,13 @@ func _refresh_accounts_list() -> void:
 
 	for account in GameState.accounts:
 		var account_name: String = account["name"]
+		var tag := ""
+		if account_name == GameState.active_account:
+			tag = " (signed in)"
+		elif int(account.get("steam_id", 0)) != 0:
+			tag = " (Steam)"
 		var button := Button.new()
-		button.text = account_name + (" (signed in)" if account_name == GameState.active_account else "")
+		button.text = account_name + tag
 		button.toggle_mode = true
 		button.button_pressed = account_name == _selected_account_name
 		button.pressed.connect(_on_account_row_pressed.bind(account_name))
@@ -136,12 +141,38 @@ func _on_sign_in_button_pressed() -> void:
 		GameState.save_settings()
 		_refresh_accounts_list()
 		return
+
+	var account := _find_account(_selected_account_name)
+	var linked_steam_id: int = int(account.get("steam_id", 0))
+	if linked_steam_id != 0:
+		# Steam-linked accounts have no password -- Steam itself already
+		# authenticated the player, so this only re-checks that the
+		# currently-running Steam client is still that same identity,
+		# rather than prompting for a password that was never set.
+		if SteamService.available and SteamService.steam_id == linked_steam_id:
+			_sign_in_as(_selected_account_name, true)
+		else:
+			account_status_label.text = "Sign in to Steam as %s first." % _selected_account_name
+		return
+
 	sign_in_prompt_label.text = "Sign in as: %s" % _selected_account_name
 	sign_in_password_input.text = ""
 	sign_in_stay_checkbox.button_pressed = GameState.stay_signed_in
 	sign_in_status_label.text = ""
 	sign_in_panel.visible = true
 	sign_in_password_input.grab_focus()
+
+## Shared by the password sign-in flow and the Steam/instant flow --
+## everything past "which account, and are we staying signed in" is
+## identical either way.
+func _sign_in_as(account_name: String, stay_signed_in: bool) -> void:
+	GameState.active_account = account_name
+	GameState.stay_signed_in = stay_signed_in
+	GameState.remembered_account = account_name if stay_signed_in else ""
+	GameState.save_settings()
+	sign_in_panel.visible = false
+	account_status_label.text = ""
+	_refresh_accounts_list()
 
 func _on_sign_in_confirm_pressed() -> void:
 	var account := _find_account(_selected_account_name)
@@ -151,13 +182,7 @@ func _on_sign_in_confirm_pressed() -> void:
 	if account["password_hash"] != _hash_password(sign_in_password_input.text):
 		sign_in_status_label.text = "Incorrect password."
 		return
-	GameState.active_account = _selected_account_name
-	GameState.stay_signed_in = sign_in_stay_checkbox.button_pressed
-	GameState.remembered_account = _selected_account_name if GameState.stay_signed_in else ""
-	GameState.save_settings()
-	sign_in_panel.visible = false
-	account_status_label.text = ""
-	_refresh_accounts_list()
+	_sign_in_as(_selected_account_name, sign_in_stay_checkbox.button_pressed)
 
 func _on_sign_in_cancel_pressed() -> void:
 	sign_in_panel.visible = false
@@ -165,6 +190,12 @@ func _on_sign_in_cancel_pressed() -> void:
 func _find_account(account_name: String) -> Dictionary:
 	for account in GameState.accounts:
 		if account["name"] == account_name:
+			return account
+	return {}
+
+func _find_account_by_steam_id(id: int) -> Dictionary:
+	for account in GameState.accounts:
+		if int(account.get("steam_id", 0)) == id:
 			return account
 	return {}
 
@@ -204,8 +235,31 @@ func _on_new_account_confirm_pressed() -> void:
 func _on_new_account_cancel_pressed() -> void:
 	new_account_panel.visible = false
 
-## No Steamworks integration yet (would need the GodotSteam GDExtension
-## plus a registered Steam App ID) -- this just tells the player that,
-## rather than the button silently doing nothing.
+## Real Steamworks sign-in (see SteamService) -- Steam itself already
+## authenticated the player (they're logged into the Steam client locally),
+## so this just links/reuses a local account for that Steam identity and
+## signs straight in, no password step needed. Running against Valve's
+## public test App ID (480, see steam_appid.txt) until a real one is
+## registered -- swapping it later is a one-line change there, nothing
+## here.
 func _on_steam_pressed() -> void:
-	account_status_label.text = "Steam sign-in isn't available yet."
+	if not SteamService.available:
+		account_status_label.text = "Steam isn't running. Launch Steam and try again."
+		return
+
+	var existing := _find_account_by_steam_id(SteamService.steam_id)
+	if not existing.is_empty():
+		_sign_in_as(existing["name"], true)
+		return
+
+	if GameState.accounts.size() >= GameState.MAX_ACCOUNTS:
+		account_status_label.text = "Max of %d accounts reached." % GameState.MAX_ACCOUNTS
+		return
+
+	var new_name := SteamService.persona_name
+	if _find_account(new_name).size() > 0:
+		# Same display name already used by a different (non-Steam) local
+		# account -- disambiguate rather than silently colliding with it.
+		new_name = "%s (Steam)" % SteamService.persona_name
+	GameState.accounts.append({"name": new_name, "password_hash": "", "steam_id": SteamService.steam_id})
+	_sign_in_as(new_name, true)

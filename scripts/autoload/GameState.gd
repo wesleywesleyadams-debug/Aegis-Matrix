@@ -51,13 +51,16 @@ static func _default_player_slots() -> Array:
 		slots.append({"slot_type": slot_type, "race": "human", "team": 0})
 	return slots
 
-## Local user accounts (see TitleMenu's Account/NewAccount/SignIn panels) --
-## one dict per account: {"name": String, "password_hash": String}. This is
-## a purely local, single-player profile switcher, not real authentication
-## against any server, so the "password" is just a locally-checked
-## SHA-256 hash (see TitleMenu._hash_password) rather than anything sent
-## anywhere -- enough to stop someone else picking your name, not meant to
-## be actual account security. Capped at MAX_ACCOUNTS the same way the
+## Local user accounts (see AccountMenu.gd) -- one dict per account:
+## {"name": String, "password_hash": String, "steam_id": int (optional,
+## omitted/0 for a local password account)}. A password account is purely
+## local profile switching, not real authentication against any server, so
+## "password_hash" is just a locally-checked SHA-256 hash (see
+## AccountMenu._hash_password) rather than anything sent anywhere -- enough
+## to stop someone else picking your name, not meant to be actual account
+## security. A Steam-linked account (steam_id set) has no password at all --
+## SteamService/the real Steam client is the authentication, see
+## AccountMenu._on_steam_pressed. Capped at MAX_ACCOUNTS the same way the
 ## lobby caps player slots at 8: a fixed, small limit rather than an
 ## unbounded list.
 const MAX_ACCOUNTS: int = 5
