@@ -31,8 +31,6 @@ const FOG_UPDATE_INTERVAL: float = 0.15
 @onready var portrait_panel: Control = $UI/PortraitPanel
 @onready var equipment_panel: Control = $UI/EquipmentPanel/Background
 @onready var debug_grid: MeshInstance3D = $DebugGrid
-@onready var world_environment: WorldEnvironment = $WorldEnvironment
-@onready var sun: DirectionalLight3D = $DirectionalLight3D
 
 var _selected_units: Array[Node] = []
 var _dragging: bool = false
@@ -69,7 +67,6 @@ func _ready() -> void:
 	else:
 		_apply_starting_unit_count()
 	_assign_players()
-	_darken_world_lighting()
 
 	equipment_panel.item_right_clicked.connect(_on_equipment_item_right_clicked)
 	_refresh_equipment_panel()
@@ -722,21 +719,6 @@ func _raycast_unit(screen_pos: Vector2) -> Node3D:
 		return null
 	return collider
 
-## Fog of war implemented as real lighting rather than a fake overlay: kill
-## the sun and ambient light so nothing is visible by default, then give
-## every human-owned entity its own OmniLight3D (see Entity.vision_light)
-## sized to its vision_range -- what's lit *is* what's currently seen, no
-## separate visibility mask to keep in sync with vision_range changes.
-## Small enough that unlit terrain/units still read as murky silhouettes
-## rather than pure black -- a little visual legibility (you can tell
-## there's ground, and roughly where things are) without actually
-## revealing anything fog is supposed to hide.
-const AMBIENT_FLOOR_ENERGY: float = 0.08
-
-func _darken_world_lighting() -> void:
-	sun.light_energy = 0.0
-	world_environment.environment.ambient_light_energy = AMBIENT_FLOOR_ENERGY
-
 ## Reveals/hides every non-human-owned unit and building based on whether
 ## any human-owned entity currently has it within vision_range and a clear
 ## has_line_of_sight() to it. Enemy units vanish the instant they drop out
@@ -752,10 +734,6 @@ func _update_fog_of_war() -> void:
 		if entity.is_player_controlled():
 			friendly.append(entity)
 
-	# Human-owned entities are the actual light sources -- always lit.
-	for entity in friendly:
-		entity.vision_light.visible = true
-
 	for unit in get_tree().get_nodes_in_group("units"):
 		if unit.is_player_controlled():
 			continue
@@ -767,11 +745,6 @@ func _update_fog_of_war() -> void:
 		if _is_seen_by_any(building, friendly):
 			building.ever_seen = true
 		building.visible = building.ever_seen
-		# A remembered building keeps its own light on permanently, the same
-		# way its visibility no longer depends on current vision either --
-		# otherwise it'd render as an unlit black silhouette once out of
-		# range again instead of actually looking "revealed".
-		building.vision_light.visible = building.ever_seen
 
 func _is_seen_by_any(entity: Node3D, friendly: Array) -> bool:
 	for watcher in friendly:

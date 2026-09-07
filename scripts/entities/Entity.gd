@@ -76,14 +76,6 @@ var attack_target: Node3D = null
 var _attack_cooldown_remaining: float = 0.0
 var _attacking: bool = false
 
-## Real light, not a fake overlay -- fog of war works by killing the sun/
-## ambient light (see RTSController._darken_world_lighting) and having only
-## human-owned entities (and remembered enemy buildings) actually cast
-## light, sized to vision_range. Whoever owns this light is decided by
-## RTSController._update_fog_of_war (toggles .visible), not here -- Entity
-## has no business knowing about GameState/human_player_id.
-var vision_light: OmniLight3D
-
 ## Debug visualization of the has_line_of_sight() check against attack_target
 ## -- a thin line from this entity to its target, green when clear and red
 ## when something on SIGHT_OBSTACLE_MASK is blocking it. Only shown while an
@@ -169,20 +161,6 @@ func _ready() -> void:
 		attack_hitbox.body_entered.connect(_on_attack_hitbox_body_entered)
 	_update_belt_color()
 	health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
-
-	vision_light = OmniLight3D.new()
-	vision_light.omni_range = vision_range
-	vision_light.light_energy = 4.0
-	vision_light.light_color = Color(1.0, 0.85, 0.6) # warm torchlight, not a flat white glow
-	# High attenuation exponent = light stays near full strength for most of
-	# omni_range then drops off sharply right near the edge, instead of a
-	# smooth gradual fade -- reads as a defined boundary (where sight
-	# actually ends) rather than a soft glow with no clear edge.
-	vision_light.omni_attenuation = 4.0
-	vision_light.shadow_enabled = true # obstacles (Wall, buildings, ...) actually block vision light
-	vision_light.visible = false
-	add_child(vision_light)
-	vision_light.position = Vector3(0, 1.0, 0)
 
 	_sight_line_mesh = ImmediateMesh.new()
 	_sight_line_mat = StandardMaterial3D.new()
