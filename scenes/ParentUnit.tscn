@@ -1,16 +1,9 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/entities/Unit.gd" id="1_unit"]
 [ext_resource type="Script" path="res://scripts/ui/HealthBar.gd" id="10_health_bar"]
 [ext_resource type="Texture2D" path="res://assets/textures/white_pixel.png" id="11_white_pixel"]
-[ext_resource type="Texture2D" path="res://assets/sprites/peasant/facing_0.png" id="2_f0"]
-[ext_resource type="Texture2D" path="res://assets/sprites/peasant/facing_1.png" id="3_f1"]
-[ext_resource type="Texture2D" path="res://assets/sprites/peasant/facing_2.png" id="4_f2"]
-[ext_resource type="Texture2D" path="res://assets/sprites/peasant/facing_3.png" id="5_f3"]
-[ext_resource type="Texture2D" path="res://assets/sprites/peasant/facing_4.png" id="6_f4"]
-[ext_resource type="Texture2D" path="res://assets/sprites/peasant/facing_5.png" id="7_f5"]
-[ext_resource type="Texture2D" path="res://assets/sprites/peasant/facing_6.png" id="8_f6"]
-[ext_resource type="Texture2D" path="res://assets/sprites/peasant/facing_7.png" id="9_f7"]
+[ext_resource type="PackedScene" path="res://assets/models/peasant/peasant.glb" id="2_peasant_model"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.25
@@ -58,7 +51,6 @@ collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_unit")
 unit_type_id = "peasant"
-sprite_frames = Array[Texture2D]([ExtResource("2_f0"), ExtResource("3_f1"), ExtResource("4_f2"), ExtResource("5_f3"), ExtResource("6_f4"), ExtResource("7_f5"), ExtResource("8_f6"), ExtResource("9_f7")])
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
@@ -66,13 +58,11 @@ shape = SubResource("CapsuleShape3D_body")
 
 [node name="ModelRoot" type="Node3D" parent="."]
 
-[node name="UnitSprite" type="Sprite3D" parent="ModelRoot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 0)
+[node name="PeasantModel" parent="ModelRoot" instance=ExtResource("2_peasant_model")]
+transform = Transform3D(0.8428, 0, 0, 0, 0.8428, 0, 0, 0, 0.8428, 0, 0.8012, 0)
+
+[node name="mesh_0" parent="ModelRoot/PeasantModel/Node" index="0"]
 layers = 3
-billboard = 1
-alpha_cut = 1
-pixel_size = 0.0109375
-texture = ExtResource("2_f0")
 
 [node name="WeaponSlot" type="Node3D" parent="ModelRoot"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.25, 0.7, 0.15)
