@@ -95,8 +95,22 @@ var attack_target: Node3D = null
 	attack_hitbox.get_node_or_null("HitboxMesh") if attack_hitbox != null else null
 )
 ## Waist-level (or base-level, for buildings) ring recolored per
-## player_id -- the one visible marker of which player owns this entity.
+## player_id -- one of two visible markers of which player owns this
+## entity (see also tabard below).
 @onready var belt: MeshInstance3D = model_root.get_node_or_null("Belt")
+## The paladin model's tabard/skirt fabric, recolored per player_id --
+## much more visible at gameplay zoom than the belt. This mesh is split
+## into two material surfaces (surface 0 = the rest of the armor, surface
+## 1 = just the tabard fabric, given a flat white base material with no
+## texture so a team color multiplies onto it cleanly instead of muddying
+## against the fabric's original navy/orange paint -- see
+## assets/models/paladin/paladin.glb and the Blender script that split it).
+## Node is confusingly named "Paladin_J_Nordstrom_Helmet" -- the source
+## Mixamo export's two mesh objects came out with their names swapped from
+## what they actually contain; this one is the main body, not the helmet.
+## Null for entities with no such mesh (e.g. Building, or the old
+## sprite-billboard peasant).
+@onready var tabard: MeshInstance3D = model_root.find_child("Paladin_J_Nordstrom_Helmet", true, false)
 
 var _attack_cooldown_remaining: float = 0.0
 var _attacking: bool = false
@@ -135,6 +149,7 @@ const PLAYER_NAMES: Dictionary = {
 	set(value):
 		player_id = value
 		_update_belt_color()
+		_update_tabard_color()
 		if health_bar:
 			health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
 
@@ -183,6 +198,7 @@ func _ready() -> void:
 	health_bar.set_health_fraction(1.0)
 	_update_health_bar_visibility()
 	_update_belt_color()
+	_update_tabard_color()
 	health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
 
 	_sight_line_mesh = ImmediateMesh.new()
@@ -207,6 +223,23 @@ func _update_belt_color() -> void:
 	material = material.duplicate()
 	material.albedo_color = PLAYER_COLORS.get(player_id, Color.WHITE)
 	belt.set_surface_override_material(0, material)
+
+## Recolors the tabard fabric (surface 1 of `tabard`, see its doc comment)
+## by team, the same duplicate-before-mutating pattern as
+## _update_belt_color(). Unlike the belt, surface 1's base material comes
+## from the imported mesh resource itself (get_active_material), not an
+## existing surface_material_override, since nothing overrides it by
+## default -- duplicating it here is what creates that first override,
+## same end result (a per-instance copy, not a shared one).
+func _update_tabard_color() -> void:
+	if tabard == null:
+		return
+	var material := tabard.get_active_material(1)
+	if material == null:
+		return
+	material = material.duplicate()
+	material.albedo_color = PLAYER_COLORS.get(player_id, Color.WHITE)
+	tabard.set_surface_override_material(1, material)
 
 ## Reduces health by `amount` (clamped at 0) and updates the floating bar.
 ## No death handling yet -- there's no combat system to call this from
