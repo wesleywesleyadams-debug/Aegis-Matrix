@@ -6,7 +6,7 @@ class_name Unit
 ## plumbing all lives in Entity; this adds the nav agent, pathing, and
 ## chasing on top.
 
-const MAX_SPEED: float = 4.5
+const MAX_SPEED: float = 2.25
 const ARRIVE_DISTANCE: float = 0.15
 ## How close to a planned segment's endpoint counts as "there" before
 ## advancing to the next segment. Looser than ARRIVE_DISTANCE so avoidance
