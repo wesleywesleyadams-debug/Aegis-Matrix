@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/TitleMenu.gd" id="1_title"]
 [ext_resource type="Texture2D" path="res://assets/backgrounds/title_bg.svg" id="2_bg"]
+[ext_resource type="FontFile" path="res://assets/fonts/MedievalSharp.ttf" id="3_title_font"]
 
 [node name="TitleMenu" type="Control"]
 layout_mode = 3
@@ -30,7 +31,9 @@ offset_left = -250.0
 offset_top = -250.0
 offset_right = 250.0
 offset_bottom = -182.0
+theme_override_fonts/font = ExtResource("3_title_font")
 theme_override_font_sizes/font_size = 56
+theme_override_colors/font_color = Color(1, 1, 1, 1)
 horizontal_alignment = 1
 text = "DarKnight"
 
