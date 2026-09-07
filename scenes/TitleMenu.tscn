@@ -16,10 +16,10 @@ anchor_left = 0.5
 anchor_right = 0.5
 anchor_top = 0.5
 anchor_bottom = 0.5
-offset_left = -80.0
-offset_top = -90.0
-offset_right = 80.0
-offset_bottom = 90.0
+offset_left = -110.0
+offset_top = -160.0
+offset_right = 110.0
+offset_bottom = 160.0
 theme_override_constants/separation = 12
 
 [node name="TitleLabel" type="Label" parent="VBox"]
@@ -52,17 +52,17 @@ anchor_left = 0.5
 anchor_right = 0.5
 anchor_top = 0.5
 anchor_bottom = 0.5
-offset_left = -160.0
-offset_top = -180.0
-offset_right = 160.0
-offset_bottom = 180.0
+offset_left = -170.0
+offset_top = -200.0
+offset_right = 170.0
+offset_bottom = 200.0
 
 [node name="OuterVBox" type="VBoxContainer" parent="LoadListPanel"]
 layout_mode = 0
 offset_left = 14.0
 offset_top = 14.0
-offset_right = 306.0
-offset_bottom = 346.0
+offset_right = 326.0
+offset_bottom = 386.0
 theme_override_constants/separation = 10
 
 [node name="TitleLabel" type="Label" parent="LoadListPanel/OuterVBox"]

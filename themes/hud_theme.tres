@@ -23,6 +23,10 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
+content_margin_left = 24.0
+content_margin_top = 14.0
+content_margin_right = 24.0
+content_margin_bottom = 14.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
 bg_color = Color(0.87, 0.77, 0.62, 1)
@@ -35,6 +39,10 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
+content_margin_left = 24.0
+content_margin_top = 14.0
+content_margin_right = 24.0
+content_margin_bottom = 14.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
 bg_color = Color(0.72, 0.6, 0.45, 1)
@@ -47,6 +55,10 @@ corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
+content_margin_left = 24.0
+content_margin_top = 14.0
+content_margin_right = 24.0
+content_margin_bottom = 14.0
 
 [resource]
 Panel/styles/panel = SubResource("StyleBoxFlat_panel")
@@ -55,3 +67,4 @@ Button/styles/hover = SubResource("StyleBoxFlat_button_hover")
 Button/styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 Button/styles/focus = SubResource("StyleBoxFlat_button_normal")
 Button/styles/disabled = SubResource("StyleBoxFlat_button_normal")
+Button/font_sizes/font_size = 20

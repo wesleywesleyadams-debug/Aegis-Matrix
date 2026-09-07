@@ -304,10 +304,10 @@ script = ExtResource("12_main_menu")
 layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -104.0
+offset_left = -124.0
 offset_top = 14.0
 offset_right = -14.0
-offset_bottom = 50.0
+offset_bottom = 68.0
 text = "Menu"
 
 [node name="MenuPanel" type="Panel" parent="UI/MainMenu"]
@@ -315,17 +315,17 @@ visible = false
 layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -184.0
+offset_left = -234.0
 offset_top = 58.0
 offset_right = -14.0
-offset_bottom = 332.0
+offset_bottom = 470.0
 
 [node name="VBox" type="VBoxContainer" parent="UI/MainMenu/MenuPanel"]
 layout_mode = 0
 offset_left = 10.0
 offset_top = 10.0
-offset_right = 160.0
-offset_bottom = 264.0
+offset_right = 210.0
+offset_bottom = 402.0
 theme_override_constants/separation = 8
 
 [node name="PauseButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox"]
@@ -372,17 +372,17 @@ anchor_left = 0.5
 anchor_right = 0.5
 anchor_top = 0.5
 anchor_bottom = 0.5
-offset_left = -130.0
-offset_top = -55.0
-offset_right = 130.0
-offset_bottom = 55.0
+offset_left = -140.0
+offset_top = -95.0
+offset_right = 140.0
+offset_bottom = 95.0
 
 [node name="VBox" type="VBoxContainer" parent="UI/MainMenu/SaveNamePanel"]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 12.0
-offset_right = 244.0
-offset_bottom = 98.0
+offset_right = 264.0
+offset_bottom = 178.0
 theme_override_constants/separation = 10
 
 [node name="PromptLabel" type="Label" parent="UI/MainMenu/SaveNamePanel/VBox"]
@@ -439,16 +439,16 @@ anchor_right = 0.5
 anchor_top = 0.5
 anchor_bottom = 0.5
 offset_left = -140.0
-offset_top = -90.0
+offset_top = -130.0
 offset_right = 140.0
-offset_bottom = 90.0
+offset_bottom = 130.0
 
 [node name="VBox" type="VBoxContainer" parent="UI/MainMenu/EndStatePanel"]
 layout_mode = 0
 offset_left = 20.0
 offset_top = 16.0
 offset_right = 260.0
-offset_bottom = 164.0
+offset_bottom = 244.0
 theme_override_constants/separation = 12
 
 [node name="EndStateLabel" type="Label" parent="UI/MainMenu/EndStatePanel/VBox"]
