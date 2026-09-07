@@ -229,6 +229,8 @@ func perform_attack() -> void:
 		return
 	_attacking = true
 	_attack_cooldown_remaining = attack_cooldown
+	if animation_player != null and animation_player.has_animation("Attack"):
+		animation_player.play("Attack")
 	attack_hitbox.monitoring = true
 	if attack_hitbox_mesh != null:
 		attack_hitbox_mesh.visible = true

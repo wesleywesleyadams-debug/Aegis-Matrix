@@ -296,22 +296,27 @@ func _physics_process(_delta: float) -> void:
 	velocity = _safe_velocity
 	move_and_slide()
 
+	var flat_velocity := Vector3(velocity.x, 0.0, velocity.z)
+	var is_moving := flat_velocity.length() > 0.05
 	if not attacking_in_range:
-		var flat_velocity := Vector3(velocity.x, 0.0, velocity.z)
-		var is_moving := flat_velocity.length() > 0.05
 		if is_moving:
 			_face_direction(flat_velocity.normalized(), get_physics_process_delta_time())
 		elif not is_nan(_order_facing_angle):
 			_face_snapped_angle(_order_facing_angle, get_physics_process_delta_time())
-		_update_locomotion_animation(is_moving)
+	_update_locomotion_animation(is_moving)
 
 ## Plays Walk while actually translating and Idle otherwise (arriving,
 ## standing between orders, mid-attack-approach before it's in range) --
 ## guarded by current_animation so it doesn't restart the clip every single
 ## frame. No-op for entities with no AnimationPlayer (e.g. the older
-## sprite-billboard peasant, if one still exists).
+## sprite-billboard peasant, if one still exists). Always deferred to while
+## a triggered one-shot animation (currently just Attack) is still
+## playing, so e.g. a target dying mid-swing and clearing attack_target
+## doesn't snap the model back to Walk/Idle before the swing finishes.
 func _update_locomotion_animation(is_moving: bool) -> void:
 	if animation_player == null:
+		return
+	if animation_player.is_playing() and animation_player.current_animation == "Attack":
 		return
 	var target_animation := "Walk" if is_moving else "Idle"
 	if animation_player.current_animation != target_animation and animation_player.has_animation(target_animation):
