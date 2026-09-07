@@ -58,6 +58,19 @@ func _ready() -> void:
 	sign_in_cancel_button.pressed.connect(_on_sign_in_cancel_pressed)
 	sign_in_password_input.text_submitted.connect(func(_text: String) -> void: _on_sign_in_confirm_pressed())
 
+	# Successfully signing in (from any state this panel opened in -- the
+	# title screen's auto-prompt included) closes the whole panel
+	# automatically rather than leaving the player to notice they're done
+	# and hunt for Close themselves. Signing back out deliberately does NOT
+	# trigger this -- only a "" -> non-empty transition counts as signing
+	# in, so closing on sign-out (already handled by _sign_in_as itself)
+	# isn't duplicated here.
+	GameState.active_account_changed.connect(_on_active_account_changed)
+
+func _on_active_account_changed() -> void:
+	if not GameState.active_account.is_empty():
+		close()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("ui_cancel"):
 		return
