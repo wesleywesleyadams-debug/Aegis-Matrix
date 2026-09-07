@@ -7,6 +7,7 @@ extends Control
 
 const SAVES_DIR := "user://saves"
 
+@onready var dim: ColorRect = $Dim
 @onready var menu_button: Button = $MenuButton
 @onready var menu_panel: Panel = $MenuPanel
 @onready var pause_button: Button = $MenuPanel/VBox/PauseButton
@@ -52,6 +53,19 @@ func _ready() -> void:
 	save_name_panel.visible = false
 	paused_panel.visible = false
 	end_state_panel.visible = false
+
+	# One dim overlay shared by every popup panel (not PausedPanel/
+	## save_confirm_label -- those are small status indicators, not modal
+	## popups) -- driven by visibility_changed so it can't drift out of
+	## sync with what's actually toggling menu_panel/save_name_panel/
+	## end_state_panel across this script's several call sites.
+	menu_panel.visibility_changed.connect(_update_dim)
+	save_name_panel.visibility_changed.connect(_update_dim)
+	end_state_panel.visibility_changed.connect(_update_dim)
+	_update_dim()
+
+func _update_dim() -> void:
+	dim.visible = menu_panel.visible or save_name_panel.visible or end_state_panel.visible
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and save_name_panel.visible:

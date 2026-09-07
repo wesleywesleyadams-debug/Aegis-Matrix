@@ -7,6 +7,7 @@ const SAVES_DIR := "user://saves"
 @onready var account_button: Button = $VBox/AccountButton
 @onready var options_button: Button = $VBox/OptionsButton
 @onready var quit_button: Button = $VBox/QuitButton
+@onready var dim: ColorRect = $Dim
 @onready var load_list_panel: Panel = $LoadListPanel
 @onready var saves_list: VBoxContainer = $LoadListPanel/OuterVBox/ScrollContainer/SavesList
 @onready var close_button: Button = $LoadListPanel/OuterVBox/CloseButton
@@ -65,6 +66,26 @@ func _ready() -> void:
 	account_panel.visible = false
 	new_account_panel.visible = false
 	sign_in_panel.visible = false
+
+	# One dim overlay shared by every popup panel, rather than each panel
+	## having to remember to toggle it itself -- driven by visibility_changed
+	## so it can never drift out of sync with what's actually on screen.
+	load_list_panel.visibility_changed.connect(_update_dim)
+	account_panel.visibility_changed.connect(_update_dim)
+	new_account_panel.visibility_changed.connect(_update_dim)
+	sign_in_panel.visibility_changed.connect(_update_dim)
+	_update_dim()
+
+## The background is dark whenever any popup panel is open, regardless of
+## how many are stacked (e.g. Sign In on top of Account) -- and clicks land
+## on Dim (mouse_filter STOP) instead of falling through to VBox's buttons
+## underneath, the same way OptionsMenu's own Background ColorRect already
+## blocks the rest of the game while it's open.
+func _update_dim() -> void:
+	dim.visible = (
+		load_list_panel.visible or account_panel.visible
+		or new_account_panel.visible or sign_in_panel.visible
+	)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("ui_cancel"):
