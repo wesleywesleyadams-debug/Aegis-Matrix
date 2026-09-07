@@ -79,7 +79,7 @@ func blink_selection(times: int = 2) -> void:
 	_selection_frame.visible = selected
 
 func _ready() -> void:
-	_apply_glow(self)
+	apply_glow(self)
 	_selection_frame = _build_selection_frame()
 	add_child(_selection_frame)
 
@@ -215,7 +215,7 @@ static func spawn_thrown(item_type: String, from_position: Vector3, to_position:
 ## Recursively duplicates and lights up every StandardMaterial3D under this
 ## pickup, so the shared material resource (also used by the equipped
 ## visual) is untouched -- only this specific pickup instance glows.
-func _apply_glow(node: Node) -> void:
+static func apply_glow(node: Node, energy: float = GLOW_ENERGY) -> void:
 	if node is MeshInstance3D:
 		for i in node.mesh.get_surface_count():
 			var material: Material = node.get_surface_override_material(i)
@@ -225,7 +225,7 @@ func _apply_glow(node: Node) -> void:
 				var glow_material: StandardMaterial3D = material.duplicate()
 				glow_material.emission_enabled = true
 				glow_material.emission = glow_material.albedo_color
-				glow_material.emission_energy_multiplier = GLOW_ENERGY
+				glow_material.emission_energy_multiplier = energy
 				node.set_surface_override_material(i, glow_material)
 	for child in node.get_children():
-		_apply_glow(child)
+		apply_glow(child, energy)
