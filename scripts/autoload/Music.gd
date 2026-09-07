@@ -28,3 +28,12 @@ func play_track(path: String) -> void:
 	track.loop = true
 	player.stream = track
 	player.play()
+
+## Restarts whatever's currently playing from the very beginning -- for
+## MainMenu's Restart button (see _on_restart_pressed), which reloads the
+## scene but wouldn't otherwise touch the music (play_track() is a
+## deliberate no-op when the track hasn't changed, so RTSController's own
+## Music.play_track(IN_GAME_TRACK) call on the reloaded scene's _ready()
+## doesn't restart it on its own).
+func restart_current_track() -> void:
+	player.seek(0.0)

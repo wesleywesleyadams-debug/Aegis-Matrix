@@ -144,6 +144,7 @@ func _hide_save_confirm() -> void:
 
 func _on_restart_pressed() -> void:
 	get_tree().paused = false
+	Music.restart_current_track()
 	get_tree().reload_current_scene()
 
 func _on_surrender_pressed() -> void:
