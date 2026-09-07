@@ -228,7 +228,13 @@ func _update_throw_target() -> void:
 	var target_position := _throw_target_position
 	var target_unit := _throw_target_unit
 	var target_building := _throw_target_building
-	_clear_throw_target()
+	# Halts movement immediately rather than continuing on toward
+	# target_position (which move_to() aimed the nav agent at directly) --
+	# THROW_RANGE is deliberately looser than nav's own arrival distance, so
+	# without this the unit would keep walking the rest of the way in even
+	# though the item already left its hand. stop() also re-clears the
+	# throw fields (harmless -- already about to be overwritten/moot).
+	stop()
 	unequip_weapon()
 	item_thrown.emit(self, item_type, target_position, target_unit, target_building)
 
