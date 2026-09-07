@@ -325,9 +325,9 @@ layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -234.0
-offset_top = 58.0
+offset_top = 76.0
 offset_right = -14.0
-offset_bottom = 470.0
+offset_bottom = 488.0
 
 [node name="VBox" type="VBoxContainer" parent="UI/MainMenu/MenuPanel"]
 layout_mode = 0
@@ -367,9 +367,9 @@ layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -184.0
-offset_top = 58.0
+offset_top = 76.0
 offset_right = -14.0
-offset_bottom = 82.0
+offset_bottom = 100.0
 theme_override_colors/font_color = Color(0.4, 1, 0.5, 1)
 horizontal_alignment = 1
 text = "Game saved"
