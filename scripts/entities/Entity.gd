@@ -23,10 +23,14 @@ var current_health: float
 ## Idle time between swings is this minus ATTACK_ACTIVE_DURATION (the hit
 ## window) -- 2.0 total = 0.15s hit window + 1.85s idle.
 @export var attack_cooldown: float = 2.0
-## How close (center to center) counts as "in range to swing" --
-## generous enough to cover both entities' collision radii plus the
-## hitbox's own reach.
-@export var attack_range: float = 1.2
+## How close (center to center) counts as "in range to swing". Kept tight
+## (barely past both entities' collision radii) because the melee hitbox
+## now tracks the actual fist through the swing (see AttackHitbox in
+## ParentUnit.tscn) instead of sitting in a big fixed box in front of the
+## chest -- facing is quantized to 8 directions, so at a longer range the
+## up-to-22.5-degree worst-case facing error swings the fist wide of a
+## small hitbox entirely.
+@export var attack_range: float = 0.7
 ## How far this entity can see -- used by fog of war (see RTSController's
 ## _update_fog_of_war) to decide whether enemy entities within range (and
 ## with a clear has_line_of_sight()) should be revealed. 4 tiles at the
@@ -35,6 +39,17 @@ var current_health: float
 ## How long the hitbox stays active (able to land a hit) once a swing
 ## starts, before switching off again for the rest of the cooldown.
 const ATTACK_ACTIVE_DURATION: float = 0.15
+## How far into the "Attack" animation (as a fraction of its length) the
+## fist/weapon reaches full extension -- measured directly off the
+## paladin's Attack clip via right-hand-to-shoulder distance sampled frame
+## by frame (peaked at t=0.627s of a 1.533s clip). perform_attack() uses
+## this to delay turning the hitbox on until the swing has actually landed,
+## instead of firing it the instant the animation starts.
+const ATTACK_IMPACT_FRACTION: float = 0.409
+## How close the hitbox needs to be to a target's approximate body center
+## (see _land_hit_if_in_reach) to actually land a hit -- roughly the
+## target's own capsule radius (0.25) plus the fist hitbox's own reach.
+const MELEE_REACH: float = 0.45
 
 ## Collision layer terrain/wall obstacles sit on (see Main.tscn "Wall" nodes)
 ## -- separate from GROUND_MASK/UNIT_MASK in RTSController.gd, which are
@@ -61,11 +76,14 @@ var attack_target: Node3D = null
 ## entities and for Building, which never plays Walk/Idle.
 @onready var animation_player: AnimationPlayer = model_root.find_child("AnimationPlayer", true, false)
 @onready var health_bar: Node3D = $HealthBar
-## Forward-facing melee hitbox (see ParentUnit.tscn's ModelRoot/AttackHitbox)
-## -- lives under model_root so it turns to face the same direction as the
-## entity, including for billboard sprite units whose visible facing comes
-## from swapping textures rather than actually rotating.
-@onready var attack_hitbox: Area3D = model_root.get_node_or_null("AttackHitbox")
+## Melee hitbox -- for a rigged/skinned entity (see ParentUnit.tscn) this is
+## a small fist-sized box nested under WeaponSlot, a BoneAttachment3D on the
+## right hand bone, so it tracks the actual fist/weapon through animation
+## rather than sitting at a fixed chest-forward offset. Looked up
+## recursively since it's no longer necessarily a direct child of
+## model_root. Billboard sprite units (no skeleton) would have it directly
+## under model_root instead, same as before.
+@onready var attack_hitbox: Area3D = model_root.find_child("AttackHitbox", true, false)
 ## Purely visual -- a translucent box matching the hitbox's own shape,
 ## shown only while the hitbox is actually active (see perform_attack()) so
 ## a swing's actual hit window is visible instead of invisible collision
@@ -161,8 +179,6 @@ func _ready() -> void:
 	current_health = max_health
 	health_bar.set_health_fraction(1.0)
 	_update_health_bar_visibility()
-	if attack_hitbox != null:
-		attack_hitbox.body_entered.connect(_on_attack_hitbox_body_entered)
 	_update_belt_color()
 	health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
 
@@ -217,35 +233,72 @@ func has_line_of_sight(target: Node3D) -> bool:
 	var result := space_state.intersect_ray(query)
 	return result.is_empty()
 
-## Swings: briefly turns the attack hitbox on so it can land a hit on
-## whatever it's overlapping during that window, then off again for the
-## rest of the cooldown. No self-check needed against the hitbox catching
-## its own body -- collision_mask only picks up the UNIT_MASK layer, which
-## this entity's own body is on, and Area3D still reports overlaps with a
-## body that's a sibling/ancestor of it, so _on_attack_hitbox_body_entered
-## explicitly ignores `self`.
+## Swings: shows the fist-tracking hitbox visual during the active window
+## and lands a hit directly on attack_target if it's actually in reach at
+## that moment. Damage is decided by an explicit distance check
+## (_land_hit_if_in_reach), not Area3D's overlap signal -- headless testing
+## found the signal/get_overlapping_bodies() unreliable for a small,
+## fast-moving hitbox repositioned every frame via BoneAttachment3D: it sat
+## genuinely within centimeters of the target's capsule for several
+## consecutive physics frames without ever being reported as overlapping (a
+## physics-server broadphase sync-lag class of issue, not a geometry one).
 func perform_attack() -> void:
 	if not can_attack():
 		return
 	_attacking = true
 	_attack_cooldown_remaining = attack_cooldown
+	var impact_delay := 0.0
 	if animation_player != null and animation_player.has_animation("Attack"):
 		animation_player.play("Attack")
-	attack_hitbox.monitoring = true
+		var attack_animation := animation_player.get_animation("Attack")
+		# Center the hit window on the moment the fist/weapon is actually
+		# fully extended (measured directly off the paladin's Attack clip:
+		# right-hand-to-shoulder distance peaks at ~41% of the way through
+		# it), rather than swinging the box on the instant the animation
+		# starts -- otherwise the hitbox fires during the windup, well
+		# before the fist has reached the target.
+		impact_delay = maxf(attack_animation.length * ATTACK_IMPACT_FRACTION - ATTACK_ACTIVE_DURATION / 2.0, 0.0)
+	if impact_delay > 0.0:
+		await get_tree().create_timer(impact_delay).timeout
+	if not is_instance_valid(self) or not is_instance_valid(attack_hitbox):
+		return
 	if attack_hitbox_mesh != null:
 		attack_hitbox_mesh.visible = true
-	await get_tree().create_timer(ATTACK_ACTIVE_DURATION).timeout
-	if is_instance_valid(attack_hitbox):
-		attack_hitbox.monitoring = false
+	# Poll every physics frame across the active window rather than
+	# checking once -- the impact_delay above is timed off the fist's
+	# distance-from-shoulder peak, which doesn't necessarily land on the
+	# exact same frame as the fist's closest approach to wherever this
+	# particular target actually is standing, so a single check can miss
+	# the true closest moment by a frame or two.
+	var elapsed := 0.0
+	var hit_landed := false
+	while elapsed < ATTACK_ACTIVE_DURATION:
+		if not is_instance_valid(self):
+			return
+		if not hit_landed:
+			hit_landed = _land_hit_if_in_reach()
+		await get_tree().physics_frame
+		if not is_instance_valid(self):
+			return
+		elapsed += get_physics_process_delta_time()
 	if attack_hitbox_mesh != null and is_instance_valid(attack_hitbox_mesh):
 		attack_hitbox_mesh.visible = false
 	_attacking = false
 
-func _on_attack_hitbox_body_entered(body: Node) -> void:
-	if body == self:
-		return
-	if body.has_method("take_damage"):
-		body.take_damage(attack_damage)
+## See perform_attack()'s doc comment for why this is an explicit check
+## rather than Area3D overlap detection. target_center approximates the
+## defender's capsule/body center the same way WeaponSlot-relative offsets
+## do elsewhere in this file -- entity root position plus a waist/chest-
+## height offset. Returns true once a hit has actually landed, so the
+## polling loop above stops re-damaging the same swing.
+func _land_hit_if_in_reach() -> bool:
+	if not is_instance_valid(attack_target) or not attack_target.has_method("take_damage"):
+		return false
+	var target_center: Vector3 = attack_target.global_position + Vector3(0, 0.8, 0)
+	if attack_hitbox.global_position.distance_to(target_center) <= MELEE_REACH:
+		attack_target.take_damage(attack_damage)
+		return true
+	return false
 
 ## Base version: just marks `target` as what to defend against, since a
 ## stationary Entity can't chase. Unit overrides this to also move toward

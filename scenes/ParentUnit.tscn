@@ -10,10 +10,10 @@ radius = 0.25
 height = 1.6
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_attack"]
-size = Vector3(0.7, 0.8, 0.7)
+size = Vector3(0.35, 0.35, 0.35)
 
 [sub_resource type="BoxMesh" id="BoxMesh_attack_vis"]
-size = Vector3(0.7, 0.8, 0.7)
+size = Vector3(0.35, 0.35, 0.35)
 
 [sub_resource type="StandardMaterial3D" id="Mat_attack_vis"]
 shading_mode = 0
@@ -71,26 +71,25 @@ layers = 3
 bone_name = "mixamorig_RightHand"
 bone_idx = 46
 
-[node name="Belt" type="MeshInstance3D" parent="ModelRoot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
-layers = 3
-mesh = SubResource("TorusMesh_belt")
-surface_material_override/0 = SubResource("Mat_belt")
-
-[node name="AttackHitbox" type="Area3D" parent="ModelRoot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0.65)
+[node name="AttackHitbox" type="Area3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D/WeaponSlot"]
 collision_layer = 0
 collision_mask = 2
 monitoring = false
 monitorable = false
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/AttackHitbox"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
 shape = SubResource("BoxShape3D_attack")
 
-[node name="HitboxMesh" type="MeshInstance3D" parent="ModelRoot/AttackHitbox"]
+[node name="HitboxMesh" type="MeshInstance3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
 visible = false
 mesh = SubResource("BoxMesh_attack_vis")
 surface_material_override/0 = SubResource("Mat_attack_vis")
+
+[node name="Belt" type="MeshInstance3D" parent="ModelRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+layers = 3
+mesh = SubResource("TorusMesh_belt")
+surface_material_override/0 = SubResource("Mat_belt")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
 radius = 0.25
