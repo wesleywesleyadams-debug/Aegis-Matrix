@@ -73,6 +73,31 @@ var _pickup_target: WorldItem = null
 ## something requiring precise positioning.
 const PICKUP_RANGE: float = 1.0
 
+## Fires once a throw_item() order actually lands -- see
+## _update_throw_target(). RTSController listens for this to spawn the
+## thrown item and, if it was aimed at a unit/building rather than bare
+## ground, hand it over once the throw animation finishes.
+signal item_thrown(unit: Unit, item_type: String, target_position: Vector3, target_unit: Unit, target_building: Building)
+
+## Set by throw_item() -- a drag-drop of the equipped item somewhere out of
+## immediate reach: this unit walks toward _throw_target_position and, once
+## within THROW_RANGE, throws _throw_item_type there (see
+## _update_throw_target()). Cleared by any other order (move_to()/stop()
+## both clear it, same as _pickup_target/attack_target) -- the item just
+## stays equipped, nothing thrown, if some other order interrupts first.
+var _throw_item_type: String = ""
+var _throw_target_position: Vector3 = Vector3.INF
+## Where the thrown item ends up once it lands -- at most one of these is
+## set (neither, for a plain ground drop), mirroring ItemSlotButton's own
+## drag payload shape.
+var _throw_target_unit: Unit = null
+var _throw_target_building: Building = null
+## How close counts as within throwing range -- one tile, the same
+## distance the eject-on-drop animation already treats as "nearby" (see
+## WorldItem.TILE_SIZE), not ARRIVE_DISTANCE's much tighter
+## precise-positioning radius.
+const THROW_RANGE: float = WorldItem.TILE_SIZE
+
 func _ready() -> void:
 	super._ready()
 	add_to_group("units")
@@ -90,6 +115,7 @@ func _ready() -> void:
 func move_to(target: Vector3, order_facing_angle: float = NAN) -> void:
 	attack_target = null
 	_pickup_target = null
+	_clear_throw_target()
 	_order_facing_angle = order_facing_angle
 	_in_formation = false
 	nav_agent.max_speed = MAX_SPEED
@@ -102,6 +128,7 @@ func move_to(target: Vector3, order_facing_angle: float = NAN) -> void:
 func stop() -> void:
 	attack_target = null
 	_pickup_target = null
+	_clear_throw_target()
 	_order_facing_angle = NAN
 	_path_segments = []
 	_segment_index = 0
@@ -162,6 +189,49 @@ func _update_pickup_target() -> void:
 	_pickup_target = null
 	item.collect(self)
 
+## Walks toward `target_position` and, once within THROW_RANGE, throws
+## `item_type` there (see _update_throw_target()) -- a drag-drop of the
+## equipped item out of the equipment panel onto somewhere out of
+## immediate reach. `target_unit`/`target_building` (at most one set) say
+## what happens to the item once it lands, mirroring
+## RTSController.handle_item_drag_drop's own unit/building/ground cases.
+## Does nothing if this unit isn't actually holding `item_type` right now
+## (e.g. the drag started before some other order already changed it).
+func throw_item(item_type: String, target_position: Vector3, target_unit: Unit = null, target_building: Building = null) -> void:
+	if equipped_weapon != item_type:
+		return
+	move_to(target_position)
+	_throw_item_type = item_type
+	_throw_target_position = target_position
+	_throw_target_unit = target_unit
+	_throw_target_building = target_building
+
+func _clear_throw_target() -> void:
+	_throw_item_type = ""
+	_throw_target_position = Vector3.INF
+	_throw_target_unit = null
+	_throw_target_building = null
+
+## Executes the throw once within THROW_RANGE of _throw_target_position --
+## called every physics frame while a throw order is outstanding (see
+## _physics_process), the same "checked every frame regardless of nav
+## completion" pattern _update_pickup_target uses. Unequips the item (same
+## visual/state change unequip_weapon() itself causes) and reports it
+## thrown; RTSController owns actually spawning/animating/handing it off
+## from there (see item_thrown).
+func _update_throw_target() -> void:
+	if _throw_target_position == Vector3.INF:
+		return
+	if global_position.distance_to(_throw_target_position) > THROW_RANGE:
+		return
+	var item_type := _throw_item_type
+	var target_position := _throw_target_position
+	var target_unit := _throw_target_unit
+	var target_building := _throw_target_building
+	_clear_throw_target()
+	unequip_weapon()
+	item_thrown.emit(self, item_type, target_position, target_unit, target_building)
+
 ## Chases `target` (reusing the ordinary move-to machinery to get there)
 ## and, once within attack_range, stops and repeatedly swings at it --
 ## see the attack_target handling in _physics_process / _update_attack_target.
@@ -192,6 +262,9 @@ func _physics_process(_delta: float) -> void:
 
 	if _pickup_target != null:
 		_update_pickup_target()
+
+	if _throw_target_position != Vector3.INF:
+		_update_throw_target()
 
 	var attacking_in_range := _update_attack_target(_delta)
 

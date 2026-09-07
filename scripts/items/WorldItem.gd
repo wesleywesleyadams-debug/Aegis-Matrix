@@ -179,6 +179,39 @@ static func spawn_dropped(item_type: String, position: Vector3, parent: Node) ->
 
 	return pickup
 
+## Throws `item_type` from `from_position` to `to_position` -- Unit's
+## throw_item()/_update_throw_target() (a drag-drop of an equipped item
+## somewhere out of immediate reach) use this once the unit has walked
+## within throwing range of the target, rather than spawn_pickup's fixed
+## one-tile-behind landing spot or spawn_dropped's no-travel bounce.
+## `on_landed`, if given, is called as `on_landed.call(pickup)` once the
+## throw actually lands -- RTSController uses it to hand the item to a
+## unit/building rather than leaving it sitting on the ground, if that's
+## where the throw was aimed. No-op (returns null, on_landed never called)
+## for an unknown item_type.
+static func spawn_thrown(item_type: String, from_position: Vector3, to_position: Vector3, parent: Node, on_landed: Callable = Callable()) -> Node3D:
+	var scene: PackedScene = ItemDefs.get_pickup_scene(item_type)
+	if scene == null:
+		return null
+	var pickup: Node3D = scene.instantiate()
+	parent.add_child(pickup)
+
+	var landing_position := to_position + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
+	pickup.global_position = from_position + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
+
+	var travel_tween := pickup.create_tween()
+	travel_tween.set_parallel(true)
+	travel_tween.tween_property(pickup, "global_position:x", landing_position.x, EJECT_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	travel_tween.tween_property(pickup, "global_position:z", landing_position.z, EJECT_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	var hop_tween := pickup.create_tween()
+	hop_tween.tween_property(pickup, "global_position:y", landing_position.y + EJECT_HEIGHT, EJECT_DURATION * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	hop_tween.tween_property(pickup, "global_position:y", landing_position.y, EJECT_DURATION * 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	if on_landed.is_valid():
+		hop_tween.finished.connect(on_landed.bind(pickup))
+
+	return pickup
+
 ## Recursively duplicates and lights up every StandardMaterial3D under this
 ## pickup, so the shared material resource (also used by the equipped
 ## visual) is untouched -- only this specific pickup instance glows.

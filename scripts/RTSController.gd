@@ -79,6 +79,7 @@ func _ready() -> void:
 	# selected, without the panel needing to poll every frame.
 	for unit in get_tree().get_nodes_in_group("units"):
 		unit.weapon_changed.connect(_on_unit_weapon_changed)
+		unit.item_thrown.connect(_on_unit_item_thrown)
 	# Same idea for a building's storage panel -- a drag-drop landing an
 	# item in storage updates the panel live if that building is selected.
 	for building in get_tree().get_nodes_in_group("buildings"):
@@ -706,49 +707,90 @@ func _on_storage_item_right_clicked(item_type: String) -> void:
 ## Dragging an item out of the equipment panel or building storage panel
 ## (see ItemDropTarget/ItemSlotButton) and releasing it at `screen_pos`.
 ## Exactly one of source_unit/source_building is set (whichever panel it
-## came from); pulls the item out of that source first, then hands it off
-## via _place_dragged_item -- to a unit under the cursor (equipping it,
-## swapping out whatever that unit already had), into a building under the
-## cursor (storing it), or onto the ground at the raycasted point otherwise.
+## came from). A unit source issues a throw order (see
+## Unit.throw_item/_on_unit_item_thrown) -- the unit has to actually walk
+## within throwing range before the item leaves its hand, rather than it
+## teleporting there instantly. A building can't walk anywhere, so a
+## building source places the item immediately instead.
 func handle_item_drag_drop(item_type: String, source_unit: Unit, source_building: Building, screen_pos: Vector2) -> void:
 	if is_instance_valid(source_unit):
 		if source_unit.equipped_weapon != item_type:
 			return
-		source_unit.unequip_weapon()
-		_refresh_equipment_panel()
-		_place_dragged_item(item_type, screen_pos, source_unit.global_position, source_unit)
+		var target := _resolve_drop_target(screen_pos, source_unit)
+		source_unit.throw_item(item_type, target["position"], target["unit"], target["building"])
 	elif is_instance_valid(source_building):
 		if not source_building.take_item(item_type):
 			return
 		_refresh_storage_panel()
-		_place_dragged_item(item_type, screen_pos, source_building.global_position, source_building)
+		var target := _resolve_drop_target(screen_pos, source_building)
+		_place_item_instantly(item_type, target)
 
-## Shared "where does the item actually end up" half of a drag-drop, once
-## it's already been removed from its source -- exclude_node keeps
-## dragging an item onto its own source (e.g. a unit dragging its weapon
-## onto itself) from being treated as a valid unit/building target, falling
-## through to a ground drop instead, same as the pre-drag-and-drop
-## right-click-to-drop behavior would.
-func _place_dragged_item(item_type: String, screen_pos: Vector2, fallback_position: Vector3, exclude_node: Node3D) -> void:
+## Resolves what's at `screen_pos` in the world for a drag-drop -- a
+## unit/building to hand the item to, or bare ground otherwise. Shared by
+## the unit-source (throw order) and building-source (instant placement)
+## cases. exclude_node keeps dragging an item onto its own source (e.g. a
+## unit dragging its weapon onto itself) from being treated as a valid
+## target, falling through to the ground instead, same as the
+## pre-drag-and-drop right-click-to-drop behavior would.
+func _resolve_drop_target(screen_pos: Vector2, exclude_node: Node3D) -> Dictionary:
 	var target_node := _raycast_unit(screen_pos)
 	if target_node is Unit and target_node != exclude_node:
-		var target_unit: Unit = target_node
+		return {"position": target_node.global_position, "unit": target_node, "building": null}
+	if target_node is Building and target_node != exclude_node:
+		return {"position": target_node.global_position, "unit": null, "building": target_node}
+	var ground_hit := _raycast(screen_pos, GROUND_MASK)
+	var position: Vector3 = ground_hit["position"] if not ground_hit.is_empty() else exclude_node.global_position
+	return {"position": position, "unit": null, "building": null}
+
+## Places an item straight away, no throw/travel time -- the
+## building-storage drag source's counterpart to a unit's throw_item()
+## order, since a stationary building has no way to walk closer first.
+func _place_item_instantly(item_type: String, target: Dictionary) -> void:
+	var target_unit: Unit = target["unit"]
+	var target_building: Building = target["building"]
+	if target_unit != null:
 		if not target_unit.equipped_weapon.is_empty():
 			var displaced: String = target_unit.unequip_weapon()
 			WorldItem.spawn_pickup(displaced, target_unit.global_position, target_unit.model_root.rotation.y, $World)
 		target_unit.equip_weapon(item_type)
 		_refresh_equipment_panel()
-		return
-
-	if target_node is Building and target_node != exclude_node:
-		var target_building: Building = target_node
+	elif target_building != null:
 		target_building.store_item(item_type)
 		_refresh_storage_panel()
-		return
+	else:
+		WorldItem.spawn_dropped(item_type, target["position"], $World)
 
-	var ground_hit := _raycast(screen_pos, GROUND_MASK)
-	var drop_position: Vector3 = ground_hit["position"] if not ground_hit.is_empty() else fallback_position
-	WorldItem.spawn_dropped(item_type, drop_position, $World)
+## A unit's throw_item() order actually landing (see Unit.item_thrown) --
+## spawns the visible thrown item traveling from the unit to the target
+## point, and hands it off to whatever the throw was aimed at once the
+## animation finishes (see _on_thrown_item_landed), same end states
+## _place_item_instantly reaches, just with travel time first.
+func _on_unit_item_thrown(unit: Unit, item_type: String, target_position: Vector3, target_unit: Unit, target_building: Building) -> void:
+	_refresh_equipment_panel()
+	WorldItem.spawn_thrown(
+		item_type, unit.global_position, target_position, $World,
+		_on_thrown_item_landed.bind(target_unit, target_building)
+	)
+
+## Re-checks target_unit/target_building are still valid at landing time
+## (either could've died/been destroyed during the throw's travel time)
+## before handing the item over -- otherwise it just stays a normal ground
+## pickup where it landed, same as aiming at bare ground in the first place.
+func _on_thrown_item_landed(pickup: Node3D, target_unit: Unit, target_building: Building) -> void:
+	if not is_instance_valid(pickup):
+		return
+	var item_type: String = pickup.item_type
+	if is_instance_valid(target_unit):
+		if not target_unit.equipped_weapon.is_empty():
+			var displaced: String = target_unit.unequip_weapon()
+			WorldItem.spawn_pickup(displaced, target_unit.global_position, target_unit.model_root.rotation.y, $World)
+		target_unit.equip_weapon(item_type)
+		pickup.queue_free()
+		_refresh_equipment_panel()
+	elif is_instance_valid(target_building):
+		target_building.store_item(item_type)
+		pickup.queue_free()
+		_refresh_storage_panel()
 
 ## Shows `item`'s selection frame, clearing any unit/building selection
 ## first -- items and units/buildings are never selected at the same time,
