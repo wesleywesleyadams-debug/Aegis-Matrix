@@ -32,6 +32,13 @@ func _ready() -> void:
 	# both whenever the active account changes mid-session.
 	GameState.active_account_changed.connect(_on_active_account_changed)
 
+	# Nudge a not-signed-in player straight to the Account panel the moment
+	# they land on the title screen (whether that's the game's very first
+	# launch, or just coming back here not signed in) -- already signed in
+	# (e.g. "Stay signed in" restored a session) skips this entirely.
+	if GameState.active_account.is_empty():
+		AccountMenu.open()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and load_list_panel.visible:
 		_on_close_load_list_pressed()
