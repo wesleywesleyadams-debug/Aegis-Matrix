@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/entities/Unit.gd" id="1_unit"]
 [ext_resource type="Script" path="res://scripts/ui/HealthBar.gd" id="10_health_bar"]
@@ -35,16 +35,6 @@ albedo_color = Color(0.3, 1, 0.4, 1)
 emission_enabled = true
 emission = Color(0.3, 1, 0.4, 1)
 emission_energy_multiplier = 1.5
-
-[sub_resource type="TorusMesh" id="TorusMesh_belt"]
-inner_radius = 0.27
-outer_radius = 0.33
-rings = 4
-ring_segments = 16
-
-[sub_resource type="StandardMaterial3D" id="Mat_belt"]
-shading_mode = 0
-albedo_color = Color(0.2, 0.45, 0.9, 1)
 
 [node name="Unit" type="CharacterBody3D"]
 collision_layer = 2
@@ -84,12 +74,6 @@ shape = SubResource("BoxShape3D_attack")
 visible = false
 mesh = SubResource("BoxMesh_attack_vis")
 surface_material_override/0 = SubResource("Mat_attack_vis")
-
-[node name="Belt" type="MeshInstance3D" parent="ModelRoot"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
-layers = 3
-mesh = SubResource("TorusMesh_belt")
-surface_material_override/0 = SubResource("Mat_belt")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
 radius = 0.38
