@@ -32,7 +32,11 @@ func set_subject(unit: Node3D) -> void:
 		# future non-hostile third player_id, not just literal ownership.
 		var is_enemy: bool = unit.is_hostile_to_player(GameState.human_player_id)
 		team_label.text = "Enemy" if is_enemy else "Ally"
-		team_label.modulate = ENEMY_COLOR if is_enemy else ALLY_COLOR
+		# font_color, not modulate -- modulate multiplies onto whatever the
+		# label's underlying theme font color already is (a brownish tan
+		# throughout this UI's parchment style), which read as a muddy,
+		# still-mostly-brown tint rather than actual green/red.
+		team_label.add_theme_color_override("font_color", ENEMY_COLOR if is_enemy else ALLY_COLOR)
 	else:
 		team_label.text = ""
 
