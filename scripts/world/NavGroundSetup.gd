@@ -30,7 +30,7 @@ const AGENT_HEIGHT: float = 1.8
 ## Matches NavigationAgent3D.radius on ParentUnit.tscn plus a small margin,
 ## so the baked walkable area is already inset far enough that a unit's own
 ## collision radius can't clip into an obstacle's edge.
-const AGENT_RADIUS: float = 0.45
+const AGENT_RADIUS: float = 0.36
 
 ## Recast voxel size, deliberately finer than the navigation map's own
 ## 0.25 default -- see the bake-height bug this fixed, where the coarser

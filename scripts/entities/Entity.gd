@@ -23,8 +23,8 @@ var current_health: float
 ## window) -- 2.0 total = 0.15s hit window + 1.85s idle.
 @export var attack_cooldown: float = 2.0
 ## How close (center to center) counts as "in range to swing". Kept above
-## both entities' combined collision radii (0.76 for two Units at radius
-## 0.38 -- see CollisionShape3D/NavigationAgent3D in ParentUnit.tscn) or
+## both entities' combined collision radii (0.57 for two Units at radius
+## 0.285 -- see CollisionShape3D/NavigationAgent3D in ParentUnit.tscn) or
 ## units would physically collide before ever reaching attack range, and
 ## given some extra clearance beyond that (rather than the bare minimum)
 ## so the models' visible armor doesn't read as overlapping while
@@ -32,21 +32,35 @@ var current_health: float
 ## actual fist through the swing (see AttackHitbox in ParentUnit.tscn)
 ## instead of sitting in a big fixed box in front of the chest, so too long
 ## a range lets the target drift out from in front of a small hitbox
-## entirely (see MELEE_REACH below).
+## entirely (see MELEE_REACH below). This is the ATTACKER's own base
+## reach, independent of the TARGET's size -- see get_engage_radius_bonus()
+## for that half of the total engagement distance.
 @export var attack_range: float = 1.0
 ## Extra distance added to the ATTACKER's attack_range and MELEE_REACH
 ## when deciding whether it's close enough to swing at (and land a hit
-## on) THIS entity as a target -- accounts for how big a footprint this
-## entity itself presents, since attack_range's own tuning only assumed a
-## Unit-sized opponent. Default 0 (Unit doesn't override this -- two
-## Units' engagement already accounts for their combined size directly in
-## attack_range/MELEE_REACH's own tuning). Building overrides this to its
-## own much larger box footprint, since a Unit's collision capsule
-## physically can't get anywhere near attack_range=1.0 of a Building's
-## *center* -- it collides with the box's face first, at combined-radius
-## distance box_half_extent + unit_radius (roughly 1.0 + 0.38 = 1.38),
-## already past attack_range on its own.
+## on) THIS entity as a target -- how big a footprint THIS entity presents
+## for combat purposes, kept as its own explicit, separate value rather
+## than derived from (or shared with) whatever collision shape it uses for
+## movement/blocking -- shrinking a unit's movement collision to reduce
+## clumping/jitter shouldn't also shrink how far away it can be hit, and
+## vice versa.
+##
+## Default implementation reads a "Hurtbox" child's own CollisionShape3D
+## radius if the entity has one (see ParentUnit.tscn) -- a real, separate
+## shape purely for this (not used for movement/blocking at all, hence not
+## monitoring/monitorable), whose radius becomes this bonus directly. Kept
+## modest for Unit (see ParentUnit.tscn's Hurtbox) -- enough that combat
+## reaches a little further than movement collision alone would put a
+## unit in range for, not a full redo of engagement distance. Falls back
+## to 0.0 for an entity with no Hurtbox (e.g. World.gd's Tree). Building
+## overrides this outright with its own much larger box footprint, since a
+## Unit's collision capsule physically can't get anywhere near
+## attack_range=1.0 of a Building's *center* -- it collides with the box's
+## face first, at combined-radius distance box_half_extent + unit_radius
+## (roughly 1.0 + 0.285 = 1.285), already past attack_range on its own.
 func get_engage_radius_bonus() -> float:
+	if _hurtbox_shape != null and _hurtbox_shape.shape != null:
+		return _hurtbox_shape.shape.radius
 	return 0.0
 ## How far this entity can see -- used by fog of war (see RTSController's
 ## _update_fog_of_war) to decide whether enemy entities within range (and
@@ -65,7 +79,7 @@ const ATTACK_ACTIVE_DURATION: float = 0.15
 const ATTACK_IMPACT_FRACTION: float = 0.409
 ## How close the hitbox needs to be to a target's approximate body center
 ## (see _land_hit_if_in_reach) to actually land a hit -- roughly the
-## target's own capsule radius (0.38) plus the fist hitbox's own reach,
+## target's own capsule radius (0.285) plus the fist hitbox's own reach,
 ## with a bit of extra margin to cover attack_range's slightly longer
 ## engagement distance.
 const MELEE_REACH: float = 0.65
@@ -139,6 +153,10 @@ var attack_target: Node3D = null
 var _attack_target_is_ordered: bool = false
 
 @onready var model_root: Node3D = $ModelRoot
+## See get_engage_radius_bonus() -- null for an entity with no "Hurtbox"
+## child (e.g. Building, which overrides get_engage_radius_bonus() outright
+## instead, and World.gd's Tree, which has neither).
+@onready var _hurtbox_shape: CollisionShape3D = get_node_or_null("Hurtbox/CollisionShape3D")
 ## A ring (Unit) or a square frame (Building) -- shape doesn't matter here.
 ## Normally only `visible` is touched (hence typed as the common Node3D
 ## base rather than MeshInstance3D specifically); blink_attack_target()

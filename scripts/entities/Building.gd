@@ -55,7 +55,7 @@ func _ready() -> void:
 ## -- see BoxShape3D_body in ParentBuilding.tscn) than the Unit-sized
 ## opponent attack_range/MELEE_REACH are tuned for -- an attacking unit's
 ## own collision capsule physically can't reach anywhere near
-## attack_range=1.0 of this building's *center* before colliding with its
+## attack_range=1.25 of this building's *center* before colliding with its
 ## wall first. See Entity.get_engage_radius_bonus()'s doc comment.
 func get_engage_radius_bonus() -> float:
 	return 1.3
