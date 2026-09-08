@@ -132,7 +132,7 @@ func collect(unit: Unit) -> void:
 		var old_item_type: String = unit.unequip_weapon()
 		spawn_pickup(old_item_type, unit.global_position, unit.model_root.rotation.y, get_parent())
 	unit.equip_weapon(item_type)
-	ItemReceivedEffect.spawn(item_type, unit, get_parent())
+	ItemReceivedEffect.spawn(item_type, unit)
 	queue_free()
 
 ## Instantiates `item_type`'s pickup scene under `parent` at `near_position`

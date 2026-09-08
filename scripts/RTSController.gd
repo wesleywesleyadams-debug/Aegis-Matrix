@@ -655,11 +655,11 @@ func _on_thrown_item_landed(pickup: Node3D, target_unit: Unit, target_building: 
 		target_unit.equip_weapon(item_type)
 		pickup.queue_free()
 		_refresh_equipment_panel()
-		ItemReceivedEffect.spawn(item_type, target_unit, $World)
+		ItemReceivedEffect.spawn(item_type, target_unit)
 	elif is_instance_valid(target_building) and target_building.is_player_controlled():
 		target_building.store_item(item_type)
 		pickup.queue_free()
-		ItemReceivedEffect.spawn(item_type, target_building, $World)
+		ItemReceivedEffect.spawn(item_type, target_building)
 		_refresh_storage_panel()
 
 ## Shows `item`'s selection frame, clearing any unit/building selection
