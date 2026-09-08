@@ -27,7 +27,7 @@ const GLOW_ENERGY: float = 3.0
 ## item looks the same as one that was always sitting there.
 const DROPPED_ITEM_HEIGHT: float = 0.5
 ## One grid tile -- matches DebugGrid's cell_size shader parameter and
-## RTSController.FORMATION_SPACING. A dropped item lands one full tile
+## RTSController.UNIT_SPREAD_SPACING. A dropped item lands one full tile
 ## behind whichever unit dropped it.
 const TILE_SIZE: float = 2.6
 ## How high a dropped item pops up before settling into place.

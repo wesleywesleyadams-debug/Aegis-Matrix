@@ -5,14 +5,9 @@ extends Node3D
 const GROUND_MASK: int = 1
 const UNIT_MASK: int = 2
 const CLICK_DRAG_THRESHOLD: float = 6.0
-const FORMATION_SPACING: float = 2.6
-## Temporarily off: a group move order now just sends every selected unit
-## straight at the exact same clicked point (still using each unit's own
-## normal pathing/avoidance -- see _dispatch_move) instead of spreading them
-## into a formation grid. All the formation code below is left in place and
-## still fully wired up, just skipped, so flipping this back to true is all
-## it takes to bring it back.
-const ENABLE_FORMATIONS: bool = false
+## Spacing between spread-out unit destinations in a group move order --
+## see _spread_offset.
+const UNIT_SPREAD_SPACING: float = 2.6
 ## How far above a building's own origin its gather-point flag sits when
 ## the gather point is set directly onto that building (itself or another)
 ## -- buildings' global_position is at ground level, so without this the
@@ -467,183 +462,40 @@ func _same_units(a: Array, b: Array[Node]) -> bool:
 			return false
 	return true
 
-## The actual move-order logic: formation orientation, rank-based slot
-## assignment, and the lead/shared-path dispatch (see class docs above).
-## Takes `units` explicitly rather than reading _selected_units directly
-## so a queued waypoint can be dispatched later to whichever units it was
-## issued for, even if the player's current selection has since changed.
+## The actual move-order logic. Takes `units` explicitly rather than
+## reading _selected_units directly so a queued waypoint can be dispatched
+## later to whichever units it was issued for, even if the player's
+## current selection has since changed.
+##
+## Each unit gets its own destination, spread around `target` in a simple
+## grid (see _spread_offset) rather than every unit in the group being
+## sent to the exact same point. Without this, a multi-unit move order
+## left every unit trying to stand on top of the same coordinate, so they
+## piled up and jostled indefinitely with only avoidance keeping them
+## apart. This intentionally doesn't do full formation-keeping (no rank
+## ordering, no shared marching path, no orienting to the direction of
+## travel) -- just enough that each unit has a distinct spot to actually
+## reach, still using its own ordinary move_to() (nav agent + octile path
+## + avoidance all still apply per unit).
 func _dispatch_move(target: Vector3, units: Array[Node]) -> void:
-	if not ENABLE_FORMATIONS:
-		# No slots, no shared-path merging -- every unit just paths itself
-		# straight to the clicked point via its own ordinary move_to()
-		# (nav agent + octile path + avoidance all still apply per unit).
-		for unit in units:
-			unit.move_to(target)
-		return
-
 	var count := units.size()
-	# Orient the formation grid so its depth axis points the way the group
-	# is actually heading, rather than always sitting locked to world axes.
-	var facing_angle := _group_travel_angle(target, units)
-
-	var raw_offsets: Array[Vector3] = []
-	var offsets: Array[Vector3] = []
 	for i in count:
-		var raw := _formation_offset(i, count)
-		raw_offsets.append(raw)
-		offsets.append(_rotate_offset(raw, facing_angle))
+		units[i].move_to(target + _spread_offset(i, count))
 
-	# Rank units by current distance to the destination and slots by how far
-	# forward they sit, then pair them in that order -- whichever unit is
-	# already closest to the target becomes the front-rank vanguard, and
-	# progressively farther units fill in behind it, rather than assigning
-	# slots to minimize each unit's own travel distance. Ranking uses the
-	# pre-rotation offsets, since their z axis is "how forward" by
-	# construction regardless of which way facing_angle points.
-	var slot_for_unit := _assign_slots(units, raw_offsets, target)
-
-	# Identify the lead (front-rank) unit -- whichever unit is currently
-	# closest to the destination, which the rank-based assignment above
-	# always puts in the front-most slot.
-	var lead_index := 0
-	var lead_dist: float = units[0].global_position.distance_to(target)
-	for i in range(1, count):
-		var d: float = units[i].global_position.distance_to(target)
-		if d < lead_dist:
-			lead_dist = d
-			lead_index = i
-	var lead_offset := offsets[slot_for_unit[lead_index]]
-	# The lead's own route becomes the shared path every other unit merges
-	# onto: each follower plots its own short leg from wherever it actually
-	# starts to get onto that route, then travels the exact same sequence
-	# of directions as the lead for the rest of the trip (shifted by the
-	# constant difference between its own slot and the lead's, so it still
-	# lands on its own slot, not the lead's) -- rather than each unit
-	# independently working out a potentially differently-shaped path. This
-	# is what makes the group read as one column following the lead unit's
-	# route, the way units follow each other in Age of Empires II.
-	var lead_segments := Unit.compute_octile_segments(units[lead_index].global_position, target + lead_offset)
-
-	for i in count:
-		var offset := offsets[slot_for_unit[i]]
-		var unit_target := target + offset
-		if i == lead_index:
-			units[i].move_to(unit_target, facing_angle)
-		else:
-			var shift := offset - lead_offset
-			var shared_segments := _build_shared_path(units[i].global_position, lead_segments, shift)
-			units[i].move_along_path(unit_target, facing_angle, shared_segments)
-
-## Builds a follower unit's path: a short merge leg from its own current
-## position onto the lead's route (see _issue_move_order), followed by the
-## lead's remaining segments verbatim, each shifted by `shift` (this
-## unit's slot offset minus the lead's) so the shared direction is
-## preserved but the unit still ends up on its own slot instead of the
-## lead's.
-func _build_shared_path(from: Vector3, lead_segments: Array[Dictionary], shift: Vector3) -> Array[Dictionary]:
-	if lead_segments.is_empty():
-		return []
-	var first_waypoint: Vector3 = lead_segments[0]["end"] + shift
-	var segments := Unit.compute_octile_segments(from, first_waypoint)
-	for k in range(1, lead_segments.size()):
-		segments.append({
-			"dir": lead_segments[k]["dir"],
-			"end": lead_segments[k]["end"] + shift,
-		})
-	return segments
-
-## Ranks units by current distance to the destination (closest first) and
-## slots by how far forward they sit in the formation (front-most first),
-## then pairs them up rank-for-rank: the unit already nearest the target
-## becomes the front-rank vanguard, the next-closest fills the next rank
-## back, and so on -- rather than optimizing to minimize each unit's own
-## travel distance to whatever slot happens to be nearest it.
-func _assign_slots(units: Array[Node], raw_offsets: Array[Vector3], target: Vector3) -> Array[int]:
-	var count := units.size()
-
-	var unit_order: Array[int] = []
-	var slot_order: Array[int] = []
-	for i in count:
-		unit_order.append(i)
-		slot_order.append(i)
-
-	unit_order.sort_custom(func(a: int, b: int) -> bool:
-		return units[a].global_position.distance_to(target) < units[b].global_position.distance_to(target)
-	)
-	# raw_offsets are pre-rotation, so z is directly "how forward" by
-	# construction (_formation_offset puts larger row indices at larger z,
-	# and _rotate_offset maps larger z to farther along the direction of
-	# travel) -- ranking on it here holds regardless of which way the
-	# group ends up facing.
-	slot_order.sort_custom(func(a: int, b: int) -> bool:
-		return raw_offsets[a].z > raw_offsets[b].z
-	)
-
-	var result: Array[int] = []
-	result.resize(count)
-	for rank in count:
-		result[unit_order[rank]] = slot_order[rank]
-	return result
-
-func _group_travel_angle(target: Vector3, units: Array[Node]) -> float:
-	var centroid := Vector3.ZERO
-	for unit in units:
-		centroid += unit.global_position
-	centroid /= units.size()
-	centroid.y = 0.0
-	var flat_target := target
-	flat_target.y = 0.0
-	var travel := flat_target - centroid
-	if travel.length() < 0.01:
-		return 0.0
-	# Snap to the same 8 directions movement itself is quantized to, so the
-	# formation's rows/columns line up with the direction the group is
-	# actually going to travel. The raw continuous angle to the target
-	# usually isn't one of those 8 angles, which would rotate the grid to
-	# an arbitrary orientation the group's real (quantized) path never
-	# actually matches, leaving it visibly skewed relative to the movement.
-	return Entity.snap_angle(atan2(travel.x, travel.z))
-
-func _rotate_offset(offset: Vector3, angle: float) -> Vector3:
-	var s := sin(angle)
-	var c := cos(angle)
-	return Vector3(offset.x * c + offset.z * s, 0.0, -offset.x * s + offset.z * c)
-
-func _formation_offset(index: int, count: int) -> Vector3:
+## A simple centered grid offset for spreading `count` units' destinations
+## around a shared point, indexed 0..count-1. Spacing is wide enough that
+## a unit's own collision radius (see ParentUnit.tscn) doesn't overlap its
+## neighbors' slots, so units settle into place without needing to shove
+## each other aside once they arrive.
+func _spread_offset(index: int, count: int) -> Vector3:
 	if count <= 1:
 		return Vector3.ZERO
-	# Biased toward a narrow, deep column (roughly twice as many rows as
-	# columns) rather than a square block -- e.g. 8 units become 2 columns
-	# by 4 rows. Rows run along z, which _issue_move_order rotates to align
-	# with the direction of travel, so a larger row index reads as farther
-	# toward the front (in the direction the group is heading).
-	var columns := int(ceil(sqrt(float(count) / 2.0)))
-	var full_rows := count / columns
-	var remainder := count % columns
-	var rows := full_rows + (1 if remainder > 0 else 0)
-
-	var row: int
-	var col: int
-	var row_width: int
-	if remainder > 0 and index < remainder:
-		# Units left over once the full rows are filled don't fit evenly --
-		# put them in the rear-most row (row 0) and center them across it,
-		# rather than left-packed against one edge, so an uneven count
-		# (e.g. 7 units as 2x4) trails a centered tail instead of a
-		# lopsided partial row.
-		row = 0
-		col = index
-		row_width = remainder
-	else:
-		# The full rows sit ahead of that leftover row, hence shifting them
-		# forward by one whenever there is one.
-		var packed_index := index - remainder
-		row = packed_index / columns + (1 if remainder > 0 else 0)
-		col = packed_index % columns
-		row_width = columns
-
-	var x := (col - (row_width - 1) / 2.0) * FORMATION_SPACING
-	var z := (row - (rows - 1) / 2.0) * FORMATION_SPACING
+	var columns := int(ceil(sqrt(float(count))))
+	var rows := int(ceil(float(count) / columns))
+	var row := index / columns
+	var col := index % columns
+	var x := (col - (columns - 1) / 2.0) * UNIT_SPREAD_SPACING
+	var z := (row - (rows - 1) / 2.0) * UNIT_SPREAD_SPACING
 	return Vector3(x, 0.0, z)
 
 ## Player 1 is the only player the human controls right now -- Player 2's

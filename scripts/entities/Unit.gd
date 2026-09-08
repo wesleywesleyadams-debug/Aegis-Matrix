@@ -293,23 +293,6 @@ func attack(target: Node3D) -> void:
 	move_to(destination)
 	attack_target = target
 
-## Same as move_to(), but follows a precomputed sequence of segments
-## instead of plotting its own from scratch -- so a group of units can
-## travel a shared route together (each merging onto it from wherever it
-## actually starts, then following the exact same directions for the rest
-## of the trip, offset to its own destination) rather than each
-## independently working out its own potentially differently-shaped path.
-## See RTSController._issue_move_order / _build_shared_path.
-func move_along_path(target: Vector3, order_facing_angle: float, segments: Array[Dictionary]) -> void:
-	attack_target = null
-	_order_facing_angle = order_facing_angle
-	_in_formation = false
-	nav_agent.max_speed = MAX_SPEED
-	nav_agent.target_position = target
-	_leg_target = target
-	_path_segments = segments
-	_segment_index = 0
-
 func _physics_process(_delta: float) -> void:
 	if is_dying():
 		return
