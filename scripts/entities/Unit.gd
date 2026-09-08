@@ -311,6 +311,8 @@ func move_along_path(target: Vector3, order_facing_angle: float, segments: Array
 	_segment_index = 0
 
 func _physics_process(_delta: float) -> void:
+	if is_dying():
+		return
 	if _attack_cooldown_remaining > 0.0:
 		_attack_cooldown_remaining = maxf(_attack_cooldown_remaining - _delta, 0.0)
 

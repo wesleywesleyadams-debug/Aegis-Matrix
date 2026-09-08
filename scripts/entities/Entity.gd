@@ -335,17 +335,73 @@ func _recolor_mesh_recursive(node: Node, color: Color) -> void:
 		_recolor_mesh_recursive(child, color)
 
 ## Reduces health by `amount` (clamped at 0) and updates the floating bar.
-## No death handling yet -- there's no combat system to call this from
-## yet, but the plumbing is here for when there is.
+## Triggers _die() once health actually reaches 0 -- no-ops instead of
+## re-triggering it if already dying (an in-flight swing that lands the
+## same frame death starts, or a couple of frames later while the death
+## animation is still playing, shouldn't restart the death sequence).
 func take_damage(amount: float) -> void:
+	if _dying:
+		return
 	current_health = maxf(current_health - amount, 0.0)
 	health_bar.set_health_fraction(current_health / max_health)
 	_update_health_bar_visibility()
+	if current_health <= 0.0:
+		_die()
 
 func heal(amount: float) -> void:
 	current_health = minf(current_health + amount, max_health)
 	health_bar.set_health_fraction(current_health / max_health)
 	_update_health_bar_visibility()
+
+## Set the moment health reaches 0 (see take_damage) -- an entity stays
+## "alive" as far as Node validity goes throughout its death animation
+## (queue_free() only happens at the very end), but every other system
+## needs to immediately stop treating it as a living participant: no
+## longer targetable by aggressive stance or attack orders, no longer
+## blocking movement/pathing, no longer shown as selected. is_dying() lets
+## other code (Unit's own movement/combat loop, chiefly) check this
+## without needing its own separate signal wiring.
+var _dying: bool = false
+
+func is_dying() -> bool:
+	return _dying
+
+## How long a non-animated entity (a Building, or any Unit whose model
+## happens to have no "Death" animation) sinks into the ground before
+## being removed, when there's no real death animation to time against
+## instead.
+const DEATH_FALLBACK_DURATION: float = 1.2
+const DEATH_SINK_DEPTH: float = 1.0
+
+## Plays "Death" (if this entity's model has one -- see the paladin's
+## baked-in animations) or a simple sink-into-the-ground fallback
+## otherwise, then removes the entity. Everything that makes it an active
+## participant (targetable, collidable, selected) is turned off
+## immediately here, not after the animation finishes, so a unit mid-death
+## doesn't keep absorbing hits, blocking a chasing enemy's path, or
+## showing up as a valid aggressive-stance target for the rest of the
+## fight.
+func _die() -> void:
+	if _dying:
+		return
+	_dying = true
+	attack_target = null
+	remove_from_group("units")
+	remove_from_group("buildings")
+	collision_layer = 0
+	collision_mask = 0
+	selection_ring.visible = false
+	health_bar.visible = false
+	selected = false
+	if animation_player != null and animation_player.has_animation("Death"):
+		animation_player.play("Death")
+		await animation_player.animation_finished
+	else:
+		var tween := create_tween()
+		tween.tween_property(model_root, "position:y", model_root.position.y - DEATH_SINK_DEPTH, DEATH_FALLBACK_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		await tween.finished
+	if is_instance_valid(self):
+		queue_free()
 
 func can_attack() -> bool:
 	return attack_hitbox != null and not _attacking and _attack_cooldown_remaining <= 0.0
@@ -440,6 +496,8 @@ func attack(target: Node3D) -> void:
 ## cooldown and handle an in-progress attack_target (face it and swing
 ## once it's in range). Unit overrides this entirely to add movement.
 func _physics_process(delta: float) -> void:
+	if _dying:
+		return
 	if _attack_cooldown_remaining > 0.0:
 		_attack_cooldown_remaining = maxf(_attack_cooldown_remaining - delta, 0.0)
 	_update_attack_target(delta)
