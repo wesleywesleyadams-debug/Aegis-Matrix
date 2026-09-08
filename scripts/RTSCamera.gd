@@ -13,7 +13,7 @@ extends Node3D
 @export var pan_speed: float = 18.0
 @export var zoom_speed: float = 2.0
 @export var zoom_min: float = 6.0
-@export var zoom_max: float = 30.0
+@export var zoom_max: float = 16.0
 @export var edge_pan_margin: int = 12
 @export var edge_pan_enabled: bool = true
 
