@@ -72,6 +72,20 @@ const ATTACK_IMPACT_FRACTION: float = 0.409
 ## engagement distance.
 const MELEE_REACH: float = 0.65
 
+## Whether this entity automatically engages any hostile unit that wanders
+## within vision_range and a clear has_line_of_sight(), without waiting
+## for an explicit player attack order (see _try_acquire_aggressive_target,
+## called from _update_attack_target whenever attack_target is empty).
+## The seed of a proper stance system (aggressive/defensive/hold-fire) if
+## one gets built later -- for now just an always-on default.
+@export var aggressive_stance: bool = true
+## How often (seconds) an idle entity re-scans for an aggressive-stance
+## target -- doesn't need to happen every physics frame, and this keeps
+## the O(n) nearby-unit scan from running more than necessary as unit
+## counts grow.
+const AGGRESSIVE_SCAN_INTERVAL: float = 0.5
+var _aggressive_scan_cooldown: float = 0.0
+
 ## Collision layer terrain/wall obstacles sit on (see Main.tscn "Wall" nodes)
 ## -- separate from GROUND_MASK/UNIT_MASK in RTSController.gd, which are
 ## about click targeting, not sight blocking.
@@ -415,6 +429,11 @@ func _physics_process(delta: float) -> void:
 func _update_attack_target(delta: float) -> bool:
 	if attack_target == null:
 		_sight_line.visible = false
+		if aggressive_stance:
+			_aggressive_scan_cooldown -= delta
+			if _aggressive_scan_cooldown <= 0.0:
+				_aggressive_scan_cooldown = AGGRESSIVE_SCAN_INTERVAL
+				_try_acquire_aggressive_target()
 		return false
 	if not is_instance_valid(attack_target) or attack_target.current_health <= 0.0:
 		attack_target = null
@@ -437,6 +456,38 @@ func _update_attack_target(delta: float) -> bool:
 		_face_direction(to_target.normalized(), delta)
 	perform_attack()
 	return true
+
+## Two entities are hostile to each other only if they're on opposite
+## sides of the two actual playable factions (player_id 1/2) -- Nature/Mob
+## (player_id 3/4, see PLAYER_NAMES) are left alone by aggressive stance
+## even though they'd technically have a "different player_id", since
+## nothing establishes them as active combatants yet.
+func _is_hostile_to(other: Entity) -> bool:
+	return player_id != other.player_id and player_id in [1, 2] and other.player_id in [1, 2]
+
+## Scans nearby units (not buildings -- aggressive stance is about
+## reacting to mobile threats wandering close, not proactively marching on
+## stationary structures, which stays a deliberate player order) for the
+## CLOSEST hostile one within vision_range with a clear
+## has_line_of_sight(), and engages it via attack() (dispatches to Unit's
+## own override, which also kicks off the chase) if one is found.
+func _try_acquire_aggressive_target() -> void:
+	var nearest: Entity = null
+	var nearest_dist := vision_range
+	for candidate in get_tree().get_nodes_in_group("units"):
+		if candidate == self or not is_instance_valid(candidate) or not candidate.visible:
+			continue
+		if candidate.current_health <= 0.0 or not _is_hostile_to(candidate):
+			continue
+		var dist: float = global_position.distance_to(candidate.global_position)
+		if dist > nearest_dist:
+			continue
+		if not has_line_of_sight(candidate):
+			continue
+		nearest_dist = dist
+		nearest = candidate
+	if nearest != null:
+		attack(nearest)
 
 ## Redraws the green/red debug sight line toward `target` -- see _sight_line.
 func _draw_sight_line(target: Node3D, clear: bool) -> void:
