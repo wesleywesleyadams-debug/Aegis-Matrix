@@ -34,6 +34,9 @@ var _safe_velocity: Vector3 = Vector3.ZERO
 ## order-derived facing is pending; unit will face whatever velocity drove
 ## it, or hold its current facing if stationary without an active order.
 var _order_facing_angle: float = NAN
+## See attack_move_to()/is_attack_moving()/_on_aggressive_scan_found_nothing().
+var _attack_moving: bool = false
+var _attack_move_target: Vector3 = Vector3.INF
 ## True once this unit has reached its own formation slot. While true, its
 ## nav_agent.max_speed is halved -- a unit already in formation only ever
 ## moves again if avoidance has to nudge it aside for a squadmate still
@@ -103,8 +106,16 @@ func _ready() -> void:
 
 ## Sends the unit to `target` via the navigation server's own pathfinding
 ## (see _current_desired_direction), which routes around baked-in obstacles
-## -- buildings, the wall -- rather than a straight line toward it.
+## -- buildings, the wall -- rather than a straight line toward it. A plain
+## order (this is the entry point RTSController uses for an ordinary move),
+## so it cancels attack-move mode -- see _move_to_internal for the shared
+## part attack()/attack_move_to() reuse without doing that.
 func move_to(target: Vector3, order_facing_angle: float = NAN) -> void:
+	_attack_moving = false
+	_attack_move_target = Vector3.INF
+	_move_to_internal(target, order_facing_angle)
+
+func _move_to_internal(target: Vector3, order_facing_angle: float = NAN) -> void:
 	attack_target = null
 	_pickup_target = null
 	_clear_throw_target()
@@ -112,6 +123,37 @@ func move_to(target: Vector3, order_facing_angle: float = NAN) -> void:
 	_in_formation = false
 	nav_agent.max_speed = MAX_SPEED
 	nav_agent.target_position = target
+
+## Attack-move: like move_to(), but any hostile unit encountered along the
+## way (not just once idle at the destination -- see is_attack_moving()'s
+## effect on Entity._update_attack_target's aggressive-stance gate) gets
+## engaged immediately, and once it's dead or lost the unit resumes marching
+## toward `target` on its own (see _on_aggressive_scan_found_nothing())
+## rather than just standing wherever the fight ended.
+func attack_move_to(target: Vector3) -> void:
+	_move_to_internal(target)
+	_attack_moving = true
+	_attack_move_target = target
+
+func is_attack_moving() -> bool:
+	return _attack_moving
+
+## Called (see Entity._try_acquire_aggressive_target) whenever an
+## aggressive-stance scan finds no hostile to engage. Mid-attack-move with
+## the destination not yet reached, that means whatever fight interrupted
+## the march (if any) is over -- resume toward it, still in attack-move
+## mode (_move_to_internal, not move_to(), so this doesn't cancel itself).
+## A no-op otherwise: an ordinary idle scan finding nothing just means nothing
+## in range, nothing to do.
+func _on_aggressive_scan_found_nothing() -> void:
+	if not _attack_moving:
+		return
+	if global_position.distance_to(_attack_move_target) <= ARRIVE_DISTANCE:
+		_attack_moving = false
+		_attack_move_target = Vector3.INF
+		return
+	if nav_agent.is_navigation_finished():
+		_move_to_internal(_attack_move_target)
 
 ## Cancels whatever this unit is currently doing -- moving, chasing,
 ## attacking -- and halts it in place immediately, rather than letting it
@@ -125,9 +167,22 @@ func stop() -> void:
 	_clear_throw_target()
 	_order_facing_angle = NAN
 	_in_formation = false
+	_attack_moving = false
+	_attack_move_target = Vector3.INF
 	nav_agent.target_position = global_position
 	_safe_velocity = Vector3.ZERO
 	suppress_aggressive_stance(HALT_AGGRESSIVE_SUPPRESS_DURATION)
+
+## Issues an explicit player attack order (see RTSController._issue_attack_order)
+## -- distinct from the low-level attack() that _try_acquire_aggressive_target
+## and the stuck-rechase retry also call internally, both of which must NOT
+## cancel an in-progress attack-move (engaging whatever they found *is* the
+## point of attack-move; a specific attack order, on the other hand, is a
+## brand new command that should replace it).
+func order_attack(target: Node3D) -> void:
+	_attack_moving = false
+	_attack_move_target = Vector3.INF
+	attack(target)
 
 ## True only while this unit isn't still traveling toward an ordered
 ## destination (nav_agent.is_navigation_finished(), the same "arrived"
@@ -285,7 +340,7 @@ func attack(target: Node3D, approach_angle_offset: float = 0.0) -> void:
 		if approach_angle_offset != 0.0:
 			approach_dir = approach_dir.rotated(Vector3.UP, deg_to_rad(approach_angle_offset))
 		destination = target.global_position - approach_dir * approach_distance
-	move_to(destination)
+	_move_to_internal(destination)
 	attack_target = target
 
 func _physics_process(_delta: float) -> void:

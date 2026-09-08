@@ -32,6 +32,13 @@ var _selected_units: Array[Node] = []
 var _dragging: bool = false
 var _drag_start: Vector2 = Vector2.ZERO
 var _fog_update_elapsed: float = 0.0
+## True while the player has armed attack-move (Tab, with movable units
+## selected) and is about to click a destination for it -- see
+## _unhandled_input's KEY_TAB/MOUSE_BUTTON_LEFT handling. The cursor swaps
+## to a sword (_attack_move_cursor) for the duration so the armed state is
+## visible, same as any other pending-targeted-command cursor convention.
+var _attack_move_pending: bool = false
+var _attack_move_cursor: ImageTexture
 
 ## Waypoint queues currently in progress, one entry per group of units
 ## that has outstanding shift-clicked waypoints:
@@ -57,6 +64,7 @@ var _selected_item: WorldItem = null
 func _ready() -> void:
 	Music.play_track(Music.IN_GAME_TRACK)
 	debug_grid.visible = GameState.show_debug_grid
+	_attack_move_cursor = _build_attack_move_cursor()
 	if GameState.load_on_start:
 		GameState.load_on_start = false
 		_load_save()
@@ -139,11 +147,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		debug_grid.visible = GameState.show_debug_grid
 		return
 	if event is InputEventKey and event.keycode == KEY_H and event.pressed and not event.echo:
+		_set_attack_move_pending(false)
 		_halt_selected_units()
+		return
+	if event is InputEventKey and event.keycode == KEY_TAB and event.pressed and not event.echo:
+		_toggle_attack_move_pending()
+		return
+	if _attack_move_pending and event.is_action_pressed("ui_cancel"):
+		_set_attack_move_pending(false)
 		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
+				if _attack_move_pending:
+					_issue_attack_move_click(event.position)
+					return
 				_dragging = true
 				_drag_start = event.position
 				selection_box.drag_start = event.position
@@ -153,10 +171,107 @@ func _unhandled_input(event: InputEvent) -> void:
 			else:
 				_finish_drag_select(event.position)
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+			if _attack_move_pending:
+				_set_attack_move_pending(false)
+				return
 			_handle_right_click(event.position)
 	elif event is InputEventMouseMotion and _dragging:
 		selection_box.drag_end = event.position
 		selection_box.queue_redraw()
+
+## Toggles attack-move arming (Tab) -- only if at least one currently
+## selected entity is a movable Unit (Buildings can't attack-move). Pressing
+## Tab again while already armed disarms it without issuing anything, same
+## as right-click/Escape.
+func _toggle_attack_move_pending() -> void:
+	if _attack_move_pending:
+		_set_attack_move_pending(false)
+		return
+	var has_movable := false
+	for entity in _selected_units:
+		if not (entity is Building):
+			has_movable = true
+			break
+	if has_movable:
+		_set_attack_move_pending(true)
+
+func _set_attack_move_pending(pending: bool) -> void:
+	_attack_move_pending = pending
+	if pending:
+		Input.set_custom_mouse_cursor(_attack_move_cursor, Input.CURSOR_ARROW, Vector2(15, 2))
+	else:
+		Input.set_custom_mouse_cursor(null)
+
+## The left-click that fires once attack-move is armed -- resolves a
+## destination the same way an ordinary move order does (building clicked
+## directly -> its gather-point flag position, otherwise the ground point
+## under the cursor) and dispatches _issue_attack_move_order with it, then
+## disarms back to normal click behavior.
+func _issue_attack_move_click(screen_pos: Vector2) -> void:
+	_set_attack_move_pending(false)
+	var selected_movable: Array[Node] = []
+	for entity in _selected_units:
+		if not (entity is Building):
+			selected_movable.append(entity)
+	if selected_movable.is_empty():
+		return
+
+	var clicked_building := _raycast_building(screen_pos)
+	var move_target: Vector3
+	if clicked_building != null:
+		move_target = clicked_building.global_position + Vector3(0, GATHER_FLAG_BUILDING_HEIGHT, 0)
+	else:
+		var hit := _raycast(screen_pos, GROUND_MASK)
+		if hit.is_empty():
+			return
+		move_target = hit["position"]
+	_issue_attack_move_order(selected_movable, move_target)
+
+## Issues an attack-move order (see Unit.attack_move_to) to `units`, each
+## still spread onto its own destination like an ordinary group move (see
+## _dispatch_move/_spread_offset) rather than all converging on the exact
+## same point -- just engaging anything hostile encountered along the way
+## instead of ignoring it until arrival. Drops any queued waypoints this
+## exact group had going, same as a plain (non-shift) move order.
+func _issue_attack_move_order(units: Array[Node], target: Vector3) -> void:
+	if units.is_empty():
+		return
+	var existing_index := _find_queue_index(units)
+	if existing_index != -1:
+		_free_queue_flags(_move_queues[existing_index])
+		_move_queues.remove_at(existing_index)
+	var count := units.size()
+	for i in count:
+		units[i].attack_move_to(target + _spread_offset(i, count))
+
+## Builds a small sword icon (blade + crossguard + hilt) for the attack-move
+## cursor -- procedural since there's no dedicated 2D icon asset to reuse
+## (Sword.tscn/SwordPickup.tscn are 3D world models, not a UI texture).
+func _build_attack_move_cursor() -> ImageTexture:
+	var img := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+
+	var blade_color := Color(0.85, 0.87, 0.92, 1.0)
+	for y in range(2, 20):
+		var half_width := 1 if y < 7 else 2
+		for x in range(16 - half_width, 16 + half_width):
+			img.set_pixel(x, y, blade_color)
+
+	var brass_color := Color(0.58, 0.45, 0.14, 1.0)
+	for x in range(9, 24):
+		for y in range(20, 23):
+			img.set_pixel(x, y, brass_color)
+
+	var hilt_color := Color(0.32, 0.18, 0.08, 1.0)
+	for y in range(23, 29):
+		for x in range(14, 19):
+			img.set_pixel(x, y, hilt_color)
+
+	for x in range(13, 20):
+		for y in range(29, 31):
+			img.set_pixel(x, y, brass_color)
+
+	return ImageTexture.create_from_image(img)
 
 func _process(delta: float) -> void:
 	_fog_update_elapsed += delta
@@ -837,7 +952,7 @@ func _issue_attack_order(units: Array[Node], target: Node3D) -> void:
 		_free_queue_flags(_move_queues[existing_index])
 		_move_queues.remove_at(existing_index)
 	for unit in units:
-		unit.attack(target)
+		unit.order_attack(target)
 	if target is Entity:
 		target.blink_attack_target()
 

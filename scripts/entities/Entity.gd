@@ -87,6 +87,14 @@ const MELEE_REACH: float = 0.65
 ## Unit overrides it with a real check against its own order state.
 func is_idle() -> bool:
 	return true
+## True while this entity is executing an attack-move order -- see
+## Unit.attack_move_to(). Lets aggressive stance auto-acquire a target
+## while still traveling (not just once idle at the destination, which
+## is_idle() alone gates), so a unit ordered to attack-move actually
+## engages anything hostile it passes along the way. Building/the default
+## Entity have no such order, hence always false.
+func is_attack_moving() -> bool:
+	return false
 ## How often (seconds) an idle entity re-scans for an aggressive-stance
 ## target -- doesn't need to happen every physics frame, and this keeps
 ## the O(n) nearby-unit scan from running more than necessary as unit
@@ -511,7 +519,7 @@ func _update_attack_target(delta: float) -> bool:
 		_aggressive_stance_suppress_timer -= delta
 	if attack_target == null:
 		_sight_line.visible = false
-		if aggressive_stance and _aggressive_stance_suppress_timer <= 0.0 and is_idle():
+		if aggressive_stance and _aggressive_stance_suppress_timer <= 0.0 and (is_idle() or is_attack_moving()):
 			_aggressive_scan_cooldown -= delta
 			if _aggressive_scan_cooldown <= 0.0:
 				_aggressive_scan_cooldown = AGGRESSIVE_SCAN_INTERVAL
@@ -570,6 +578,14 @@ func _try_acquire_aggressive_target() -> void:
 		nearest = candidate
 	if nearest != null:
 		attack(nearest)
+	else:
+		_on_aggressive_scan_found_nothing()
+
+## Called whenever an aggressive-stance scan (see _try_acquire_aggressive_target)
+## finds no hostile to engage. Only meaningful to Unit's attack-move (resume
+## marching toward the attack-move destination); a no-op by default.
+func _on_aggressive_scan_found_nothing() -> void:
+	pass
 
 ## Redraws the green/red debug sight line toward `target` -- see _sight_line.
 func _draw_sight_line(target: Node3D, clear: bool) -> void:
