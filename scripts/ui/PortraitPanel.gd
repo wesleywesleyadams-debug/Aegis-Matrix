@@ -15,12 +15,21 @@ func _ready() -> void:
 ## Called by RTSController whenever selection (or, for a unit/building
 ## not owned by the player, read-only inspection -- see
 ## RTSController._inspect_foreign) changes. `unit` is whichever entity
-## should now be shown, or null if nothing is. The name label reads the
-## entity's own node name (e.g. "Wall", "Human") rather than
-## unit_type_id, which for a unit is currently always the generic
-## "peasant" regardless of race -- the node name is already the specific,
-## human-readable one the selection tray/save data etc. don't have.
+## should now be shown, or null if nothing is.
 func set_subject(unit: Node3D) -> void:
 	visible = unit != null
 	portrait_viewport.get_node("PortraitCamera").set_target(unit)
-	name_label.text = unit.name if unit != null else ""
+	name_label.text = _display_name(unit) if unit != null else ""
+
+## A node's own name isn't reliably its display name -- Godot silently
+## appends a number to keep sibling names unique (Main.tscn has two
+## Dwellings, so the second is actually named "Dwelling2"), which would
+## otherwise show up as if it were a different, numbered thing. Strips a
+## trailing run of digits -- Godot's own uniquification pattern -- off
+## any node name for display, for any kind of object alike, rather than
+## trusting the raw name outright.
+static var _trailing_digits := RegEx.create_from_string("\\d+$")
+
+func _display_name(unit: Node3D) -> String:
+	var stripped := _trailing_digits.sub(unit.name, "")
+	return stripped if not stripped.is_empty() else unit.name
