@@ -79,6 +79,7 @@ func blink_selection(times: int = 2) -> void:
 	_selection_frame.visible = selected
 
 func _ready() -> void:
+	add_to_group("items")
 	apply_glow(self)
 	_selection_frame = _build_selection_frame()
 	add_child(_selection_frame)

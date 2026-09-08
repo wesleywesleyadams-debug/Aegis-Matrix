@@ -996,13 +996,39 @@ func _issue_pickup_order(units: Array[Node], item: WorldItem, append_to_queue: b
 
 ## Raycasts for a WorldItem under the cursor -- items live on
 ## WorldItem.ITEM_MASK (an Area3D, not a body), so this needs its own query
-## with collide_with_areas on, unlike the body-only lookups above.
+## with collide_with_areas on, unlike the body-only lookups above. Falls
+## back to the same click-tolerance widening _raycast_unit gets, once a
+## direct hit against the item's own (fairly small) pickup collider
+## misses, so right-clicking just next to a pickup still collects it.
 func _raycast_item(screen_pos: Vector2) -> WorldItem:
 	var hit := _raycast(screen_pos, WorldItem.ITEM_MASK, true, false)
-	if hit.is_empty():
-		return null
-	var collider: Object = hit["collider"]
-	return collider if collider is WorldItem else null
+	if not hit.is_empty():
+		var collider: Object = hit["collider"]
+		if collider is WorldItem:
+			return collider
+	return _find_nearest_item_to_ray(screen_pos)
+
+## Same closest-point-to-ray widening _find_nearest_unit_to_ray does for
+## units/buildings, applied to world items instead -- only used once a
+## direct raycast against the item's own collider has already missed.
+func _find_nearest_item_to_ray(screen_pos: Vector2) -> WorldItem:
+	var origin := camera.project_ray_origin(screen_pos)
+	var dir := camera.project_ray_normal(screen_pos)
+	var best: WorldItem = null
+	var best_dist := UNIT_CLICK_TOLERANCE
+	for item in get_tree().get_nodes_in_group("items"):
+		if not is_instance_valid(item) or not item.visible:
+			continue
+		var target_point: Vector3 = item.global_position + Vector3(0, UNIT_CLICK_HEIGHT, 0)
+		var t := (target_point - origin).dot(dir)
+		if t <= 0.0:
+			continue
+		var closest_point_on_ray := origin + dir * t
+		var dist := closest_point_on_ray.distance_to(target_point)
+		if dist < best_dist:
+			best_dist = dist
+			best = item
+	return best
 
 ## Shared camera-ray builder for every screen-position raycast in this
 ## file. Items live on Area3D (see WorldItem.ITEM_MASK), everything else
