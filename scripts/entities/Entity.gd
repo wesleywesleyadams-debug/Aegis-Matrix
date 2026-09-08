@@ -593,7 +593,19 @@ func _update_attack_target(delta: float) -> bool:
 ## even though they'd technically have a "different player_id", since
 ## nothing establishes them as active combatants yet.
 func _is_hostile_to(other: Entity) -> bool:
-	return player_id != other.player_id and player_id in [1, 2] and other.player_id in [1, 2]
+	return is_hostile_to_player(other.player_id)
+
+## Same check as _is_hostile_to, but against a bare player_id rather than
+## another Entity -- for a caller that doesn't have (or need) one of that
+## side's actual Entities on hand, e.g. PortraitPanel's Ally/Enemy label,
+## which checks a selected/inspected entity against
+## GameState.human_player_id directly. Deliberately NOT the same thing as
+## "is this the human player's own id" -- once there's ever a third,
+## allied player_id in play, that side's entities should read "Ally" here
+## (not hostile to the human player) without being the human player's own
+## units.
+func is_hostile_to_player(other_player_id: int) -> bool:
+	return player_id != other_player_id and player_id in [1, 2] and other_player_id in [1, 2]
 
 ## Scans nearby units (not buildings -- aggressive stance is about
 ## reacting to mobile threats wandering close, not proactively marching on

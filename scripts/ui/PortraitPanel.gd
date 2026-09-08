@@ -25,9 +25,14 @@ func set_subject(unit: Node3D) -> void:
 	portrait_viewport.get_node("PortraitCamera").set_target(unit)
 	name_label.text = _display_name(unit) if unit != null else ""
 	if unit != null:
-		var is_ally: bool = unit.is_player_controlled()
-		team_label.text = "Ally" if is_ally else "Enemy"
-		team_label.modulate = ALLY_COLOR if is_ally else ENEMY_COLOR
+		# Not the same thing as unit.is_player_controlled() (== the human
+		# player's own units specifically) -- this reads as "Enemy" only
+		# for an actually hostile side, and "Ally" for anything else
+		# selectable, including the human player's own units *and* any
+		# future non-hostile third player_id, not just literal ownership.
+		var is_enemy: bool = unit.is_hostile_to_player(GameState.human_player_id)
+		team_label.text = "Enemy" if is_enemy else "Ally"
+		team_label.modulate = ENEMY_COLOR if is_enemy else ALLY_COLOR
 	else:
 		team_label.text = ""
 
