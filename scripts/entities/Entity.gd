@@ -7,7 +7,6 @@ class_name Entity
 ## assume a stationary defender, which is exactly what Building wants
 ## unmodified and what Unit overrides to add chasing on top of.
 
-const DIRECTION_COUNT: int = 8
 const TURN_SPEED: float = 12.0
 
 ## Identifies this entity's type for UI purposes -- e.g. the selection
@@ -31,10 +30,9 @@ var current_health: float
 ## so the models' visible armor doesn't read as overlapping while
 ## fighting. Not unlimited headroom though: the melee hitbox tracks the
 ## actual fist through the swing (see AttackHitbox in ParentUnit.tscn)
-## instead of sitting in a big fixed box in front of the chest, and facing
-## is quantized to 8 directions, so too long a range lets the up-to-
-## 22.5-degree worst-case facing error swing the fist wide of a small
-## hitbox entirely (see MELEE_REACH below).
+## instead of sitting in a big fixed box in front of the chest, so too long
+## a range lets the target drift out from in front of a small hitbox
+## entirely (see MELEE_REACH below).
 @export var attack_range: float = 1.0
 ## Extra distance added to the ATTACKER's attack_range and MELEE_REACH
 ## when deciding whether it's close enough to swing at (and land a hit
@@ -140,7 +138,6 @@ const ATTACK_TARGET_BLINK_COLOR: Color = Color(1, 0.15, 0.15, 1)
 ## rhythm WorldItem.blink_selection() uses for "you just right-clicked
 ## this item".
 const ATTACK_BLINK_INTERVAL: float = 0.12
-@onready var unit_sprite: Sprite3D = model_root.get_node_or_null("UnitSprite")
 ## Present only for entities using a real rigged/skinned model with baked
 ## animations (e.g. Unit's paladin model) -- null for sprite-billboard
 ## entities and for Building, which never plays Walk/Idle.
@@ -220,13 +217,6 @@ const PLAYER_NAMES: Dictionary = {
 ## rather than re-deriving the same comparison at each call site.
 func is_player_controlled() -> bool:
 	return player_id == GameState.human_player_id
-
-## Pre-rendered 8-directional sprite frames (index 0 = facing angle 0,
-## index i = facing angle i * 45 deg), used instead of rotating model_root
-## when this entity has a UnitSprite child -- a classic 2.5D
-## sprite-billboard look rather than a live rotating 3D model. Left empty
-## for ordinary (3D model) entities.
-@export var sprite_frames: Array[Texture2D] = []
 
 var selected: bool = false:
 	set(value):
@@ -591,46 +581,13 @@ func _draw_sight_line(target: Node3D, clear: bool) -> void:
 	_sight_line_mesh.surface_add_vertex(to_local(target.global_position + Vector3(0, SIGHT_RAY_HEIGHT, 0)))
 	_sight_line_mesh.surface_end()
 
+## Smoothly turns model_root toward `dir`'s heading -- freely, at whatever
+## angle the direction actually is, not snapped to any fixed set of
+## facings. Movement itself (see Unit._current_desired_direction) is
+## likewise unconstrained, so a unit walking a diagonal or navmesh-routed
+## path turns to face exactly the way it's actually going.
 func _face_direction(dir: Vector3, delta: float) -> void:
-	var angle := atan2(dir.x, dir.z)
-	_turn_toward_snapped(angle, delta)
+	_face_angle(atan2(dir.x, dir.z), delta)
 
-func _face_snapped_angle(angle: float, delta: float) -> void:
-	_turn_toward_snapped(angle, delta)
-
-func _turn_toward_snapped(angle: float, delta: float) -> void:
-	var snapped_angle := snap_angle(angle)
-	if unit_sprite != null and not sprite_frames.is_empty():
-		# Sprite-billboard entity: there's no in-between frame to interpolate
-		# toward, so just switch straight to whichever pre-rendered frame
-		# matches this facing -- the classic instant-swap look, not a
-		# smooth turn. Still record the angle on model_root (a billboard
-		# sprite ignores inherited rotation when rendering, so this has no
-		# visual effect) purely so anything reading facing off model_root
-		# -- e.g. PortraitCamera -- keeps working the same regardless of
-		# which kind of entity it's looking at.
-		unit_sprite.texture = sprite_frames[_facing_index(snapped_angle)]
-		model_root.rotation.y = snapped_angle
-	else:
-		# Ordinary 3D-model entity: smoothly turn the model toward the
-		# nearest of 8 cardinal facings.
-		model_root.rotation.y = lerp_angle(model_root.rotation.y, snapped_angle, TURN_SPEED * delta)
-
-## Maps a snapped angle back to a 0..7 sprite-frame index, matching the
-## order sprite_frames was rendered in (index i = i * 45 degrees).
-func _facing_index(snapped_angle: float) -> int:
-	var step := TAU / DIRECTION_COUNT
-	var index := int(round(snapped_angle / step)) % DIRECTION_COUNT
-	if index < 0:
-		index += DIRECTION_COUNT
-	return index
-
-## Static (and public, via the subclass name) so RTSController can snap
-## the group's travel angle to the same 8 directions before using it to
-## orient the formation grid -- otherwise the grid ends up rotated to
-## whatever raw angle points at the target, which usually isn't one of the
-## 8 angles movement actually snaps to, leaving the formation visibly
-## skewed relative to the path the group actually takes.
-static func snap_angle(angle: float) -> float:
-	var step := TAU / DIRECTION_COUNT
-	return round(angle / step) * step
+func _face_angle(angle: float, delta: float) -> void:
+	model_root.rotation.y = lerp_angle(model_root.rotation.y, angle, TURN_SPEED * delta)

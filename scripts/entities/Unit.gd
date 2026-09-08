@@ -1,10 +1,10 @@
 extends Entity
 class_name Unit
-## A mobile Entity that walks to a nav target and snaps its facing to 8
-## cardinal directions, the way 2.5D RTS units (real 3D models, locked
-## facings) have always worked. Health/belt/selection/attack-when-in-range
-## plumbing all lives in Entity; this adds the nav agent, pathing, and
-## chasing on top.
+## A mobile Entity that walks to a nav target, following the navigation
+## server's own routed path (see _current_desired_direction) at whatever
+## angle that path actually is -- free-facing, not locked to a fixed set of
+## directions. Health/belt/selection/attack-when-in-range plumbing all
+## lives in Entity; this adds the nav agent, pathing, and chasing on top.
 
 const MAX_SPEED: float = 2.25
 const ARRIVE_DISTANCE: float = 0.15
@@ -322,7 +322,7 @@ func _physics_process(_delta: float) -> void:
 		if is_moving:
 			_face_direction(flat_velocity.normalized(), get_physics_process_delta_time())
 		elif not is_nan(_order_facing_angle):
-			_face_snapped_angle(_order_facing_angle, get_physics_process_delta_time())
+			_face_angle(_order_facing_angle, get_physics_process_delta_time())
 	_update_locomotion_animation(is_moving)
 
 ## Plays Walk while actually translating and Idle otherwise (arriving,
@@ -345,21 +345,14 @@ func _update_locomotion_animation(is_moving: bool) -> void:
 func _on_velocity_computed(safe_velocity: Vector3) -> void:
 	_safe_velocity = safe_velocity
 
-## Same 8-way quantization used for facing, applied to a movement direction
-## instead -- so a unit's actual travel heading always matches one of the
-## same 8 angles its model can visibly face.
-func _snap_direction_to_8(dir: Vector3) -> Vector3:
-	var snapped_angle := snap_angle(atan2(dir.x, dir.z))
-	return Vector3(sin(snapped_angle), 0.0, cos(snapped_angle))
-
 ## Direction toward the next corner of the navigation server's actual
 ## computed route to the current target (see NavGroundSetup.gd, which bakes
 ## the navmesh with holes at buildings/the wall so this route already goes
-## around them) -- snapped to the same 8-way facing every other direction
-## in this class is. NavigationAgent3D advances get_next_path_position() to
-## the following corner on its own once close enough to this one, so unlike
-## the old hand-rolled straight-line segments this needs no separate
-## arrival/deviation tracking here at all.
+## around them) -- the raw, unquantized direction, so a unit can walk (and
+## face) any angle rather than only 8 fixed ones. NavigationAgent3D advances
+## get_next_path_position() to the following corner on its own once close
+## enough to this one, so this needs no separate arrival/deviation tracking
+## of its own.
 func _current_desired_direction() -> Vector3:
 	if nav_agent.is_navigation_finished():
 		return Vector3.ZERO
@@ -367,4 +360,4 @@ func _current_desired_direction() -> Vector3:
 	to_next.y = 0.0
 	if to_next.length() < 0.01:
 		return Vector3.ZERO
-	return _snap_direction_to_8(to_next.normalized())
+	return to_next.normalized()

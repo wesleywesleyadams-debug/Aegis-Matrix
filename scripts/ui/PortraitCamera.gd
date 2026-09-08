@@ -9,8 +9,8 @@ extends Camera3D
 ##
 ## Positioned out along the unit's own facing direction (where its nose
 ## points) rather than a fixed world-space offset, so the portrait always
-## shows the unit's front -- whichever of the 8 directions it currently
-## faces -- instead of sometimes catching it from the side or back.
+## shows the unit's front -- whatever angle it currently faces -- instead
+## of sometimes catching it from the side or back.
 
 const DISTANCE := 2.4
 const HEIGHT := 1.3

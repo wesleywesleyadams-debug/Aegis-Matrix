@@ -137,10 +137,9 @@ func collect(unit: Unit) -> void:
 
 ## Instantiates `item_type`'s pickup scene under `parent` at `near_position`
 ## (the dropping unit's own position) and animates it popping up and
-## landing one tile behind `facing_angle` (that unit's current facing --
-## same snapped-angle convention as Entity._face_direction/model_root's own
-## rotation.y) rather than just appearing there. No-op (returns null) for
-## an unknown item_type.
+## landing one tile behind `facing_angle` (that unit's current facing,
+## read straight off model_root's own rotation.y) rather than just
+## appearing there. No-op (returns null) for an unknown item_type.
 static func spawn_pickup(item_type: String, near_position: Vector3, facing_angle: float, parent: Node) -> Node3D:
 	var scene: PackedScene = ItemDefs.get_pickup_scene(item_type)
 	if scene == null:
