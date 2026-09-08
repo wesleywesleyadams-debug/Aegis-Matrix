@@ -178,11 +178,15 @@ func stop() -> void:
 ## and the stuck-rechase retry also call internally, both of which must NOT
 ## cancel an in-progress attack-move (engaging whatever they found *is* the
 ## point of attack-move; a specific attack order, on the other hand, is a
-## brand new command that should replace it).
+## brand new command that should replace it). Also marks the target as
+## player-ordered (_attack_target_is_ordered) so it sticks even if a closer
+## hostile wanders by afterward -- see _try_switch_to_closer_target, which
+## only ever reprioritizes an auto-acquired target.
 func order_attack(target: Node3D) -> void:
 	_attack_moving = false
 	_attack_move_target = Vector3.INF
 	attack(target)
+	_attack_target_is_ordered = true
 
 ## True only while this unit isn't still traveling toward an ordered
 ## destination (nav_agent.is_navigation_finished(), the same "arrived"
@@ -323,6 +327,8 @@ func _update_throw_target() -> void:
 ## to try a different side instead of re-aiming at the same blocked spot
 ## forever.
 func attack(target: Node3D, approach_angle_offset: float = 0.0) -> void:
+	if target != attack_target:
+		_attack_target_is_ordered = false
 	var to_target := target.global_position - global_position
 	to_target.y = 0.0
 	# Match the exact same effective range _update_attack_target checks

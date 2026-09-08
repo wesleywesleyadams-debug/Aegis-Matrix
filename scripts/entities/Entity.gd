@@ -128,6 +128,15 @@ const SIGHT_RAY_HEIGHT: float = 1.0
 ## Set by attack() and cleared automatically once the target dies or is
 ## freed, or (for Unit) as soon as it's given an ordinary move order.
 var attack_target: Node3D = null
+## True while attack_target was set by an explicit player order (see
+## Unit.order_attack()) rather than auto-acquired by aggressive stance or
+## an attack-move's scan -- see _update_attack_target's re-evaluation,
+## which only switches to a closer hostile for the latter. A player's
+## explicit attack order sticks to that exact target no matter what
+## wanders closer in the meantime; auto-engagement always prioritizes
+## whoever's actually nearest instead of tunnel-visioning on the first
+## thing it happened to spot.
+var _attack_target_is_ordered: bool = false
 
 @onready var model_root: Node3D = $ModelRoot
 ## A ring (Unit) or a square frame (Building) -- shape doesn't matter here.
@@ -495,8 +504,15 @@ func _land_hit_if_in_reach() -> bool:
 
 ## Base version: just marks `target` as what to defend against, since a
 ## stationary Entity can't chase. Unit overrides this to also move toward
-## the target first.
+## the target first. Switching to an actually different target resets
+## _attack_target_is_ordered to false (auto-acquired by default -- see
+## Unit.order_attack() for how a player order marks itself sticky
+## afterward); re-attacking the SAME target (e.g. Unit's stuck-rechase
+## retry, just recomputing an approach point) leaves it untouched, so that
+## doesn't quietly downgrade a player's still-current explicit order.
 func attack(target: Node3D) -> void:
+	if target != attack_target:
+		_attack_target_is_ordered = false
 	attack_target = target
 
 ## Default per-frame behavior for a stationary Entity: tick the attack
@@ -530,6 +546,12 @@ func _update_attack_target(delta: float) -> bool:
 		_sight_line.visible = false
 		return false
 
+	if aggressive_stance and not _attack_target_is_ordered:
+		_aggressive_scan_cooldown -= delta
+		if _aggressive_scan_cooldown <= 0.0:
+			_aggressive_scan_cooldown = AGGRESSIVE_SCAN_INTERVAL
+			_try_switch_to_closer_target()
+
 	var to_target := attack_target.global_position - global_position
 	to_target.y = 0.0
 	var dist := to_target.length()
@@ -558,10 +580,8 @@ func _is_hostile_to(other: Entity) -> bool:
 ## Scans nearby units (not buildings -- aggressive stance is about
 ## reacting to mobile threats wandering close, not proactively marching on
 ## stationary structures, which stays a deliberate player order) for the
-## CLOSEST hostile one within vision_range with a clear
-## has_line_of_sight(), and engages it via attack() (dispatches to Unit's
-## own override, which also kicks off the chase) if one is found.
-func _try_acquire_aggressive_target() -> void:
+## CLOSEST hostile one within vision_range with a clear has_line_of_sight().
+func _find_nearest_hostile() -> Entity:
 	var nearest: Entity = null
 	var nearest_dist := vision_range
 	for candidate in get_tree().get_nodes_in_group("units"):
@@ -576,10 +596,41 @@ func _try_acquire_aggressive_target() -> void:
 			continue
 		nearest_dist = dist
 		nearest = candidate
+	return nearest
+
+## Engages the closest hostile found by _find_nearest_hostile() via
+## attack() (dispatches to Unit's own override, which also kicks off the
+## chase), if any -- called while attack_target is empty, see
+## _update_attack_target.
+func _try_acquire_aggressive_target() -> void:
+	var nearest := _find_nearest_hostile()
 	if nearest != null:
 		attack(nearest)
 	else:
 		_on_aggressive_scan_found_nothing()
+
+## How much nearer a new candidate has to be than the current attack_target
+## to actually win the swap (see _try_switch_to_closer_target) -- a bare
+## sliver closer would otherwise cause needless back-and-forth switching
+## between two roughly-equidistant hostiles every scan interval.
+const CLOSER_TARGET_SWITCH_MARGIN: float = 1.0
+
+## Re-evaluates an in-progress, NOT player-ordered attack_target (see
+## _attack_target_is_ordered) against whoever's actually nearest right now,
+## switching to it if meaningfully closer -- so auto-engagement (aggressive
+## stance, attack-move) always prioritizes the nearest threat instead of
+## tunnel-visioning on the first thing it happened to spot and chasing it
+## all over the battlefield while a second attacker closes in from behind.
+## A player's explicit attack order is exempt entirely -- that target
+## sticks no matter what wanders closer.
+func _try_switch_to_closer_target() -> void:
+	var nearest := _find_nearest_hostile()
+	if nearest == null or nearest == attack_target:
+		return
+	var current_dist := global_position.distance_to(attack_target.global_position)
+	var candidate_dist := global_position.distance_to(nearest.global_position)
+	if candidate_dist + CLOSER_TARGET_SWITCH_MARGIN < current_dist:
+		attack(nearest)
 
 ## Called whenever an aggressive-stance scan (see _try_acquire_aggressive_target)
 ## finds no hostile to engage. Only meaningful to Unit's attack-move (resume
