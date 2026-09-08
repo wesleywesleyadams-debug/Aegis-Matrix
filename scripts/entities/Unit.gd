@@ -41,9 +41,24 @@ var _order_facing_angle: float = NAN
 ## not a full-speed dart, while the rest of the group is still arriving.
 var _in_formation: bool = false
 ## How often (seconds) a unit that's stuck short of engage range against a
-## live attack_target (see _physics_process) retries approaching it.
+## live attack_target (see _physics_process) retries approaching it, plus
+## a random per-retry jitter (+/- this much) so several stuck units don't
+## all replan on the exact same frame -- left in lockstep, they tend to
+## retry toward each other's just-vacated spots in near-perfect sync and
+## livelock instead of spreading out.
 const STUCK_RECHASE_INTERVAL: float = 1.0
+const STUCK_RECHASE_JITTER: float = 0.4
 var _stuck_rechase_cooldown: float = 0.0
+## Approach angles (degrees, see attack()'s approach_angle_offset) a stuck
+## retry picks randomly from -- straight toward the target, or various
+## sides of it. A unit stuck on the direct approach tries a random side
+## instead of the same blocked spot every retry, so a crowd blocking one
+## particular side (the common case: a knot of allies already surrounding
+## the same target) eventually gets routed around. Randomized rather than
+## a fixed sequence for the same desync reason as the interval jitter --
+## several stuck units cycling the same fixed sequence in lockstep tend to
+## all pick the same next angle at the same time.
+const STUCK_RECHASE_ANGLE_OFFSETS: Array[float] = [0.0, 40.0, -40.0, 80.0, -80.0, 120.0, -120.0, 160.0, -160.0]
 ## Set by pick_up_item() -- the item this unit is walking to and will
 ## collect once close enough (see _update_pickup_target()). Cleared by any
 ## other order (move_to()/stop() both clear it, same as attack_target).
@@ -244,7 +259,15 @@ func _update_throw_target() -> void:
 ## units picked the same nearest enemy, every unit except the one that
 ## grabbed the exact center point first got stranded this way,
 ## indefinitely, at a fixed distance outside attack_range).
-func attack(target: Node3D) -> void:
+##
+## `approach_angle_offset` rotates the approach point around the target
+## (degrees, 0 = straight from this unit's own current position) -- see
+## STUCK_RECHASE_ANGLE_OFFSETS, which passes a random non-zero offset for a
+## stuck retry, when a unit's direct approach turns out to be blocked
+## (typically by allies already surrounding the same target) and it needs
+## to try a different side instead of re-aiming at the same blocked spot
+## forever.
+func attack(target: Node3D, approach_angle_offset: float = 0.0) -> void:
 	var to_target := target.global_position - global_position
 	to_target.y = 0.0
 	# Match the exact same effective range _update_attack_target checks
@@ -258,7 +281,10 @@ func attack(target: Node3D) -> void:
 	var approach_distance: float = maxf(engage_range - 0.2, 0.1)
 	var destination := target.global_position
 	if to_target.length() > 0.01:
-		destination = target.global_position - to_target.normalized() * approach_distance
+		var approach_dir := to_target.normalized()
+		if approach_angle_offset != 0.0:
+			approach_dir = approach_dir.rotated(Vector3.UP, deg_to_rad(approach_angle_offset))
+		destination = target.global_position - approach_dir * approach_distance
 	move_to(destination)
 	attack_target = target
 
@@ -289,8 +315,9 @@ func _physics_process(_delta: float) -> void:
 	if attack_target != null and not attacking_in_range and nav_agent.is_navigation_finished():
 		_stuck_rechase_cooldown -= _delta
 		if _stuck_rechase_cooldown <= 0.0:
-			_stuck_rechase_cooldown = STUCK_RECHASE_INTERVAL
-			attack(attack_target)
+			_stuck_rechase_cooldown = STUCK_RECHASE_INTERVAL + randf_range(-STUCK_RECHASE_JITTER, STUCK_RECHASE_JITTER)
+			var offset: float = STUCK_RECHASE_ANGLE_OFFSETS[randi() % STUCK_RECHASE_ANGLE_OFFSETS.size()]
+			attack(attack_target, offset)
 	else:
 		_stuck_rechase_cooldown = 0.0
 

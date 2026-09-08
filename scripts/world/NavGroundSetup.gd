@@ -32,12 +32,29 @@ const AGENT_HEIGHT: float = 1.8
 ## collision radius can't clip into an obstacle's edge.
 const AGENT_RADIUS: float = 0.45
 
+## Recast voxel size, deliberately finer than the navigation map's own
+## 0.25 default -- see the bake-height bug this fixed, where the coarser
+## default voxel height baked the walkable surface far enough above true
+## ground level that a unit's real Y position never came within
+## NavigationAgent3D's 3D arrival threshold of its first path corner,
+## permanently stalling movement. The navigation MAP itself (not just this
+## one region's mesh) must be told to use the same values, or the engine
+## rasterizes obstacle edges against a mismatched grid -- confirmed
+## headlessly via Godot's own "cell_size mismatch" warning, and units
+## visibly failing to converge cleanly on a crowded target as a result.
+const CELL_SIZE: float = 0.1
+const CELL_HEIGHT: float = 0.05
+
 func _ready() -> void:
+	var map := get_world_3d().navigation_map
+	NavigationServer3D.map_set_cell_size(map, CELL_SIZE)
+	NavigationServer3D.map_set_cell_height(map, CELL_HEIGHT)
+
 	var navmesh := NavigationMesh.new()
 	navmesh.agent_height = AGENT_HEIGHT
 	navmesh.agent_radius = AGENT_RADIUS
-	navmesh.cell_size = 0.1
-	navmesh.cell_height = 0.05
+	navmesh.cell_size = CELL_SIZE
+	navmesh.cell_height = CELL_HEIGHT
 	navmesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_MESH_INSTANCES
 	navmesh.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
 	navmesh.geometry_source_group_name = NAV_SOURCE_GROUP
