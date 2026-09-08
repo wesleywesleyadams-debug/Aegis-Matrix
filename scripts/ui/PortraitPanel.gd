@@ -6,6 +6,10 @@ extends Control
 @onready var portrait_viewport: SubViewport = $PortraitViewport
 @onready var texture_rect: TextureRect = $TextureRect
 @onready var name_label: Label = $NameLabel
+@onready var team_label: Label = $TeamLabel
+
+const ALLY_COLOR: Color = Color(0.3, 1.0, 0.4)
+const ENEMY_COLOR: Color = Color(1.0, 0.25, 0.25)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -20,6 +24,12 @@ func set_subject(unit: Node3D) -> void:
 	visible = unit != null
 	portrait_viewport.get_node("PortraitCamera").set_target(unit)
 	name_label.text = _display_name(unit) if unit != null else ""
+	if unit != null:
+		var is_ally: bool = unit.is_player_controlled()
+		team_label.text = "Ally" if is_ally else "Enemy"
+		team_label.modulate = ALLY_COLOR if is_ally else ENEMY_COLOR
+	else:
+		team_label.text = ""
 
 ## A node's own name isn't reliably its display name -- Godot silently
 ## appends a number to keep sibling names unique (Main.tscn has two
