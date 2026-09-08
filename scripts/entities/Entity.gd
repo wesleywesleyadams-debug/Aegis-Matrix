@@ -85,6 +85,19 @@ const MELEE_REACH: float = 0.65
 ## counts grow.
 const AGGRESSIVE_SCAN_INTERVAL: float = 0.5
 var _aggressive_scan_cooldown: float = 0.0
+## How long the 'h' hotkey (see RTSController._halt_selected_units /
+## Unit.stop()) keeps a halted unit standing genuinely idle before
+## aggressive stance can pick up a new target again -- otherwise a unit
+## halted mid-fight (or one that immediately re-spots the same nearby
+## enemy) would just resume attacking the very next scan, making "stop"
+## not actually stop anything.
+const HALT_AGGRESSIVE_SUPPRESS_DURATION: float = 1.0
+var _aggressive_stance_suppress_timer: float = 0.0
+
+## Blocks aggressive stance from acquiring a new target for `duration`
+## seconds, regardless of aggressive_stance/AGGRESSIVE_SCAN_INTERVAL.
+func suppress_aggressive_stance(duration: float) -> void:
+	_aggressive_stance_suppress_timer = duration
 
 ## Collision layer terrain/wall obstacles sit on (see Main.tscn "Wall" nodes)
 ## -- separate from GROUND_MASK/UNIT_MASK in RTSController.gd, which are
@@ -427,9 +440,11 @@ func _physics_process(delta: float) -> void:
 ## suppress its ordinary chase-movement and velocity-driven facing, since
 ## both would otherwise fight with standing still to swing.
 func _update_attack_target(delta: float) -> bool:
+	if _aggressive_stance_suppress_timer > 0.0:
+		_aggressive_stance_suppress_timer -= delta
 	if attack_target == null:
 		_sight_line.visible = false
-		if aggressive_stance:
+		if aggressive_stance and _aggressive_stance_suppress_timer <= 0.0:
 			_aggressive_scan_cooldown -= delta
 			if _aggressive_scan_cooldown <= 0.0:
 				_aggressive_scan_cooldown = AGGRESSIVE_SCAN_INTERVAL

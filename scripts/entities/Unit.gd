@@ -125,6 +125,9 @@ func move_to(target: Vector3, order_facing_angle: float = NAN) -> void:
 ## Cancels whatever this unit is currently doing -- moving, chasing,
 ## attacking -- and halts it in place immediately, rather than letting it
 ## finish its current leg/swing first. See RTSController's 'h' hotkey.
+## Also holds off aggressive stance for a moment (see
+## HALT_AGGRESSIVE_SUPPRESS_DURATION) so the unit actually stands down
+## instead of immediately re-engaging whatever it was just pulled off of.
 func stop() -> void:
 	attack_target = null
 	_pickup_target = null
@@ -136,6 +139,7 @@ func stop() -> void:
 	_in_formation = false
 	nav_agent.target_position = global_position
 	_safe_velocity = Vector3.ZERO
+	suppress_aggressive_stance(HALT_AGGRESSIVE_SUPPRESS_DURATION)
 
 ## Puts `item_type`'s visual into this unit's weapon slot, replacing
 ## whatever was there before -- only ever one weapon held at a time. Purely
