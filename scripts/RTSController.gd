@@ -169,6 +169,8 @@ func _process(delta: float) -> void:
 		_fog_update_elapsed = 0.0
 		_update_fog_of_war()
 
+	_prune_selected_units()
+
 	for i in range(_move_queues.size() - 1, -1, -1):
 		var q: Dictionary = _move_queues[i]
 		var units: Array = q["units"]
@@ -835,6 +837,31 @@ func _select_unit(unit: Node) -> void:
 	unit.selected = true
 	selection_panel.set_selected_units(_selected_units)
 	portrait_panel.set_subject(_selected_units[0])
+	_refresh_equipment_panel()
+	_refresh_storage_panel()
+
+## Removes any selected unit that's since been freed (a unit only
+## queue_free()s once its death animation actually finishes -- see
+## Entity._die() -- not the instant its health hits 0) from
+## _selected_units, and pushes the cleaned list to every panel that reads
+## it. Run every frame, not just in response to explicit selection
+## changes, since a selected unit can die mid-fight without the player
+## touching selection at all -- without this, SelectionPanel's _draw()
+## (which redraws periodically on its own timer, independent of selection
+## changes) would try to read a property off an already-freed node and
+## error every single frame from then on, which is exactly what caused a
+## crash: a unit died while selected, its stale reference sat in
+## _selected_units, and SelectionPanel kept hitting it on every redraw.
+func _prune_selected_units() -> void:
+	var had_invalid := false
+	for i in range(_selected_units.size() - 1, -1, -1):
+		if not is_instance_valid(_selected_units[i]):
+			_selected_units.remove_at(i)
+			had_invalid = true
+	if not had_invalid:
+		return
+	selection_panel.set_selected_units(_selected_units)
+	portrait_panel.set_subject(_selected_units[0] if not _selected_units.is_empty() else null)
 	_refresh_equipment_panel()
 	_refresh_storage_panel()
 

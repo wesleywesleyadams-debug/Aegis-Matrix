@@ -59,7 +59,7 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func set_selected_units(units: Array) -> void:
-	_selected_units = units.duplicate()
+	_selected_units = units.filter(is_instance_valid)
 	queue_redraw()
 
 	var present_types: Dictionary = {}
@@ -110,7 +110,15 @@ func _process_capture_queue() -> void:
 	_capturing = false
 
 func _draw() -> void:
-	var count := _selected_units.size()
+	# Defensive: RTSController prunes freed units out of the array it feeds
+	# this panel every frame (see _prune_selected_units), but this redraws
+	# on its own timer independent of that, so guard here too rather than
+	# assume the two always run in a safe order -- a unit that died while
+	# selected shouldn't be able to crash this by having its properties
+	# read after it's already gone.
+	var live_units: Array = _selected_units.filter(is_instance_valid)
+
+	var count := live_units.size()
 	if count == 0:
 		return
 
@@ -122,7 +130,7 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 
 	for i in visible_count:
-		var unit = _selected_units[i]
+		var unit = live_units[i]
 		var x := start_x + i * (SLOT_SIZE + SLOT_SPACING)
 		var rect := Rect2(x, y, SLOT_SIZE, SLOT_SIZE)
 		draw_rect(rect, Color(0.82, 0.71, 0.55, 1.0), true)
