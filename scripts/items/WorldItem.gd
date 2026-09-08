@@ -39,6 +39,48 @@ const EJECT_DURATION: float = 0.45
 ## much tighter than Building's (2.6) equivalent.
 const SELECTION_FRAME_SIZE: float = 0.7
 
+## Minimum center-to-center ground distance between two items before
+## they're considered overlapping (see _find_clear_landing_spot) --
+## comfortably more than twice SELECTION_FRAME_SIZE, so even their
+## selection frames don't touch.
+const MIN_ITEM_SPACING: float = 1.5
+
+## Nudges `desired` (XZ only -- height is whatever the caller already
+## wanted) to the nearest spot that isn't within MIN_ITEM_SPACING of any
+## other item already on the ground, so items ejected/dropped/thrown near
+## an existing one never visually stack -- overlapping items would be
+## impossible to tell apart or click individually. Searches outward in
+## expanding rings (8 points per ring) around `desired` rather than a
+## single fixed fallback offset, so it settles on whichever clear spot is
+## actually closest to where the item was meant to land. `tree` comes from
+## whatever parent node the caller already has (spawn_*'s own `parent`
+## argument) since these are static functions with no scene tree of their
+## own.
+static func _find_clear_landing_spot(desired: Vector3, tree: SceneTree) -> Vector3:
+	if _is_landing_spot_clear(desired, tree):
+		return desired
+	for ring in range(1, 7):
+		var ring_dist := MIN_ITEM_SPACING * ring
+		for i in 8:
+			var angle := TAU * i / 8.0
+			var candidate := desired + Vector3(sin(angle), 0.0, cos(angle)) * ring_dist
+			if _is_landing_spot_clear(candidate, tree):
+				return candidate
+	# Exceedingly unlikely (would need 40+ items already packed within a
+	# few tiles) -- fall back to the original spot rather than searching
+	# forever.
+	return desired
+
+static func _is_landing_spot_clear(spot: Vector3, tree: SceneTree) -> bool:
+	var flat_spot := Vector2(spot.x, spot.z)
+	for other in tree.get_nodes_in_group("items"):
+		if not is_instance_valid(other):
+			continue
+		var flat_other := Vector2(other.global_position.x, other.global_position.z)
+		if flat_other.distance_to(flat_spot) < MIN_ITEM_SPACING:
+			return false
+	return true
+
 @export var item_type: String = ""
 
 ## Clicking an item shows a square frame around it, same green-frame visual
@@ -145,11 +187,13 @@ static func spawn_pickup(item_type: String, near_position: Vector3, facing_angle
 	var scene: PackedScene = ItemDefs.get_pickup_scene(item_type)
 	if scene == null:
 		return null
-	var pickup: Node3D = scene.instantiate()
-	parent.add_child(pickup)
 
 	var behind := -Vector3(sin(facing_angle), 0.0, cos(facing_angle))
 	var landing_position := near_position + behind * TILE_SIZE + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
+	landing_position = _find_clear_landing_spot(landing_position, parent.get_tree())
+
+	var pickup: Node3D = scene.instantiate()
+	parent.add_child(pickup)
 	pickup.global_position = near_position + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
 
 	var travel_tween := pickup.create_tween()
@@ -174,10 +218,12 @@ static func spawn_dropped(item_type: String, position: Vector3, parent: Node) ->
 	var scene: PackedScene = ItemDefs.get_pickup_scene(item_type)
 	if scene == null:
 		return null
-	var pickup: Node3D = scene.instantiate()
-	parent.add_child(pickup)
 
 	var landing_position := position + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
+	landing_position = _find_clear_landing_spot(landing_position, parent.get_tree())
+
+	var pickup: Node3D = scene.instantiate()
+	parent.add_child(pickup)
 	pickup.global_position = landing_position + Vector3(0, EJECT_HEIGHT, 0)
 
 	var hop_tween := pickup.create_tween()
@@ -199,10 +245,17 @@ static func spawn_thrown(item_type: String, from_position: Vector3, to_position:
 	var scene: PackedScene = ItemDefs.get_pickup_scene(item_type)
 	if scene == null:
 		return null
-	var pickup: Node3D = scene.instantiate()
-	parent.add_child(pickup)
 
 	var landing_position := to_position + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
+	# Nudged the same as any other spawn -- a throw aimed at a unit/building
+	# gets handed off (and freed) the instant it lands (see
+	# RTSController._on_thrown_item_landed), in which case this is moot,
+	# but one aimed at bare ground (or whose target died mid-flight) rests
+	# right here as a normal pickup and needs the same overlap-avoidance.
+	landing_position = _find_clear_landing_spot(landing_position, parent.get_tree())
+
+	var pickup: Node3D = scene.instantiate()
+	parent.add_child(pickup)
 	pickup.global_position = from_position + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
 
 	var travel_tween := pickup.create_tween()

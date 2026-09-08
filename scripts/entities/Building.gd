@@ -26,6 +26,17 @@ var _gather_flags: Array[Node3D] = []
 signal storage_changed(building: Building)
 var stored_items: Array[String] = []
 
+## Angle passed as WorldItem.spawn_pickup's `facing_angle` when ejecting a
+## stored item back onto the ground (see
+## RTSController._on_storage_item_right_clicked) -- a building never
+## rotates (model_root.rotation.y is always 0, unlike a Unit's), so using
+## that directly would always eject straight out one fixed cardinal side.
+## This picks a diagonal instead, landing the item at the building's own
+## bottom corner (the one nearest the camera in this game's fixed
+## isometric view) rather than the middle of a side, which reads more like
+## an actual doorstep/loading-corner than a point floating off one wall.
+const STORAGE_EJECT_ANGLE: float = 3.0 * PI / 4.0
+
 func store_item(item_type: String) -> void:
 	stored_items.append(item_type)
 	storage_changed.emit(self)

@@ -671,7 +671,7 @@ func _on_storage_item_right_clicked(item_type: String) -> void:
 	if building == null or not building.take_item(item_type):
 		return
 	_refresh_storage_panel()
-	WorldItem.spawn_pickup(item_type, building.global_position, building.model_root.rotation.y, $World)
+	WorldItem.spawn_pickup(item_type, building.global_position, Building.STORAGE_EJECT_ANGLE, $World)
 
 ## Dragging an item out of the equipment panel or building storage panel
 ## (see ItemDropTarget/ItemSlotButton) and releasing it at `screen_pos`.
