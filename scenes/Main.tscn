@@ -259,8 +259,8 @@ script = ExtResource("8_portrait_panel")
 [node name="UnitBackpackPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
-offset_top = -362.0
-offset_right = 234.0
+offset_top = -502.0
+offset_right = 454.0
 offset_bottom = -222.0
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -268,45 +268,45 @@ script = ExtResource("24_unit_backpack_panel")
 
 [node name="UnitBackpackLabel" type="Label" parent="UI/PortraitPanel/UnitBackpackPanel"]
 layout_mode = 0
-offset_left = 8.0
-offset_top = 4.0
-offset_right = 212.0
-offset_bottom = 26.0
+offset_left = 16.0
+offset_top = 8.0
+offset_right = 424.0
+offset_bottom = 52.0
 text = "Backpack"
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 30
 
 [node name="Slots" type="Control" parent="UI/PortraitPanel/UnitBackpackPanel"]
 layout_mode = 0
-offset_left = 6.0
-offset_top = 28.0
-offset_right = 214.0
-offset_bottom = 132.0
+offset_left = 12.0
+offset_top = 56.0
+offset_right = 428.0
+offset_bottom = 264.0
 
 [node name="ItemStatsPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
-offset_top = -522.0
-offset_right = 234.0
-offset_bottom = -362.0
+offset_top = -822.0
+offset_right = 454.0
+offset_bottom = -502.0
 anchor_top = 1.0
 anchor_bottom = 1.0
 script = ExtResource("25_item_stats_panel")
 
 [node name="TitleLabel" type="Label" parent="UI/PortraitPanel/ItemStatsPanel"]
 layout_mode = 0
-offset_left = 8.0
-offset_top = 6.0
-offset_right = 212.0
-offset_bottom = 28.0
-theme_override_font_sizes/font_size = 15
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 424.0
+offset_bottom = 56.0
+theme_override_font_sizes/font_size = 30
 
 [node name="StatsLabel" type="Label" parent="UI/PortraitPanel/ItemStatsPanel"]
 layout_mode = 0
-offset_left = 8.0
-offset_top = 30.0
-offset_right = 212.0
-offset_bottom = 150.0
-theme_override_font_sizes/font_size = 13
+offset_left = 16.0
+offset_top = 60.0
+offset_right = 424.0
+offset_bottom = 300.0
+theme_override_font_sizes/font_size = 26
 autowrap_mode = 2
 
 [node name="NameLabel" type="Label" parent="UI/PortraitPanel"]

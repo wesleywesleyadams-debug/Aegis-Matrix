@@ -18,18 +18,19 @@ signal item_hovered(item_type: String)
 signal item_unhovered()
 
 ## slot name -> Rect2 within $Slots, forming the cross layout. Column
-## width/cell height are sized to this button theme's own natural
-## minimum (~52px tall) rather than fighting it with a smaller
-## custom_minimum_size, which the theme would just override anyway.
+## width/cell height are sized to comfortably clear this button theme's
+## own natural minimum (~52px tall) rather than fighting it with a
+## smaller custom_minimum_size, which the theme would just override
+## anyway -- 2x the original fit-to-minimum size, per the user's request
+## to scale this panel and ItemStatsPanel up, so cells now have real
+## headroom rather than just clearing the minimum.
 const SLOT_RECTS: Dictionary = {
-	"armor": Rect2(72, 0, 68, 52),
-	"left_hand": Rect2(0, 26, 68, 52),
-	"right_hand": Rect2(140, 26, 68, 52),
-	"accessory": Rect2(72, 52, 68, 52),
+	"armor": Rect2(144, 0, 136, 104),
+	"left_hand": Rect2(0, 52, 136, 104),
+	"right_hand": Rect2(280, 52, 136, 104),
+	"accessory": Rect2(144, 104, 136, 104),
 }
-## Small enough that "Accessory"/"Crossbow" (this system's longest slot
-## name and item name) fit within SLOT_RECTS' width without clipping.
-const SLOT_FONT_SIZE: int = 11
+const SLOT_FONT_SIZE: int = 22
 
 @onready var slots_root: Control = $Slots
 
