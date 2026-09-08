@@ -64,6 +64,10 @@ var _leg_target: Vector3 = Vector3.INF
 ## finding its own slot, and that correction should be a gentle settle,
 ## not a full-speed dart, while the rest of the group is still arriving.
 var _in_formation: bool = false
+## How often (seconds) a unit that's stuck short of engage range against a
+## live attack_target (see _physics_process) retries approaching it.
+const STUCK_RECHASE_INTERVAL: float = 1.0
+var _stuck_rechase_cooldown: float = 0.0
 ## Set by pick_up_item() -- the item this unit is walking to and will
 ## collect once close enough (see _update_pickup_target()). Cleared by any
 ## other order (move_to()/stop() both clear it, same as attack_target).
@@ -258,8 +262,35 @@ func _update_throw_target() -> void:
 ## Chases `target` (reusing the ordinary move-to machinery to get there)
 ## and, once within attack_range, stops and repeatedly swings at it --
 ## see the attack_target handling in _physics_process / _update_attack_target.
+## Sends the unit to a point just short of the target's own center rather
+## than the exact center itself -- target.global_position sits inside the
+## target's own collision body (and, when multiple attackers pile onto the
+## same target, inside whichever attacker already claimed the melee spot
+## closest to it too), which the nav agent can never actually reach. Once
+## it gives up approaching an unreachable point it reports itself
+## "finished" while still outside attack_range, leaving the unit
+## permanently stuck -- neither still chasing nor close enough to swing --
+## which is exactly the "some units just stand there instead of fighting"
+## bug this fixes (confirmed headlessly: in an 8-unit brawl where multiple
+## units picked the same nearest enemy, every unit except the one that
+## grabbed the exact center point first got stranded this way,
+## indefinitely, at a fixed distance outside attack_range).
 func attack(target: Node3D) -> void:
-	move_to(target.global_position)
+	var to_target := target.global_position - global_position
+	to_target.y = 0.0
+	# Match the exact same effective range _update_attack_target checks
+	# against (attack_range plus the target's own footprint bonus -- see
+	# Entity.get_engage_radius_bonus(), e.g. a Building's much larger box)
+	# so the approach point is inside engage range, not inside the
+	# target's own collision body.
+	var engage_range: float = attack_range
+	if target.has_method("get_engage_radius_bonus"):
+		engage_range += target.get_engage_radius_bonus()
+	var approach_distance: float = maxf(engage_range - 0.2, 0.1)
+	var destination := target.global_position
+	if to_target.length() > 0.01:
+		destination = target.global_position - to_target.normalized() * approach_distance
+	move_to(destination)
 	attack_target = target
 
 ## Same as move_to(), but follows a precomputed sequence of segments
@@ -290,6 +321,24 @@ func _physics_process(_delta: float) -> void:
 		_update_throw_target()
 
 	var attacking_in_range := _update_attack_target(_delta)
+
+	# A unit chasing attack_target can end up permanently stuck just short
+	# of engage range -- most commonly when several units converge on the
+	# same target and whichever one didn't claim the spot nearest it gets
+	# physically blocked by an ally already standing there. Once
+	# nav_agent gives up trying to reach an unreachable point it reports
+	# itself "finished" for good, so without a periodic retry the unit
+	# would just stand there forever, neither fighting nor still trying to
+	# close the gap, even after whatever was blocking it moves away or
+	# dies. attack() recomputes a fresh approach point and re-plans from
+	# the unit's current position each retry.
+	if attack_target != null and not attacking_in_range and nav_agent.is_navigation_finished():
+		_stuck_rechase_cooldown -= _delta
+		if _stuck_rechase_cooldown <= 0.0:
+			_stuck_rechase_cooldown = STUCK_RECHASE_INTERVAL
+			attack(attack_target)
+	else:
+		_stuck_rechase_cooldown = 0.0
 
 	if not _in_formation and nav_agent.is_navigation_finished():
 		_in_formation = true
