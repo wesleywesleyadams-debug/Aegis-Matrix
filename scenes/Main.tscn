@@ -259,8 +259,8 @@ script = ExtResource("8_portrait_panel")
 [node name="UnitBackpackPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
-offset_top = -382.0
-offset_right = 174.0
+offset_top = -362.0
+offset_right = 234.0
 offset_bottom = -222.0
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -270,25 +270,24 @@ script = ExtResource("24_unit_backpack_panel")
 layout_mode = 0
 offset_left = 8.0
 offset_top = 4.0
-offset_right = 152.0
-offset_bottom = 22.0
-text = "Unit Backpack"
-theme_override_font_sizes/font_size = 13
+offset_right = 212.0
+offset_bottom = 26.0
+text = "Backpack"
+theme_override_font_sizes/font_size = 15
 
-[node name="Slots" type="VBoxContainer" parent="UI/PortraitPanel/UnitBackpackPanel"]
+[node name="Slots" type="Control" parent="UI/PortraitPanel/UnitBackpackPanel"]
 layout_mode = 0
 offset_left = 6.0
-offset_top = 24.0
-offset_right = 154.0
-offset_bottom = 156.0
-theme_override_constants/separation = 4
+offset_top = 28.0
+offset_right = 214.0
+offset_bottom = 132.0
 
 [node name="ItemStatsPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
-offset_top = -542.0
-offset_right = 174.0
-offset_bottom = -382.0
+offset_top = -522.0
+offset_right = 234.0
+offset_bottom = -362.0
 anchor_top = 1.0
 anchor_bottom = 1.0
 script = ExtResource("25_item_stats_panel")
@@ -297,7 +296,7 @@ script = ExtResource("25_item_stats_panel")
 layout_mode = 0
 offset_left = 8.0
 offset_top = 6.0
-offset_right = 152.0
+offset_right = 212.0
 offset_bottom = 28.0
 theme_override_font_sizes/font_size = 15
 
@@ -305,7 +304,7 @@ theme_override_font_sizes/font_size = 15
 layout_mode = 0
 offset_left = 8.0
 offset_top = 30.0
-offset_right = 152.0
+offset_right = 212.0
 offset_bottom = 150.0
 theme_override_font_sizes/font_size = 13
 autowrap_mode = 2
