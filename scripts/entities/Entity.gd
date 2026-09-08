@@ -57,7 +57,7 @@ var current_health: float
 ## Unit's collision capsule physically can't get anywhere near
 ## attack_range=1.0 of a Building's *center* -- it collides with the box's
 ## face first, at combined-radius distance box_half_extent + unit_radius
-## (roughly 1.0 + 0.285 = 1.285), already past attack_range on its own.
+## (roughly 1.3 + 0.285 = 1.585), already past attack_range on its own.
 func get_engage_radius_bonus() -> float:
 	if _hurtbox_shape != null and _hurtbox_shape.shape != null:
 		return _hurtbox_shape.shape.radius
