@@ -375,19 +375,28 @@ const DEATH_SINK_DEPTH: float = 1.0
 
 ## Plays "Death" (if this entity's model has one -- see the paladin's
 ## baked-in animations) or a simple sink-into-the-ground fallback
-## otherwise, then removes the entity. Everything that makes it an active
-## participant (targetable, collidable, selected) is turned off
-## immediately here, not after the animation finishes, so a unit mid-death
-## doesn't keep absorbing hits, blocking a chasing enemy's path, or
-## showing up as a valid aggressive-stance target for the rest of the
-## fight.
+## otherwise, then removes the entity. Combat/selection participation
+## (targetable, collidable, selected) is turned off immediately here, not
+## after the animation finishes, so a unit mid-death doesn't keep
+## absorbing hits, blocking a chasing enemy's path, or showing up as a
+## valid aggressive-stance target for the rest of the fight.
+##
+## Deliberately NOT removed from the units/buildings group here, though --
+## RTSController._update_fog_of_war treats current group membership as
+## "this entity can see," and a dying unit is still very visibly standing
+## there for the next several seconds playing its death animation. Pulling
+## it out of the group immediately meant an enemy it was the only one
+## keeping visible would flicker out of sight (fog-of-war correctly, if
+## confusingly, hiding it) while the dying unit's own animation was still
+## playing on screen -- the "living unit disappeared" surprise this fixes.
+## queue_free() at the very end naturally drops it from every group at the
+## moment it's actually gone, which is the right time for vision to go
+## with it.
 func _die() -> void:
 	if _dying:
 		return
 	_dying = true
 	attack_target = null
-	remove_from_group("units")
-	remove_from_group("buildings")
 	collision_layer = 0
 	collision_mask = 0
 	selection_ring.visible = false
