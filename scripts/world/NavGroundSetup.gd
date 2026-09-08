@@ -1,18 +1,51 @@
 extends NavigationRegion3D
-## Builds a simple walkable navmesh covering the whole ground plane.
-## Good enough until real obstacles (buildings, terrain) need proper baking.
+## Bakes the walkable navmesh from the actual static geometry in the scene
+## -- the ground plane plus solid obstacles standing on it (buildings, the
+## wall, trees; see NAV_SOURCE_GROUP) -- rather than one bare open
+## rectangle. Recast voxelizes that geometry and carves out navmesh
+## wherever an obstacle rises above the floor, so a unit's own
+## path-following (see NavigationAgent3D.get_next_path_position(), used in
+## Unit._current_desired_direction) actually routes around them instead of
+## walking straight through.
+##
+## Parses each tagged node's own MeshInstance3D geometry (visual meshes,
+## not collision shapes) rather than PARSED_GEOMETRY_STATIC_COLLIDERS --
+## buildings/trees are CharacterBody3D (kinematic, not the "static" physics
+## mode that collider-based parsing requires), so a collider-based bake
+## silently skips them entirely and only picks up genuinely-static bodies
+## like the Wall (confirmed headlessly: with collider-based parsing, a
+## straight-line order across a building's own footprint sailed right
+## through it -- the baked navmesh was a single unbroken open rectangle).
+##
+## Units themselves are never in this group, so they're never baked in as
+## holes -- those are dynamic and handled by NavigationAgent3D's own RVO
+## avoidance instead.
+const NAV_SOURCE_GROUP: String = "nav_source"
 
-@export var ground_size: Vector2 = Vector2(60.0, 60.0)
+## How tall a unit is treated as for clearance purposes -- an obstacle
+## shorter than this wouldn't block a unit from walking under/over it, but
+## every real obstacle here (buildings: 2m, the wall: 3m) is taller, so
+## this only needs to clear a walking unit's own height.
+const AGENT_HEIGHT: float = 1.8
+## Matches NavigationAgent3D.radius on ParentUnit.tscn plus a small margin,
+## so the baked walkable area is already inset far enough that a unit's own
+## collision radius can't clip into an obstacle's edge.
+const AGENT_RADIUS: float = 0.45
 
 func _ready() -> void:
 	var navmesh := NavigationMesh.new()
-	var half := ground_size * 0.5
-	var vertices := PackedVector3Array([
-		Vector3(-half.x, 0.0, -half.y),
-		Vector3(half.x, 0.0, -half.y),
-		Vector3(half.x, 0.0, half.y),
-		Vector3(-half.x, 0.0, half.y),
-	])
-	navmesh.vertices = vertices
-	navmesh.add_polygon(PackedInt32Array([0, 1, 2, 3]))
+	navmesh.agent_height = AGENT_HEIGHT
+	navmesh.agent_radius = AGENT_RADIUS
+	navmesh.cell_size = 0.1
+	navmesh.cell_height = 0.05
+	navmesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_MESH_INSTANCES
+	navmesh.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
+	navmesh.geometry_source_group_name = NAV_SOURCE_GROUP
+
+	# Synchronous (no callback) -- both calls block until done, which is
+	# fine for a one-time bake of a handful of static shapes at level load.
+	var source_geometry := NavigationMeshSourceGeometryData3D.new()
+	NavigationServer3D.parse_source_geometry_data(navmesh, source_geometry, get_tree().root)
+	NavigationServer3D.bake_from_source_geometry_data(navmesh, source_geometry)
+
 	navigation_mesh = navmesh

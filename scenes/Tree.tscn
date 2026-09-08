@@ -48,7 +48,7 @@ emission_enabled = true
 emission = Color(0.3, 1, 0.4, 1)
 emission_energy_multiplier = 1.5
 
-[node name="Tree" type="CharacterBody3D"]
+[node name="Tree" type="CharacterBody3D" groups=["nav_source"]]
 collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_world")

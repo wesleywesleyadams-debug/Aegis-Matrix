@@ -8,17 +8,6 @@ class_name Unit
 
 const MAX_SPEED: float = 2.25
 const ARRIVE_DISTANCE: float = 0.15
-## How close to a planned segment's endpoint counts as "there" before
-## advancing to the next segment. Looser than ARRIVE_DISTANCE so avoidance
-## jitter near a waypoint doesn't stall the handoff to the next direction.
-const SEGMENT_ARRIVE_DISTANCE: float = 0.25
-## How far a unit may drift sideways off its committed segment's line
-## before the plan is considered stale and gets recomputed from where the
-## unit actually is. Needed because avoidance can shove a unit well off
-## its planned line (e.g. several units jostling into nearby formation
-## slots); blindly continuing in the original direction at that point
-## walks away from the target instead of toward it.
-const MAX_SEGMENT_DEVIATION: float = 0.75
 
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
 ## Where an equipped weapon's visual attaches -- see ParentUnit.tscn.
@@ -45,19 +34,6 @@ var _safe_velocity: Vector3 = Vector3.ZERO
 ## order-derived facing is pending; unit will face whatever velocity drove
 ## it, or hold its current facing if stationary without an active order.
 var _order_facing_angle: float = NAN
-## Straight-line legs (each a fixed 8-way direction + endpoint) planned
-## once when a destination is set, decomposed diagonal-then-straight so the
-## unit commits to long runs instead of re-deriving direction from its
-## current position every frame -- which, since quantized movement doesn't
-## track a perfectly straight line, drifts the true bearing frame to frame
-## and flip-flops between two snap angles whenever it straddles the
-## boundary between them.
-var _path_segments: Array[Dictionary] = []
-var _segment_index: int = 0
-## The current leg's true destination, used as a fallback once all planned
-## segments are behind the unit (e.g. avoidance nudged it off-line) so it
-## still closes the final gap instead of stopping short.
-var _leg_target: Vector3 = Vector3.INF
 ## True once this unit has reached its own formation slot. While true, its
 ## nav_agent.max_speed is halved -- a unit already in formation only ever
 ## moves again if avoidance has to nudge it aside for a squadmate still
@@ -110,12 +86,9 @@ func _ready() -> void:
 	nav_agent.max_speed = MAX_SPEED
 	nav_agent.velocity_computed.connect(_on_velocity_computed)
 
-## Sends the unit directly to its assigned formation slot near the
-## destination -- not a staging point near where it's currently standing.
-## Units starting at different spots naturally converge on the tightly
-## clustered final slots as they travel, so ranks visibly fall into place
-## as the group nears the destination (or each other), rather than
-## detouring to organize before departing at all.
+## Sends the unit to `target` via the navigation server's own pathfinding
+## (see _current_desired_direction), which routes around baked-in obstacles
+## -- buildings, the wall -- rather than a straight line toward it.
 func move_to(target: Vector3, order_facing_angle: float = NAN) -> void:
 	attack_target = null
 	_pickup_target = null
@@ -124,7 +97,6 @@ func move_to(target: Vector3, order_facing_angle: float = NAN) -> void:
 	_in_formation = false
 	nav_agent.max_speed = MAX_SPEED
 	nav_agent.target_position = target
-	_plan_octile_path(global_position, target)
 
 ## Cancels whatever this unit is currently doing -- moving, chasing,
 ## attacking -- and halts it in place immediately, rather than letting it
@@ -137,9 +109,6 @@ func stop() -> void:
 	_pickup_target = null
 	_clear_throw_target()
 	_order_facing_angle = NAN
-	_path_segments = []
-	_segment_index = 0
-	_leg_target = Vector3.INF
 	_in_formation = false
 	nav_agent.target_position = global_position
 	_safe_velocity = Vector3.ZERO
@@ -383,94 +352,19 @@ func _snap_direction_to_8(dir: Vector3) -> Vector3:
 	var snapped_angle := snap_angle(atan2(dir.x, dir.z))
 	return Vector3(sin(snapped_angle), 0.0, cos(snapped_angle))
 
-## Decomposes the straight-line trip from `from` to `to` into at most two
-## fixed-direction legs: diagonal first to close the shorter axis, then
-## straight along whichever axis has distance left over. This is the
-## standard octile-distance construction and yields the fewest possible
-## direction changes for a direct order -- one turn, not a turn every step.
-## Static (and public, via the Unit class name) so RTSController can reuse
-## the exact same math when building a shared path for a group to follow.
-static func compute_octile_segments(from: Vector3, to: Vector3) -> Array[Dictionary]:
-	var segments: Array[Dictionary] = []
-	var delta := to - from
-	delta.y = 0.0
-	var dx := delta.x
-	var dz := delta.z
-	if absf(dx) < 0.01 and absf(dz) < 0.01:
-		return segments
-
-	var step_x := signf(dx)
-	var step_z := signf(dz)
-	var diag_dist: float = minf(absf(dx), absf(dz))
-	var straight_dist: float = absf(absf(dx) - absf(dz))
-
-	var cursor := from
-	if diag_dist > 0.01:
-		# diag_dist is how far to close each axis, not the segment's travel
-		# distance -- moving `diag_dist` along the normalized (length-1)
-		# diagonal only covers diag_dist/sqrt(2) per axis. Step by the raw
-		# (step_x, step_z) vector instead so both axes actually close by
-		# diag_dist, and store the normalized form separately for velocity.
-		var diag_dir := Vector3(step_x, 0.0, step_z).normalized()
-		cursor += Vector3(step_x, 0.0, step_z) * diag_dist
-		segments.append({"dir": diag_dir, "end": cursor})
-	if straight_dist > 0.01:
-		var straight_dir: Vector3 = Vector3(step_x, 0.0, 0.0) if absf(dx) > absf(dz) else Vector3(0.0, 0.0, step_z)
-		cursor += straight_dir * straight_dist
-		segments.append({"dir": straight_dir, "end": cursor})
-	return segments
-
-func _plan_octile_path(from: Vector3, to: Vector3) -> void:
-	_leg_target = to
-	_path_segments = compute_octile_segments(from, to)
-	_segment_index = 0
-
-## Direction for the segment the unit is currently committed to, advancing
-## to the next segment once close enough to this one's end. Falls back to
-## heading straight for _leg_target once every planned segment is behind
-## the unit -- e.g. avoidance nudged it off-line -- so it still closes the
-## gap instead of stalling with a stale, already-completed plan.
+## Direction toward the next corner of the navigation server's actual
+## computed route to the current target (see NavGroundSetup.gd, which bakes
+## the navmesh with holes at buildings/the wall so this route already goes
+## around them) -- snapped to the same 8-way facing every other direction
+## in this class is. NavigationAgent3D advances get_next_path_position() to
+## the following corner on its own once close enough to this one, so unlike
+## the old hand-rolled straight-line segments this needs no separate
+## arrival/deviation tracking here at all.
 func _current_desired_direction() -> Vector3:
-	if _segment_index < _path_segments.size():
-		var seg: Dictionary = _path_segments[_segment_index]
-		var progress := _segment_progress(seg)
-		if global_position.distance_to(seg["end"]) < SEGMENT_ARRIVE_DISTANCE or progress.along > 0.0:
-			# Either genuinely arrived, or overshot the endpoint along the
-			# line itself. The latter matters because avoidance can nudge a
-			# unit just wide enough, right as it passes a crowded slot, to
-			# miss the arrival check on every single frame -- after which
-			# distance-to-end only grows and this segment would otherwise
-			# never be considered done, leaving the unit walking its stale
-			# direction past the target forever (this is what "along > 0"
-			# catches: it stays true however far past the endpoint the line
-			# carries it, even when the miss was lateral, not a shortfall).
-			_segment_index += 1
-		elif progress.perpendicular > MAX_SEGMENT_DEVIATION:
-			# Avoidance has pushed the unit far enough off this segment's
-			# line that continuing in its original direction no longer
-			# leads toward the target -- replan fresh from here instead of
-			# blindly walking further off course.
-			_plan_octile_path(global_position, _leg_target)
-		if _segment_index < _path_segments.size():
-			return _path_segments[_segment_index]["dir"]
-
-	if _leg_target != Vector3.INF:
-		var to_target := _leg_target - global_position
-		to_target.y = 0.0
-		if to_target.length() > 0.01:
-			return _snap_direction_to_8(to_target.normalized())
-	return Vector3.ZERO
-
-## Decomposes the unit's current position, relative to a segment's end,
-## into how far past the endpoint it is along the segment's own direction
-## (positive once overshot) and how far sideways off the segment's line it
-## sits (always >= 0) -- the two ways a unit can stop tracking a planned
-## segment usefully.
-func _segment_progress(seg: Dictionary) -> Dictionary:
-	var seg_end: Vector3 = seg["end"]
-	var seg_dir: Vector3 = seg["dir"]
-	var offset := global_position - seg_end
-	offset.y = 0.0
-	var along := offset.dot(seg_dir)
-	var perpendicular := offset - seg_dir * along
-	return {"along": along, "perpendicular": perpendicular.length()}
+	if nav_agent.is_navigation_finished():
+		return Vector3.ZERO
+	var to_next := nav_agent.get_next_path_position() - global_position
+	to_next.y = 0.0
+	if to_next.length() < 0.01:
+		return Vector3.ZERO
+	return _snap_direction_to_8(to_next.normalized())
