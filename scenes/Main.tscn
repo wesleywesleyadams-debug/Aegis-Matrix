@@ -163,11 +163,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.4, 0, -2.6)
 
 [node name="Buildings" type="Node3D" parent="."]
 
-[node name="ParentBuilding" parent="Buildings" instance=ExtResource("16_parent_building")]
+[node name="Wall" parent="Buildings" instance=ExtResource("16_parent_building")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.3, 0, -6.5)
+unit_type_id = "wall"
 
-[node name="Dwelling" parent="Buildings/ParentBuilding" instance=ExtResource("15_dwelling")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 5.2)
+[node name="Dwelling" parent="Buildings" instance=ExtResource("15_dwelling")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14.3, 0, -1.3)
 
 [node name="Dwelling2" parent="Buildings" instance=ExtResource("15_dwelling")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.3, 0, -1.3)
