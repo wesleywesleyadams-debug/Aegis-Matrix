@@ -88,6 +88,13 @@ var _move_queues: Array[Dictionary] = []
 ## be commanded itself -- clicking one is purely a "here's what you clicked"
 ## indicator, not a selection you can issue orders from.
 var _selected_item: WorldItem = null
+## A Unit/Building NOT owned by the player, selected for read-only
+## inspection -- see _inspect_foreign(). Also kept separate from
+## _selected_units for the same reason _selected_item is: nothing in it
+## can be commanded, so it must never reach any order-issuing code path
+## (right-click move/attack, equipment/storage drag-and-drop) that reads
+## _selected_units directly.
+var _inspected_foreign: Node = null
 
 func _ready() -> void:
 	Music.play_track(Music.IN_GAME_TRACK)
@@ -521,10 +528,17 @@ func _finish_drag_select(release_pos: Vector2) -> void:
 	if drag_size < CLICK_DRAG_THRESHOLD:
 		var clicked := _raycast_unit(release_pos)
 		if clicked:
-			if not shift_held:
-				_clear_selection()
-			_clear_item_selection()
-			_select_unit(clicked)
+			if clicked is World:
+				if not shift_held:
+					_clear_selection()
+				_clear_item_selection()
+			elif clicked.is_player_controlled():
+				if not shift_held:
+					_clear_selection()
+				_clear_item_selection()
+				_select_unit(clicked)
+			else:
+				_inspect_foreign(clicked)
 		else:
 			var clicked_item := _raycast_item(release_pos)
 			if clicked_item != null:
@@ -960,6 +974,26 @@ func _select_unit(unit: Node) -> void:
 	_refresh_equipment_panel()
 	_refresh_storage_panel()
 
+## Left-clicking a unit/building NOT owned by the player selects it for
+## read-only inspection -- shows its stats (portrait, health/type tray)
+## the same way an owned selection would, but it's never addable to
+## _selected_units (which every order-issuing path -- right-click move/
+## attack, equipment/storage drag-and-drop -- reads from), so there's no
+## way to actually command it, and it's always exactly one at a time
+## (drag-box selection only ever calls _select_unit, which already
+## refuses anything not player-controlled -- see above -- so a box drag
+## can never pick up a foreign entity at all, let alone several).
+## Mutually exclusive with an owned selection and with a selected item --
+## _clear_selection() (called first here) already drops both.
+func _inspect_foreign(entity: Node) -> void:
+	_clear_selection()
+	_clear_item_selection()
+	_inspected_foreign = entity
+	entity.selected = true
+	var single: Array[Node] = [entity]
+	selection_panel.set_selected_units(single)
+	portrait_panel.set_subject(entity)
+
 ## Removes any selected unit that's since been freed (a unit only
 ## queue_free()s once its death animation actually finishes -- see
 ## Entity._die() -- not the instant its health hits 0) from
@@ -978,18 +1012,30 @@ func _prune_selected_units() -> void:
 		if not is_instance_valid(_selected_units[i]):
 			_selected_units.remove_at(i)
 			had_invalid = true
-	if not had_invalid:
-		return
-	selection_panel.set_selected_units(_selected_units)
-	portrait_panel.set_subject(_selected_units[0] if not _selected_units.is_empty() else null)
-	_refresh_equipment_panel()
-	_refresh_storage_panel()
+	if had_invalid:
+		selection_panel.set_selected_units(_selected_units)
+		portrait_panel.set_subject(_selected_units[0] if not _selected_units.is_empty() else null)
+		_refresh_equipment_panel()
+		_refresh_storage_panel()
+
+	# _inspected_foreign lives outside _selected_units entirely (see
+	# _inspect_foreign), so it needs its own validity check here -- same
+	# "died while selected, stale reference sat around" hazard the loop
+	# above guards against.
+	if _inspected_foreign != null and not is_instance_valid(_inspected_foreign):
+		_inspected_foreign = null
+		var empty: Array[Node] = []
+		selection_panel.set_selected_units(empty)
+		portrait_panel.set_subject(null)
 
 func _clear_selection() -> void:
 	for unit in _selected_units:
 		if is_instance_valid(unit):
 			unit.selected = false
 	_selected_units.clear()
+	if _inspected_foreign != null and is_instance_valid(_inspected_foreign):
+		_inspected_foreign.selected = false
+	_inspected_foreign = null
 	selection_panel.set_selected_units(_selected_units)
 	portrait_panel.set_subject(null)
 	_refresh_equipment_panel()
