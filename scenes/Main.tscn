@@ -254,6 +254,44 @@ anchor_bottom = 1.0
 mouse_filter = 2
 script = ExtResource("8_portrait_panel")
 
+[node name="UnitBackpackPanel" type="Panel" parent="UI/PortraitPanel"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = -382.0
+offset_right = 174.0
+offset_bottom = -222.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+
+[node name="UnitBackpackLabel" type="Label" parent="UI/PortraitPanel/UnitBackpackPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 152.0
+offset_bottom = 44.0
+text = "Unit Backpack
+or Building Storage"
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 2
+
+[node name="ItemStatsPanel" type="Panel" parent="UI/PortraitPanel"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = -542.0
+offset_right = 174.0
+offset_bottom = -382.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+
+[node name="ItemStatsLabel" type="Label" parent="UI/PortraitPanel/ItemStatsPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = 152.0
+offset_bottom = 28.0
+text = "Item Stats"
+theme_override_font_sizes/font_size = 14
+
 [node name="NameLabel" type="Label" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
@@ -370,6 +408,26 @@ offset_bottom = 246.0
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
+
+[node name="MinimapPanel" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Frame" type="Panel" parent="UI/MinimapPanel"]
+layout_mode = 0
+offset_left = -170.0
+offset_top = -170.0
+offset_right = -20.0
+offset_bottom = -20.0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+pivot_offset = Vector2(75, 75)
+rotation = 0.7853982
 
 [node name="MainMenu" type="Control" parent="UI"]
 process_mode = 3
