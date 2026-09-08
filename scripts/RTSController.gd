@@ -36,6 +36,8 @@ const BUILDING_SCENE: PackedScene = preload("res://scenes/ParentBuilding.tscn")
 @onready var portrait_panel: Control = $UI/PortraitPanel
 @onready var equipment_panel: Control = $UI/EquipmentPanel/Background
 @onready var storage_panel: Control = $UI/BuildingStoragePanel/Background
+@onready var backpack_panel: Control = $UI/PortraitPanel/UnitBackpackPanel
+@onready var item_stats_panel: Control = $UI/PortraitPanel/ItemStatsPanel
 @onready var debug_grid: MeshInstance3D = $DebugGrid
 
 var _selected_units: Array[Node] = []
@@ -107,16 +109,26 @@ func _ready() -> void:
 		_apply_starting_unit_count()
 	_assign_players()
 
-	equipment_panel.item_right_clicked.connect(_on_equipment_item_right_clicked)
+	equipment_panel.item_right_clicked.connect(_on_backpack_item_right_clicked)
+	equipment_panel.item_hovered.connect(item_stats_panel.show_item)
+	equipment_panel.item_unhovered.connect(item_stats_panel.hide_item)
 	_refresh_equipment_panel()
+
+	backpack_panel.item_right_clicked.connect(_on_backpack_item_right_clicked)
+	backpack_panel.item_hovered.connect(item_stats_panel.show_item)
+	backpack_panel.item_unhovered.connect(item_stats_panel.hide_item)
+	_refresh_backpack_panel()
+
 	storage_panel.item_right_clicked.connect(_on_storage_item_right_clicked)
+	storage_panel.item_hovered.connect(item_stats_panel.show_item)
+	storage_panel.item_unhovered.connect(item_stats_panel.hide_item)
 	_refresh_storage_panel()
 
-	# So a pickup landing directly in a unit's weapon slot (see WorldItem.gd)
-	# updates the equipment panel immediately if that unit happens to be
-	# selected, without the panel needing to poll every frame.
+	# So a pickup landing directly in a unit's backpack (see WorldItem.gd)
+	# updates the equipment/backpack panels immediately if that unit happens
+	# to be selected, without the panels needing to poll every frame.
 	for unit in get_tree().get_nodes_in_group("units"):
-		unit.weapon_changed.connect(_on_unit_weapon_changed)
+		unit.backpack_changed.connect(_on_unit_backpack_changed)
 		unit.item_thrown.connect(_on_unit_item_thrown)
 	# Same idea for a building's storage panel -- a drag-drop landing an
 	# item in storage updates the panel live if that building is selected.
@@ -440,6 +452,8 @@ func _process(delta: float) -> void:
 
 	if _build_pending:
 		_update_build_ghost()
+
+	_update_map_item_hover()
 
 	for i in range(_move_queues.size() - 1, -1, -1):
 		var q: Dictionary = _move_queues[i]
@@ -787,9 +801,10 @@ func _spread_offset(index: int, count: int) -> Vector3:
 ## that ownership check -- they're Nature-owned incidentally, but the real
 ## reason is that they're static scenery, not a commandable unit/building,
 ## so selecting one and right-clicking should never be able to task it.
-func _on_unit_weapon_changed(unit: Unit) -> void:
+func _on_unit_backpack_changed(unit: Unit) -> void:
 	if unit == _first_selected_unit():
 		_refresh_equipment_panel()
+		_refresh_backpack_panel()
 
 func _first_selected_unit() -> Unit:
 	for entity in _selected_units:
@@ -803,11 +818,16 @@ func _first_selected_building() -> Building:
 			return entity
 	return null
 
-## Refreshes the equipment panel to show the first selected unit's equipped
-## weapon (or empty, if no unit -- just a building/World object, or nothing
-## at all -- is selected).
+## Refreshes the equipment panel to show the first selected unit's
+## right-hand slot (or empty, if no unit -- just a building/World object,
+## or nothing at all -- is selected).
 func _refresh_equipment_panel() -> void:
 	equipment_panel.refresh(_first_selected_unit())
+
+## Refreshes the backpack panel to show the first selected unit's full
+## 4-slot inventory (or empty if no unit is selected).
+func _refresh_backpack_panel() -> void:
+	backpack_panel.refresh(_first_selected_unit())
 
 ## Refreshes the storage panel to show the first selected building's stored
 ## items (or hides it entirely -- see BuildingStoragePanel.refresh -- if no
@@ -819,31 +839,36 @@ func _on_building_storage_changed(building: Building) -> void:
 	if building == _first_selected_building():
 		_refresh_storage_panel()
 
-## Right-clicking the equipped item in the equipment panel: takes it off
-## the unit and drops it on the ground at the unit's feet as a pickup again
-## -- the opposite of walking onto one.
-func _on_equipment_item_right_clicked(item_type: String) -> void:
+## Right-clicking an equipped item (equipment panel's right-hand shortcut,
+## or any slot in the full backpack panel): takes it off the unit and
+## drops it on the ground at the unit's feet as a pickup again -- the
+## opposite of walking onto one. A two-handed item occupying both hands
+## still only reports once (see Unit._displace/equip_item), so only one
+## ground pickup gets spawned for it here too.
+func _on_backpack_item_right_clicked(item_type: String, source_slot: String) -> void:
 	var unit := _first_selected_unit()
-	if unit == null or unit.equipped_weapon != item_type:
+	if unit == null or unit.backpack.get(source_slot, "") != item_type:
 		return
-	unit.unequip_weapon()
+	unit.unequip_item_fully(item_type, source_slot)
 	_refresh_equipment_panel()
+	_refresh_backpack_panel()
 	WorldItem.spawn_pickup(item_type, unit.global_position, unit.model_root.rotation.y, $World)
 
 ## Right-clicking a stored item in the storage panel: takes it out of the
 ## building and drops it on the ground at the building's feet, same
 ## "opposite of walking onto one" pattern as the equipment panel's version.
-func _on_storage_item_right_clicked(item_type: String) -> void:
+func _on_storage_item_right_clicked(item_type: String, _source_slot: String) -> void:
 	var building := _first_selected_building()
 	if building == null or not building.take_item(item_type):
 		return
 	_refresh_storage_panel()
 	WorldItem.spawn_pickup(item_type, building.global_position, Building.STORAGE_EJECT_ANGLE, $World)
 
-## Dragging an item out of the equipment panel or building storage panel
-## (see ItemDropTarget/ItemSlotButton) and releasing it at `screen_pos`.
-## Exactly one of source_unit/source_building is set (whichever panel it
-## came from). A unit source issues a throw order (see
+## Dragging an item out of the equipment/backpack panel or building
+## storage panel (see ItemDropTarget/ItemSlotButton) and releasing it at
+## `screen_pos`. Exactly one of source_unit/source_building is set
+## (whichever panel it came from); source_slot only matters for the
+## former (see Unit.throw_item). A unit source issues a throw order (see
 ## Unit.throw_item/_on_unit_item_thrown) -- the unit has to actually walk
 ## within throwing range before the item leaves its hand, rather than it
 ## teleporting there instantly. A building can't walk anywhere, so a
@@ -851,12 +876,12 @@ func _on_storage_item_right_clicked(item_type: String) -> void:
 ## the same one-tile range a unit has to close in to (see
 ## _throw_from_building) -- a building can eject an item to its own
 ## doorstep, not fling it anywhere on the map.
-func handle_item_drag_drop(item_type: String, source_unit: Unit, source_building: Building, screen_pos: Vector2) -> void:
+func handle_item_drag_drop(item_type: String, source_slot: String, source_unit: Unit, source_building: Building, screen_pos: Vector2) -> void:
 	if is_instance_valid(source_unit):
-		if source_unit.equipped_weapon != item_type:
+		if source_unit.backpack.get(source_slot, "") != item_type:
 			return
 		var target := _resolve_drop_target(screen_pos, source_unit)
-		source_unit.throw_item(item_type, target["position"], target["unit"], target["building"])
+		source_unit.throw_item(item_type, source_slot, target["position"], target["unit"], target["building"])
 	elif is_instance_valid(source_building):
 		if not source_building.take_item(item_type):
 			return
@@ -916,6 +941,7 @@ func _throw_from_building(item_type: String, building: Building, target: Diction
 ## _throw_from_building reaches, just with walking time first.
 func _on_unit_item_thrown(unit: Unit, item_type: String, target_position: Vector3, target_unit: Unit, target_building: Building) -> void:
 	_refresh_equipment_panel()
+	_refresh_backpack_panel()
 	WorldItem.spawn_thrown(
 		item_type, unit.global_position, target_position, $World,
 		_on_thrown_item_landed.bind(target_unit, target_building)
@@ -931,15 +957,19 @@ func _on_thrown_item_landed(pickup: Node3D, target_unit: Unit, target_building: 
 		return
 	var item_type: String = pickup.item_type
 	if is_instance_valid(target_unit) and target_unit.is_player_controlled():
-		if not target_unit.equipped_weapon.is_empty():
-			var displaced: String = target_unit.unequip_weapon()
-			WorldItem.spawn_pickup(displaced, target_unit.global_position, target_unit.model_root.rotation.y, $World)
-		target_unit.equip_weapon(item_type)
+		var displaced := target_unit.equip_item(item_type)
+		for old_item_type in displaced:
+			WorldItem.spawn_pickup(old_item_type, target_unit.global_position, target_unit.model_root.rotation.y, $World)
 		pickup.queue_free()
 		_refresh_equipment_panel()
+		_refresh_backpack_panel()
 		ItemReceivedEffect.spawn(item_type, target_unit)
 	elif is_instance_valid(target_building) and target_building.is_player_controlled():
-		target_building.store_item(item_type)
+		# Storage might already be full (see Building.MAX_STORAGE_SLOTS) --
+		# if so, just leave it sitting where it landed as a normal ground
+		# pickup rather than losing it.
+		if not target_building.store_item(item_type):
+			return
 		pickup.queue_free()
 		ItemReceivedEffect.spawn(item_type, target_building)
 		_refresh_storage_panel()
@@ -1199,6 +1229,34 @@ func _issue_pickup_order(units: Array[Node], item: WorldItem, append_to_queue: b
 ## back to the same click-tolerance widening _raycast_unit gets, once a
 ## direct hit against the item's own (fairly small) pickup collider
 ## misses, so right-clicking just next to a pickup still collects it.
+## Shows ItemStatsPanel for whichever WorldItem is directly under the
+## cursor, hides it otherwise -- called every _process frame. Skipped
+## entirely while the mouse is over any UI Control: a hovered
+## ItemSlotButton already drives the panel itself (see the item_hovered/
+## item_unhovered connections in _ready()), and anywhere else over UI
+## (the Menu button, an empty panel) shouldn't show map-item stats for
+## whatever happens to be underneath it on the 3D scene. Uses a plain
+## direct raycast rather than _raycast_item's click-tolerance widening --
+## that widening is meant to make an intentional CLICK forgiving, not to
+## make hover trigger on an item the cursor isn't actually over.
+var _hovered_map_item: WorldItem = null
+
+func _update_map_item_hover() -> void:
+	if get_viewport().gui_get_hovered_control() != null:
+		if _hovered_map_item != null:
+			_hovered_map_item = null
+			item_stats_panel.hide_item()
+		return
+	var hit := _raycast(get_viewport().get_mouse_position(), WorldItem.ITEM_MASK, true, false)
+	var item: WorldItem = hit["collider"] if not hit.is_empty() and hit["collider"] is WorldItem else null
+	if item == _hovered_map_item:
+		return
+	_hovered_map_item = item
+	if item != null:
+		item_stats_panel.show_item(item.item_type)
+	else:
+		item_stats_panel.hide_item()
+
 func _raycast_item(screen_pos: Vector2) -> WorldItem:
 	var hit := _raycast(screen_pos, WorldItem.ITEM_MASK, true, false)
 	if not hit.is_empty():

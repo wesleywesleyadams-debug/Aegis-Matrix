@@ -18,13 +18,15 @@ var gather_points: Array[Vector3] = []
 var _gather_flags: Array[Node3D] = []
 
 ## Items this building is holding (see BuildingStoragePanel, shown while
-## this building is selected) -- one entry per item, no stacking/count or
-## capacity limit yet, in the order they were stored. Units drop equipped
-## items in here by dragging them onto the building (see
-## RTSController._place_dragged_item) instead of the item landing on the
-## ground the way dropping on empty space or another unit does.
+## this building is selected) -- one entry per item, in the order they
+## were stored, up to MAX_STORAGE_SLOTS (no stacking -- 5 items takes 5
+## slots regardless of type). Units drop equipped items in here by
+## dragging them onto the building (see RTSController._place_dragged_item)
+## instead of the item landing on the ground the way dropping on empty
+## space or another unit does.
 signal storage_changed(building: Building)
 var stored_items: Array[String] = []
+const MAX_STORAGE_SLOTS: int = 5
 
 ## Angle passed as WorldItem.spawn_pickup's `facing_angle` when ejecting a
 ## stored item back onto the ground (see
@@ -37,9 +39,16 @@ var stored_items: Array[String] = []
 ## an actual doorstep/loading-corner than a point floating off one wall.
 const STORAGE_EJECT_ANGLE: float = 3.0 * PI / 4.0
 
-func store_item(item_type: String) -> void:
+## Adds `item_type` if there's a free slot, and reports whether it
+## actually fit -- caller decides what happens to the item if not (e.g.
+## _on_thrown_item_landed leaves it as a normal ground pickup instead of
+## handing it over when storage is already full).
+func store_item(item_type: String) -> bool:
+	if stored_items.size() >= MAX_STORAGE_SLOTS:
+		return false
 	stored_items.append(item_type)
 	storage_changed.emit(self)
+	return true
 
 ## Removes the first entry matching `item_type`, if any, and reports
 ## whether one was actually found -- caller (see BuildingStoragePanel's

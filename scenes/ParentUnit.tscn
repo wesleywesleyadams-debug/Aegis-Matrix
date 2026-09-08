@@ -74,6 +74,10 @@ layers = 3
 bone_name = "mixamorig_RightHand"
 bone_idx = 46
 
+[node name="WeaponSlotLeft" type="BoneAttachment3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D"]
+bone_name = "mixamorig_LeftHand"
+bone_idx = 17
+
 [node name="AttackHitbox" type="Area3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D/WeaponSlot"]
 collision_layer = 0
 collision_mask = 2

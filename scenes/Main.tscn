@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/RTSController.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/RTSCamera.gd" id="2_cam"]
@@ -21,6 +21,8 @@
 [ext_resource type="PackedScene" path="res://scenes/CrossbowPickup.tscn" id="21_crossbow_pickup"]
 [ext_resource type="Script" path="res://scripts/ui/ItemDropTarget.gd" id="22_item_drop_target"]
 [ext_resource type="Script" path="res://scripts/ui/BuildingStoragePanel.gd" id="23_building_storage"]
+[ext_resource type="Script" path="res://scripts/ui/UnitBackpackPanel.gd" id="24_unit_backpack_panel"]
+[ext_resource type="Script" path="res://scripts/ui/ItemStatsPanel.gd" id="25_item_stats_panel"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 size = Vector3(60, 0.2, 60)
@@ -262,17 +264,24 @@ offset_right = 174.0
 offset_bottom = -222.0
 anchor_top = 1.0
 anchor_bottom = 1.0
+script = ExtResource("24_unit_backpack_panel")
 
 [node name="UnitBackpackLabel" type="Label" parent="UI/PortraitPanel/UnitBackpackPanel"]
 layout_mode = 0
 offset_left = 8.0
-offset_top = 6.0
+offset_top = 4.0
 offset_right = 152.0
-offset_bottom = 44.0
-text = "Unit Backpack
-or Building Storage"
+offset_bottom = 22.0
+text = "Unit Backpack"
 theme_override_font_sizes/font_size = 13
-autowrap_mode = 2
+
+[node name="Slots" type="VBoxContainer" parent="UI/PortraitPanel/UnitBackpackPanel"]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 24.0
+offset_right = 154.0
+offset_bottom = 156.0
+theme_override_constants/separation = 4
 
 [node name="ItemStatsPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
@@ -282,15 +291,24 @@ offset_right = 174.0
 offset_bottom = -382.0
 anchor_top = 1.0
 anchor_bottom = 1.0
+script = ExtResource("25_item_stats_panel")
 
-[node name="ItemStatsLabel" type="Label" parent="UI/PortraitPanel/ItemStatsPanel"]
+[node name="TitleLabel" type="Label" parent="UI/PortraitPanel/ItemStatsPanel"]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 6.0
 offset_right = 152.0
 offset_bottom = 28.0
-text = "Item Stats"
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 15
+
+[node name="StatsLabel" type="Label" parent="UI/PortraitPanel/ItemStatsPanel"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 30.0
+offset_right = 152.0
+offset_bottom = 150.0
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 2
 
 [node name="NameLabel" type="Label" parent="UI/PortraitPanel"]
 layout_mode = 0

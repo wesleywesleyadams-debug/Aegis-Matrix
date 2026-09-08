@@ -161,20 +161,19 @@ func _build_selection_frame() -> Node3D:
 
 	return frame
 
-## Puts this item into `unit`'s weapon slot (swapping out and dropping
-## whatever it already had equipped first, if anything) and removes this
-## pickup from the world. Called once a unit's explicit pickup order (see
-## Unit._update_pickup_target) actually gets it close enough. Plays the same
-## floating-glow "you just received this item" effect a thrown item's
-## landing does (see ItemReceivedEffect/RTSController._on_thrown_item_landed)
-## so picking something up off the ground reads the same way as catching it
-## thrown -- both are "this unit now has a new item" moments and should look
-## like one.
+## Puts this item into whichever of `unit`'s backpack slots it fits (see
+## Unit.equip_item), dropping whatever that displaces back onto the
+## ground, and removes this pickup from the world. Called once a unit's
+## explicit pickup order (see Unit._update_pickup_target) actually gets it
+## close enough. Plays the same floating-glow "you just received this
+## item" effect a thrown item's landing does (see ItemReceivedEffect/
+## RTSController._on_thrown_item_landed) so picking something up off the
+## ground reads the same way as catching it thrown -- both are "this unit
+## now has a new item" moments and should look like one.
 func collect(unit: Unit) -> void:
-	if not unit.equipped_weapon.is_empty():
-		var old_item_type: String = unit.unequip_weapon()
+	var displaced := unit.equip_item(item_type)
+	for old_item_type in displaced:
 		spawn_pickup(old_item_type, unit.global_position, unit.model_root.rotation.y, get_parent())
-	unit.equip_weapon(item_type)
 	ItemReceivedEffect.spawn(item_type, unit)
 	queue_free()
 

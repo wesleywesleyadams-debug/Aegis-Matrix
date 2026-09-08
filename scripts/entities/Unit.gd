@@ -10,19 +10,35 @@ const MAX_SPEED: float = 2.25
 const ARRIVE_DISTANCE: float = 0.15
 
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
-## Where an equipped weapon's visual attaches -- see ParentUnit.tscn.
+## Where a right/two-handed weapon's visual attaches -- see ParentUnit.tscn.
 @onready var weapon_slot: Node3D = model_root.find_child("WeaponSlot", true, false)
+## Where a left-handed weapon's visual attaches. A two-handed item (e.g.
+## crossbow) equips into BOTH this and weapon_slot at once (see
+## equip_item) -- currently that just means the same visual instanced
+## twice, once per hand, which reads fine at this model's scale without
+## needing to fake a single shared prop spanning both.
+@onready var weapon_slot_left: Node3D = model_root.find_child("WeaponSlotLeft", true, false)
 
-## Item type currently in this unit's weapon slot, or "" for none. Set via
-## equip_weapon() -- purely visual for now, no stat effect.
-var equipped_weapon: String = ""
-var _weapon_visual: Node3D = null
+## The four backpack slots this unit's inventory is organized into. Order
+## matters only for iteration (e.g. BuildingStoragePanel-style UI listing
+## slots in a stable order); armor/accessory have no equipped-visual
+## attachment point yet (no assets for it currently exist), so equipping
+## into those only ever affects this dictionary, not model_root.
+const BACKPACK_SLOTS: Array[String] = ["armor", "right_hand", "left_hand", "accessory"]
+## slot name -> item_type ("" for empty). Prefer equip_item()/unequip_slot()
+## over writing this directly -- they also keep the equipped-visual
+## (_slot_visuals) and backpack_changed signal in sync.
+var backpack: Dictionary = {"armor": "", "right_hand": "", "left_hand": "", "accessory": ""}
+## slot name -> the instanced visual currently attached for it (only ever
+## populated for right_hand/left_hand, the only slots with a real
+## attachment point -- see BACKPACK_SLOTS' doc comment above).
+var _slot_visuals: Dictionary = {}
 
-## Fires whenever equipped_weapon changes (equip or unequip) -- lets
-## RTSController's equipment panel stay in sync even when the change didn't
-## come from the panel itself, e.g. a pickup landing directly in this
-## unit's weapon slot (see WorldItem.gd).
-signal weapon_changed(unit: Unit)
+## Fires whenever any backpack slot changes (equip or unequip) -- lets
+## RTSController's backpack/equipment panels stay in sync even when the
+## change didn't come from the panel itself, e.g. a pickup landing
+## directly in this unit's hands (see WorldItem.gd).
+signal backpack_changed(unit: Unit)
 
 ## The navigation server's avoidance-adjusted velocity arrives asynchronously
 ## via velocity_computed and isn't guaranteed to land every physics frame.
@@ -84,6 +100,8 @@ signal item_thrown(unit: Unit, item_type: String, target_position: Vector3, targ
 ## both clear it, same as _pickup_target/attack_target) -- the item just
 ## stays equipped, nothing thrown, if some other order interrupts first.
 var _throw_item_type: String = ""
+## Which backpack slot _throw_item_type is coming from -- see throw_item().
+var _throw_source_slot: String = ""
 var _throw_target_position: Vector3 = Vector3.INF
 ## Where the thrown item ends up once it lands -- at most one of these is
 ## set (neither, for a plain ground drop), mirroring ItemSlotButton's own
@@ -201,33 +219,74 @@ func is_idle() -> bool:
 		and _throw_target_position == Vector3.INF
 	)
 
-## Puts `item_type`'s visual into this unit's weapon slot, replacing
-## whatever was there before -- only ever one weapon held at a time. Purely
-## visual right now; no stat effect.
-func equip_weapon(item_type: String) -> void:
-	if _weapon_visual != null and is_instance_valid(_weapon_visual):
-		_weapon_visual.queue_free()
-	equipped_weapon = item_type
-	var visual_scene: PackedScene = ItemDefs.get_visual_scene(item_type)
-	if visual_scene != null and weapon_slot != null:
-		_weapon_visual = visual_scene.instantiate()
-		weapon_slot.add_child(_weapon_visual)
-	else:
-		_weapon_visual = null
-	weapon_changed.emit(self)
+## Equips `item_type` into whichever BACKPACK_SLOTS slot(s) it fits (see
+## ItemDefs.get_slot_kind) -- "one_hand" takes whichever of right_hand/
+## left_hand is free (right_hand if both are), "two_hand" always takes
+## both at once, "armor"/"accessory" take their own single slot. Returns
+## every item_type displaced to make room, in case the caller needs to
+## put them back on the ground -- 0, 1, or (a two-hand item bumping two
+## different one-hand items out, one from each hand) 2 entries. A bare []
+## for an unrecognized item_type (nothing equipped, nothing displaced).
+func equip_item(item_type: String) -> Array[String]:
+	var kind := ItemDefs.get_slot_kind(item_type)
+	var displaced: Array[String] = []
+	match kind:
+		"one_hand":
+			var hand := "right_hand" if backpack["right_hand"].is_empty() else "left_hand"
+			_displace(hand, displaced)
+			_set_slot(hand, item_type)
+		"two_hand":
+			_displace("right_hand", displaced)
+			_displace("left_hand", displaced)
+			_set_slot("right_hand", item_type)
+			_set_slot("left_hand", item_type)
+		"armor", "accessory":
+			_displace(kind, displaced)
+			_set_slot(kind, item_type)
+	if not kind.is_empty():
+		backpack_changed.emit(self)
+	return displaced
 
-## Clears the weapon slot and returns whichever item_type was in it (""
-## if none) -- caller decides what happens to the item next (see
-## RTSController's equipment panel right-click handler, which drops it on
-## the ground as a pickup again).
-func unequip_weapon() -> String:
-	var item_type := equipped_weapon
-	if _weapon_visual != null and is_instance_valid(_weapon_visual):
-		_weapon_visual.queue_free()
-	_weapon_visual = null
-	equipped_weapon = ""
-	weapon_changed.emit(self)
+## Clears `slot`'s current occupant (if any) into `displaced`, skipping a
+## duplicate entry if it's the same item_type already added -- true when
+## clearing both hands of the same two-handed item, which should read as
+## displacing that one item once, not twice.
+func _displace(slot: String, displaced: Array[String]) -> void:
+	var old: String = unequip_slot(slot)
+	if not old.is_empty() and old not in displaced:
+		displaced.append(old)
+
+## Clears `slot` and returns whichever item_type was in it ("" if none) --
+## caller decides what happens to the item next (see RTSController's
+## backpack/equipment panel right-click handlers, which drop it on the
+## ground as a pickup again). Unlike equip_item(), a two-handed item
+## occupying both hands is NOT automatically cleared from the other hand
+## when only one slot is named -- callers that need "unequip whatever
+## `item_type` actually is" (as opposed to "empty this one slot no matter
+## what's in it") should clear both hand slots themselves if needed.
+func unequip_slot(slot: String) -> String:
+	var item_type: String = backpack.get(slot, "")
+	if item_type.is_empty():
+		return ""
+	_set_slot(slot, "")
+	backpack_changed.emit(self)
 	return item_type
+
+func _set_slot(slot: String, item_type: String) -> void:
+	backpack[slot] = item_type
+	var visual: Node3D = _slot_visuals.get(slot)
+	if visual != null and is_instance_valid(visual):
+		visual.queue_free()
+	_slot_visuals.erase(slot)
+	var attach_point: Node3D = weapon_slot if slot == "right_hand" else (weapon_slot_left if slot == "left_hand" else null)
+	if attach_point == null or item_type.is_empty():
+		return
+	var visual_scene: PackedScene = ItemDefs.get_visual_scene(item_type)
+	if visual_scene == null:
+		return
+	var new_visual: Node3D = visual_scene.instantiate()
+	attach_point.add_child(new_visual)
+	_slot_visuals[slot] = new_visual
 
 ## Walks to `item` (an explicit right-click order, see RTSController's
 ## _issue_pickup_order) and collects it once close enough -- see
@@ -254,24 +313,28 @@ func _update_pickup_target() -> void:
 	item.collect(self)
 
 ## Walks toward `target_position` and, once within THROW_RANGE, throws
-## `item_type` there (see _update_throw_target()) -- a drag-drop of the
-## equipped item out of the equipment panel onto somewhere out of
-## immediate reach. `target_unit`/`target_building` (at most one set) say
-## what happens to the item once it lands, mirroring
+## `item_type` there (see _update_throw_target()) -- a drag-drop of an
+## equipped item out of the backpack/equipment panel onto somewhere out of
+## immediate reach. `source_slot` says which backpack slot it's coming
+## from (needed to actually clear it once thrown -- see
+## unequip_item_fully). `target_unit`/`target_building` (at most one set)
+## say what happens to the item once it lands, mirroring
 ## RTSController.handle_item_drag_drop's own unit/building/ground cases.
-## Does nothing if this unit isn't actually holding `item_type` right now
-## (e.g. the drag started before some other order already changed it).
-func throw_item(item_type: String, target_position: Vector3, target_unit: Unit = null, target_building: Building = null) -> void:
-	if equipped_weapon != item_type:
+## Does nothing if `source_slot` doesn't actually hold `item_type` right
+## now (e.g. the drag started before some other order already changed it).
+func throw_item(item_type: String, source_slot: String, target_position: Vector3, target_unit: Unit = null, target_building: Building = null) -> void:
+	if backpack.get(source_slot, "") != item_type:
 		return
 	move_to(target_position)
 	_throw_item_type = item_type
+	_throw_source_slot = source_slot
 	_throw_target_position = target_position
 	_throw_target_unit = target_unit
 	_throw_target_building = target_building
 
 func _clear_throw_target() -> void:
 	_throw_item_type = ""
+	_throw_source_slot = ""
 	_throw_target_position = Vector3.INF
 	_throw_target_unit = null
 	_throw_target_building = null
@@ -280,7 +343,7 @@ func _clear_throw_target() -> void:
 ## called every physics frame while a throw order is outstanding (see
 ## _physics_process), the same "checked every frame regardless of nav
 ## completion" pattern _update_pickup_target uses. Unequips the item (same
-## visual/state change unequip_weapon() itself causes) and reports it
+## visual/state change unequip_slot() itself causes) and reports it
 ## thrown; RTSController owns actually spawning/animating/handing it off
 ## from there (see item_thrown).
 func _update_throw_target() -> void:
@@ -289,6 +352,7 @@ func _update_throw_target() -> void:
 	if global_position.distance_to(_throw_target_position) > THROW_RANGE:
 		return
 	var item_type := _throw_item_type
+	var source_slot := _throw_source_slot
 	var target_position := _throw_target_position
 	var target_unit := _throw_target_unit
 	var target_building := _throw_target_building
@@ -299,8 +363,18 @@ func _update_throw_target() -> void:
 	# though the item already left its hand. stop() also re-clears the
 	# throw fields (harmless -- already about to be overwritten/moot).
 	stop()
-	unequip_weapon()
+	unequip_item_fully(item_type, source_slot)
 	item_thrown.emit(self, item_type, target_position, target_unit, target_building)
+
+## Fully removes `item_type` from wherever it's equipped -- both hands for
+## a two-handed item (which occupies both at once, so a single named slot
+## isn't the whole picture), or just `source_slot` otherwise.
+func unequip_item_fully(item_type: String, source_slot: String) -> void:
+	if ItemDefs.get_slot_kind(item_type) == "two_hand":
+		unequip_slot("right_hand")
+		unequip_slot("left_hand")
+	else:
+		unequip_slot(source_slot)
 
 ## Chases `target` (reusing the ordinary move-to machinery to get there)
 ## and, once within attack_range, stops and repeatedly swings at it --

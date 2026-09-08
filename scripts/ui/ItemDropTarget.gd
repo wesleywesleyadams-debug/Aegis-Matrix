@@ -25,4 +25,4 @@ func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	)
 
 func _drop_data(at_position: Vector2, data: Variant) -> void:
-	owner.handle_item_drag_drop(data["item_type"], data.get("source_unit"), data.get("source_building"), at_position)
+	owner.handle_item_drag_drop(data["item_type"], data.get("source_slot", ""), data.get("source_unit"), data.get("source_building"), at_position)
