@@ -138,28 +138,28 @@ script = ExtResource("3_nav")
 [node name="Units" type="Node3D" parent="."]
 
 [node name="ParentUnit" parent="Units" instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.2, 0, -5.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.4, 0, -5.2)
 
 [node name="Human" parent="Units" instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -5.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.4, 0, -2.6)
 
 [node name="Darkling" parent="Units" instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.2, 0, -5.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.8, 0, -5.2)
 
 [node name="Elf" parent="Units" instance=ExtResource("10_sprite_unit")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.8, 0, -2.6)
 
 [node name="Iron Dwarf" parent="Units" instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0, -2.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0, -5.2)
 
 [node name="Orc" parent="Units" instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.6, 0, -2.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.4, 0, -5.2)
 
 [node name="Dragonborn" parent="Units" instance=ExtResource("10_sprite_unit")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0, -2.6)
 
 [node name="Giant" parent="Units" instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.4, 0, -2.6)
 
 [node name="Buildings" type="Node3D" parent="."]
 
