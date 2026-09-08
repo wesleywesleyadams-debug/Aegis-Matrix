@@ -141,6 +141,19 @@ func stop() -> void:
 	_safe_velocity = Vector3.ZERO
 	suppress_aggressive_stance(HALT_AGGRESSIVE_SUPPRESS_DURATION)
 
+## True only while this unit isn't still traveling toward an ordered
+## destination (nav_agent.is_navigation_finished(), the same "arrived"
+## signal _physics_process already uses for formation/movement gating)
+## and isn't approaching a pickup or throw target either. attack_target
+## itself doesn't need checking here -- Entity._update_attack_target only
+## calls is_idle() from the branch where attack_target is already null.
+func is_idle() -> bool:
+	return (
+		nav_agent.is_navigation_finished()
+		and _pickup_target == null
+		and _throw_target_position == Vector3.INF
+	)
+
 ## Puts `item_type`'s visual into this unit's weapon slot, replacing
 ## whatever was there before -- only ever one weapon held at a time. Purely
 ## visual right now; no stat effect.

@@ -79,6 +79,16 @@ const MELEE_REACH: float = 0.65
 ## The seed of a proper stance system (aggressive/defensive/hold-fire) if
 ## one gets built later -- for now just an always-on default.
 @export var aggressive_stance: bool = true
+## True only while this entity has no outstanding player-issued task --
+## aggressive stance (see _update_attack_target) only auto-acquires a new
+## target while this is true, so an explicit player order (moving
+## somewhere, fetching an item) always takes priority over automatically
+## picking a fight. Building has no such tasks to interrupt (its gather
+## point is a standing background order, not something aggressive stance
+## would compete with), so this default (always idle) is fine unmodified;
+## Unit overrides it with a real check against its own order state.
+func is_idle() -> bool:
+	return true
 ## How often (seconds) an idle entity re-scans for an aggressive-stance
 ## target -- doesn't need to happen every physics frame, and this keeps
 ## the O(n) nearby-unit scan from running more than necessary as unit
@@ -444,7 +454,7 @@ func _update_attack_target(delta: float) -> bool:
 		_aggressive_stance_suppress_timer -= delta
 	if attack_target == null:
 		_sight_line.visible = false
-		if aggressive_stance and _aggressive_stance_suppress_timer <= 0.0:
+		if aggressive_stance and _aggressive_stance_suppress_timer <= 0.0 and is_idle():
 			_aggressive_scan_cooldown -= delta
 			if _aggressive_scan_cooldown <= 0.0:
 				_aggressive_scan_cooldown = AGGRESSIVE_SCAN_INTERVAL
