@@ -20,6 +20,16 @@ const GATHER_FLAG_BUILDING_HEIGHT: float = 2.0
 ## it to a still-responsive but far cheaper rate instead.
 const FOG_UPDATE_INTERVAL: float = 0.15
 
+## World-space size of one grid cell -- matches DebugGrid's own cell_size
+## shader parameter (see Main.tscn) exactly, so a snapped building's edges
+## land right on the drawn grid lines rather than off by some unrelated
+## amount. Also equal to WorldItem.TILE_SIZE/UNIT_SPREAD_SPACING; all three
+## are conceptually the same "one tile" and have historically been kept in
+## sync by hand -- if this project ever gets a single shared tile-size
+## constant, this should read from it instead of repeating the number.
+const BUILD_GRID_SIZE: float = 2.6
+const BUILDING_SCENE: PackedScene = preload("res://scenes/ParentBuilding.tscn")
+
 @onready var camera: Camera3D = $CameraRig/Camera3D
 @onready var selection_box: Control = $UI/SelectionBox
 @onready var selection_panel: Control = $UI/SelectionPanel
@@ -39,6 +49,24 @@ var _fog_update_elapsed: float = 0.0
 ## visible, same as any other pending-targeted-command cursor convention.
 var _attack_move_pending: bool = false
 var _attack_move_cursor: ImageTexture
+
+## True while the player has armed building placement (B) and is
+## positioning the ghost preview -- see _unhandled_input's KEY_B/
+## MOUSE_BUTTON_LEFT handling and _process's per-frame ghost update.
+var _build_pending: bool = false
+## Translucent preview box following the cursor while _build_pending is
+## true -- a standalone MeshInstance3D rather than a real ParentBuilding
+## instance, since a ghost needs none of a real building's health/
+## selection/nav-agent/collision, just a box to preview placement with.
+## Built lazily (see _get_build_ghost) and reused across placements rather
+## than freed/recreated each time.
+var _build_ghost: MeshInstance3D = null
+var _build_ghost_material: StandardMaterial3D = null
+## Where the ghost is currently snapped to, updated every _process frame
+## while armed -- read by the confirming left-click so it doesn't need to
+## redo the raycast/snap right as the player commits.
+var _build_ghost_position: Vector3 = Vector3.INF
+var _build_ghost_valid: bool = false
 
 ## Waypoint queues currently in progress, one entry per group of units
 ## that has outstanding shift-clicked waypoints:
@@ -148,19 +176,31 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.keycode == KEY_H and event.pressed and not event.echo:
 		_set_attack_move_pending(false)
+		_set_build_pending(false)
 		_halt_selected_units()
 		return
 	if event is InputEventKey and event.keycode == KEY_TAB and event.pressed and not event.echo:
+		_set_build_pending(false)
 		_toggle_attack_move_pending()
+		return
+	if event is InputEventKey and event.keycode == KEY_B and event.pressed and not event.echo:
+		_set_attack_move_pending(false)
+		_set_build_pending(not _build_pending)
 		return
 	if _attack_move_pending and event.is_action_pressed("ui_cancel"):
 		_set_attack_move_pending(false)
+		return
+	if _build_pending and event.is_action_pressed("ui_cancel"):
+		_set_build_pending(false)
 		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				if _attack_move_pending:
 					_issue_attack_move_click(event.position)
+					return
+				if _build_pending:
+					_confirm_build_placement()
 					return
 				_dragging = true
 				_drag_start = event.position
@@ -173,6 +213,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 			if _attack_move_pending:
 				_set_attack_move_pending(false)
+				return
+			if _build_pending:
+				_set_build_pending(false)
 				return
 			_handle_right_click(event.position)
 	elif event is InputEventMouseMotion and _dragging:
@@ -273,6 +316,113 @@ func _build_attack_move_cursor() -> ImageTexture:
 
 	return ImageTexture.create_from_image(img)
 
+## Toggles/sets building-placement arming (B). Mutually exclusive with
+## attack-move (see _unhandled_input, which disarms the other before
+## arming this one) -- both are "pending click" modes and having two armed
+## at once would make a click ambiguous. Shows/hides the ghost preview.
+func _set_build_pending(pending: bool) -> void:
+	_build_pending = pending
+	_get_build_ghost().visible = pending
+	if pending:
+		_update_build_ghost()
+
+## Lazily builds the translucent preview box the first time it's needed,
+## reusing it for every placement after that rather than recreating it
+## each time B is pressed.
+func _get_build_ghost() -> MeshInstance3D:
+	if _build_ghost != null:
+		return _build_ghost
+	_build_ghost = MeshInstance3D.new()
+	_build_ghost.visible = false
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(BUILD_GRID_SIZE, 2.6, BUILD_GRID_SIZE)
+	_build_ghost.mesh = mesh
+	_build_ghost_material = StandardMaterial3D.new()
+	_build_ghost_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_build_ghost_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_build_ghost.material_override = _build_ghost_material
+	add_child(_build_ghost)
+	return _build_ghost
+
+## Snaps `world_pos` to the center of the nearest grid cell a
+## `footprint_tiles`-wide square building could occupy -- an odd footprint
+## (the default, 1) centers on a cell, landing on the half-cell offset
+## grid lines are drawn at (see debug_grid.gdshader); an even footprint
+## (e.g. a 4x4 building) instead centers exactly on a grid-line
+## intersection, so its edges still land on grid lines rather than
+## straddling one. Both are really the same formula: snap the building's
+## own min-corner to the nearest whole grid cell, then re-add half its own
+## footprint width to get back its center.
+func _snap_to_grid(world_pos: Vector3, footprint_tiles: float = 1.0) -> Vector3:
+	var half_tiles := footprint_tiles / 2.0
+	var cell_x: float = roundf(world_pos.x / BUILD_GRID_SIZE - half_tiles)
+	var cell_z: float = roundf(world_pos.z / BUILD_GRID_SIZE - half_tiles)
+	return Vector3(
+		(cell_x + half_tiles) * BUILD_GRID_SIZE,
+		0.0,
+		(cell_z + half_tiles) * BUILD_GRID_SIZE
+	)
+
+## True if a `footprint_tiles`-wide building centered at (already-snapped)
+## `pos` wouldn't overlap the ground's own edge, another building, or the
+## map's static Wall obstacle. Doesn't check units -- those move out of the
+## way on their own and aren't a real placement obstruction the way a
+## permanent structure is.
+func _is_build_spot_valid(pos: Vector3, footprint_tiles: float = 1.0) -> bool:
+	var half: float = footprint_tiles * BUILD_GRID_SIZE / 2.0
+	var ground_half := 30.0
+	if absf(pos.x) > ground_half - half or absf(pos.z) > ground_half - half:
+		return false
+	var flat_pos := Vector2(pos.x, pos.z)
+	for building in get_tree().get_nodes_in_group("buildings"):
+		if not is_instance_valid(building):
+			continue
+		var other_half: float = BUILD_GRID_SIZE / 2.0
+		var flat_other := Vector2(building.global_position.x, building.global_position.z)
+		if absf(flat_pos.x - flat_other.x) < half + other_half and absf(flat_pos.y - flat_other.y) < half + other_half:
+			return false
+	var wall := get_node_or_null("Wall")
+	if wall != null:
+		var wall_flat := Vector2(wall.global_position.x, wall.global_position.z)
+		# Wall is 3x0.4 (see Main.tscn) -- treat it as a generous 2x2
+		# footprint for this check rather than reading its exact box size,
+		# comfortably covering it either way.
+		if absf(flat_pos.x - wall_flat.x) < half + 1.0 and absf(flat_pos.y - wall_flat.y) < half + 1.0:
+			return false
+	return true
+
+## Raycasts the ground under the cursor, snaps it to the grid, and updates
+## the ghost's position/color to match -- called every _process frame while
+## _build_pending is true. No-op (ghost just stays wherever it last was) if
+## the cursor isn't currently over the ground at all.
+func _update_build_ghost() -> void:
+	var mouse_pos := get_viewport().get_mouse_position()
+	var hit := _raycast(mouse_pos, GROUND_MASK)
+	if hit.is_empty():
+		return
+	var snapped := _snap_to_grid(hit["position"])
+	_build_ghost_position = snapped
+	_build_ghost_valid = _is_build_spot_valid(snapped)
+	var ghost := _get_build_ghost()
+	ghost.global_position = snapped + Vector3(0, 1.3, 0)
+	_build_ghost_material.albedo_color = (
+		Color(0.3, 1.0, 0.4, 0.45) if _build_ghost_valid else Color(1.0, 0.25, 0.25, 0.45)
+	)
+
+## The left-click that fires once building placement is armed -- spawns a
+## real building at the ghost's current (already snapped) position if
+## valid, then disarms back to normal click behavior either way. Does
+## nothing (stays armed) on an invalid spot, so a misplaced click doesn't
+## silently cancel the whole thing.
+func _confirm_build_placement() -> void:
+	if not _build_ghost_valid or _build_ghost_position == Vector3.INF:
+		return
+	var building: Node3D = BUILDING_SCENE.instantiate()
+	$Buildings.add_child(building)
+	building.global_position = _build_ghost_position
+	building.player_id = GameState.human_player_id
+	_set_build_pending(false)
+
 func _process(delta: float) -> void:
 	_fog_update_elapsed += delta
 	if _fog_update_elapsed >= FOG_UPDATE_INTERVAL:
@@ -280,6 +430,9 @@ func _process(delta: float) -> void:
 		_update_fog_of_war()
 
 	_prune_selected_units()
+
+	if _build_pending:
+		_update_build_ghost()
 
 	for i in range(_move_queues.size() - 1, -1, -1):
 		var q: Dictionary = _move_queues[i]
