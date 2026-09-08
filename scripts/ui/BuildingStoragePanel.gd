@@ -3,8 +3,8 @@ extends Control
 ## Building.stored_items) -- one row per item. Right-clicking a row drops
 ## it on the ground at the building; dragging it out (see ItemSlotButton)
 ## lets the player hand it to a unit or place it elsewhere. Hidden entirely
-## when no building is selected, unlike EquipmentPanel's always-visible
-## (just empty) box, since this one only makes sense in that context.
+## when no building is selected -- same idea EquipmentPanel uses for a
+## unit with nothing equipped.
 
 signal item_right_clicked(item_type: String)
 

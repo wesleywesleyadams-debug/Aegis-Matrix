@@ -291,6 +291,7 @@ anchor_bottom = 1.0
 mouse_filter = 2
 
 [node name="Background" type="Panel" parent="UI/EquipmentPanel"]
+visible = false
 layout_mode = 0
 offset_left = 180.0
 offset_top = -174.0
