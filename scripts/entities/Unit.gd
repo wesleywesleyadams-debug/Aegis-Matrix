@@ -233,7 +233,17 @@ func equip_item(item_type: String) -> Array[String]:
 	match kind:
 		"one_hand":
 			var hand := "right_hand" if backpack["right_hand"].is_empty() else "left_hand"
-			_displace(hand, displaced)
+			# The hand picked to free up might currently hold a two-hand
+			# item (occupying BOTH hands at once) -- displacing just this
+			# one hand would leave that item's other hand slot stale,
+			# still "equipped" in a single hand it can't actually occupy
+			# alone. Clear both hands in that case so the two-hand item is
+			# displaced as a whole, not split in half.
+			if ItemDefs.get_slot_kind(backpack[hand]) == "two_hand":
+				_displace("right_hand", displaced)
+				_displace("left_hand", displaced)
+			else:
+				_displace(hand, displaced)
 			_set_slot(hand, item_type)
 		"two_hand":
 			_displace("right_hand", displaced)
