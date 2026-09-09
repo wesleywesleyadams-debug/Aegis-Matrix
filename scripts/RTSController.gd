@@ -34,7 +34,6 @@ const BUILDING_SCENE: PackedScene = preload("res://scenes/ParentBuilding.tscn")
 @onready var selection_box: Control = $UI/SelectionBox
 @onready var selection_panel: Control = $UI/SelectionPanel
 @onready var portrait_panel: Control = $UI/PortraitPanel
-@onready var equipment_panel: Control = $UI/EquipmentPanel/Background
 @onready var storage_panel: Control = $UI/BuildingStoragePanel/Background
 @onready var backpack_panel: Control = $UI/PortraitPanel/UnitBackpackPanel
 @onready var item_stats_panel: Control = $UI/PortraitPanel/ItemStatsPanel
@@ -108,11 +107,6 @@ func _ready() -> void:
 	else:
 		_apply_starting_unit_count()
 	_assign_players()
-
-	equipment_panel.item_right_clicked.connect(_on_backpack_item_right_clicked)
-	equipment_panel.item_hovered.connect(item_stats_panel.show_item)
-	equipment_panel.item_unhovered.connect(item_stats_panel.hide_item)
-	_refresh_equipment_panel()
 
 	backpack_panel.item_right_clicked.connect(_on_backpack_item_right_clicked)
 	backpack_panel.item_hovered.connect(item_stats_panel.show_item)
@@ -803,7 +797,6 @@ func _spread_offset(index: int, count: int) -> Vector3:
 ## so selecting one and right-clicking should never be able to task it.
 func _on_unit_backpack_changed(unit: Unit) -> void:
 	if unit == _first_selected_unit():
-		_refresh_equipment_panel()
 		_refresh_backpack_panel()
 
 func _first_selected_unit() -> Unit:
@@ -817,12 +810,6 @@ func _first_selected_building() -> Building:
 		if entity is Building:
 			return entity
 	return null
-
-## Refreshes the equipment panel to show the first selected unit's
-## right-hand slot (or empty, if no unit -- just a building/World object,
-## or nothing at all -- is selected).
-func _refresh_equipment_panel() -> void:
-	equipment_panel.refresh(_first_selected_unit())
 
 ## Refreshes the backpack panel to show the first selected unit's full
 ## 4-slot inventory (or empty if no unit is selected).
@@ -850,7 +837,6 @@ func _on_backpack_item_right_clicked(item_type: String, source_slot: String) -> 
 	if unit == null or unit.backpack.get(source_slot, "") != item_type:
 		return
 	unit.unequip_item_fully(item_type, source_slot)
-	_refresh_equipment_panel()
 	_refresh_backpack_panel()
 	WorldItem.spawn_pickup(item_type, unit.global_position, unit.model_root.rotation.y, $World)
 
@@ -940,7 +926,6 @@ func _throw_from_building(item_type: String, building: Building, target: Diction
 ## animation finishes (see _on_thrown_item_landed), same end states
 ## _throw_from_building reaches, just with walking time first.
 func _on_unit_item_thrown(unit: Unit, item_type: String, target_position: Vector3, target_unit: Unit, target_building: Building) -> void:
-	_refresh_equipment_panel()
 	_refresh_backpack_panel()
 	WorldItem.spawn_thrown(
 		item_type, unit.global_position, target_position, $World,
@@ -961,7 +946,6 @@ func _on_thrown_item_landed(pickup: Node3D, target_unit: Unit, target_building: 
 		for old_item_type in displaced:
 			WorldItem.spawn_pickup(old_item_type, target_unit.global_position, target_unit.model_root.rotation.y, $World)
 		pickup.queue_free()
-		_refresh_equipment_panel()
 		_refresh_backpack_panel()
 		ItemReceivedEffect.spawn(item_type, target_unit)
 	elif is_instance_valid(target_building) and target_building.is_player_controlled():
@@ -1001,7 +985,7 @@ func _select_unit(unit: Node) -> void:
 	unit.selected = true
 	selection_panel.set_selected_units(_selected_units)
 	portrait_panel.set_subject(_selected_units[0])
-	_refresh_equipment_panel()
+	_refresh_backpack_panel()
 	_refresh_storage_panel()
 
 ## Left-clicking a unit/building NOT owned by the player selects it for
@@ -1045,7 +1029,7 @@ func _prune_selected_units() -> void:
 	if had_invalid:
 		selection_panel.set_selected_units(_selected_units)
 		portrait_panel.set_subject(_selected_units[0] if not _selected_units.is_empty() else null)
-		_refresh_equipment_panel()
+		_refresh_backpack_panel()
 		_refresh_storage_panel()
 
 	# _inspected_foreign lives outside _selected_units entirely (see
@@ -1068,7 +1052,7 @@ func _clear_selection() -> void:
 	_inspected_foreign = null
 	selection_panel.set_selected_units(_selected_units)
 	portrait_panel.set_subject(null)
-	_refresh_equipment_panel()
+	_refresh_backpack_panel()
 	_refresh_storage_panel()
 
 func _raycast_unit(screen_pos: Vector2) -> Node3D:

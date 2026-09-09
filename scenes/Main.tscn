@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3]
+[gd_scene load_steps=24 format=3]
 
 [ext_resource type="Script" path="res://scripts/RTSController.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/RTSCamera.gd" id="2_cam"]
@@ -17,7 +17,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ParentBuilding.tscn" id="16_parent_building"]
 [ext_resource type="PackedScene" path="res://scenes/Tree.tscn" id="17_tree"]
 [ext_resource type="PackedScene" path="res://scenes/SwordPickup.tscn" id="18_sword_pickup"]
-[ext_resource type="Script" path="res://scripts/ui/EquipmentPanel.gd" id="20_equipment_panel"]
 [ext_resource type="PackedScene" path="res://scenes/CrossbowPickup.tscn" id="21_crossbow_pickup"]
 [ext_resource type="Script" path="res://scripts/ui/ItemDropTarget.gd" id="22_item_drop_target"]
 [ext_resource type="Script" path="res://scripts/ui/BuildingStoragePanel.gd" id="23_building_storage"]
@@ -382,31 +381,6 @@ render_target_update_mode = 4
 cull_mask = 2
 fov = 35.0
 script = ExtResource("9_portrait_cam")
-
-[node name="EquipmentPanel" type="Control" parent="UI"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-
-[node name="Background" type="Panel" parent="UI/EquipmentPanel"]
-visible = false
-layout_mode = 0
-offset_left = 180.0
-offset_top = -174.0
-offset_right = 340.0
-offset_bottom = -14.0
-anchor_top = 1.0
-anchor_bottom = 1.0
-script = ExtResource("20_equipment_panel")
-
-[node name="VBox" type="VBoxContainer" parent="UI/EquipmentPanel/Background"]
-layout_mode = 0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 150.0
-offset_bottom = 150.0
 
 [node name="BuildingStoragePanel" type="Control" parent="UI"]
 layout_mode = 3
