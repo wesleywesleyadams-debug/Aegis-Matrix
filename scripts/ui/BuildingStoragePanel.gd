@@ -24,9 +24,8 @@ func refresh(building: Building) -> void:
 	title_label.text = "Storage (%d/%d)" % [building.stored_items.size(), Building.MAX_STORAGE_SLOTS]
 	for item_type in building.stored_items:
 		var button := ItemSlotButton.new()
-		button.item_type = item_type
 		button.source_building = building
-		button.text = item_type.capitalize()
+		button.set_item(item_type)
 		button.right_clicked.connect(func(t: String, s: String) -> void: item_right_clicked.emit(t, s))
 		button.hovered.connect(func(t: String) -> void: item_hovered.emit(t))
 		button.unhovered.connect(func() -> void: item_unhovered.emit())

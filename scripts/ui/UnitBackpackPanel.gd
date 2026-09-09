@@ -52,12 +52,8 @@ func refresh(unit: Unit) -> void:
 		button.clip_text = true
 		button.add_theme_font_size_override("font_size", SLOT_FONT_SIZE)
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		if item_type.is_empty():
-			button.text = slot.capitalize()
-			button.disabled = true
-		else:
-			button.item_type = item_type
-			button.text = item_type.capitalize()
+		button.set_item(item_type, slot.capitalize())
+		if not item_type.is_empty():
 			button.right_clicked.connect(func(t: String, s: String) -> void: item_right_clicked.emit(t, s))
 			button.hovered.connect(func(t: String) -> void: item_hovered.emit(t))
 			button.unhovered.connect(func() -> void: item_unhovered.emit())

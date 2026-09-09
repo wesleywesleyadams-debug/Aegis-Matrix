@@ -28,10 +28,9 @@ func refresh(unit: Unit) -> void:
 	if not visible:
 		return
 	var button := ItemSlotButton.new()
-	button.item_type = item_type
 	button.source_slot = "right_hand"
 	button.source_unit = unit
-	button.text = item_type.capitalize()
+	button.set_item(item_type)
 	button.right_clicked.connect(func(t: String, s: String) -> void: item_right_clicked.emit(t, s))
 	button.hovered.connect(func(t: String) -> void: item_hovered.emit(t))
 	button.unhovered.connect(func() -> void: item_unhovered.emit())

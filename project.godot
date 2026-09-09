@@ -23,6 +23,7 @@ Music="*res://scenes/Music.tscn"
 OptionsMenu="*res://scenes/OptionsMenu.tscn"
 AccountMenu="*res://scenes/AccountMenu.tscn"
 SignedInLabel="*res://scenes/SignedInLabel.tscn"
+ItemIcons="*res://scenes/ItemIconCapture.tscn"
 
 [display]
 

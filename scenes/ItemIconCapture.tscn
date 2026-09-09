@@ -1,0 +1,23 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ItemIconCapture.gd" id="1_capture"]
+
+[node name="ItemIconCapture" type="Node"]
+script = ExtResource("1_capture")
+
+[node name="Viewport" type="SubViewport" parent="."]
+transparent_bg = true
+size = Vector2i(128, 128)
+render_target_update_mode = 4
+own_world_3d = true
+
+[node name="Camera3D" type="Camera3D" parent="Viewport"]
+fov = 35.0
+
+[node name="KeyLight" type="DirectionalLight3D" parent="Viewport"]
+transform = Transform3D(0.7071, -0.5, 0.5, 0, 0.7071, 0.7071, -0.7071, -0.5, 0.5, 0, 0, 0)
+light_energy = 1.1
+
+[node name="FillLight" type="DirectionalLight3D" parent="Viewport"]
+transform = Transform3D(-0.7071, 0.35, -0.6187, 0, 0.8703, 0.4924, 0.7071, 0.3487, -0.6187, 0, 0, 0)
+light_energy = 0.4

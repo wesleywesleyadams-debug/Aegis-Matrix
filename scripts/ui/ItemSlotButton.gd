@@ -1,11 +1,12 @@
 extends Button
 class_name ItemSlotButton
 ## One item-holding slot button, shared by EquipmentPanel (a unit's single
-## equipped weapon) and BuildingStoragePanel (one row per stored item).
-## Right-click drops it on the ground where its owner is standing; dragging
-## it out lets the player place it anywhere in the world, hand it to a
-## unit, or store it in a building (see ItemDropTarget/
-## RTSController.handle_item_drag_drop, the actual drop target/logic).
+## equipped weapon), BuildingStoragePanel (one row per stored item), and
+## UnitBackpackPanel (the 4-slot cross layout). Right-click drops it on the
+## ground where its owner is standing; dragging it out lets the player
+## place it anywhere in the world, hand it to a unit, or store it in a
+## building (see ItemDropTarget/RTSController.handle_item_drag_drop, the
+## actual drop target/logic).
 
 signal right_clicked(item_type: String, source_slot: String)
 ## For ItemStatsPanel -- see RTSController._on_item_slot_hovered/
@@ -14,12 +15,49 @@ signal right_clicked(item_type: String, source_slot: String)
 signal hovered(item_type: String)
 signal unhovered()
 
+## Icon fills the whole button in place of a text label -- set once the
+## item's real visual has been captured (see ItemIconCapture); text stays
+## as the item's capitalized name in the meantime as a placeholder, so the
+## slot never sits blank while the capture is pending.
+@onready var icon_rect: TextureRect = _make_icon_rect()
+
+func _make_icon_rect() -> TextureRect:
+	var rect := TextureRect.new()
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.hide()
+	return rect
+
 func _ready() -> void:
+	add_child(icon_rect)
 	mouse_entered.connect(func() -> void:
 		if not item_type.is_empty():
 			hovered.emit(item_type)
 	)
 	mouse_exited.connect(func() -> void: unhovered.emit())
+
+## Sets this slot to show `type` -- its real captured icon in place of a
+## text label (fetched async; the icon simply pops in once ready, with the
+## capitalized item name shown as a placeholder until then). Pass "" to
+## show an empty/unoccupied slot instead, labeled with `empty_label`
+## (e.g. the slot's own name, "Armor") and disabled.
+func set_item(type: String, empty_label: String = "") -> void:
+	item_type = type
+	if type.is_empty():
+		text = empty_label
+		disabled = true
+		icon_rect.hide()
+		return
+	text = type.capitalize()
+	disabled = false
+	icon_rect.hide()
+	ItemIcons.request_icon(type, func(tex: Texture2D) -> void:
+		if is_instance_valid(self) and item_type == type and tex != null:
+			icon_rect.texture = tex
+			icon_rect.show()
+			text = ""
+	)
 
 var item_type: String = ""
 ## Which of source_unit's Unit.BACKPACK_SLOTS this button represents --
