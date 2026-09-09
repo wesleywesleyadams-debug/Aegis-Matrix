@@ -33,6 +33,18 @@ static func _make_black_stylebox() -> StyleBoxFlat:
 	style.bg_color = Color(0, 0, 0, 1)
 	return style
 
+## Minimum row height for a slot with no fixed size of its own (see
+## BuildingStoragePanel, whose VBoxContainer sizes each button entirely
+## from its own minimum size -- UnitBackpackPanel's fixed per-slot Rect2s
+## aren't affected by this, they set position/size directly regardless).
+## The plain black stylebox above has no content margins to fall back on
+## the way this theme's normal button stylebox does, and an occupied
+## slot's text is empty (the icon shows instead) so there's no text
+## height to fall back on either -- without this, a stored item's row
+## collapses to 0 height and becomes unclickable despite still "showing"
+## its icon (the icon just renders at zero size along with it).
+const MIN_ROW_HEIGHT: float = 52.0
+
 func _init() -> void:
 	var black_style := _make_black_stylebox()
 	add_theme_stylebox_override("normal", black_style)
@@ -40,6 +52,7 @@ func _init() -> void:
 	add_theme_stylebox_override("pressed", black_style)
 	add_theme_stylebox_override("disabled", black_style)
 	add_theme_stylebox_override("focus", black_style)
+	custom_minimum_size.y = MIN_ROW_HEIGHT
 
 	icon_rect = TextureRect.new()
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
