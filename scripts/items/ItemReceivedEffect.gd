@@ -14,8 +14,15 @@ class_name ItemReceivedEffect
 ## own root never rotates (only model_root does, for facing), so the effect
 ## stays visually upright and never spins with the unit's facing.
 
-## How high above the target the effect floats while holding.
-const FLOAT_HEIGHT: float = 2.2
+## How high above the target's own HealthBar the effect floats while
+## holding -- HealthBar's height (see ParentUnit.tscn/ParentBuilding.tscn)
+## already sits just above whatever model it's attached to, whatever that
+## model's actual height is, so reusing it (rather than one fixed height)
+## is what keeps this above a squat unit AND a much taller building alike.
+const FLOAT_ABOVE_HEALTH_BAR: float = 0.6
+## Used only if `target` has no HealthBar to measure from (shouldn't
+## happen for a Unit/Building, both always have one -- see Entity).
+const FALLBACK_FLOAT_HEIGHT: float = 2.2
 ## How much brighter than its own albedo the effect glows -- brighter than a
 ## map pickup's WorldItem.GLOW_ENERGY since this is meant to catch the eye.
 const GLOW_ENERGY: float = 5.0
@@ -38,7 +45,9 @@ static func spawn(item_type: String, target: Node3D) -> Node3D:
 	var visual: Node3D = scene.instantiate()
 	effect.add_child(visual)
 
-	effect.position = Vector3(0, FLOAT_HEIGHT, 0)
+	var health_bar: Node3D = target.get_node_or_null("HealthBar")
+	var float_height := health_bar.position.y + FLOAT_ABOVE_HEALTH_BAR if health_bar != null else FALLBACK_FLOAT_HEIGHT
+	effect.position = Vector3(0, float_height, 0)
 	WorldItem.apply_glow(visual, GLOW_ENERGY)
 
 	var tween := effect.create_tween()
