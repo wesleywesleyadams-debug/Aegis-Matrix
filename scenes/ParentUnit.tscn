@@ -1,9 +1,10 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/entities/Unit.gd" id="1_unit"]
 [ext_resource type="Script" path="res://scripts/ui/HealthBar.gd" id="10_health_bar"]
 [ext_resource type="Texture2D" path="res://assets/textures/white_pixel.png" id="11_white_pixel"]
 [ext_resource type="PackedScene" path="res://assets/models/paladin/paladin.glb" id="2_paladin_model"]
+[ext_resource type="PackedScene" path="res://assets/models/human_male/human_male_rigged.glb" id="3_human_male_model"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.285
@@ -61,33 +62,30 @@ shape = SubResource("SphereShape3D_hurtbox")
 
 [node name="ModelRoot" type="Node3D" parent="."]
 
-[node name="PaladinModel" parent="ModelRoot" instance=ExtResource("2_paladin_model")]
-transform = Transform3D(0.9273, 0, 0, 0, 0.9273, 0, 0, 0, 0.9273, 0, 0, 0)
+[node name="HumanMaleModel" parent="ModelRoot" instance=ExtResource("3_human_male_model")]
+transform = Transform3D(1.735, 0, 0, 0, 1.735, 0, 0, 0, 1.735, 0, 0, 0)
 
-[node name="Paladin_J_Nordstrom" parent="ModelRoot/PaladinModel/Armature/Skeleton3D" index="0"]
+[node name="tripo_node_39bf0ce4-c086-4027-b983-d0a3f8a02c70" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D" index="0"]
 layers = 3
 
-[node name="Paladin_J_Nordstrom_Helmet" parent="ModelRoot/PaladinModel/Armature/Skeleton3D" index="1"]
-layers = 3
-
-[node name="WeaponSlot" type="BoneAttachment3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D"]
+[node name="WeaponSlot" type="BoneAttachment3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D"]
 bone_name = "mixamorig_RightHand"
-bone_idx = 46
+bone_idx = 28
 
-[node name="WeaponSlotLeft" type="BoneAttachment3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D"]
+[node name="WeaponSlotLeft" type="BoneAttachment3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D"]
 bone_name = "mixamorig_LeftHand"
 bone_idx = 17
 
-[node name="AttackHitbox" type="Area3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D/WeaponSlot"]
+[node name="AttackHitbox" type="Area3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot"]
 collision_layer = 0
 collision_mask = 2
 monitoring = false
 monitorable = false
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
 shape = SubResource("BoxShape3D_attack")
 
-[node name="HitboxMesh" type="MeshInstance3D" parent="ModelRoot/PaladinModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
+[node name="HitboxMesh" type="MeshInstance3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
 visible = false
 mesh = SubResource("BoxMesh_attack_vis")
 surface_material_override/0 = SubResource("Mat_attack_vis")
