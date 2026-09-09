@@ -434,6 +434,11 @@ func _confirm_build_placement() -> void:
 	$Buildings.add_child(building)
 	building.global_position = _build_ghost_position
 	building.player_id = GameState.human_player_id
+	# Buildings present when _ready() ran get this connected there (see
+	# _ready's "buildings" group loop) -- one placed mid-match needs it
+	# wired up here instead, or its storage panel would only ever show
+	# stale state until the player deselects and reselects it.
+	building.storage_changed.connect(_on_building_storage_changed)
 	_set_build_pending(false)
 
 func _process(delta: float) -> void:
