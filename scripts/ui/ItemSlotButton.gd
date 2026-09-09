@@ -24,7 +24,23 @@ signal unhovered()
 ## until _ready() fires on that add_child.
 var icon_rect: TextureRect
 
+## Plain black in every state -- item icons are lit/glowing 3D renders on
+## a transparent background (see ItemIconCapture), so a plain dark slot
+## behind them reads far better than this theme's usual button styling
+## would (which is designed around text labels, not full-bleed images).
+static func _make_black_stylebox() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 1)
+	return style
+
 func _init() -> void:
+	var black_style := _make_black_stylebox()
+	add_theme_stylebox_override("normal", black_style)
+	add_theme_stylebox_override("hover", black_style)
+	add_theme_stylebox_override("pressed", black_style)
+	add_theme_stylebox_override("disabled", black_style)
+	add_theme_stylebox_override("focus", black_style)
+
 	icon_rect = TextureRect.new()
 	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
