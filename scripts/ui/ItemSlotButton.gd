@@ -1,12 +1,11 @@
 extends Button
 class_name ItemSlotButton
-## One item-holding slot button, shared by EquipmentPanel (a unit's single
-## equipped weapon), BuildingStoragePanel (one row per stored item), and
-## UnitBackpackPanel (the 4-slot cross layout). Right-click drops it on the
-## ground where its owner is standing; dragging it out lets the player
-## place it anywhere in the world, hand it to a unit, or store it in a
-## building (see ItemDropTarget/RTSController.handle_item_drag_drop, the
-## actual drop target/logic).
+## One item-holding slot button, shared by BuildingStoragePanel (one row
+## per stored item) and UnitBackpackPanel (the 4-slot cross layout).
+## Right-click drops it on the ground where its owner is standing;
+## dragging it out lets the player place it anywhere in the world, hand
+## it to a unit, or store it in a building (see ItemDropTarget/
+## RTSController.handle_item_drag_drop, the actual drop target/logic).
 
 signal right_clicked(item_type: String, source_slot: String)
 ## For ItemStatsPanel -- see RTSController._on_item_slot_hovered/
@@ -20,9 +19,9 @@ signal unhovered()
 ## as the item's capitalized name in the meantime as a placeholder, so the
 ## slot never sits blank while the capture is pending. Built in _init()
 ## rather than as @onready -- every caller (see UnitBackpackPanel/
-## EquipmentPanel/BuildingStoragePanel) calls set_item() right after
-## ItemSlotButton.new(), before add_child()'ing it into the tree, and
-## @onready wouldn't run until _ready() fires on that add_child.
+## BuildingStoragePanel) calls set_item() right after ItemSlotButton.new(),
+## before add_child()'ing it into the tree, and @onready wouldn't run
+## until _ready() fires on that add_child.
 var icon_rect: TextureRect
 
 func _init() -> void:
