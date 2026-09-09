@@ -18,19 +18,22 @@ signal unhovered()
 ## Icon fills the whole button in place of a text label -- set once the
 ## item's real visual has been captured (see ItemIconCapture); text stays
 ## as the item's capitalized name in the meantime as a placeholder, so the
-## slot never sits blank while the capture is pending.
-@onready var icon_rect: TextureRect = _make_icon_rect()
+## slot never sits blank while the capture is pending. Built in _init()
+## rather than as @onready -- every caller (see UnitBackpackPanel/
+## EquipmentPanel/BuildingStoragePanel) calls set_item() right after
+## ItemSlotButton.new(), before add_child()'ing it into the tree, and
+## @onready wouldn't run until _ready() fires on that add_child.
+var icon_rect: TextureRect
 
-func _make_icon_rect() -> TextureRect:
-	var rect := TextureRect.new()
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	rect.hide()
-	return rect
+func _init() -> void:
+	icon_rect = TextureRect.new()
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon_rect.hide()
+	add_child(icon_rect)
 
 func _ready() -> void:
-	add_child(icon_rect)
 	mouse_entered.connect(func() -> void:
 		if not item_type.is_empty():
 			hovered.emit(item_type)
