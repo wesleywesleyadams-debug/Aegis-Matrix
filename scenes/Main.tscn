@@ -527,10 +527,10 @@ mouse_filter = 2
 
 [node name="Frame" type="Panel" parent="UI/MinimapPanel"]
 layout_mode = 0
-offset_left = -170.0
-offset_top = -170.0
-offset_right = -20.0
-offset_bottom = -20.0
+offset_left = -195.0
+offset_top = -195.0
+offset_right = -45.0
+offset_bottom = -45.0
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
