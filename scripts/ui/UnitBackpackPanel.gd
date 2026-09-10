@@ -17,18 +17,22 @@ signal item_right_clicked(item_type: String, source_slot: String)
 signal item_hovered(item_type: String)
 signal item_unhovered()
 
-## slot name -> Rect2 within $Slots, forming the cross layout. Column
-## width/cell height are sized to comfortably clear this button theme's
-## own natural minimum (~52px tall) rather than fighting it with a
-## smaller custom_minimum_size, which the theme would just override
-## anyway -- 2x the original fit-to-minimum size, per the user's request
-## to scale this panel and ItemTooltipPanel up, so cells now have real
-## headroom rather than just clearing the minimum.
+## Every slot cell is a perfect SLOT_SIZE x SLOT_SIZE square, laid out on
+## a grid with a consistent SLOT_GAP between columns -- armor/accessory
+## share the center column (top/bottom), left_hand/right_hand sit in the
+## outer columns, vertically straddling the seam between armor and
+## accessory by design (a conventional worn-equipment/paper-doll layout:
+## hands read as "worn between chest and waist" rather than a plain 2x2
+## grid). SLOT_SIZE is sized to comfortably clear this button theme's own
+## natural minimum (~52px tall) rather than fighting it with a smaller
+## custom_minimum_size, which the theme would just override anyway.
+const SLOT_SIZE: int = 104
+const SLOT_GAP: int = 16
 const SLOT_RECTS: Dictionary = {
-	"armor": Rect2(144, 0, 136, 104),
-	"left_hand": Rect2(0, 52, 136, 104),
-	"right_hand": Rect2(280, 52, 136, 104),
-	"accessory": Rect2(144, 104, 136, 104),
+	"armor": Rect2(SLOT_SIZE + SLOT_GAP, 0, SLOT_SIZE, SLOT_SIZE),
+	"left_hand": Rect2(0, SLOT_SIZE / 2.0 + SLOT_GAP / 2.0, SLOT_SIZE, SLOT_SIZE),
+	"right_hand": Rect2(2 * (SLOT_SIZE + SLOT_GAP), SLOT_SIZE / 2.0 + SLOT_GAP / 2.0, SLOT_SIZE, SLOT_SIZE),
+	"accessory": Rect2(SLOT_SIZE + SLOT_GAP, SLOT_SIZE + SLOT_GAP, SLOT_SIZE, SLOT_SIZE),
 }
 const SLOT_FONT_SIZE: int = 22
 

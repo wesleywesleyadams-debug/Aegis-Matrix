@@ -298,14 +298,53 @@ anchor_top = 1.0
 anchor_bottom = 1.0
 script = ExtResource("24_unit_backpack_panel")
 
-[node name="UnitBackpackLabel" type="Label" parent="UI/PortraitPanel/UnitBackpackPanel"]
+[node name="BackpackIcon" type="Control" parent="UI/PortraitPanel/UnitBackpackPanel"]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 8.0
-offset_right = 424.0
-offset_bottom = 52.0
-text = "Backpack"
-theme_override_font_sizes/font_size = 30
+offset_right = 48.0
+offset_bottom = 40.0
+mouse_filter = 2
+
+[node name="Flap" type="ColorRect" parent="UI/PortraitPanel/UnitBackpackPanel/BackpackIcon"]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 4.0
+offset_right = 26.0
+offset_bottom = 12.0
+color = Color(0.55, 0.4, 0.25, 1)
+
+[node name="LeftStrap" type="ColorRect" parent="UI/PortraitPanel/UnitBackpackPanel/BackpackIcon"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 0.0
+offset_right = 12.0
+offset_bottom = 10.0
+color = Color(0.4, 0.28, 0.16, 1)
+
+[node name="RightStrap" type="ColorRect" parent="UI/PortraitPanel/UnitBackpackPanel/BackpackIcon"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 0.0
+offset_right = 24.0
+offset_bottom = 10.0
+color = Color(0.4, 0.28, 0.16, 1)
+
+[node name="Body" type="ColorRect" parent="UI/PortraitPanel/UnitBackpackPanel/BackpackIcon"]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 10.0
+offset_right = 28.0
+offset_bottom = 30.0
+color = Color(0.55, 0.4, 0.25, 1)
+
+[node name="Pocket" type="ColorRect" parent="UI/PortraitPanel/UnitBackpackPanel/BackpackIcon"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 17.0
+offset_right = 22.0
+offset_bottom = 25.0
+color = Color(0.4, 0.28, 0.16, 1)
 
 [node name="Slots" type="Control" parent="UI/PortraitPanel/UnitBackpackPanel"]
 layout_mode = 0
@@ -317,9 +356,9 @@ offset_bottom = 264.0
 [node name="ItemTooltipPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
-offset_top = -822.0
+offset_top = -792.0
 offset_right = 454.0
-offset_bottom = -502.0
+offset_bottom = -512.0
 anchor_top = 1.0
 anchor_bottom = 1.0
 script = ExtResource("25_item_tooltip_panel")
