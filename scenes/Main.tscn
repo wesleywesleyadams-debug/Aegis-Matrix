@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/ui/SelectionBox.gd" id="4_box"]
 [ext_resource type="Script" path="res://scripts/ui/SelectionPanel.gd" id="7_panel"]
 [ext_resource type="Shader" path="res://shaders/debug_grid.gdshader" id="6_grid_shader"]
+[ext_resource type="Shader" path="res://shaders/void_sky.gdshader" id="32_void_sky"]
 [ext_resource type="Script" path="res://scripts/ui/PortraitPanel.gd" id="8_portrait_panel"]
 [ext_resource type="Script" path="res://scripts/ui/PortraitCamera.gd" id="9_portrait_cam"]
 [ext_resource type="PackedScene" path="res://scenes/ParentUnit.tscn" id="10_sprite_unit"]
@@ -60,11 +61,8 @@ shader_parameter/line_color = Color(1, 1, 1, 0.45)
 shader_parameter/major_line_color = Color(1, 0.85, 0.2, 0.6)
 shader_parameter/major_every = 5
 
-[sub_resource type="ProceduralSkyMaterial" id="Sky_main"]
-sky_top_color = Color(0.38, 0.52, 0.75, 1)
-sky_horizon_color = Color(0.7, 0.75, 0.78, 1)
-ground_bottom_color = Color(0.2, 0.2, 0.2, 1)
-ground_horizon_color = Color(0.7, 0.75, 0.78, 1)
+[sub_resource type="ShaderMaterial" id="Sky_main"]
+shader = ExtResource("32_void_sky")
 
 [sub_resource type="Sky" id="Sky_res"]
 sky_material = SubResource("Sky_main")
