@@ -7,12 +7,13 @@ extends Control
 ## of which manage their own visibility independently (the tooltip in
 ## particular must still show while hovering a map item with nothing
 ## selected), so only SelectedObjectsPanel itself -- the portrait/name/
-## team readout -- gets hidden when nothing is selected.
+## team/level readout -- gets hidden when nothing is selected.
 @onready var selected_objects_panel: Control = $SelectedObjectsPanel
 @onready var portrait_viewport: SubViewport = $SelectedObjectsPanel/PortraitViewport
 @onready var texture_rect: TextureRect = $SelectedObjectsPanel/TextureRect
 @onready var name_label: Label = $SelectedObjectsPanel/NameLabel
 @onready var team_label: Label = $SelectedObjectsPanel/TeamLabel
+@onready var level_label: Label = $SelectedObjectsPanel/LevelLabel
 
 const ALLY_COLOR: Color = Color(0.3, 1.0, 0.4)
 const ENEMY_COLOR: Color = Color(1.0, 0.25, 0.25)
@@ -43,5 +44,9 @@ func set_subject(unit: Node3D) -> void:
 		# throughout this UI's parchment style), which read as a muddy,
 		# still-mostly-brown tint rather than actual green/red.
 		team_label.add_theme_color_override("font_color", ENEMY_COLOR if is_enemy else ALLY_COLOR)
+		# Only a Unit has a level (see Unit.level) -- a Building or World
+		# object just shows no level text at all rather than a fake "Level 1".
+		level_label.text = "Level %d" % unit.level if unit is Unit else ""
 	else:
 		team_label.text = ""
+		level_label.text = ""
