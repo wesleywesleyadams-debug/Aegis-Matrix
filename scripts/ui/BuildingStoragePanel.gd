@@ -17,7 +17,7 @@ signal item_unhovered()
 ## storage slot and a backpack slot read as the same visual unit. Grid
 ## gap (see Main.tscn's Grid node theme overrides) matches
 ## UnitBackpackPanel's SLOT_GAP too, for the same reason.
-const CELL_SIZE: float = 132.0
+const CELL_SIZE: float = 116.0
 const GRID_COLUMNS: int = 3
 ## Horizontal inset centering the (CELL_SIZE * GRID_COLUMNS)-wide grid
 ## within the panel's full slot-area width (matches UnitBackpackPanel's
