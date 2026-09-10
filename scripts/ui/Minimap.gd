@@ -93,17 +93,23 @@ func _draw_view_bounds() -> void:
 	points.append(points[0])
 	draw_polyline(points, VIEW_BOUNDS_COLOR, VIEW_BOUNDS_WIDTH)
 
-## Left-clicking anywhere on the minimap shifts CameraRig so the ground
-## point under the cursor becomes the new center of the actual view --
-## computed as a delta from wherever the view is currently centered
-## (the ground point straight down the middle of the viewport right
-## now) rather than assuming any fixed relationship between CameraRig's
-## own position and its look-at point, so this works regardless of
-## current zoom/pan.
+## Left-clicking anywhere ON THE DIAMOND (Frame's own Control rect is a
+## bounding box around it, not the diamond's actual shape -- a click in
+## one of its corners, outside the diamond, isn't a click on any real
+## terrain and is ignored rather than extrapolated to a wildly
+## out-of-bounds world point) shifts CameraRig so the ground point under
+## the cursor becomes the new center of the actual view -- computed as a
+## delta from wherever the view is currently centered (the ground point
+## straight down the middle of the viewport right now) rather than
+## assuming any fixed relationship between CameraRig's own position and
+## its look-at point, so this works regardless of current zoom/pan.
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		var local_click: Vector2 = event.position - CENTER
+		if absf(local_click.x) / FILL_HALF_DIAGONAL.x + absf(local_click.y) / FILL_HALF_DIAGONAL.y > 1.0:
+			return
 		accept_event()
-		var target := _unproject(event.position - CENTER)
+		var target := _unproject(local_click)
 		var current_center := _ground_point(get_viewport().get_visible_rect().size / 2.0)
 		var delta := target - current_center
 		delta.y = 0.0
