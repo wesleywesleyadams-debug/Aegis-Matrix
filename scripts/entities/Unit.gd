@@ -9,6 +9,13 @@ class_name Unit
 const MAX_SPEED: float = 2.25
 const ARRIVE_DISTANCE: float = 0.15
 
+## Shown as the hover tooltip's title (see get_tooltip_title) in place
+## of the raw node name -- "human" is the only race that currently
+## exists (see GameState's lobby slot default), so every unit is one
+## for now, but this is per-unit rather than hardcoded so a future
+## race-differentiated unit just sets this on spawn.
+@export var race: String = "human"
+
 ## Every unit starts at level 1. No leveling system exists yet (see
 ## Entity.take_damage's doc comment) -- once kills automatically scale
 ## up stats, this is what increments, and level 1 is simply "no bonus
@@ -554,11 +561,18 @@ func _get_attack_animation_name() -> String:
 		return animation_name
 	return "Attack"
 
-## Adds a Level row to the hover tooltip (see Entity.get_tooltip_extra_stats,
-## RTSController._update_map_item_hover) -- Building/World don't have a
-## level concept at all, so only Unit overrides this.
+## Shows this unit's race in place of its raw node name (e.g. "Unit2").
+func get_tooltip_title() -> String:
+	return race.capitalize()
+
+## Adds Level/Attack rows to the hover tooltip (see
+## Entity.get_tooltip_extra_stats, RTSController._update_map_item_hover)
+## -- Building/World don't have a level or attack concept at all, so
+## only Unit overrides this. _get_attack_damage() rather than
+## attack_damage directly, so an equipped weapon's damage shows here
+## too, not just the unarmed default.
 func get_tooltip_extra_stats() -> Dictionary:
-	return {"Level": level}
+	return {"Level": level, "Attack": "%d" % _get_attack_damage()}
 
 ## Swaps in the equipped right-hand weapon's own damage (see
 ## ItemDefs.get_damage) over the unarmed default -- an unequipped hand, or

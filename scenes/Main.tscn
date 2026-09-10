@@ -381,6 +381,15 @@ theme_override_font_sizes/font_size = 30
 layout_mode = 0
 offset_left = 16.0
 offset_top = 60.0
+offset_right = 212.0
+offset_bottom = 300.0
+theme_override_font_sizes/font_size = 26
+autowrap_mode = 2
+
+[node name="StatsLabelRight" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel"]
+layout_mode = 0
+offset_left = 228.0
+offset_top = 60.0
 offset_right = 424.0
 offset_bottom = 300.0
 theme_override_font_sizes/font_size = 26
