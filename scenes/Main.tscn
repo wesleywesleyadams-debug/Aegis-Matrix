@@ -527,8 +527,8 @@ mouse_filter = 2
 
 [node name="Frame" type="Control" parent="UI/MinimapPanel"]
 layout_mode = 0
-offset_left = -610.0
-offset_top = -354.0
+offset_left = -430.0
+offset_top = -250.0
 offset_right = -10.0
 offset_bottom = -10.0
 anchor_left = 1.0
@@ -538,14 +538,14 @@ anchor_bottom = 1.0
 mouse_filter = 2
 
 [node name="Border" type="Polygon2D" parent="UI/MinimapPanel/Frame"]
-position = Vector2(300, 172)
+position = Vector2(210, 120)
 color = Color(0.35, 0.22, 0.12, 1)
-polygon = PackedVector2Array(0, -172, 300, 0, 0, 172, -300, 0)
+polygon = PackedVector2Array(0, -120, 210, 0, 0, 120, -210, 0)
 
 [node name="Fill" type="Polygon2D" parent="UI/MinimapPanel/Frame"]
-position = Vector2(300, 172)
+position = Vector2(210, 120)
 color = Color(0.82, 0.71, 0.55, 1)
-polygon = PackedVector2Array(0, -156, 284, 0, 0, 156, -284, 0)
+polygon = PackedVector2Array(0, -109, 199, 0, 0, 109, -199, 0)
 
 [node name="MainMenu" type="Control" parent="UI"]
 process_mode = 3
