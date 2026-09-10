@@ -22,7 +22,7 @@
 [ext_resource type="Script" path="res://scripts/ui/ItemDropTarget.gd" id="22_item_drop_target"]
 [ext_resource type="Script" path="res://scripts/ui/BuildingStoragePanel.gd" id="23_building_storage"]
 [ext_resource type="Script" path="res://scripts/ui/UnitBackpackPanel.gd" id="24_unit_backpack_panel"]
-[ext_resource type="Script" path="res://scripts/ui/ItemStatsPanel.gd" id="25_item_stats_panel"]
+[ext_resource type="Script" path="res://scripts/ui/ItemTooltipPanel.gd" id="25_item_tooltip_panel"]
 [ext_resource type="Script" path="res://scripts/ui/GameCalendar.gd" id="26_game_calendar"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
@@ -314,7 +314,7 @@ offset_top = 56.0
 offset_right = 428.0
 offset_bottom = 264.0
 
-[node name="ItemStatsPanel" type="Panel" parent="UI/PortraitPanel"]
+[node name="ItemTooltipPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
 offset_top = -822.0
@@ -322,9 +322,9 @@ offset_right = 454.0
 offset_bottom = -502.0
 anchor_top = 1.0
 anchor_bottom = 1.0
-script = ExtResource("25_item_stats_panel")
+script = ExtResource("25_item_tooltip_panel")
 
-[node name="TitleLabel" type="Label" parent="UI/PortraitPanel/ItemStatsPanel"]
+[node name="TitleLabel" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel"]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 12.0
@@ -332,7 +332,7 @@ offset_right = 424.0
 offset_bottom = 56.0
 theme_override_font_sizes/font_size = 30
 
-[node name="StatsLabel" type="Label" parent="UI/PortraitPanel/ItemStatsPanel"]
+[node name="StatsLabel" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel"]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 60.0

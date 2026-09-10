@@ -1,5 +1,5 @@
 extends Panel
-## Shows an item's stats (see ItemDefs.get_stats) while the player is
+## The tooltip panel -- shows an item's stats (see ItemDefs.get_stats) while the player is
 ## hovering over it -- either a WorldItem sitting on the map, or a slot in
 ## the backpack/equipment/storage panels (see RTSController's per-frame
 ## map-hover check and each panel's item_hovered/item_unhovered signals,

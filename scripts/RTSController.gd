@@ -36,7 +36,7 @@ const BUILDING_SCENE: PackedScene = preload("res://scenes/ParentBuilding.tscn")
 @onready var portrait_panel: Control = $UI/PortraitPanel
 @onready var storage_panel: Control = $UI/BuildingStoragePanel/Background
 @onready var backpack_panel: Control = $UI/PortraitPanel/UnitBackpackPanel
-@onready var item_stats_panel: Control = $UI/PortraitPanel/ItemStatsPanel
+@onready var item_tooltip_panel: Control = $UI/PortraitPanel/ItemTooltipPanel
 @onready var debug_grid: MeshInstance3D = $DebugGrid
 
 var _selected_units: Array[Node] = []
@@ -109,13 +109,13 @@ func _ready() -> void:
 	_assign_players()
 
 	backpack_panel.item_right_clicked.connect(_on_backpack_item_right_clicked)
-	backpack_panel.item_hovered.connect(item_stats_panel.show_item)
-	backpack_panel.item_unhovered.connect(item_stats_panel.hide_item)
+	backpack_panel.item_hovered.connect(item_tooltip_panel.show_item)
+	backpack_panel.item_unhovered.connect(item_tooltip_panel.hide_item)
 	_refresh_backpack_panel()
 
 	storage_panel.item_right_clicked.connect(_on_storage_item_right_clicked)
-	storage_panel.item_hovered.connect(item_stats_panel.show_item)
-	storage_panel.item_unhovered.connect(item_stats_panel.hide_item)
+	storage_panel.item_hovered.connect(item_tooltip_panel.show_item)
+	storage_panel.item_unhovered.connect(item_tooltip_panel.hide_item)
 	_refresh_storage_panel()
 
 	# So a pickup landing directly in a unit's backpack (see WorldItem.gd)
@@ -1218,7 +1218,7 @@ func _issue_pickup_order(units: Array[Node], item: WorldItem, append_to_queue: b
 ## back to the same click-tolerance widening _raycast_unit gets, once a
 ## direct hit against the item's own (fairly small) pickup collider
 ## misses, so right-clicking just next to a pickup still collects it.
-## Shows ItemStatsPanel for whichever WorldItem is directly under the
+## Shows ItemTooltipPanel for whichever WorldItem is directly under the
 ## cursor, hides it otherwise -- called every _process frame. Skipped
 ## entirely while the mouse is over any UI Control: a hovered
 ## ItemSlotButton already drives the panel itself (see the item_hovered/
@@ -1234,7 +1234,7 @@ func _update_map_item_hover() -> void:
 	if get_viewport().gui_get_hovered_control() != null:
 		if _hovered_map_item != null:
 			_hovered_map_item = null
-			item_stats_panel.hide_item()
+			item_tooltip_panel.hide_item()
 		return
 	var hit := _raycast(get_viewport().get_mouse_position(), WorldItem.ITEM_MASK, true, false)
 	var item: WorldItem = hit["collider"] if not hit.is_empty() and hit["collider"] is WorldItem else null
@@ -1242,9 +1242,9 @@ func _update_map_item_hover() -> void:
 		return
 	_hovered_map_item = item
 	if item != null:
-		item_stats_panel.show_item(item.item_type)
+		item_tooltip_panel.show_item(item.item_type)
 	else:
-		item_stats_panel.hide_item()
+		item_tooltip_panel.hide_item()
 
 func _raycast_item(screen_pos: Vector2) -> WorldItem:
 	var hit := _raycast(screen_pos, WorldItem.ITEM_MASK, true, false)

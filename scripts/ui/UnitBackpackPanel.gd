@@ -22,7 +22,7 @@ signal item_unhovered()
 ## own natural minimum (~52px tall) rather than fighting it with a
 ## smaller custom_minimum_size, which the theme would just override
 ## anyway -- 2x the original fit-to-minimum size, per the user's request
-## to scale this panel and ItemStatsPanel up, so cells now have real
+## to scale this panel and ItemTooltipPanel up, so cells now have real
 ## headroom rather than just clearing the minimum.
 const SLOT_RECTS: Dictionary = {
 	"armor": Rect2(144, 0, 136, 104),

@@ -8,7 +8,7 @@ class_name ItemSlotButton
 ## RTSController.handle_item_drag_drop, the actual drop target/logic).
 
 signal right_clicked(item_type: String, source_slot: String)
-## For ItemStatsPanel -- see RTSController._on_item_slot_hovered/
+## For ItemTooltipPanel -- see RTSController._on_item_slot_hovered/
 ## _on_item_slot_unhovered. Only emitted for a non-empty slot (an empty
 ## one has nothing to show stats for).
 signal hovered(item_type: String)

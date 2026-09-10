@@ -10,12 +10,12 @@ class_name ItemDefs
 ## "one_hand" fits either RIGHT_HAND or LEFT_HAND (whichever's free, see
 ## Unit.equip_item), "two_hand" always occupies both at once (a bow/
 ## crossbow needs both hands, so equipping one displaces whatever
-## occupied either). "stats" is display-only data for ItemStatsPanel --
+## occupied either). "stats" is display-only data for ItemTooltipPanel --
 ## nothing currently reads it for actual combat math (equipping stays
 ## visual-only, same as before this system existed).
 ## "damage"/"melee_reach" are the actual combat numbers (see
 ## Unit._get_attack_damage/_get_melee_reach) -- "stats" is the display
-## copy shown in ItemStatsPanel, kept as its own dictionary rather than
+## copy shown in ItemTooltipPanel, kept as its own dictionary rather than
 ## generated from these since not every stat line is combat-numeric (e.g.
 ## "Type").
 const DEFS: Dictionary = {
@@ -48,7 +48,7 @@ static func get_pickup_scene(item_type: String) -> PackedScene:
 static func get_slot_kind(item_type: String) -> String:
 	return DEFS.get(item_type, {}).get("slot", "")
 
-## Display-only stat rows for ItemStatsPanel, as {label: value}. Empty for
+## Display-only stat rows for ItemTooltipPanel, as {label: value}. Empty for
 ## an unrecognized item_type or one with none defined.
 static func get_stats(item_type: String) -> Dictionary:
 	return DEFS.get(item_type, {}).get("stats", {})
