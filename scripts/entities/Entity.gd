@@ -17,6 +17,20 @@ const TURN_SPEED: float = 12.0
 @export var max_health: float = 100.0
 var current_health: float
 
+## A node's own name isn't reliably its display name -- Godot silently
+## appends a number to keep sibling names unique (e.g. Main.tscn's two
+## Dwellings, the second actually named "Dwelling2"), which would
+## otherwise show up as if it were a different, numbered thing. Strips
+## a trailing run of digits -- Godot's own uniquification pattern -- off
+## any Entity's name for display, shared by PortraitPanel (the selected/
+## inspected subject) and RTSController's hover tooltip alike, rather
+## than each re-deriving it.
+static var _trailing_digits := RegEx.create_from_string("\\d+$")
+
+static func display_name_for(entity: Node) -> String:
+	var stripped := _trailing_digits.sub(entity.name, "")
+	return stripped if not stripped.is_empty() else entity.name
+
 ## How much damage one unarmed swing deals (see Unit._get_attack_damage,
 ## which swaps this out for the equipped weapon's own damage whenever
 ## backpack.right_hand actually holds one), and the minimum time between

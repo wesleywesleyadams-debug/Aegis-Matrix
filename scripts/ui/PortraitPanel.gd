@@ -29,7 +29,7 @@ func _ready() -> void:
 func set_subject(unit: Node3D) -> void:
 	selected_objects_panel.visible = unit != null
 	portrait_viewport.get_node("PortraitCamera").set_target(unit)
-	name_label.text = _display_name(unit) if unit != null else ""
+	name_label.text = Entity.display_name_for(unit) if unit != null else ""
 	if unit != null:
 		# Not the same thing as unit.is_player_controlled() (== the human
 		# player's own units specifically) -- this reads as "Enemy" only
@@ -45,16 +45,3 @@ func set_subject(unit: Node3D) -> void:
 		team_label.add_theme_color_override("font_color", ENEMY_COLOR if is_enemy else ALLY_COLOR)
 	else:
 		team_label.text = ""
-
-## A node's own name isn't reliably its display name -- Godot silently
-## appends a number to keep sibling names unique (Main.tscn has two
-## Dwellings, so the second is actually named "Dwelling2"), which would
-## otherwise show up as if it were a different, numbered thing. Strips a
-## trailing run of digits -- Godot's own uniquification pattern -- off
-## any node name for display, for any kind of object alike, rather than
-## trusting the raw name outright.
-static var _trailing_digits := RegEx.create_from_string("\\d+$")
-
-func _display_name(unit: Node3D) -> String:
-	var stripped := _trailing_digits.sub(unit.name, "")
-	return stripped if not stripped.is_empty() else unit.name

@@ -1219,30 +1219,47 @@ func _issue_pickup_order(units: Array[Node], item: WorldItem, append_to_queue: b
 ## direct hit against the item's own (fairly small) pickup collider
 ## misses, so right-clicking just next to a pickup still collects it.
 ## Shows ItemTooltipPanel for whichever WorldItem is directly under the
-## cursor, hides it otherwise -- called every _process frame. Skipped
-## entirely while the mouse is over any UI Control: a hovered
-## ItemSlotButton already drives the panel itself (see the item_hovered/
-## item_unhovered connections in _ready()), and anywhere else over UI
-## (the Menu button, an empty panel) shouldn't show map-item stats for
-## whatever happens to be underneath it on the 3D scene. Uses a plain
-## direct raycast rather than _raycast_item's click-tolerance widening --
-## that widening is meant to make an intentional CLICK forgiving, not to
-## make hover trigger on an item the cursor isn't actually over.
+## cursor; if there's no item there, falls back to whichever Entity
+## (tree, unit, building -- anything interactable, selectable or not --
+## see World.gd/Unit.gd/Building.gd) is under the cursor instead, so
+## hovering a tree with nothing selected still shows its name/health.
+## Hides the panel only once neither kind of hover target is present.
+## Called every _process frame. Skipped entirely while the mouse is over
+## any UI Control: a hovered ItemSlotButton already drives the panel
+## itself (see the item_hovered/item_unhovered connections in _ready()),
+## and anywhere else over UI (the Menu button, an empty panel) shouldn't
+## show map-item stats for whatever happens to be underneath it on the
+## 3D scene. Uses a plain direct raycast rather than _raycast_item's
+## click-tolerance widening -- that widening is meant to make an
+## intentional CLICK forgiving, not to make hover trigger on an item the
+## cursor isn't actually over.
 var _hovered_map_item: WorldItem = null
+var _hovered_map_entity: Entity = null
 
 func _update_map_item_hover() -> void:
 	if get_viewport().gui_get_hovered_control() != null:
-		if _hovered_map_item != null:
-			_hovered_map_item = null
-			item_tooltip_panel.hide_item()
+		_hovered_map_item = null
+		_hovered_map_entity = null
+		item_tooltip_panel.hide_item()
 		return
-	var hit := _raycast(get_viewport().get_mouse_position(), WorldItem.ITEM_MASK, true, false)
-	var item: WorldItem = hit["collider"] if not hit.is_empty() and hit["collider"] is WorldItem else null
-	if item == _hovered_map_item:
-		return
-	_hovered_map_item = item
+	var mouse_pos := get_viewport().get_mouse_position()
+	var item_hit := _raycast(mouse_pos, WorldItem.ITEM_MASK, true, false)
+	var item: WorldItem = item_hit["collider"] if not item_hit.is_empty() and item_hit["collider"] is WorldItem else null
 	if item != null:
+		_hovered_map_entity = null
+		if item == _hovered_map_item:
+			return
+		_hovered_map_item = item
 		item_tooltip_panel.show_item(item.item_type)
+		return
+	_hovered_map_item = null
+	var entity_hit := _raycast(mouse_pos, UNIT_MASK)
+	var entity: Entity = entity_hit["collider"] if not entity_hit.is_empty() and entity_hit["collider"] is Entity else null
+	if entity == _hovered_map_entity:
+		return
+	_hovered_map_entity = entity
+	if entity != null:
+		item_tooltip_panel.show_entity(Entity.display_name_for(entity), entity)
 	else:
 		item_tooltip_panel.hide_item()
 
