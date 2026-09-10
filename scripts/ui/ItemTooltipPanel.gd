@@ -13,14 +13,22 @@ extends Panel
 
 const BONUS_COLOR: Color = Color(0.2, 0.6, 0.2, 1)
 const PENALTY_COLOR: Color = Color(0.75, 0.15, 0.15, 1)
+const FADE_OUT_DURATION: float = 1.0
 
 @onready var title_label: Label = $TitleLabel
 @onready var subtitle_label: Label = $SubtitleLabel
 @onready var stats_label: RichTextLabel = $StatsLabel
 @onready var stats_label_right: RichTextLabel = $StatsLabelRight
 
+## Whatever fade-out is currently running, if any -- killed and replaced
+## on every show_item/show_entity/hide_item call rather than left to run
+## alongside a new one, so rapidly hovering on/off doesn't stack tweens
+## fighting over the same modulate:a property.
+var _fade_tween: Tween = null
+
 func _ready() -> void:
 	visible = false
+	modulate.a = 1.0
 
 ## E.g. title "Iron Longsword", subtitle "Hybrid-Handed Sword" (see
 ## ItemDefs.get_item_name/get_display_name). `source_slot` is only
@@ -70,7 +78,10 @@ func show_entity(display_name: String, entity: Entity, extra_stats: Dictionary =
 ## stats_label/stats_label_right are bbcode_enabled RichTextLabels so it
 ## renders as actual color rather than literal tag text.
 func _show_stats(title: String, subtitle: String, stats: Dictionary) -> void:
+	if _fade_tween != null and _fade_tween.is_valid():
+		_fade_tween.kill()
 	visible = true
+	modulate.a = 1.0
 	title_label.text = title
 	subtitle_label.text = subtitle
 	var lines: Array[String] = []
@@ -80,5 +91,16 @@ func _show_stats(title: String, subtitle: String, stats: Dictionary) -> void:
 	stats_label.text = "\n".join(lines.slice(0, split))
 	stats_label_right.text = "\n".join(lines.slice(split))
 
+## Fades out over FADE_OUT_DURATION rather than vanishing instantly, so
+## moving the cursor off whatever was hovered reads as the tooltip
+## settling away instead of blinking off. Safe to call repeatedly while
+## already hidden/fading -- callers (RTSController's per-frame map-hover
+## check, ItemSlotButton's mouse_exited) don't need to track whether a
+## fade is already in progress themselves.
 func hide_item() -> void:
-	visible = false
+	var already_fading := _fade_tween != null and _fade_tween.is_valid() and _fade_tween.is_running()
+	if not visible or already_fading:
+		return
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(self, "modulate:a", 0.0, FADE_OUT_DURATION)
+	_fade_tween.finished.connect(func() -> void: visible = false)
