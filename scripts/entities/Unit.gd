@@ -554,6 +554,12 @@ func _get_attack_animation_name() -> String:
 		return animation_name
 	return "Attack"
 
+## Adds a Level row to the hover tooltip (see Entity.get_tooltip_extra_stats,
+## RTSController._update_map_item_hover) -- Building/World don't have a
+## level concept at all, so only Unit overrides this.
+func get_tooltip_extra_stats() -> Dictionary:
+	return {"Level": level}
+
 ## Swaps in the equipped right-hand weapon's own damage (see
 ## ItemDefs.get_damage) over the unarmed default -- an unequipped hand, or
 ## an item with no defined weapon damage (e.g. one not actually meant to
