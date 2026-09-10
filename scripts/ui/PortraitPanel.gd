@@ -3,10 +3,10 @@ extends Control
 ## selected unit (see PortraitCamera) -- an actual view of that specific
 ## unit, not a generic icon. Hidden entirely when nothing is selected.
 
-@onready var portrait_viewport: SubViewport = $PortraitViewport
-@onready var texture_rect: TextureRect = $TextureRect
-@onready var name_label: Label = $NameLabel
-@onready var team_label: Label = $TeamLabel
+@onready var portrait_viewport: SubViewport = $SelectedObjectsPanel/PortraitViewport
+@onready var texture_rect: TextureRect = $SelectedObjectsPanel/TextureRect
+@onready var name_label: Label = $SelectedObjectsPanel/NameLabel
+@onready var team_label: Label = $SelectedObjectsPanel/TeamLabel
 
 const ALLY_COLOR: Color = Color(0.3, 1.0, 0.4)
 const ENEMY_COLOR: Color = Color(1.0, 0.25, 0.25)

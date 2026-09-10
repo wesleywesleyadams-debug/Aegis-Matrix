@@ -291,9 +291,9 @@ script = ExtResource("8_portrait_panel")
 [node name="UnitBackpackPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
-offset_top = -502.0
+offset_top = -584.0
 offset_right = 454.0
-offset_bottom = -222.0
+offset_bottom = -304.0
 anchor_top = 1.0
 anchor_bottom = 1.0
 script = ExtResource("24_unit_backpack_panel")
@@ -356,9 +356,9 @@ offset_bottom = 264.0
 [node name="ItemTooltipPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
-offset_top = -792.0
+offset_top = -874.0
 offset_right = 454.0
-offset_bottom = -512.0
+offset_bottom = -594.0
 anchor_top = 1.0
 anchor_bottom = 1.0
 script = ExtResource("25_item_tooltip_panel")
@@ -380,56 +380,57 @@ offset_bottom = 300.0
 theme_override_font_sizes/font_size = 26
 autowrap_mode = 2
 
-[node name="NameLabel" type="Label" parent="UI/PortraitPanel"]
+[node name="SelectedObjectsPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
 offset_left = 14.0
-offset_top = -222.0
-offset_right = 174.0
-offset_bottom = -198.0
-anchor_top = 1.0
-anchor_bottom = 1.0
-theme_override_font_sizes/font_size = 18
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="TeamLabel" type="Label" parent="UI/PortraitPanel"]
-layout_mode = 0
-offset_left = 14.0
-offset_top = -198.0
-offset_right = 174.0
-offset_bottom = -174.0
-anchor_top = 1.0
-anchor_bottom = 1.0
-theme_override_font_sizes/font_size = 16
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Background" type="Panel" parent="UI/PortraitPanel"]
-layout_mode = 0
-offset_left = 14.0
-offset_top = -174.0
-offset_right = 174.0
+offset_top = -294.0
+offset_right = 454.0
 offset_bottom = -14.0
 anchor_top = 1.0
 anchor_bottom = 1.0
 
-[node name="TextureRect" type="TextureRect" parent="UI/PortraitPanel"]
+[node name="NameLabel" type="Label" parent="UI/PortraitPanel/SelectedObjectsPanel"]
 layout_mode = 0
-offset_left = 20.0
-offset_top = -168.0
-offset_right = 168.0
-offset_bottom = -20.0
-anchor_top = 1.0
-anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 176.0
+offset_bottom = 40.0
+theme_override_font_sizes/font_size = 18
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TeamLabel" type="Label" parent="UI/PortraitPanel/SelectedObjectsPanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 40.0
+offset_right = 176.0
+offset_bottom = 64.0
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Background" type="Panel" parent="UI/PortraitPanel/SelectedObjectsPanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 68.0
+offset_right = 176.0
+offset_bottom = 228.0
+
+[node name="TextureRect" type="TextureRect" parent="UI/PortraitPanel/SelectedObjectsPanel"]
+layout_mode = 0
+offset_left = 22.0
+offset_top = 74.0
+offset_right = 170.0
+offset_bottom = 222.0
 expand_mode = 1
 stretch_mode = 5
 
-[node name="PortraitViewport" type="SubViewport" parent="UI/PortraitPanel"]
+[node name="PortraitViewport" type="SubViewport" parent="UI/PortraitPanel/SelectedObjectsPanel"]
 transparent_bg = true
 size = Vector2i(200, 200)
 render_target_update_mode = 4
 
-[node name="PortraitCamera" type="Camera3D" parent="UI/PortraitPanel/PortraitViewport"]
+[node name="PortraitCamera" type="Camera3D" parent="UI/PortraitPanel/SelectedObjectsPanel/PortraitViewport"]
 cull_mask = 2
 fov = 35.0
 script = ExtResource("9_portrait_cam")
