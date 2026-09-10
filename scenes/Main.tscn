@@ -27,6 +27,7 @@
 [ext_resource type="PackedScene" path="res://scenes/SteelSwordPickup.tscn" id="28_steel_sword_pickup"]
 [ext_resource type="PackedScene" path="res://scenes/IronGreatswordPickup.tscn" id="29_iron_greatsword_pickup"]
 [ext_resource type="PackedScene" path="res://scenes/IronShortswordPickup.tscn" id="30_iron_shortsword_pickup"]
+[ext_resource type="Script" path="res://scripts/ui/Minimap.gd" id="31_minimap"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 size = Vector3(60, 0.2, 60)
@@ -544,8 +545,12 @@ polygon = PackedVector2Array(0, -120, 210, 0, 0, 120, -210, 0)
 
 [node name="Fill" type="Polygon2D" parent="UI/MinimapPanel/Frame"]
 position = Vector2(210, 120)
-color = Color(0.82, 0.71, 0.55, 1)
+color = Color(0.24, 0.34, 0.2, 1)
 polygon = PackedVector2Array(0, -109, 199, 0, 0, 109, -199, 0)
+
+[node name="Icons" type="Node2D" parent="UI/MinimapPanel/Frame"]
+position = Vector2(210, 120)
+script = ExtResource("31_minimap")
 
 [node name="MainMenu" type="Control" parent="UI"]
 process_mode = 3
