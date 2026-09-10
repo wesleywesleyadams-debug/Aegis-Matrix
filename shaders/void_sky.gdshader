@@ -25,37 +25,62 @@ float hash(vec3 p) {
 	return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
 }
 
-const float STAR_GRID_SCALE = 90.0;
+const float STAR_GRID_SCALE = 22.0;
 
-// Round dots, not the stretched blobs a raw 3D-cubic-lattice hash on a
-// sphere gives you (a uniform grid sliced by a curved surface cuts
-// through cells at all sorts of angles, so "is this cell lit" reads as
-// elongated streaks rather than points from most view directions).
-// Instead this bins EYEDIR into an equirectangular (azimuth/elevation)
-// UV grid, jitters one candidate star position per cell, and draws it
-// as an actual circle (distance-based falloff, fixed star_radius) in
-// that local UV space -- same shape from every direction.
+// Projects `dir` onto whichever of the 6 cube faces it points most
+// toward, returning that face's local 2D coordinates (roughly -1..1,
+// uniform scale near the face center) and a per-face id folded into
+// `face_seed` so each face's star grid is independently seeded --
+// avoids the two failure modes a naive sphere-to-2D mapping hits: a
+// raw 3D-cubic-lattice hash cuts through cells at all sorts of angles
+// depending on view direction (stretched streaks, not points), and an
+// equirectangular (azimuth/elevation) grid still pinches to a point at
+// its poles (stars stretch/smear there too). Cube-face projection has
+// no such singularity -- only mild, bounded stretching near face
+// edges/corners, not a hard pinch anywhere.
+vec2 cube_face_uv(vec3 dir, out float face_seed) {
+	vec3 a = abs(dir);
+	if (a.x >= a.y && a.x >= a.z) {
+		face_seed = sign(dir.x) > 0.0 ? 0.0 : 1.0;
+		return dir.yz / a.x;
+	}
+	if (a.y >= a.x && a.y >= a.z) {
+		face_seed = sign(dir.y) > 0.0 ? 2.0 : 3.0;
+		return dir.xz / a.y;
+	}
+	face_seed = sign(dir.z) > 0.0 ? 4.0 : 5.0;
+	return dir.xy / a.z;
+}
+
+// Round dots everywhere on the sky -- see cube_face_uv's doc comment
+// for why a cube-face projection instead of the two more obvious (but
+// distortion-prone) approaches. One candidate star position is
+// jittered per grid cell in the chosen face's local UV space, then
+// drawn as an actual circle (distance-based falloff, fixed
+// star_radius), so it stays round from every direction rather than
+// stretching near any particular view angle.
 vec3 stars(vec3 dir) {
-	float azimuth = atan(dir.z, dir.x) / TAU + 0.5;
-	float elevation = acos(clamp(dir.y, -1.0, 1.0)) / PI;
-	vec2 uv = vec2(azimuth, elevation) * STAR_GRID_SCALE;
+	float face_seed;
+	vec2 face_uv = cube_face_uv(dir, face_seed);
+	vec2 uv = face_uv * STAR_GRID_SCALE;
 	vec2 cell = floor(uv);
 	vec2 local_uv = fract(uv) - 0.5;
+	vec3 seed = vec3(cell, face_seed);
 
-	float presence = hash(vec3(cell, 1.0));
+	float presence = hash(seed + 1.0);
 	if (presence > star_density) {
 		return vec3(0.0);
 	}
-	vec2 jitter = (vec2(hash(vec3(cell, 2.0)), hash(vec3(cell, 3.0))) - 0.5) * 0.7;
+	vec2 jitter = (vec2(hash(seed + 2.0), hash(seed + 3.0)) - 0.5) * 0.7;
 	float dist_to_star = length(local_uv - jitter);
 	float dot_mask = smoothstep(star_radius, 0.0, dist_to_star);
 
 	// Each star gets its own phase (from a second hash) so they don't
 	// all twinkle in lockstep, plus its own base brightness so the
 	// field isn't perfectly uniform even at full brightness.
-	float phase = hash(vec3(cell, 4.0)) * TAU;
+	float phase = hash(seed + 4.0) * TAU;
 	float twinkle = 0.5 + 0.5 * sin(TIME * twinkle_speed + phase);
-	float brightness = 0.6 + 0.4 * hash(vec3(cell, 5.0));
+	float brightness = 0.6 + 0.4 * hash(seed + 5.0);
 	return vec3(dot_mask * star_brightness * twinkle * brightness);
 }
 
