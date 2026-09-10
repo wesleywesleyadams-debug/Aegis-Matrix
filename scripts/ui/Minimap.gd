@@ -4,7 +4,11 @@ extends Node2D
 ## forms under this game's camera (see Main.tscn's CameraRig/Camera3D
 ## transforms, and MinimapPanel/Frame's own git history for the
 ## derivation) -- world (x, z) -> local (x - z) * 0.7071068 on the
-## diamond's horizontal axis, (x + z) * 0.4060 on its vertical axis.
+## diamond's horizontal axis, -(x + z) * 0.4060 on its vertical axis.
+## Negated there because the camera's own UP vector's (x + z) contribution
+## means "further that way = higher up the actual 3D view", but Godot's
+## 2D canvas has Y increasing downward -- without the flip, the minimap
+## renders upside-down relative to what the camera actually shows.
 ## GROUND_HALF_EXTENT matches Main.tscn's Ground BoxMesh (60x60, centered
 ## on the origin); FILL_HALF_DIAGONAL matches Frame/Fill's own polygon
 ## points, so a unit at the very edge of the map lands exactly on the
@@ -50,5 +54,5 @@ func _draw_blip(world_pos: Vector3, color: Color) -> void:
 	draw_rect(Rect2(center - Vector2.ONE * BLIP_SIZE / 2.0, Vector2.ONE * BLIP_SIZE), color)
 
 func _project(world_pos: Vector3) -> Vector2:
-	var raw := Vector2((world_pos.x - world_pos.z) * 0.7071068, (world_pos.x + world_pos.z) * 0.4060)
+	var raw := Vector2((world_pos.x - world_pos.z) * 0.7071068, -(world_pos.x + world_pos.z) * 0.4060)
 	return raw / MAX_RAW * FILL_HALF_DIAGONAL
