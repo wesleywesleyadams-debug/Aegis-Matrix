@@ -9,8 +9,9 @@ shader_type sky;
 // rare frame it is.
 
 uniform vec3 void_color : source_color = vec3(0.01, 0.01, 0.03);
-uniform float star_density : hint_range(0.0, 1.0) = 0.0025;
+uniform float star_density : hint_range(0.0, 1.0) = 0.35;
 uniform float star_brightness : hint_range(0.0, 4.0) = 1.4;
+uniform float star_radius : hint_range(0.01, 0.4) = 0.12;
 uniform float twinkle_speed : hint_range(0.0, 10.0) = 2.0;
 
 uniform float comet_period : hint_range(1.0, 120.0) = 22.0;
@@ -24,17 +25,38 @@ float hash(vec3 p) {
 	return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
 }
 
+const float STAR_GRID_SCALE = 90.0;
+
+// Round dots, not the stretched blobs a raw 3D-cubic-lattice hash on a
+// sphere gives you (a uniform grid sliced by a curved surface cuts
+// through cells at all sorts of angles, so "is this cell lit" reads as
+// elongated streaks rather than points from most view directions).
+// Instead this bins EYEDIR into an equirectangular (azimuth/elevation)
+// UV grid, jitters one candidate star position per cell, and draws it
+// as an actual circle (distance-based falloff, fixed star_radius) in
+// that local UV space -- same shape from every direction.
 vec3 stars(vec3 dir) {
-	vec3 cell = floor(dir * 400.0);
-	float presence = hash(cell);
-	float star = step(1.0 - star_density, presence);
+	float azimuth = atan(dir.z, dir.x) / TAU + 0.5;
+	float elevation = acos(clamp(dir.y, -1.0, 1.0)) / PI;
+	vec2 uv = vec2(azimuth, elevation) * STAR_GRID_SCALE;
+	vec2 cell = floor(uv);
+	vec2 local_uv = fract(uv) - 0.5;
+
+	float presence = hash(vec3(cell, 1.0));
+	if (presence > star_density) {
+		return vec3(0.0);
+	}
+	vec2 jitter = (vec2(hash(vec3(cell, 2.0)), hash(vec3(cell, 3.0))) - 0.5) * 0.7;
+	float dist_to_star = length(local_uv - jitter);
+	float dot_mask = smoothstep(star_radius, 0.0, dist_to_star);
+
 	// Each star gets its own phase (from a second hash) so they don't
 	// all twinkle in lockstep, plus its own base brightness so the
 	// field isn't perfectly uniform even at full brightness.
-	float phase = hash(cell + 7.0) * TAU;
+	float phase = hash(vec3(cell, 4.0)) * TAU;
 	float twinkle = 0.5 + 0.5 * sin(TIME * twinkle_speed + phase);
-	float brightness = 0.6 + 0.4 * hash(cell + 13.0);
-	return vec3(star * star_brightness * twinkle * brightness);
+	float brightness = 0.6 + 0.4 * hash(vec3(cell, 5.0));
+	return vec3(dot_mask * star_brightness * twinkle * brightness);
 }
 
 // A short bright streak that sweeps along a fixed great-circle-ish arc
