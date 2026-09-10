@@ -580,17 +580,28 @@ func _on_velocity_computed(safe_velocity: Vector3) -> void:
 	_safe_velocity = safe_velocity
 
 ## Swings whatever's actually in this unit's right hand -- a "sword" gets
-## its own one-handed slash clip ("Attack_Sword"); anything else (empty,
-## or an item with no dedicated swing animation yet, e.g. "crossbow") falls
-## back to the bare-handed punch. Keyed off backpack directly rather than
-## the equipped visual node, since that's the single source of truth for
-## what's actually equipped (see equip_item/_set_slot).
+## its own dedicated clip, chosen by CURRENT grip rather than just its
+## item_type -- a hybrid_hand weapon (e.g. "sword") gripped two-handed
+## (both hand slots holding the same weapon -- see equip_item) swings
+## with a "two_hand" clip ("Attack_TwoHanded"), the same category a
+## strict two_hand weapon would use once given one; gripped one-handed
+## (dual-wielding two weapons at once) it swings with its own
+## "one_hand" clip ("Attack_Sword") instead. Anything without a
+## dedicated clip for its current grip (a missing animation, or an item
+## with none defined at all, e.g. "crossbow" -- ranged, no melee swing
+## to animate) falls back to the bare-handed punch. Keyed off backpack
+## directly rather than the equipped visual node, since that's the
+## single source of truth for what's actually equipped (see
+## equip_item/_set_slot).
 const WEAPON_ATTACK_ANIMATIONS: Dictionary = {
-	"sword": "Attack_Sword",
+	"sword": {"one_hand": "Attack_Sword", "two_hand": "Attack_TwoHanded"},
+	"steel_longsword": {"one_hand": "Attack_Sword", "two_hand": "Attack_TwoHanded"},
 }
 
 func _get_attack_animation_name() -> String:
-	var animation_name: String = WEAPON_ATTACK_ANIMATIONS.get(backpack["right_hand"], "")
+	var animations: Dictionary = WEAPON_ATTACK_ANIMATIONS.get(backpack["right_hand"], {})
+	var gripped_two_handed: bool = backpack["right_hand"] == backpack["left_hand"]
+	var animation_name: String = animations.get("two_hand" if gripped_two_handed else "one_hand", "")
 	if not animation_name.is_empty() and animation_player != null and animation_player.has_animation(animation_name):
 		return animation_name
 	return "Attack"
