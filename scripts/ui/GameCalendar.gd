@@ -34,4 +34,19 @@ func _process(_delta: float) -> void:
 			break
 		day_of_year -= month_length
 		months += 1
-	text = "%d centuries, %d years, %d months, and %d days" % [centuries, years, months, day_of_year]
+	# Days always shows, even at 0 -- it's the smallest unit, so there's
+	# nothing else left to fall back on. centuries/years/months each drop
+	# out entirely once they're 0, rather than cluttering the line with
+	# "0 years" while a match is still young.
+	var parts: Array[String] = []
+	if centuries > 0:
+		parts.append("%d centuries" % centuries)
+	if years > 0:
+		parts.append("%d years" % years)
+	if months > 0:
+		parts.append("%d months" % months)
+	parts.append("%d days" % day_of_year)
+	if parts.size() == 1:
+		text = parts[0]
+	else:
+		text = ", ".join(parts.slice(0, -1)) + ", and " + parts[-1]
