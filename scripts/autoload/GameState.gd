@@ -91,6 +91,20 @@ var remembered_account: String = ""
 ## rather than always resetting to visible.
 var show_debug_grid: bool = true
 
+## Whether every Entity's hitbox (the yellow swing-reach indicator) and
+## hurtbox (the white body-hit-radius indicator) are shown -- off by
+## default, since these are combat-tuning/debugging aids, not something a
+## normal match should show. HitboxToggleButton (see Main.tscn's UI) flips
+## this; entities listen for the change so it applies live to units
+## already on the field, not just ones spawned after.
+signal combat_hitboxes_visibility_changed(visible_now: bool)
+var show_combat_hitboxes: bool = false:
+	set(value):
+		if value == show_combat_hitboxes:
+			return
+		show_combat_hitboxes = value
+		combat_hitboxes_visibility_changed.emit(value)
+
 ## Which UI font is applied to the shared theme (see OptionsMenu._apply_font)
 ## -- one of OptionsMenu.FONT_OPTIONS' keys.
 var ui_font: String = "medieval"
@@ -176,6 +190,7 @@ func save_account_settings() -> void:
 	config.set_value("audio", "audio_enabled", audio_enabled)
 	config.set_value("audio", "music_enabled", music_enabled)
 	config.set_value("visuals", "show_debug_grid", show_debug_grid)
+	config.set_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
 	config.set_value("visuals", "ui_font", ui_font)
 	config.set_value("lobby", "starting_unit_count", starting_unit_count)
 	config.set_value("lobby", "human_player_id", human_player_id)
@@ -225,6 +240,7 @@ func load_account_settings() -> void:
 	audio_enabled = config.get_value("audio", "audio_enabled", audio_enabled)
 	music_enabled = config.get_value("audio", "music_enabled", music_enabled)
 	show_debug_grid = config.get_value("visuals", "show_debug_grid", show_debug_grid)
+	show_combat_hitboxes = config.get_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
 	ui_font = config.get_value("visuals", "ui_font", ui_font)
 	starting_unit_count = config.get_value("lobby", "starting_unit_count", starting_unit_count)
 	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)
@@ -236,6 +252,7 @@ func load_account_settings() -> void:
 ## previously-active account happened to have in memory.
 func _reset_account_settings_to_defaults() -> void:
 	show_debug_grid = true
+	show_combat_hitboxes = false
 	ui_font = "medieval"
 	master_volume_db = 0.0
 	music_volume_db = -8.0

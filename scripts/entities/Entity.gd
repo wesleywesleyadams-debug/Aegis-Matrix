@@ -217,13 +217,22 @@ const ATTACK_BLINK_INTERVAL: float = 0.12
 ## model_root. Billboard sprite units (no skeleton) would have it directly
 ## under model_root instead, same as before.
 @onready var attack_hitbox: Area3D = model_root.find_child("AttackHitbox", true, false)
-## Purely visual -- a translucent box matching the hitbox's own shape,
-## shown only while the hitbox is actually active (see perform_attack()) so
-## a swing's actual hit window is visible instead of invisible collision
-## math. Null for anything without an AttackHitbox to begin with.
-@onready var attack_hitbox_mesh: MeshInstance3D = (
+## Purely visual -- a wire-sphere (3 perpendicular rings) roughly matching
+## the hitbox's own reach, shown only while the hitbox is actually active
+## (see perform_attack()) AND GameState.show_combat_hitboxes is on, so a
+## swing's actual hit window is visible instead of invisible collision
+## math. A Node3D (not MeshInstance3D) since it wraps 3 separate ring
+## MeshInstance3D children rather than being one mesh itself -- toggling
+## its own visible still hides all of them, Godot cascades visibility to
+## children. Null for anything without an AttackHitbox to begin with.
+@onready var attack_hitbox_mesh: Node3D = (
 	attack_hitbox.get_node_or_null("HitboxMesh") if attack_hitbox != null else null
 )
+## Purely visual -- a faint wire-sphere matching the Hurtbox's own radius
+## (see get_engage_radius_bonus), shown persistently (not just during a
+## swing) whenever GameState.show_combat_hitboxes is on. Null for anything
+## without a Hurtbox to begin with (e.g. World.gd's Tree).
+@onready var hurtbox_mesh: Node3D = get_node_or_null("Hurtbox/HurtboxMesh")
 ## The paladin model's tabard/skirt fabric, recolored per player_id. This
 ## mesh is split into two material surfaces (surface 0 = the rest of the armor, surface
 ## 1 = just the tabard fabric, given a flat white base material with no
@@ -339,6 +348,16 @@ func _update_health_bar_visibility() -> void:
 	if health_bar:
 		health_bar.visible = selected or current_health < max_health
 
+## Applies GameState.show_combat_hitboxes live to a unit already on the
+## field, not just ones that read it fresh in their own _ready() -- the
+## hurtbox ring is persistent so it can just be toggled directly; the
+## attack hitbox ring only ever shows during an active swing already
+## (see perform_attack()), so there's nothing to toggle mid-swing here,
+## just whether the *next* swing is allowed to show it.
+func _on_combat_hitboxes_visibility_changed(visible_now: bool) -> void:
+	if hurtbox_mesh != null:
+		hurtbox_mesh.visible = visible_now
+
 func _ready() -> void:
 	selection_ring.visible = false
 	current_health = max_health
@@ -347,6 +366,10 @@ func _ready() -> void:
 	_update_tabard_color()
 	health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
 	_update_hologram_material()
+
+	if hurtbox_mesh != null:
+		hurtbox_mesh.visible = GameState.show_combat_hitboxes
+	GameState.combat_hitboxes_visibility_changed.connect(_on_combat_hitboxes_visibility_changed)
 
 	_sight_line_mesh = ImmediateMesh.new()
 	_sight_line_mat = StandardMaterial3D.new()
@@ -624,7 +647,7 @@ func perform_attack() -> void:
 	if not is_instance_valid(self) or not is_instance_valid(attack_hitbox):
 		return
 	if attack_hitbox_mesh != null:
-		attack_hitbox_mesh.visible = true
+		attack_hitbox_mesh.visible = GameState.show_combat_hitboxes
 	_prev_hit_points.clear()
 	# Poll every physics frame across the active window rather than
 	# checking once -- the impact_delay above is timed off the fist's

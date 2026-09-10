@@ -16,17 +16,31 @@ radius = 0.25
 [sub_resource type="BoxShape3D" id="BoxShape3D_attack"]
 size = Vector3(0.35, 0.35, 0.35)
 
-[sub_resource type="SphereMesh" id="SphereMesh_attack_vis"]
-radius = 0.15
-height = 0.3
+[sub_resource type="TorusMesh" id="TorusMesh_attack_vis"]
+inner_radius = 0.148
+outer_radius = 0.152
+rings = 4
+ring_segments = 24
 
 [sub_resource type="StandardMaterial3D" id="Mat_attack_vis"]
 shading_mode = 0
-transparency = 1
-albedo_color = Color(1, 1, 0, 0.55)
+albedo_color = Color(1, 1, 0, 1)
 emission_enabled = true
 emission = Color(1, 1, 0, 1)
-emission_energy_multiplier = 1.5
+emission_energy_multiplier = 2.0
+
+[sub_resource type="TorusMesh" id="TorusMesh_hurtbox_vis"]
+inner_radius = 0.248
+outer_radius = 0.252
+rings = 4
+ring_segments = 24
+
+[sub_resource type="StandardMaterial3D" id="Mat_hurtbox_vis"]
+shading_mode = 0
+albedo_color = Color(1, 1, 1, 0.35)
+emission_enabled = true
+emission = Color(1, 1, 1, 1)
+emission_energy_multiplier = 0.6
 
 [sub_resource type="TorusMesh" id="TorusMesh_ring"]
 inner_radius = 0.5
@@ -61,6 +75,23 @@ collision_mask = 0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
 shape = SubResource("SphereShape3D_hurtbox")
 
+[node name="HurtboxMesh" type="Node3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+
+[node name="RingXZ" type="MeshInstance3D" parent="Hurtbox/HurtboxMesh"]
+mesh = SubResource("TorusMesh_hurtbox_vis")
+surface_material_override/0 = SubResource("Mat_hurtbox_vis")
+
+[node name="RingXY" type="MeshInstance3D" parent="Hurtbox/HurtboxMesh"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0)
+mesh = SubResource("TorusMesh_hurtbox_vis")
+surface_material_override/0 = SubResource("Mat_hurtbox_vis")
+
+[node name="RingYZ" type="MeshInstance3D" parent="Hurtbox/HurtboxMesh"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, 0)
+mesh = SubResource("TorusMesh_hurtbox_vis")
+surface_material_override/0 = SubResource("Mat_hurtbox_vis")
+
 [node name="ModelRoot" type="Node3D" parent="."]
 
 [node name="HumanMaleModel" parent="ModelRoot" instance=ExtResource("3_human_male_model")]
@@ -86,9 +117,21 @@ monitorable = false
 [node name="CollisionShape3D" type="CollisionShape3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
 shape = SubResource("BoxShape3D_attack")
 
-[node name="HitboxMesh" type="MeshInstance3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
+[node name="HitboxMesh" type="Node3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
 visible = false
-mesh = SubResource("SphereMesh_attack_vis")
+
+[node name="RingXZ" type="MeshInstance3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox/HitboxMesh"]
+mesh = SubResource("TorusMesh_attack_vis")
+surface_material_override/0 = SubResource("Mat_attack_vis")
+
+[node name="RingXY" type="MeshInstance3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox/HitboxMesh"]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0)
+mesh = SubResource("TorusMesh_attack_vis")
+surface_material_override/0 = SubResource("Mat_attack_vis")
+
+[node name="RingYZ" type="MeshInstance3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox/HitboxMesh"]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, 0)
+mesh = SubResource("TorusMesh_attack_vis")
 surface_material_override/0 = SubResource("Mat_attack_vis")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
