@@ -81,6 +81,16 @@ const ATTACK_ACTIVE_DURATION: float = 0.15
 ## visibly finishes before the next one starts, no matter the clip's
 ## native length or how attack_cooldown gets tuned.
 const ATTACK_ANIMATION_COOLDOWN_MARGIN: float = 0.1
+## Crossfade duration used for every animation_player.play() call on this
+## entity (swinging into an attack, and Unit's own Idle/Walk switches) --
+## AnimationPlayer.play()'s default custom_blend (-1) falls back to 0,
+## which pops instantly between whatever pose each clip happened to end/
+## start on (most visible going from a swing's extended end pose straight
+## to Idle's neutral one, or back into the next swing's start pose).
+## Blending over this much time smooths that regardless of how different
+## the two poses are, without needing the clips themselves to share a
+## pose at the cut point.
+const ANIMATION_BLEND_TIME: float = 0.15
 ## How far into a given attack animation (as a fraction of its length) the
 ## fist/weapon reaches full extension -- measured directly off each clip
 ## via right-hand-to-shoulder distance sampled frame by frame. Keyed by
@@ -574,7 +584,7 @@ func perform_attack() -> void:
 		# starts rather than landing exactly as the next begins.
 		var target_duration: float = maxf(attack_cooldown - ATTACK_ANIMATION_COOLDOWN_MARGIN, 0.05)
 		var playback_speed: float = attack_animation.length / target_duration
-		animation_player.play(animation_name, -1.0, playback_speed)
+		animation_player.play(animation_name, ANIMATION_BLEND_TIME, playback_speed)
 		# Center the hit window on the moment the fist/weapon is actually
 		# fully extended (see ATTACK_IMPACT_FRACTIONS), rather than swinging
 		# the box on the instant the animation starts -- otherwise the

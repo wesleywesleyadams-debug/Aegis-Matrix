@@ -527,7 +527,7 @@ func _update_locomotion_animation(is_moving: bool) -> void:
 		return
 	var target_animation := "Walk" if is_moving else "Idle"
 	if animation_player.current_animation != target_animation and animation_player.has_animation(target_animation):
-		animation_player.play(target_animation)
+		animation_player.play(target_animation, ANIMATION_BLEND_TIME)
 
 func _on_velocity_computed(safe_velocity: Vector3) -> void:
 	_safe_velocity = safe_velocity
