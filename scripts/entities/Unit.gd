@@ -637,29 +637,42 @@ func get_tooltip_title() -> String:
 func get_tooltip_extra_stats() -> Dictionary:
 	return {"Level": level, "Attack": "%d" % _get_attack_damage()}
 
-## Bonus damage multiplier for a hybrid_hand weapon gripped two-handed
-## (see BACKPACK_SLOTS' doc comment) -- swinging it with both hands
-## hits harder than one-handed/dual-wielded, on top of whatever its own
-## base damage already is. Doesn't apply to a strict "two_hand" item
-## (e.g. "iron_greatsword") -- that's always two-handed to begin with,
-## its own damage stat already accounts for that, there's no one-handed
-## baseline to be a bonus "over".
-const TWO_HANDED_HYBRID_DAMAGE_MULTIPLIER: float = 1.5
+## Bonus damage/attack-speed multipliers for a hybrid_hand weapon
+## gripped two-handed (see BACKPACK_SLOTS' doc comment) -- swinging it
+## with both hands hits harder AND faster than one-handed/dual-wielded,
+## on top of whatever its own base stats already are. Neither applies
+## to a strict "two_hand" item (e.g. "iron_greatsword") -- that's always
+## two-handed to begin with, its own stats already account for that,
+## there's no one-handed baseline to be a bonus "over".
+const TWO_HANDED_HYBRID_DAMAGE_MULTIPLIER: float = 1.25
+const TWO_HANDED_HYBRID_ATTACK_SPEED_MULTIPLIER: float = 1.25
+
+## True whenever the active weapon is a hybrid_hand one currently
+## gripped two-handed -- shared by _get_attack_damage and
+## _get_attack_cooldown so both bonuses key off the exact same check.
+func _is_two_handed_hybrid_grip() -> bool:
+	return not backpack["two_hand"].is_empty() and ItemDefs.get_slot_kind(_get_active_weapon_item_type()) == "hybrid_hand"
 
 ## Swaps in the active weapon's own damage (see _get_active_weapon_item_type/
 ## ItemDefs.get_damage) over the unarmed default -- an unequipped hand, or
 ## an item with no defined weapon damage (e.g. one not actually meant to
 ## be wielded), just falls back to attack_damage unmodified. Applies
-## TWO_HANDED_HYBRID_DAMAGE_MULTIPLIER on top when that weapon is a
-## hybrid_hand one currently gripped two-handed.
+## TWO_HANDED_HYBRID_DAMAGE_MULTIPLIER on top when gripped two-handed.
 func _get_attack_damage() -> float:
-	var item_type := _get_active_weapon_item_type()
-	var weapon_damage := ItemDefs.get_damage(item_type)
+	var weapon_damage := ItemDefs.get_damage(_get_active_weapon_item_type())
 	if weapon_damage < 0.0:
 		return attack_damage
-	if not backpack["two_hand"].is_empty() and ItemDefs.get_slot_kind(item_type) == "hybrid_hand":
+	if _is_two_handed_hybrid_grip():
 		weapon_damage *= TWO_HANDED_HYBRID_DAMAGE_MULTIPLIER
 	return weapon_damage
+
+## Shortens the cooldown by TWO_HANDED_HYBRID_ATTACK_SPEED_MULTIPLIER
+## (a faster attack rate) when gripped two-handed -- see
+## Entity._get_attack_cooldown, which perform_attack() actually reads.
+func _get_attack_cooldown() -> float:
+	if _is_two_handed_hybrid_grip():
+		return attack_cooldown / TWO_HANDED_HYBRID_ATTACK_SPEED_MULTIPLIER
+	return attack_cooldown
 
 ## Strings several hit-check points along the equipped weapon's own length
 ## (see ItemDefs.get_melee_hit_offsets) instead of just the one point at

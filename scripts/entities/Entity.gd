@@ -52,6 +52,13 @@ func get_tooltip_extra_stats() -> Dictionary:
 ## Idle time between swings is this minus ATTACK_ACTIVE_DURATION (the hit
 ## window) -- 2.0 total = 0.15s hit window + 1.85s idle.
 @export var attack_cooldown: float = 2.0
+
+## Overridable hook for this entity's actual effective cooldown -- plain
+## attack_cooldown unmodified by default. Unit overrides this to apply a
+## two-handed hybrid weapon's attack-speed bonus (see
+## Unit.TWO_HANDED_HYBRID_ATTACK_SPEED_MULTIPLIER).
+func _get_attack_cooldown() -> float:
+	return attack_cooldown
 ## How close (center to center) counts as "in range to swing". Kept above
 ## both entities' combined collision radii (0.57 for two Units at radius
 ## 0.285 -- see CollisionShape3D/NavigationAgent3D in ParentUnit.tscn) or
@@ -656,20 +663,22 @@ func perform_attack() -> void:
 	if not can_attack():
 		return
 	_attacking = true
-	_attack_cooldown_remaining = attack_cooldown
+	var effective_cooldown := _get_attack_cooldown()
+	_attack_cooldown_remaining = effective_cooldown
 	var impact_delay := 0.0
 	var animation_name := _get_attack_animation_name()
 	if animation_player != null and animation_player.has_animation(animation_name):
 		var attack_animation := animation_player.get_animation(animation_name)
 		# Stretch/compress playback so the clip's own length always matches
-		# attack_cooldown regardless of the clip's native length or however
-		# attack_cooldown gets tuned later -- otherwise a long swing (the
-		# sword's is 2.07s) can run longer than a short cooldown and overlap
-		# the next swing, while a short one leaves the animation finishing
-		# well before the next swing is due. ATTACK_ANIMATION_COOLDOWN_MARGIN
-		# keeps a small gap so the swing visibly finishes before the next one
-		# starts rather than landing exactly as the next begins.
-		var target_duration: float = maxf(attack_cooldown - ATTACK_ANIMATION_COOLDOWN_MARGIN, 0.05)
+		# effective_cooldown regardless of the clip's native length or
+		# however attack_cooldown gets tuned later -- otherwise a long swing
+		# (the sword's is 2.07s) can run longer than a short cooldown and
+		# overlap the next swing, while a short one leaves the animation
+		# finishing well before the next swing is due.
+		# ATTACK_ANIMATION_COOLDOWN_MARGIN keeps a small gap so the swing
+		# visibly finishes before the next one starts rather than landing
+		# exactly as the next begins.
+		var target_duration: float = maxf(effective_cooldown - ATTACK_ANIMATION_COOLDOWN_MARGIN, 0.05)
 		var playback_speed: float = attack_animation.length / target_duration
 		animation_player.play(animation_name, ANIMATION_BLEND_TIME, playback_speed)
 		# Center the hit window on the moment the fist/weapon is actually
