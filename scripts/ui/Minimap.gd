@@ -24,11 +24,19 @@ const BLIP_SIZE: float = 5.0
 ## it reads distinctly from an actual Nature-owned unit/building on
 ## the same map.
 const TREE_COLOR: Color = Color(0.08, 0.28, 0.1, 1)
+const VIEW_BOUNDS_COLOR: Color = Color(1, 1, 1, 0.85)
+const VIEW_BOUNDS_WIDTH: float = 2.0
 
 ## |x + z| and |z - x| both reach exactly 2 * GROUND_HALF_EXTENT at the
 ## very edge of the ground plane (at whichever corner maximizes each) --
 ## see the class doc comment.
 const MAX_RAW: float = 2.0 * GROUND_HALF_EXTENT
+
+## RTSController's own camera -- Main.tscn's scene root owns it directly
+## as $CameraRig/Camera3D, so reached the same way here rather than
+## threading a reference through export vars for a node this far removed
+## in the tree.
+@onready var camera: Camera3D = get_tree().current_scene.get_node("CameraRig/Camera3D")
 
 func _process(_delta: float) -> void:
 	queue_redraw()
@@ -44,10 +52,40 @@ func _draw() -> void:
 		if not is_instance_valid(tree):
 			continue
 		_draw_blip(tree.global_position, TREE_COLOR)
+	_draw_view_bounds()
 
 func _draw_blip(world_pos: Vector3, color: Color) -> void:
 	var center := _project(world_pos)
 	draw_rect(Rect2(center - Vector2.ONE * BLIP_SIZE / 2.0, Vector2.ONE * BLIP_SIZE), color)
+
+## Outlines the ground-plane quadrilateral the camera's own viewport
+## rectangle actually covers right now, so the player can tell where on
+## the map their current view sits -- each screen corner raycast down
+## to the Y=0 ground plane (same "click a point on the ground" approach
+## RTSController's own raycasts use), then projected the same way a
+## unit/building's blip is.
+func _draw_view_bounds() -> void:
+	var viewport_rect := get_viewport().get_visible_rect()
+	var screen_corners := [
+		viewport_rect.position,
+		Vector2(viewport_rect.end.x, viewport_rect.position.y),
+		viewport_rect.end,
+		Vector2(viewport_rect.position.x, viewport_rect.end.y),
+	]
+	var points: PackedVector2Array = []
+	for screen_pos in screen_corners:
+		points.append(_project(_ground_point(screen_pos)))
+	points.append(points[0])
+	draw_polyline(points, VIEW_BOUNDS_COLOR, VIEW_BOUNDS_WIDTH)
+
+## Where the camera ray through `screen_pos` crosses the Y=0 ground
+## plane -- valid for this game's fixed downward-angled orthographic
+## camera, which never points level with or above the horizon.
+func _ground_point(screen_pos: Vector2) -> Vector3:
+	var origin := camera.project_ray_origin(screen_pos)
+	var direction := camera.project_ray_normal(screen_pos)
+	var t := -origin.y / direction.y
+	return origin + direction * t
 
 func _project(world_pos: Vector3) -> Vector2:
 	var raw := Vector2(world_pos.x + world_pos.z, world_pos.z - world_pos.x)
