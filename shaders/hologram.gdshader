@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode blend_add, depth_draw_opaque, cull_back, unshaded;
+render_mode blend_mix, depth_draw_opaque, cull_back, unshaded;
 
 // Stylized sci-fi hologram look: flat rim-lit glow, horizontal scanlines
 // that scroll upward, and a subtle flicker -- deliberately NOT using the

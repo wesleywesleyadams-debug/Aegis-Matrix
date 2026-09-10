@@ -48,6 +48,7 @@ size = Vector3(3, 3, 0.4)
 size = Vector2(60, 60)
 
 [sub_resource type="ShaderMaterial" id="ShaderMat_grid"]
+render_priority = -10
 shader = ExtResource("6_grid_shader")
 shader_parameter/cell_size = 2.6
 shader_parameter/line_color = Color(1, 1, 1, 0.45)
