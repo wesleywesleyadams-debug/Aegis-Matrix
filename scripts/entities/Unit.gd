@@ -535,6 +535,18 @@ func _get_attack_animation_name() -> String:
 		return animation_name
 	return "Attack"
 
+## Swaps in the equipped right-hand weapon's own damage/reach (see
+## ItemDefs.get_damage/get_melee_reach_bonus) over the unarmed defaults --
+## an unequipped hand, or an item with no defined weapon damage (e.g. one
+## not actually meant to be wielded), just falls back to attack_damage/
+## MELEE_REACH unmodified.
+func _get_attack_damage() -> float:
+	var weapon_damage := ItemDefs.get_damage(backpack["right_hand"])
+	return weapon_damage if weapon_damage >= 0.0 else attack_damage
+
+func _get_melee_reach() -> float:
+	return MELEE_REACH + ItemDefs.get_melee_reach_bonus(backpack["right_hand"])
+
 ## Direction toward the next corner of the navigation server's actual
 ## computed route to the current target (see NavGroundSetup.gd, which bakes
 ## the navmesh with holes at buildings/the wall so this route already goes

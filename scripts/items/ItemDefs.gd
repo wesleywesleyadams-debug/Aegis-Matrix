@@ -13,17 +13,25 @@ class_name ItemDefs
 ## occupied either). "stats" is display-only data for ItemStatsPanel --
 ## nothing currently reads it for actual combat math (equipping stays
 ## visual-only, same as before this system existed).
+## "damage"/"melee_reach" are the actual combat numbers (see
+## Unit._get_attack_damage/_get_melee_reach) -- "stats" is the display
+## copy shown in ItemStatsPanel, kept as its own dictionary rather than
+## generated from these since not every stat line is combat-numeric (e.g.
+## "Type").
 const DEFS: Dictionary = {
 	"sword": {
 		"visual": preload("res://scenes/Sword.tscn"),
 		"pickup": preload("res://scenes/SwordPickup.tscn"),
 		"slot": "one_hand",
+		"damage": 8.0,
+		"melee_reach": 0.5,
 		"stats": {"Type": "One-Handed Weapon", "Damage": "8"},
 	},
 	"crossbow": {
 		"visual": preload("res://scenes/Crossbow.tscn"),
 		"pickup": preload("res://scenes/CrossbowPickup.tscn"),
 		"slot": "two_hand",
+		"damage": 14.0,
 		"stats": {"Type": "Two-Handed Weapon", "Damage": "14"},
 	},
 }
@@ -43,3 +51,17 @@ static func get_slot_kind(item_type: String) -> String:
 ## an unrecognized item_type or one with none defined.
 static func get_stats(item_type: String) -> Dictionary:
 	return DEFS.get(item_type, {}).get("stats", {})
+
+## This weapon's actual attack damage -- -1.0 for an unrecognized
+## item_type or one with none defined, so callers (see
+## Unit._get_attack_damage) can tell "no weapon-specific damage" apart
+## from a genuine 0.
+static func get_damage(item_type: String) -> float:
+	return DEFS.get(item_type, {}).get("damage", -1.0)
+
+## Extra melee reach this weapon's length adds over an unarmed swing --
+## 0.0 for an unrecognized item_type or one with none defined (e.g. a
+## ranged weapon like the crossbow, which doesn't extend melee reach at
+## all).
+static func get_melee_reach_bonus(item_type: String) -> float:
+	return DEFS.get(item_type, {}).get("melee_reach", 0.0)

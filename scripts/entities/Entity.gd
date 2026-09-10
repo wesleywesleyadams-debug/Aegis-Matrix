@@ -17,8 +17,11 @@ const TURN_SPEED: float = 12.0
 @export var max_health: float = 100.0
 var current_health: float
 
-## How much damage one swing deals, and the minimum time between swings.
-@export var attack_damage: float = 10.0
+## How much damage one unarmed swing deals (see Unit._get_attack_damage,
+## which swaps this out for the equipped weapon's own damage whenever
+## backpack.right_hand actually holds one), and the minimum time between
+## swings.
+@export var attack_damage: float = 5.0
 ## Idle time between swings is this minus ATTACK_ACTIVE_DURATION (the hit
 ## window) -- 2.0 total = 0.15s hit window + 1.85s idle.
 @export var attack_cooldown: float = 2.0
@@ -506,6 +509,21 @@ func can_attack() -> bool:
 func _get_attack_animation_name() -> String:
 	return "Attack"
 
+## How much damage this swing actually deals -- attack_damage (the unarmed
+## amount) by default. Unit overrides this to use the equipped weapon's
+## own damage (see ItemDefs.get_damage) whenever backpack.right_hand holds
+## one with a defined value.
+func _get_attack_damage() -> float:
+	return attack_damage
+
+## How close this entity's hitbox needs to reach a target to land a hit --
+## MELEE_REACH (the unarmed fist's reach) by default. Unit overrides this
+## to add the equipped weapon's own reach bonus (see
+## ItemDefs.get_melee_reach_bonus) whenever backpack.right_hand holds one,
+## e.g. a sword's blade extending reach well past a bare fist's.
+func _get_melee_reach() -> float:
+	return MELEE_REACH
+
 ## True when nothing on SIGHT_OBSTACLE_MASK sits between this entity and
 ## `target` -- used to stop an in-range target from being attacked (or
 ## acquired) through a wall.
@@ -581,9 +599,9 @@ func _land_hit_if_in_reach() -> bool:
 	if not is_instance_valid(attack_target) or not attack_target.has_method("take_damage"):
 		return false
 	var target_center: Vector3 = attack_target.global_position + Vector3(0, 0.8, 0)
-	var reach: float = MELEE_REACH + attack_target.get_engage_radius_bonus()
+	var reach: float = _get_melee_reach() + attack_target.get_engage_radius_bonus()
 	if attack_hitbox.global_position.distance_to(target_center) <= reach:
-		attack_target.take_damage(attack_damage)
+		attack_target.take_damage(_get_attack_damage())
 		return true
 	return false
 
