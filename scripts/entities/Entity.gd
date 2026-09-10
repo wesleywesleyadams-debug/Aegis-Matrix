@@ -90,7 +90,7 @@ const ATTACK_ANIMATION_COOLDOWN_MARGIN: float = 0.1
 ## Blending over this much time smooths that regardless of how different
 ## the two poses are, without needing the clips themselves to share a
 ## pose at the cut point.
-const ANIMATION_BLEND_TIME: float = 0.15
+const ANIMATION_BLEND_TIME: float = 0.25
 ## How far into a given attack animation (as a fraction of its length) the
 ## fist/weapon reaches full extension -- measured directly off each clip
 ## via right-hand-to-shoulder distance sampled frame by frame. Keyed by
