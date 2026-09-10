@@ -26,10 +26,13 @@ var level: int = 1
 ## Where a right/two-handed weapon's visual attaches -- see ParentUnit.tscn.
 @onready var weapon_slot: Node3D = model_root.find_child("WeaponSlot", true, false)
 ## Where a left-handed weapon's visual attaches. A two-handed item (e.g.
-## crossbow) equips into BOTH this and weapon_slot at once (see
-## equip_item) -- currently that just means the same visual instanced
-## twice, once per hand, which reads fine at this model's scale without
-## needing to fake a single shared prop spanning both.
+## crossbow), or a hybrid_hand one currently gripped two-handed (e.g. a
+## longsword equipped alone), equips into BOTH this and weapon_slot at
+## once (see equip_item) -- but only weapon_slot actually gets a visual
+## instanced (see _set_slot's left_hand/right_hand-match check). It's
+## one physical weapon, not two, so instancing a second copy here too
+## would read as the unit holding two separate weapons crossed in an X
+## rather than one gripped with both hands.
 @onready var weapon_slot_left: Node3D = model_root.find_child("WeaponSlotLeft", true, false)
 
 ## The four backpack slots this unit's inventory is organized into. Order
@@ -337,6 +340,14 @@ func _set_slot(slot: String, item_type: String) -> void:
 	if slot == "right_hand":
 		_update_attack_hitbox_position(item_type)
 	if attach_point == null or item_type.is_empty():
+		return
+	# A weapon gripped two-handed (right_hand and left_hand both holding the
+	# same item_type -- always set right_hand first, see equip_item's
+	# "two_hand"/"hybrid_hand" branches) is ONE physical weapon, not two --
+	# skip instancing a second copy of its visual at the left hand, or it
+	# reads as the unit holding two separate weapons crossed in an X rather
+	# than one weapon gripped with both hands.
+	if slot == "left_hand" and item_type == backpack["right_hand"]:
 		return
 	var visual_scene: PackedScene = ItemDefs.get_visual_scene(item_type)
 	if visual_scene == null:
