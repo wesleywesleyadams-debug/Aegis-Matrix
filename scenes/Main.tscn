@@ -536,8 +536,9 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-mouse_filter = 2
+mouse_filter = 1
 clip_contents = true
+script = ExtResource("31_minimap")
 
 [node name="Border" type="Polygon2D" parent="UI/MinimapPanel/Frame"]
 position = Vector2(210, 120)
@@ -548,10 +549,6 @@ polygon = PackedVector2Array(0, -120, 210, 0, 0, 120, -210, 0)
 position = Vector2(210, 120)
 color = Color(0.24, 0.34, 0.2, 1)
 polygon = PackedVector2Array(0, -109, 199, 0, 0, 109, -199, 0)
-
-[node name="Icons" type="Node2D" parent="UI/MinimapPanel/Frame"]
-position = Vector2(210, 120)
-script = ExtResource("31_minimap")
 
 [node name="MainMenu" type="Control" parent="UI"]
 process_mode = 3

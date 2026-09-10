@@ -1,4 +1,4 @@
-extends Node2D
+extends Control
 ## Draws a live blip for every unit/building at its ground-plane position,
 ## projected into the same isometric diamond shape the terrain itself
 ## forms under this game's camera -- world (x, z) -> local (x + z) on the
@@ -8,10 +8,21 @@ extends Node2D
 ## history) rather than hand-deriving the camera's rotation matrices --
 ## an earlier hand-derived version got the axis assignment backwards
 ## twice in a row, so this reads straight off Godot's own projection
-## instead of re-deriving it. This node's own position should be set to
-## the same center Border/Fill use (their Polygon2D position), so local
-## (0, 0) here lines up with world (0, 0).
+## instead of re-deriving it.
+##
+## Also the click target for "recenter the camera here" -- left-clicking
+## anywhere on the diamond inverts that same projection back to a world
+## point and shifts CameraRig so the current view centers on it. This is
+## a Control (not a plain Node2D) specifically so it can receive that
+## click at all -- Border/Fill (Polygon2D, plain 2D nodes) can't.
+##
+## CENTER matches Border/Fill's own Polygon2D position (the diamond's
+## center within this Control's rect) -- every draw call and the click
+## handler both offset through it, so local (0, 0) in projection terms
+## lines up with world (0, 0) regardless of where this Control's own
+## top-left corner sits.
 
+const CENTER: Vector2 = Vector2(210, 120)
 const GROUND_HALF_EXTENT: float = 30.0
 const FILL_HALF_DIAGONAL: Vector2 = Vector2(199.0, 109.0)
 ## Blips are small squares, not circles -- reads as a cleaner, more
@@ -32,11 +43,15 @@ const VIEW_BOUNDS_WIDTH: float = 2.0
 ## see the class doc comment.
 const MAX_RAW: float = 2.0 * GROUND_HALF_EXTENT
 
-## RTSController's own camera -- Main.tscn's scene root owns it directly
-## as $CameraRig/Camera3D, so reached the same way here rather than
-## threading a reference through export vars for a node this far removed
-## in the tree.
+## RTSController's own camera/rig -- Main.tscn's scene root owns them
+## directly as $CameraRig and $CameraRig/Camera3D, so reached the same
+## way here rather than threading a reference through export vars for a
+## node this far removed in the tree.
 @onready var camera: Camera3D = get_tree().current_scene.get_node("CameraRig/Camera3D")
+@onready var camera_rig: Node3D = get_tree().current_scene.get_node("CameraRig")
+
+func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_STOP
 
 func _process(_delta: float) -> void:
 	queue_redraw()
@@ -55,7 +70,7 @@ func _draw() -> void:
 	_draw_view_bounds()
 
 func _draw_blip(world_pos: Vector3, color: Color) -> void:
-	var center := _project(world_pos)
+	var center := CENTER + _project(world_pos)
 	draw_rect(Rect2(center - Vector2.ONE * BLIP_SIZE / 2.0, Vector2.ONE * BLIP_SIZE), color)
 
 ## Outlines the ground-plane quadrilateral the camera's own viewport
@@ -74,9 +89,25 @@ func _draw_view_bounds() -> void:
 	]
 	var points: PackedVector2Array = []
 	for screen_pos in screen_corners:
-		points.append(_project(_ground_point(screen_pos)))
+		points.append(CENTER + _project(_ground_point(screen_pos)))
 	points.append(points[0])
 	draw_polyline(points, VIEW_BOUNDS_COLOR, VIEW_BOUNDS_WIDTH)
+
+## Left-clicking anywhere on the minimap shifts CameraRig so the ground
+## point under the cursor becomes the new center of the actual view --
+## computed as a delta from wherever the view is currently centered
+## (the ground point straight down the middle of the viewport right
+## now) rather than assuming any fixed relationship between CameraRig's
+## own position and its look-at point, so this works regardless of
+## current zoom/pan.
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		accept_event()
+		var target := _unproject(event.position - CENTER)
+		var current_center := _ground_point(get_viewport().get_visible_rect().size / 2.0)
+		var delta := target - current_center
+		delta.y = 0.0
+		camera_rig.global_position += delta
 
 ## Where the camera ray through `screen_pos` crosses the Y=0 ground
 ## plane -- valid for this game's fixed downward-angled orthographic
@@ -90,3 +121,10 @@ func _ground_point(screen_pos: Vector2) -> Vector3:
 func _project(world_pos: Vector3) -> Vector2:
 	var raw := Vector2(world_pos.x + world_pos.z, world_pos.z - world_pos.x)
 	return raw / MAX_RAW * FILL_HALF_DIAGONAL
+
+## Inverse of _project() -- solves (x + z, z - x) = raw back to (x, z).
+func _unproject(local_pos: Vector2) -> Vector3:
+	var raw := local_pos / FILL_HALF_DIAGONAL * MAX_RAW
+	var x := (raw.x - raw.y) / 2.0
+	var z := (raw.x + raw.y) / 2.0
+	return Vector3(x, 0.0, z)
