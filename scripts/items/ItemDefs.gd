@@ -23,10 +23,10 @@ const DEFS: Dictionary = {
 		"visual": preload("res://scenes/Sword.tscn"),
 		"pickup": preload("res://scenes/SwordPickup.tscn"),
 		"slot": "one_hand",
-		"damage": 8.0,
+		"damage": 10.0,
 		"melee_reach": 0.5,
 		"hit_offsets": [0.0, 0.25, 0.5],
-		"stats": {"Type": "One-Handed Weapon", "Damage": "8"},
+		"stats": {"Type": "One-Handed Weapon", "Damage": "10"},
 	},
 	"crossbow": {
 		"visual": preload("res://scenes/Crossbow.tscn"),
