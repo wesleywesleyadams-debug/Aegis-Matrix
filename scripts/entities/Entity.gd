@@ -555,13 +555,18 @@ func _get_melee_reach() -> float:
 ## Local offsets (along attack_hitbox's parent's own +Y, the same axis
 ## every weapon's visual scene is authored along -- see
 ## ItemDefs.get_melee_hit_offsets) sampled each frame during the active
-## window to check for a landed hit. [0.0] (just the fist) by default;
-## Unit overrides this to string several points along the equipped
-## weapon's own length, approximating a capsule along the blade rather
-## than one point at the hand -- closer to how a real weapon can land a
-## hit anywhere along its edge.
+## window to check for a landed hit. UNARMED_HIT_OFFSETS is a single
+## point (a sphere, via MELEE_REACH, centered on it -- not a line like a
+## weapon's multi-point capsule, since a fist is compact, not long) set
+## slightly forward of the hand bone (which Mixamo places at the wrist)
+## so it actually sits at the fist's center rather than the wrist itself.
+## Unit overrides this to string several points along an equipped
+## weapon's own length instead, e.g. a sword's grip/mid-blade/tip -- same
+## idea, just a longer capsule for a longer weapon.
+const UNARMED_HIT_OFFSETS: Array = [0.08]
+
 func _get_melee_hit_offsets() -> Array:
-	return [0.0]
+	return UNARMED_HIT_OFFSETS
 
 ## True when nothing on SIGHT_OBSTACLE_MASK sits between this entity and
 ## `target` -- used to stop an in-range target from being attacked (or

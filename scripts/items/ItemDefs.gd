@@ -73,7 +73,10 @@ static func get_melee_reach_bonus(item_type: String) -> float:
 ## Entity._land_hit_if_in_reach checks a hit against, approximating a
 ## capsule strung along the blade rather than one point at the fist --
 ## closer to how a real weapon can land a hit anywhere along its edge, not
-## only at the very tip. [0.0] (just the hand itself) for an unrecognized
-## item_type or one with no offsets defined.
+## only at the very tip. Empty for an unrecognized item_type or one with
+## no offsets defined (e.g. an unequipped hand, or the crossbow, which has
+## no melee swing at all) -- callers (see Unit._get_melee_hit_offsets) treat
+## that as "fall back to the unarmed fist span" rather than "one point at
+## the hand", since those are different things.
 static func get_melee_hit_offsets(item_type: String) -> Array:
-	return DEFS.get(item_type, {}).get("hit_offsets", [0.0])
+	return DEFS.get(item_type, {}).get("hit_offsets", [])

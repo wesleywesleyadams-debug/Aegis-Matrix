@@ -561,10 +561,13 @@ func _get_attack_damage() -> float:
 ## the fist -- e.g. a sword checks its grip, mid-blade, and tip each frame
 ## (swept against their own previous-frame positions too, see
 ## Entity._land_hit_if_in_reach), approximating a capsule along the blade.
-## An unequipped hand, or an item with no offsets defined, falls back to
-## [0.0] (just the fist) via ItemDefs' own default.
+## An unequipped hand, or an item with no offsets defined (e.g. the
+## crossbow), falls back to the unarmed fist span (UNARMED_HIT_OFFSETS)
+## rather than one bare point -- same capsule idea applied to a fist
+## instead of a blade.
 func _get_melee_hit_offsets() -> Array:
-	return ItemDefs.get_melee_hit_offsets(backpack["right_hand"])
+	var offsets := ItemDefs.get_melee_hit_offsets(backpack["right_hand"])
+	return offsets if not offsets.is_empty() else UNARMED_HIT_OFFSETS
 
 ## Direction toward the next corner of the navigation server's actual
 ## computed route to the current target (see NavGroundSetup.gd, which bakes

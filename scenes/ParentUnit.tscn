@@ -16,15 +16,16 @@ radius = 0.25
 [sub_resource type="BoxShape3D" id="BoxShape3D_attack"]
 size = Vector3(0.35, 0.35, 0.35)
 
-[sub_resource type="BoxMesh" id="BoxMesh_attack_vis"]
-size = Vector3(0.35, 0.35, 0.35)
+[sub_resource type="SphereMesh" id="SphereMesh_attack_vis"]
+radius = 0.15
+height = 0.3
 
 [sub_resource type="StandardMaterial3D" id="Mat_attack_vis"]
 shading_mode = 0
 transparency = 1
-albedo_color = Color(1, 0.3, 0.1, 0.45)
+albedo_color = Color(1, 1, 0, 0.55)
 emission_enabled = true
-emission = Color(1, 0.3, 0.1, 1)
+emission = Color(1, 1, 0, 1)
 emission_energy_multiplier = 1.5
 
 [sub_resource type="TorusMesh" id="TorusMesh_ring"]
@@ -87,7 +88,7 @@ shape = SubResource("BoxShape3D_attack")
 
 [node name="HitboxMesh" type="MeshInstance3D" parent="ModelRoot/HumanMaleModel/Armature/Skeleton3D/WeaponSlot/AttackHitbox"]
 visible = false
-mesh = SubResource("BoxMesh_attack_vis")
+mesh = SubResource("SphereMesh_attack_vis")
 surface_material_override/0 = SubResource("Mat_attack_vis")
 
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
