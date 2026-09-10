@@ -55,6 +55,8 @@ script = ExtResource("1_world")
 unit_type_id = "tree"
 max_health = 60.0
 player_id = 3
+species = "pine"
+max_wood = 50.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)

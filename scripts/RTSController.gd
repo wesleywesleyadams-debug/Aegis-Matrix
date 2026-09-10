@@ -1259,7 +1259,7 @@ func _update_map_item_hover() -> void:
 		return
 	_hovered_map_entity = entity
 	if entity != null:
-		item_tooltip_panel.show_entity(Entity.display_name_for(entity), entity)
+		item_tooltip_panel.show_entity(entity.get_tooltip_title(), entity, entity.get_tooltip_extra_stats())
 	else:
 		item_tooltip_panel.hide_item()
 

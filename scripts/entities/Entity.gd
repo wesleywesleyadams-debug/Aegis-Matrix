@@ -31,6 +31,19 @@ static func display_name_for(entity: Node) -> String:
 	var stripped := _trailing_digits.sub(entity.name, "")
 	return stripped if not stripped.is_empty() else entity.name
 
+## Override to customize how this Entity's name reads in the hover
+## tooltip (see RTSController._update_map_item_hover) -- e.g. World.gd
+## prepends a tree's species ("Pine Tree"). Defaults to the plain
+## display name.
+func get_tooltip_title() -> String:
+	return Entity.display_name_for(self)
+
+## Override to add extra stat rows to the hover tooltip, beyond the
+## Health row ItemTooltipPanel.show_entity always adds -- e.g. World.gd's
+## Wood yield for a tree. Empty (no extra rows) by default.
+func get_tooltip_extra_stats() -> Dictionary:
+	return {}
+
 ## How much damage one unarmed swing deals (see Unit._get_attack_damage,
 ## which swaps this out for the equipped weapon's own damage whenever
 ## backpack.right_hand actually holds one), and the minimum time between
