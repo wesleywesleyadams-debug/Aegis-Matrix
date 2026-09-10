@@ -10,7 +10,13 @@ class_name ItemDefs
 ## "one_hand" fits either RIGHT_HAND or LEFT_HAND (whichever's free, see
 ## Unit.equip_item), "two_hand" always occupies both at once (a bow/
 ## crossbow needs both hands, so equipping one displaces whatever
-## occupied either). "stats" is display-only data for ItemTooltipPanel --
+## occupied either). "hybrid_hand" is a one-hand item that grips
+## two-handed by default (occupying both hand slots, like "two_hand")
+## whenever the other hand is free, but yields to a one_hand/hybrid_hand
+## item equipped alongside it -- picking either up next to it re-grips
+## down to a single hand so both weapons fit, one per hand (see
+## Unit.equip_item's "hybrid_hand" branch). "stats" is display-only data
+## for ItemTooltipPanel --
 ## nothing currently reads it for actual combat math (equipping stays
 ## visual-only, same as before this system existed).
 ## "damage"/"melee_reach" are the actual combat numbers (see
@@ -28,13 +34,24 @@ const DEFS: Dictionary = {
 	"sword": {
 		"visual": preload("res://scenes/Sword.tscn"),
 		"pickup": preload("res://scenes/SwordPickup.tscn"),
-		"slot": "one_hand",
+		"slot": "hybrid_hand",
 		"name": "Iron Longsword",
 		"display_name": "Hybrid-Handed Sword",
 		"damage": 10.0,
 		"melee_reach": 0.5,
 		"hit_offsets": [0.0, 0.25, 0.5],
 		"stats": {"Damage": "10"},
+	},
+	"steel_longsword": {
+		"visual": preload("res://scenes/SteelSword.tscn"),
+		"pickup": preload("res://scenes/SteelSwordPickup.tscn"),
+		"slot": "hybrid_hand",
+		"name": "Steel Longsword",
+		"display_name": "Hybrid-Handed Sword",
+		"damage": 12.0,
+		"melee_reach": 0.5,
+		"hit_offsets": [0.0, 0.25, 0.5],
+		"stats": {"Damage": "12"},
 	},
 	"crossbow": {
 		"visual": preload("res://scenes/Crossbow.tscn"),
@@ -68,7 +85,8 @@ static func get_pickup_scene(item_type: String) -> PackedScene:
 	return DEFS.get(item_type, {}).get("pickup")
 
 ## Which Unit.BACKPACK_SLOTS slot(s) this item occupies -- "one_hand",
-## "two_hand", "armor", or "accessory". "" for an unrecognized item_type.
+## "two_hand", "hybrid_hand", "armor", or "accessory". "" for an
+## unrecognized item_type.
 static func get_slot_kind(item_type: String) -> String:
 	return DEFS.get(item_type, {}).get("slot", "")
 

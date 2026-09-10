@@ -24,6 +24,7 @@
 [ext_resource type="Script" path="res://scripts/ui/UnitBackpackPanel.gd" id="24_unit_backpack_panel"]
 [ext_resource type="Script" path="res://scripts/ui/ItemTooltipPanel.gd" id="25_item_tooltip_panel"]
 [ext_resource type="Script" path="res://scripts/ui/GameCalendar.gd" id="26_game_calendar"]
+[ext_resource type="PackedScene" path="res://scenes/SteelSwordPickup.tscn" id="28_steel_sword_pickup"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_ground"]
 size = Vector3(60, 0.2, 60)
@@ -185,6 +186,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 6)
 
 [node name="SwordPickup" parent="World" instance=ExtResource("18_sword_pickup")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 10)
+
+[node name="SwordPickup2" parent="World" instance=ExtResource("18_sword_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0.5, 10)
+
+[node name="SteelSwordPickup" parent="World" instance=ExtResource("28_steel_sword_pickup")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.5, 10)
 
 [node name="CrossbowPickup" parent="World" instance=ExtResource("21_crossbow_pickup")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.5, 10)

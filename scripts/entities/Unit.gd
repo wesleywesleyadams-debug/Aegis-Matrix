@@ -235,29 +235,37 @@ func is_idle() -> bool:
 ## Equips `item_type` into whichever BACKPACK_SLOTS slot(s) it fits (see
 ## ItemDefs.get_slot_kind) -- "one_hand" takes whichever of right_hand/
 ## left_hand is free (right_hand if both are), "two_hand" always takes
-## both at once, "armor"/"accessory" take their own single slot. Returns
-## every item_type displaced to make room, in case the caller needs to
-## put them back on the ground -- 0, 1, or (a two-hand item bumping two
-## different one-hand items out, one from each hand) 2 entries. A bare []
-## for an unrecognized item_type (nothing equipped, nothing displaced).
+## both at once, "hybrid_hand" takes both UNLESS the other hand already
+## holds a one_hand/hybrid_hand weapon (then just the free hand, so both
+## weapons fit at once -- see the "hybrid_hand" branch below), "armor"/
+## "accessory" take their own single slot. Returns every item_type
+## displaced to make room, in case the caller needs to put them back on
+## the ground -- 0, 1, or (a two-hand item bumping two different items
+## out, one from each hand) 2 entries. Never includes a hybrid_hand
+## weapon that just re-gripped down to one hand to make room (see
+## _make_room_in_hand) -- that weapon is still equipped, just no longer
+## two-handed, not displaced at all. A bare [] for an unrecognized
+## item_type (nothing equipped, nothing displaced).
 func equip_item(item_type: String) -> Array[String]:
 	var kind := ItemDefs.get_slot_kind(item_type)
 	var displaced: Array[String] = []
 	match kind:
 		"one_hand":
 			var hand := "right_hand" if backpack["right_hand"].is_empty() else "left_hand"
-			# The hand picked to free up might currently hold a two-hand
-			# item (occupying BOTH hands at once) -- displacing just this
-			# one hand would leave that item's other hand slot stale,
-			# still "equipped" in a single hand it can't actually occupy
-			# alone. Clear both hands in that case so the two-hand item is
-			# displaced as a whole, not split in half.
-			if ItemDefs.get_slot_kind(backpack[hand]) == "two_hand":
-				_displace("right_hand", displaced)
-				_displace("left_hand", displaced)
-			else:
-				_displace(hand, displaced)
+			_make_room_in_hand(hand, displaced)
 			_set_slot(hand, item_type)
+		"hybrid_hand":
+			var hand := "right_hand" if backpack["right_hand"].is_empty() else "left_hand"
+			var other := "left_hand" if hand == "right_hand" else "right_hand"
+			_make_room_in_hand(hand, displaced)
+			_set_slot(hand, item_type)
+			# Only grip two-handed if the other hand is free -- a one_hand/
+			# hybrid_hand weapon already there (or one about to fill it,
+			# see the "one_hand" branch above re-checking this same hand
+			# via is_empty()) means this weapon should leave that hand to
+			# the other weapon instead of muscling in on both.
+			if backpack[other].is_empty():
+				_set_slot(other, item_type)
 		"two_hand":
 			_displace("right_hand", displaced)
 			_displace("left_hand", displaced)
@@ -269,6 +277,30 @@ func equip_item(item_type: String) -> Array[String]:
 	if not kind.is_empty():
 		backpack_changed.emit(self)
 	return displaced
+
+## Clears `hand` to make room for whatever's about to be equipped into
+## it. Usually that's just displacing whatever's there (see _displace).
+## But if `hand`'s occupant is a "hybrid_hand" weapon currently gripped
+## two-handed (right_hand and left_hand both hold it), it doesn't get
+## displaced at all -- it re-grips down to a single hand (releasing just
+## `hand`, via a plain unequip_slot that does NOT add to `displaced`)
+## and stays equipped in the other one, exactly the "picking up a second
+## weapon un-two-hands the hybrid one" behavior this slot kind exists
+## for. A "two_hand" item's grip can't be split that way (it genuinely
+## needs both hands), so that case still clears both hands and displaces
+## it as a whole, same as before.
+func _make_room_in_hand(hand: String, displaced: Array[String]) -> void:
+	var occupant: String = backpack[hand]
+	if occupant.is_empty():
+		return
+	var gripped_two_handed := backpack["right_hand"] == backpack["left_hand"]
+	if gripped_two_handed and ItemDefs.get_slot_kind(occupant) == "hybrid_hand":
+		unequip_slot(hand)
+	elif gripped_two_handed:
+		_displace("right_hand", displaced)
+		_displace("left_hand", displaced)
+	else:
+		_displace(hand, displaced)
 
 ## Clears `slot`'s current occupant (if any) into `displaced`, skipping a
 ## duplicate entry if it's the same item_type already added -- true when
@@ -402,11 +434,13 @@ func _update_throw_target() -> void:
 	unequip_item_fully(item_type, source_slot)
 	item_thrown.emit(self, item_type, target_position, target_unit, target_building)
 
-## Fully removes `item_type` from wherever it's equipped -- both hands for
-## a two-handed item (which occupies both at once, so a single named slot
-## isn't the whole picture), or just `source_slot` otherwise.
+## Fully removes `item_type` from wherever it's equipped -- both hands
+## if it's currently gripped two-handed (a "two_hand" item always is; a
+## "hybrid_hand" one only when nothing else made it yield a hand -- see
+## Unit.equip_item), since a single named slot isn't the whole picture
+## then, or just `source_slot` otherwise.
 func unequip_item_fully(item_type: String, source_slot: String) -> void:
-	if ItemDefs.get_slot_kind(item_type) == "two_hand":
+	if backpack["right_hand"] == item_type and backpack["left_hand"] == item_type:
 		unequip_slot("right_hand")
 		unequip_slot("left_hand")
 	else:
