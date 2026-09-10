@@ -39,6 +39,14 @@ const MAX_STORAGE_SLOTS: int = 6
 ## an actual doorstep/loading-corner than a point floating off one wall.
 const STORAGE_EJECT_ANGLE: float = 3.0 * PI / 4.0
 
+## Local corner this building's StorageFlag sits at -- the back top
+## corner, diagonally opposite STORAGE_EJECT_ANGLE's front-bottom
+## ejection point (the corner nearest the camera in this fixed
+## isometric view), so the flag reads as sitting on the roof away from
+## the viewer rather than in front of the building.
+const STORAGE_FLAG_POSITION: Vector3 = Vector3(-1.17, 2.47, -1.17)
+var _storage_flag: StorageFlag = null
+
 ## Adds `item_type` if there's a free slot, and reports whether it
 ## actually fit -- caller decides what happens to the item if not (e.g.
 ## _on_thrown_item_landed leaves it as a normal ground pickup instead of
@@ -48,6 +56,7 @@ func store_item(item_type: String) -> bool:
 		return false
 	stored_items.append(item_type)
 	storage_changed.emit(self)
+	_update_storage_flag()
 	return true
 
 ## Removes the first entry matching `item_type`, if any, and reports
@@ -59,7 +68,24 @@ func take_item(item_type: String) -> bool:
 		return false
 	stored_items.remove_at(index)
 	storage_changed.emit(self)
+	_update_storage_flag()
 	return true
+
+## Shows/hides the back-top-corner StorageFlag depending on whether
+## there's anything stored -- built lazily on first actual need (most
+## buildings never store anything) rather than unconditionally in
+## _ready(), and (re)colored every call so it always matches this
+## building's current player_id even if that somehow changes after
+## spawn.
+func _update_storage_flag() -> void:
+	var has_items := not stored_items.is_empty()
+	if _storage_flag == null:
+		if not has_items:
+			return
+		_storage_flag = StorageFlag.spawn(self, STORAGE_FLAG_POSITION, Entity.PLAYER_COLORS.get(player_id, Color.WHITE))
+		return
+	_storage_flag.visible = has_items
+	_storage_flag.set_color(Entity.PLAYER_COLORS.get(player_id, Color.WHITE))
 
 ## Once an enemy building has been seen at least once, fog of war keeps it
 ## visible (at its last-known position) even after it drops out of vision
