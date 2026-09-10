@@ -49,4 +49,4 @@ func _process(_delta: float) -> void:
 	if parts.size() == 1:
 		text = parts[0]
 	else:
-		text = ", ".join(parts.slice(0, -1)) + ", and " + parts[-1]
+		text = ", ".join(parts.slice(0, -1)) + " and " + parts[-1]
