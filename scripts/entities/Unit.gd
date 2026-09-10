@@ -275,8 +275,7 @@ func equip_item(item_type: String) -> Array[String]:
 			_displace(hand, displaced)
 			_set_slot(hand, item_type)
 		"hybrid_hand":
-			if backpack["right_hand"].is_empty() and backpack["left_hand"].is_empty():
-				_displace("two_hand", displaced)
+			if backpack["right_hand"].is_empty() and backpack["left_hand"].is_empty() and backpack["two_hand"].is_empty():
 				_set_slot("two_hand", item_type)
 			else:
 				_vacate_two_hand_slot(displaced)
