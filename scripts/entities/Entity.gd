@@ -217,22 +217,19 @@ const ATTACK_BLINK_INTERVAL: float = 0.12
 ## model_root. Billboard sprite units (no skeleton) would have it directly
 ## under model_root instead, same as before.
 @onready var attack_hitbox: Area3D = model_root.find_child("AttackHitbox", true, false)
-## Purely visual -- a wire-sphere (3 perpendicular rings) roughly matching
-## the hitbox's own reach, shown only while the hitbox is actually active
-## (see perform_attack()) AND GameState.show_combat_hitboxes is on, so a
+## Purely visual -- a translucent yellow sphere roughly matching the
+## hitbox's own reach, shown only while the hitbox is actually active (see
+## perform_attack()) AND GameState.show_combat_hitboxes is on, so a
 ## swing's actual hit window is visible instead of invisible collision
-## math. A Node3D (not MeshInstance3D) since it wraps 3 separate ring
-## MeshInstance3D children rather than being one mesh itself -- toggling
-## its own visible still hides all of them, Godot cascades visibility to
-## children. Null for anything without an AttackHitbox to begin with.
-@onready var attack_hitbox_mesh: Node3D = (
+## math. Null for anything without an AttackHitbox to begin with.
+@onready var attack_hitbox_mesh: MeshInstance3D = (
 	attack_hitbox.get_node_or_null("HitboxMesh") if attack_hitbox != null else null
 )
-## Purely visual -- a faint wire-sphere matching the Hurtbox's own radius
-## (see get_engage_radius_bonus), shown persistently (not just during a
-## swing) whenever GameState.show_combat_hitboxes is on. Null for anything
-## without a Hurtbox to begin with (e.g. World.gd's Tree).
-@onready var hurtbox_mesh: Node3D = get_node_or_null("Hurtbox/HurtboxMesh")
+## Purely visual -- a translucent yellow sphere matching the Hurtbox's own
+## radius (see get_engage_radius_bonus), shown persistently (not just
+## during a swing) whenever GameState.show_combat_hitboxes is on. Null for
+## anything without a Hurtbox to begin with (e.g. World.gd's Tree).
+@onready var hurtbox_mesh: MeshInstance3D = get_node_or_null("Hurtbox/HurtboxMesh")
 ## The paladin model's tabard/skirt fabric, recolored per player_id. This
 ## mesh is split into two material surfaces (surface 0 = the rest of the armor, surface
 ## 1 = just the tabard fabric, given a flat white base material with no
@@ -417,6 +414,13 @@ func _update_hologram_material() -> void:
 
 func _find_mesh_instances(n: Node) -> Array[MeshInstance3D]:
 	var result: Array[MeshInstance3D] = []
+	# HitboxMesh (see attack_hitbox_mesh) sits under model_root/.../WeaponSlot
+	# so it tracks the swing correctly, but it's a debug-only visual with
+	# its own deliberate yellow material (see perform_attack()/
+	# GameState.show_combat_hitboxes) -- it must NOT get swept up into the
+	# hologram material along with the model's real meshes.
+	if n.name == "HitboxMesh":
+		return result
 	if n is MeshInstance3D and n.mesh != null:
 		result.append(n)
 	for c in n.get_children():
