@@ -6,9 +6,9 @@ extends Label
 ## at, this just recomputes from that.
 
 ## Seconds per in-game day / days per in-game year / years per in-game
-## century -- the user's own chosen scale (24s/day, 365 days/year, 100
+## century -- the user's own chosen scale (1s/day, 365 days/year, 100
 ## years/century), arbitrary game-time units with no other significance.
-const DAY_SECONDS: float = 24.0
+const DAY_SECONDS: float = 1.0
 const YEAR_DAYS: int = 365
 const CENTURY_YEARS: int = 100
 
