@@ -18,6 +18,12 @@ const FILL_HALF_DIAGONAL: Vector2 = Vector2(199.0, 109.0)
 ## "map icon" look at this size than a circle does, and matches
 ## strategy-game minimap convention (a dot per unit/building).
 const BLIP_SIZE: float = 5.0
+## Trees (World.gd, "world" group) always show this fixed dark green,
+## not Entity.PLAYER_COLORS[3] (Nature's own, lighter neutral green
+## used for tabard/health-bar identity) -- scenery, not a faction, so
+## it reads distinctly from an actual Nature-owned unit/building on
+## the same map.
+const TREE_COLOR: Color = Color(0.08, 0.28, 0.1, 1)
 
 ## The largest |raw projected offset| a point at the very edge of the
 ## ground plane reaches, before scaling into FILL_HALF_DIAGONAL -- see
@@ -33,8 +39,15 @@ func _draw() -> void:
 			if not is_instance_valid(entity):
 				continue
 			var color: Color = Entity.PLAYER_COLORS.get(entity.player_id, Color.WHITE)
-			var center := _project(entity.global_position)
-			draw_rect(Rect2(center - Vector2.ONE * BLIP_SIZE / 2.0, Vector2.ONE * BLIP_SIZE), color)
+			_draw_blip(entity.global_position, color)
+	for tree in get_tree().get_nodes_in_group("world"):
+		if not is_instance_valid(tree):
+			continue
+		_draw_blip(tree.global_position, TREE_COLOR)
+
+func _draw_blip(world_pos: Vector3, color: Color) -> void:
+	var center := _project(world_pos)
+	draw_rect(Rect2(center - Vector2.ONE * BLIP_SIZE / 2.0, Vector2.ONE * BLIP_SIZE), color)
 
 func _project(world_pos: Vector3) -> Vector2:
 	var raw := Vector2((world_pos.x - world_pos.z) * 0.7071068, (world_pos.x + world_pos.z) * 0.4060)
