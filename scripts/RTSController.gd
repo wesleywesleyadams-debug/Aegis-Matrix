@@ -1233,33 +1233,37 @@ func _issue_pickup_order(units: Array[Node], item: WorldItem, append_to_queue: b
 ## click-tolerance widening -- that widening is meant to make an
 ## intentional CLICK forgiving, not to make hover trigger on an item the
 ## cursor isn't actually over.
-var _hovered_map_item: WorldItem = null
-var _hovered_map_entity: Entity = null
+## Whichever WorldItem or Entity is currently shown (null for neither).
+## A single tracker rather than one nullable var per kind -- two
+## separate "_hovered_map_item"/"_hovered_map_entity" vars both being
+## null is ambiguous between "showing an item" (which always nulls the
+## entity tracker out) and "nothing hovered at all", and comparing
+## null == null on the wrong one skipped the final hide_item() call
+## entirely once the cursor moved off an item onto empty ground --
+## confirmed by the tooltip staying up indefinitely after moving the
+## cursor away from a weapon pickup. One Variant sidesteps that: it's
+## only ever equal to itself.
+var _hovered_map_object: Variant = null
 
 func _update_map_item_hover() -> void:
 	if get_viewport().gui_get_hovered_control() != null:
-		_hovered_map_item = null
-		_hovered_map_entity = null
-		item_tooltip_panel.hide_item()
+		if _hovered_map_object != null:
+			_hovered_map_object = null
+			item_tooltip_panel.hide_item()
 		return
 	var mouse_pos := get_viewport().get_mouse_position()
 	var item_hit := _raycast(mouse_pos, WorldItem.ITEM_MASK, true, false)
-	var item: WorldItem = item_hit["collider"] if not item_hit.is_empty() and item_hit["collider"] is WorldItem else null
-	if item != null:
-		_hovered_map_entity = null
-		if item == _hovered_map_item:
-			return
-		_hovered_map_item = item
-		item_tooltip_panel.show_item(item.item_type)
+	var hovered: Variant = item_hit["collider"] if not item_hit.is_empty() and item_hit["collider"] is WorldItem else null
+	if hovered == null:
+		var entity_hit := _raycast(mouse_pos, UNIT_MASK)
+		hovered = entity_hit["collider"] if not entity_hit.is_empty() and entity_hit["collider"] is Entity else null
+	if hovered == _hovered_map_object:
 		return
-	_hovered_map_item = null
-	var entity_hit := _raycast(mouse_pos, UNIT_MASK)
-	var entity: Entity = entity_hit["collider"] if not entity_hit.is_empty() and entity_hit["collider"] is Entity else null
-	if entity == _hovered_map_entity:
-		return
-	_hovered_map_entity = entity
-	if entity != null:
-		item_tooltip_panel.show_entity(entity.get_tooltip_title(), entity, entity.get_tooltip_extra_stats())
+	_hovered_map_object = hovered
+	if hovered is WorldItem:
+		item_tooltip_panel.show_item(hovered.item_type)
+	elif hovered is Entity:
+		item_tooltip_panel.show_entity(hovered.get_tooltip_title(), hovered, hovered.get_tooltip_extra_stats())
 	else:
 		item_tooltip_panel.hide_item()
 
