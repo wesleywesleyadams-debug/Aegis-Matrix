@@ -16,29 +16,41 @@ class_name ItemDefs
 ## "damage"/"melee_reach" are the actual combat numbers (see
 ## Unit._get_attack_damage/_get_melee_reach) -- "stats" is the display
 ## copy shown in ItemTooltipPanel, kept as its own dictionary rather than
-## generated from these since not every stat line is combat-numeric (e.g.
-## "Type").
+## generated from these since not every stat line is combat-numeric.
+## "display_name" is the tooltip's title (see get_display_name) --
+## bakes the one-/two-handed distinction into the name itself ("Two-
+## Handed Crossbow") rather than a separate "Type" stat row.
 const DEFS: Dictionary = {
 	"sword": {
 		"visual": preload("res://scenes/Sword.tscn"),
 		"pickup": preload("res://scenes/SwordPickup.tscn"),
 		"slot": "one_hand",
+		"display_name": "One-Handed Sword",
 		"damage": 10.0,
 		"melee_reach": 0.5,
 		"hit_offsets": [0.0, 0.25, 0.5],
-		"stats": {"Type": "One-Handed Weapon", "Damage": "10"},
+		"stats": {"Damage": "10"},
 	},
 	"crossbow": {
 		"visual": preload("res://scenes/Crossbow.tscn"),
 		"pickup": preload("res://scenes/CrossbowPickup.tscn"),
 		"slot": "two_hand",
+		"display_name": "Two-Handed Crossbow",
 		"damage": 14.0,
-		"stats": {"Type": "Two-Handed Weapon", "Damage": "14"},
+		"stats": {"Damage": "14"},
 	},
 }
 
 static func get_visual_scene(item_type: String) -> PackedScene:
 	return DEFS.get(item_type, {}).get("visual")
+
+## Full display name for ItemTooltipPanel's title -- bakes in the
+## one-/two-handed distinction (e.g. "Two-Handed Crossbow") that used
+## to be its own separate "Type" stat row, rather than a bare
+## item_type.capitalize(). Falls back to that plain capitalized form
+## for an unrecognized item_type.
+static func get_display_name(item_type: String) -> String:
+	return DEFS.get(item_type, {}).get("display_name", item_type.capitalize())
 
 static func get_pickup_scene(item_type: String) -> PackedScene:
 	return DEFS.get(item_type, {}).get("pickup")

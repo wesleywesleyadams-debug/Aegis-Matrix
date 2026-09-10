@@ -18,7 +18,7 @@ func _ready() -> void:
 	visible = false
 
 func show_item(item_type: String) -> void:
-	_show_stats(item_type.capitalize(), ItemDefs.get_stats(item_type))
+	_show_stats(ItemDefs.get_display_name(item_type), ItemDefs.get_stats(item_type))
 
 ## Generic hover info for any interactable Entity that isn't an item --
 ## a tree, a unit, a building. Just its display name and current/max
