@@ -9,6 +9,12 @@ class_name Unit
 const MAX_SPEED: float = 2.25
 const ARRIVE_DISTANCE: float = 0.15
 
+## Every unit starts at level 1. No leveling system exists yet (see
+## Entity.take_damage's doc comment) -- once kills automatically scale
+## up stats, this is what increments, and level 1 is simply "no bonus
+## applied yet" rather than a special-cased starting state.
+var level: int = 1
+
 @onready var nav_agent: NavigationAgent3D = $NavigationAgent3D
 ## Where a right/two-handed weapon's visual attaches -- see ParentUnit.tscn.
 @onready var weapon_slot: Node3D = model_root.find_child("WeaponSlot", true, false)
