@@ -53,6 +53,17 @@ const DEFS: Dictionary = {
 		"hit_offsets": [0.0, 0.25, 0.5],
 		"stats": {"Damage": "12"},
 	},
+	"iron_shortsword": {
+		"visual": preload("res://scenes/IronShortsword.tscn"),
+		"pickup": preload("res://scenes/IronShortswordPickup.tscn"),
+		"slot": "one_hand",
+		"name": "Iron Short Sword",
+		"display_name": "One-Handed Sword",
+		"damage": 8.0,
+		"melee_reach": 0.3,
+		"hit_offsets": [0.0, 0.15, 0.3],
+		"stats": {"Damage": "8"},
+	},
 	"crossbow": {
 		"visual": preload("res://scenes/Crossbow.tscn"),
 		"pickup": preload("res://scenes/CrossbowPickup.tscn"),
