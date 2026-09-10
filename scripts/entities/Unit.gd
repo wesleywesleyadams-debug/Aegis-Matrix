@@ -575,19 +575,30 @@ func _physics_process(_delta: float) -> void:
 ## Plays Walk while actually translating and Idle otherwise (arriving,
 ## standing between orders, mid-attack-approach before it's in range) --
 ## guarded by current_animation so it doesn't restart the clip every single
-## frame. No-op for entities with no AnimationPlayer (e.g. the older
-## sprite-billboard peasant, if one still exists). Always deferred to while
-## a triggered one-shot animation (any "Attack"-prefixed clip -- see
-## Entity._get_attack_animation_name(), which picks a weapon-specific one
-## like "Attack_Sword" over the bare-handed "Attack") is still playing, so
-## e.g. a target dying mid-swing and clearing attack_target doesn't snap
-## the model back to Walk/Idle before the swing finishes.
+## frame. Swaps in the "_TwoHanded" variant of either (Idle_TwoHanded/
+## Walk_TwoHanded, both hands visibly on the grip throughout, not just
+## during the attack swing) whenever anything's actually sitting in the
+## "two_hand" slot -- a strict two_hand item (e.g. "iron_greatsword")
+## just as much as a hybrid_hand one currently gripped two-handed, since
+## either way both hands are visually occupied the same way -- falling
+## back to the bare Idle/Walk if that variant doesn't exist for some
+## reason. No-op for entities with no
+## AnimationPlayer (e.g. the older sprite-billboard peasant, if one still
+## exists). Always deferred to while a triggered one-shot animation (any
+## "Attack"-prefixed clip -- see Entity._get_attack_animation_name(),
+## which picks a weapon-specific one like "Attack_Sword" over the
+## bare-handed "Attack") is still playing, so e.g. a target dying
+## mid-swing and clearing attack_target doesn't snap the model back to
+## Walk/Idle before the swing finishes.
 func _update_locomotion_animation(is_moving: bool) -> void:
 	if animation_player == null:
 		return
 	if animation_player.is_playing() and animation_player.current_animation.begins_with("Attack"):
 		return
-	var target_animation := "Walk" if is_moving else "Idle"
+	var base_animation := "Walk" if is_moving else "Idle"
+	var two_handed_animation := base_animation + "_TwoHanded"
+	var gripped_two_handed: bool = not backpack["two_hand"].is_empty()
+	var target_animation := two_handed_animation if gripped_two_handed and animation_player.has_animation(two_handed_animation) else base_animation
 	if animation_player.current_animation != target_animation and animation_player.has_animation(target_animation):
 		animation_player.play(target_animation, ANIMATION_BLEND_TIME)
 
