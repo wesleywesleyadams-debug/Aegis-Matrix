@@ -16,7 +16,7 @@ extends Panel
 ## RTSController owns the actual unequip/drop/transfer logic.
 
 signal item_right_clicked(item_type: String, source_slot: String)
-signal item_hovered(item_type: String)
+signal item_hovered(item_type: String, source_slot: String)
 signal item_unhovered()
 
 ## Every slot cell is a perfect SLOT_SIZE x SLOT_SIZE square, laid out on
@@ -70,6 +70,6 @@ func refresh(unit: Unit) -> void:
 			button.set_item(item_type, slot.capitalize())
 			if not item_type.is_empty():
 				button.right_clicked.connect(func(t: String, s: String) -> void: item_right_clicked.emit(t, s))
-				button.hovered.connect(func(t: String) -> void: item_hovered.emit(t))
+				button.hovered.connect(func(t: String, s: String) -> void: item_hovered.emit(t, s))
 				button.unhovered.connect(func() -> void: item_unhovered.emit())
 		slots_root.add_child(button)

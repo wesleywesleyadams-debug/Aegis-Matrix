@@ -10,8 +10,11 @@ class_name ItemSlotButton
 signal right_clicked(item_type: String, source_slot: String)
 ## For ItemTooltipPanel -- see RTSController._on_item_slot_hovered/
 ## _on_item_slot_unhovered. Only emitted for a non-empty slot (an empty
-## one has nothing to show stats for).
-signal hovered(item_type: String)
+## one has nothing to show stats for). source_slot lets the tooltip show
+## slot-specific bonuses (e.g. ItemTooltipPanel.show_item's two-handed
+## wield line, only for the "two_hand" BACKPACK_SLOTS slot) -- "" for a
+## BuildingStoragePanel button, which has no slot concept.
+signal hovered(item_type: String, source_slot: String)
 signal unhovered()
 
 ## Icon fills the whole button in place of a text label -- set once the
@@ -73,7 +76,7 @@ func _init() -> void:
 func _ready() -> void:
 	mouse_entered.connect(func() -> void:
 		if not item_type.is_empty():
-			hovered.emit(item_type)
+			hovered.emit(item_type, source_slot)
 	)
 	mouse_exited.connect(func() -> void: unhovered.emit())
 
