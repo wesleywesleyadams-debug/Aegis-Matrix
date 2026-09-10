@@ -75,20 +75,28 @@ func get_engage_radius_bonus() -> float:
 ## shared value for every weapon (unarmed, sword, ...), so the hit window
 ## itself doesn't vary by what's equipped, only its damage/reach/timing do.
 const ATTACK_ACTIVE_DURATION: float = 0.15
+## How much shorter than attack_cooldown a swing's played-back length is
+## kept -- see perform_attack()'s playback_speed, which stretches/
+## compresses every attack animation to fit this so the swing always
+## visibly finishes before the next one starts, no matter the clip's
+## native length or how attack_cooldown gets tuned.
+const ATTACK_ANIMATION_COOLDOWN_MARGIN: float = 0.1
 ## How far into a given attack animation (as a fraction of its length) the
 ## fist/weapon reaches full extension -- measured directly off each clip
 ## via right-hand-to-shoulder distance sampled frame by frame. Keyed by
 ## animation name (see _get_attack_animation_name()) since different
 ## weapons swing on different timings: "Attack" is the unarmed Mixamo
 ## "Punching" clip (peaked at frame 13 of 24), "Attack_Sword" is the
-## one-handed Mixamo "Stable Sword Outward Slash" clip (peaked at frame 23
-## of 49). perform_attack() uses this to delay turning the hitbox on until
+## one-handed Mixamo "Stable Sword Outward Slash" clip, trimmed to drop its
+## static wind-up hold (see _blender_trim_sword_attack.py -- the raw clip's
+## first 8 of 49 frames barely move at all) and re-measured on the trimmed
+## clip, peaked at frame 15 of 40. perform_attack() uses this to delay turning the hitbox on until
 ## the swing has actually landed, instead of firing it the instant the
 ## animation starts. Falls back to the "Attack" entry for any animation
 ## name not listed here.
 const ATTACK_IMPACT_FRACTIONS: Dictionary = {
 	"Attack": 0.5417,
-	"Attack_Sword": 0.4694,
+	"Attack_Sword": 0.375,
 }
 ## How close the hitbox needs to be to a target's approximate body center
 ## (see _land_hit_if_in_reach) to actually land a hit -- roughly the
@@ -555,15 +563,28 @@ func perform_attack() -> void:
 	var impact_delay := 0.0
 	var animation_name := _get_attack_animation_name()
 	if animation_player != null and animation_player.has_animation(animation_name):
-		animation_player.play(animation_name)
 		var attack_animation := animation_player.get_animation(animation_name)
+		# Stretch/compress playback so the clip's own length always matches
+		# attack_cooldown regardless of the clip's native length or however
+		# attack_cooldown gets tuned later -- otherwise a long swing (the
+		# sword's is 2.07s) can run longer than a short cooldown and overlap
+		# the next swing, while a short one leaves the animation finishing
+		# well before the next swing is due. ATTACK_ANIMATION_COOLDOWN_MARGIN
+		# keeps a small gap so the swing visibly finishes before the next one
+		# starts rather than landing exactly as the next begins.
+		var target_duration: float = maxf(attack_cooldown - ATTACK_ANIMATION_COOLDOWN_MARGIN, 0.05)
+		var playback_speed: float = attack_animation.length / target_duration
+		animation_player.play(animation_name, -1.0, playback_speed)
 		# Center the hit window on the moment the fist/weapon is actually
 		# fully extended (see ATTACK_IMPACT_FRACTIONS), rather than swinging
 		# the box on the instant the animation starts -- otherwise the
 		# hitbox fires during the windup, well before the fist/weapon has
-		# reached the target.
+		# reached the target. Measured against target_duration (the clip's
+		# actual played-back length), not attack_animation.length (its
+		# native, unscaled length), since playback_speed above stretches or
+		# compresses the real timeline.
 		var impact_fraction: float = ATTACK_IMPACT_FRACTIONS.get(animation_name, ATTACK_IMPACT_FRACTIONS["Attack"])
-		impact_delay = maxf(attack_animation.length * impact_fraction - ATTACK_ACTIVE_DURATION / 2.0, 0.0)
+		impact_delay = maxf(target_duration * impact_fraction - ATTACK_ACTIVE_DURATION / 2.0, 0.0)
 	if impact_delay > 0.0:
 		await get_tree().create_timer(impact_delay).timeout
 	if not is_instance_valid(self) or not is_instance_valid(attack_hitbox):
