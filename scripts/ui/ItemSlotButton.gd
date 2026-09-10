@@ -84,6 +84,7 @@ func _ready() -> void:
 ## (e.g. the slot's own name, "Armor") and disabled.
 func set_item(type: String, empty_label: String = "") -> void:
 	item_type = type
+	remove_theme_color_override("font_color")
 	if type.is_empty():
 		text = empty_label
 		disabled = true
@@ -98,6 +99,20 @@ func set_item(type: String, empty_label: String = "") -> void:
 			icon_rect.show()
 			text = ""
 	)
+
+## Marks this slot unusable rather than empty -- both hands are already
+## committed to a strictly two-handed weapon sitting in the dedicated
+## "two_hand" BACKPACK_SLOTS slot (see UnitBackpackPanel.refresh(), which
+## chooses between this and a plain empty set_item("") based on whether
+## that weapon is "two_hand" or re-grippable "hybrid_hand" kind -- see
+## ItemDefs.get_slot_kind). Disabled and empty of item_type, same as a
+## plain empty slot, so it still can't be dragged into/out of.
+func set_blocked() -> void:
+	item_type = ""
+	text = "X"
+	add_theme_color_override("font_color", Color(0.85, 0.15, 0.15, 1))
+	disabled = true
+	icon_rect.hide()
 
 var item_type: String = ""
 ## Which of source_unit's Unit.BACKPACK_SLOTS this button represents --

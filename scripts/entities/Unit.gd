@@ -35,18 +35,31 @@ var level: int = 1
 ## rather than one gripped with both hands.
 @onready var weapon_slot_left: Node3D = model_root.find_child("WeaponSlotLeft", true, false)
 
-## The four backpack slots this unit's inventory is organized into. Order
+## The five backpack slots this unit's inventory is organized into. Order
 ## matters only for iteration (e.g. BuildingStoragePanel-style UI listing
 ## slots in a stable order); armor/accessory have no equipped-visual
 ## attachment point yet (no assets for it currently exist), so equipping
 ## into those only ever affects this dictionary, not model_root.
-const BACKPACK_SLOTS: Array[String] = ["armor", "right_hand", "left_hand", "accessory"]
+## "two_hand" is a fifth slot, separate from right_hand/left_hand, for
+## whatever's currently gripped with both hands -- a strictly "two_hand"
+## kind item (e.g. a crossbow), or a "hybrid_hand" one (e.g. a longsword)
+## gripped two-handed by default when nothing else needs a hand (see
+## equip_item). Its invariant: whenever "two_hand" is non-empty,
+## right_hand and left_hand are BOTH empty, and vice versa -- only one of
+## "two_hand" or {right_hand, left_hand} is ever in play, since a unit
+## only has two hands. UnitBackpackPanel shows right_hand/left_hand as
+## unusable (a red X, see ItemSlotButton.set_blocked) while "two_hand"
+## holds a strict two_hand item (both hands are genuinely committed), but
+## leaves them showing plain-empty while it holds a hybrid_hand one
+## (equipping something there just re-grips the hybrid one-handed
+## instead -- see _vacate_two_hand_slot).
+const BACKPACK_SLOTS: Array[String] = ["armor", "right_hand", "left_hand", "accessory", "two_hand"]
 ## slot name -> item_type ("" for empty). Prefer equip_item()/unequip_slot()
 ## over writing this directly -- they also keep the equipped-visual
 ## (_slot_visuals) and backpack_changed signal in sync.
-var backpack: Dictionary = {"armor": "", "right_hand": "", "left_hand": "", "accessory": ""}
+var backpack: Dictionary = {"armor": "", "right_hand": "", "left_hand": "", "accessory": "", "two_hand": ""}
 ## slot name -> the instanced visual currently attached for it (only ever
-## populated for right_hand/left_hand, the only slots with a real
+## populated for right_hand/left_hand/two_hand, the only slots with a real
 ## attachment point -- see BACKPACK_SLOTS' doc comment above).
 var _slot_visuals: Dictionary = {}
 
@@ -237,43 +250,44 @@ func is_idle() -> bool:
 
 ## Equips `item_type` into whichever BACKPACK_SLOTS slot(s) it fits (see
 ## ItemDefs.get_slot_kind) -- "one_hand" takes whichever of right_hand/
-## left_hand is free (right_hand if both are), "two_hand" always takes
-## both at once, "hybrid_hand" takes both UNLESS the other hand already
-## holds a one_hand/hybrid_hand weapon (then just the free hand, so both
-## weapons fit at once -- see the "hybrid_hand" branch below), "armor"/
-## "accessory" take their own single slot. Returns every item_type
-## displaced to make room, in case the caller needs to put them back on
-## the ground -- 0, 1, or (a two-hand item bumping two different items
-## out, one from each hand) 2 entries. Never includes a hybrid_hand
-## weapon that just re-gripped down to one hand to make room (see
-## _make_room_in_hand) -- that weapon is still equipped, just no longer
-## two-handed, not displaced at all. A bare [] for an unrecognized
-## item_type (nothing equipped, nothing displaced).
+## left_hand is free (right_hand if both are); "two_hand" always takes
+## the dedicated "two_hand" slot, clearing right_hand/left_hand/two_hand
+## entirely first (it needs both hands genuinely, no re-gripping);
+## "hybrid_hand" takes "two_hand" too, but only when right_hand AND
+## left_hand are both already free -- otherwise (already dual-wielding,
+## or about to) it takes whichever single hand is free instead (right_hand
+## first), re-gripping anything already sitting in "two_hand" down to one
+## hand first if needed (see _vacate_two_hand_slot); "armor"/"accessory"
+## take their own single slot. Returns every item_type displaced to make
+## room, in case the caller needs to put them back on the ground -- 0, 1,
+## or ("two_hand" bumping out up to two different single-handed items at
+## once) 2 entries. Never includes a hybrid_hand weapon that just
+## re-gripped down to one hand to make room -- that weapon is still
+## equipped, just no longer two-handed, not displaced at all. A bare []
+## for an unrecognized item_type (nothing equipped, nothing displaced).
 func equip_item(item_type: String) -> Array[String]:
 	var kind := ItemDefs.get_slot_kind(item_type)
 	var displaced: Array[String] = []
 	match kind:
 		"one_hand":
+			_vacate_two_hand_slot(displaced)
 			var hand := "right_hand" if backpack["right_hand"].is_empty() else "left_hand"
-			_make_room_in_hand(hand, displaced)
+			_displace(hand, displaced)
 			_set_slot(hand, item_type)
 		"hybrid_hand":
-			var hand := "right_hand" if backpack["right_hand"].is_empty() else "left_hand"
-			var other := "left_hand" if hand == "right_hand" else "right_hand"
-			_make_room_in_hand(hand, displaced)
-			_set_slot(hand, item_type)
-			# Only grip two-handed if the other hand is free -- a one_hand/
-			# hybrid_hand weapon already there (or one about to fill it,
-			# see the "one_hand" branch above re-checking this same hand
-			# via is_empty()) means this weapon should leave that hand to
-			# the other weapon instead of muscling in on both.
-			if backpack[other].is_empty():
-				_set_slot(other, item_type)
+			if backpack["right_hand"].is_empty() and backpack["left_hand"].is_empty():
+				_displace("two_hand", displaced)
+				_set_slot("two_hand", item_type)
+			else:
+				_vacate_two_hand_slot(displaced)
+				var hand := "right_hand" if backpack["right_hand"].is_empty() else "left_hand"
+				_displace(hand, displaced)
+				_set_slot(hand, item_type)
 		"two_hand":
 			_displace("right_hand", displaced)
 			_displace("left_hand", displaced)
-			_set_slot("right_hand", item_type)
-			_set_slot("left_hand", item_type)
+			_displace("two_hand", displaced)
+			_set_slot("two_hand", item_type)
 		"armor", "accessory":
 			_displace(kind, displaced)
 			_set_slot(kind, item_type)
@@ -281,34 +295,26 @@ func equip_item(item_type: String) -> Array[String]:
 		backpack_changed.emit(self)
 	return displaced
 
-## Clears `hand` to make room for whatever's about to be equipped into
-## it. Usually that's just displacing whatever's there (see _displace).
-## But if `hand`'s occupant is a "hybrid_hand" weapon currently gripped
-## two-handed (right_hand and left_hand both hold it), it doesn't get
-## displaced at all -- it re-grips down to a single hand (releasing just
-## `hand`, via a plain unequip_slot that does NOT add to `displaced`)
-## and stays equipped in the other one, exactly the "picking up a second
-## weapon un-two-hands the hybrid one" behavior this slot kind exists
-## for. A "two_hand" item's grip can't be split that way (it genuinely
-## needs both hands), so that case still clears both hands and displaces
-## it as a whole, same as before.
-func _make_room_in_hand(hand: String, displaced: Array[String]) -> void:
-	var occupant: String = backpack[hand]
+## Clears the "two_hand" slot to make room for a hand-slot item about to
+## be equipped. If it's holding a "hybrid_hand" weapon, that weapon isn't
+## displaced at all -- it re-grips down to right_hand (guaranteed free,
+## per the "two_hand" slot's own invariant that right_hand/left_hand are
+## both empty whenever it's occupied), leaving left_hand free for
+## whatever's about to be equipped there. If it's holding a strict
+## "two_hand" item (can't be split into one hand), that gets fully
+## displaced instead. A no-op if "two_hand" is already empty.
+func _vacate_two_hand_slot(displaced: Array[String]) -> void:
+	var occupant: String = backpack["two_hand"]
 	if occupant.is_empty():
 		return
-	var gripped_two_handed: bool = backpack["right_hand"] == backpack["left_hand"]
-	if gripped_two_handed and ItemDefs.get_slot_kind(occupant) == "hybrid_hand":
-		unequip_slot(hand)
-	elif gripped_two_handed:
-		_displace("right_hand", displaced)
-		_displace("left_hand", displaced)
+	if ItemDefs.get_slot_kind(occupant) == "hybrid_hand":
+		unequip_slot("two_hand")
+		_set_slot("right_hand", occupant)
 	else:
-		_displace(hand, displaced)
+		_displace("two_hand", displaced)
 
 ## Clears `slot`'s current occupant (if any) into `displaced`, skipping a
-## duplicate entry if it's the same item_type already added -- true when
-## clearing both hands of the same two-handed item, which should read as
-## displacing that one item once, not twice.
+## duplicate entry if it's the same item_type already added.
 func _displace(slot: String, displaced: Array[String]) -> void:
 	var old: String = unequip_slot(slot)
 	if not old.is_empty() and old not in displaced:
@@ -317,11 +323,7 @@ func _displace(slot: String, displaced: Array[String]) -> void:
 ## Clears `slot` and returns whichever item_type was in it ("" if none) --
 ## caller decides what happens to the item next (see RTSController's
 ## backpack/equipment panel right-click handlers, which drop it on the
-## ground as a pickup again). Unlike equip_item(), a two-handed item
-## occupying both hands is NOT automatically cleared from the other hand
-## when only one slot is named -- callers that need "unequip whatever
-## `item_type` actually is" (as opposed to "empty this one slot no matter
-## what's in it") should clear both hand slots themselves if needed.
+## ground as a pickup again).
 func unequip_slot(slot: String) -> String:
 	var item_type: String = backpack.get(slot, "")
 	if item_type.is_empty():
@@ -336,18 +338,14 @@ func _set_slot(slot: String, item_type: String) -> void:
 	if visual != null and is_instance_valid(visual):
 		visual.queue_free()
 	_slot_visuals.erase(slot)
-	var attach_point: Node3D = weapon_slot if slot == "right_hand" else (weapon_slot_left if slot == "left_hand" else null)
-	if slot == "right_hand":
-		_update_attack_hitbox_position(item_type)
+	# "two_hand" attaches to the same bone as right_hand -- the invariant
+	# on BACKPACK_SLOTS' doc comment (only one of "two_hand" or
+	# {right_hand, left_hand} is ever occupied at once) means they never
+	# fight over it in practice.
+	var attach_point: Node3D = weapon_slot if slot == "right_hand" or slot == "two_hand" else (weapon_slot_left if slot == "left_hand" else null)
+	if slot == "right_hand" or slot == "two_hand":
+		_update_attack_hitbox_position(_get_active_weapon_item_type())
 	if attach_point == null or item_type.is_empty():
-		return
-	# A weapon gripped two-handed (right_hand and left_hand both holding the
-	# same item_type -- always set right_hand first, see equip_item's
-	# "two_hand"/"hybrid_hand" branches) is ONE physical weapon, not two --
-	# skip instancing a second copy of its visual at the left hand, or it
-	# reads as the unit holding two separate weapons crossed in an X rather
-	# than one weapon gripped with both hands.
-	if slot == "left_hand" and item_type == backpack["right_hand"]:
 		return
 	var visual_scene: PackedScene = ItemDefs.get_visual_scene(item_type)
 	if visual_scene == null:
@@ -355,6 +353,14 @@ func _set_slot(slot: String, item_type: String) -> void:
 	var new_visual: Node3D = visual_scene.instantiate()
 	attach_point.add_child(new_visual)
 	_slot_visuals[slot] = new_visual
+
+## Whichever item_type is actually driving this unit's combat/animation
+## right now -- the "two_hand" slot's occupant if it has one (a weapon
+## gripped two-handed, see BACKPACK_SLOTS' doc comment), otherwise
+## right_hand's (empty if unarmed). left_hand never drives combat -- a
+## dual-wielded off-hand weapon is visual/inventory only for now.
+func _get_active_weapon_item_type() -> String:
+	return backpack["two_hand"] if not backpack["two_hand"].is_empty() else backpack["right_hand"]
 
 ## Slides AttackHitbox out along the hand bone's own forward axis (+Y,
 ## matching how each weapon's visual scene is authored -- e.g. Sword.tscn's
@@ -445,15 +451,14 @@ func _update_throw_target() -> void:
 	unequip_item_fully(item_type, source_slot)
 	item_thrown.emit(self, item_type, target_position, target_unit, target_building)
 
-## Fully removes `item_type` from wherever it's equipped -- both hands
-## if it's currently gripped two-handed (a "two_hand" item always is; a
-## "hybrid_hand" one only when nothing else made it yield a hand -- see
-## Unit.equip_item), since a single named slot isn't the whole picture
-## then, or just `source_slot` otherwise.
+## Fully removes `item_type` from wherever it's equipped -- the dedicated
+## "two_hand" slot if that's where it actually is (gripped two-handed --
+## a "two_hand" item always is; a "hybrid_hand" one only when nothing
+## else made it yield a hand -- see Unit.equip_item), or just
+## `source_slot` otherwise.
 func unequip_item_fully(item_type: String, source_slot: String) -> void:
-	if backpack["right_hand"] == item_type and backpack["left_hand"] == item_type:
-		unequip_slot("right_hand")
-		unequip_slot("left_hand")
+	if backpack["two_hand"] == item_type:
+		unequip_slot("two_hand")
 	else:
 		unequip_slot(source_slot)
 
@@ -590,19 +595,19 @@ func _update_locomotion_animation(is_moving: bool) -> void:
 func _on_velocity_computed(safe_velocity: Vector3) -> void:
 	_safe_velocity = safe_velocity
 
-## Swings whatever's actually in this unit's right hand -- a "sword" gets
-## its own dedicated clip, chosen by CURRENT grip rather than just its
-## item_type -- a hybrid_hand weapon (e.g. "sword") gripped two-handed
-## (both hand slots holding the same weapon -- see equip_item) swings
-## with a "two_hand" clip ("Attack_TwoHanded"), the same category a
-## strict two_hand weapon would use once given one; gripped one-handed
-## (dual-wielding two weapons at once) it swings with its own
-## "one_hand" clip ("Attack_Sword") instead. Anything without a
-## dedicated clip for its current grip (a missing animation, or an item
-## with none defined at all, e.g. "crossbow" -- ranged, no melee swing
-## to animate) falls back to the bare-handed punch. Keyed off backpack
-## directly rather than the equipped visual node, since that's the
-## single source of truth for what's actually equipped (see
+## Swings whatever's actually driving this unit's combat right now (see
+## _get_active_weapon_item_type) -- a "sword" gets its own dedicated
+## clip, chosen by CURRENT grip rather than just its item_type -- sitting
+## in the dedicated "two_hand" slot (gripped two-handed -- see
+## equip_item) swings with a "two_hand" clip ("Attack_TwoHanded"), the
+## same category a strict two_hand weapon would use once given one;
+## sitting in right_hand instead (dual-wielding two weapons at once)
+## swings with its own "one_hand" clip ("Attack_Sword"). Anything
+## without a dedicated clip for its current grip (a missing animation,
+## or an item with none defined at all, e.g. "crossbow" -- ranged, no
+## melee swing to animate) falls back to the bare-handed punch. Keyed
+## off backpack directly rather than the equipped visual node, since
+## that's the single source of truth for what's actually equipped (see
 ## equip_item/_set_slot).
 const WEAPON_ATTACK_ANIMATIONS: Dictionary = {
 	"sword": {"one_hand": "Attack_Sword", "two_hand": "Attack_TwoHanded"},
@@ -610,9 +615,10 @@ const WEAPON_ATTACK_ANIMATIONS: Dictionary = {
 }
 
 func _get_attack_animation_name() -> String:
-	var animations: Dictionary = WEAPON_ATTACK_ANIMATIONS.get(backpack["right_hand"], {})
-	var gripped_two_handed: bool = backpack["right_hand"] == backpack["left_hand"]
-	var animation_name: String = animations.get("two_hand" if gripped_two_handed else "one_hand", "")
+	var item_type := _get_active_weapon_item_type()
+	var animations: Dictionary = WEAPON_ATTACK_ANIMATIONS.get(item_type, {})
+	var grip := "two_hand" if not backpack["two_hand"].is_empty() else "one_hand"
+	var animation_name: String = animations.get(grip, "")
 	if not animation_name.is_empty() and animation_player != null and animation_player.has_animation(animation_name):
 		return animation_name
 	return "Attack"
@@ -635,7 +641,7 @@ func get_tooltip_extra_stats() -> Dictionary:
 ## an item with no defined weapon damage (e.g. one not actually meant to
 ## be wielded), just falls back to attack_damage unmodified.
 func _get_attack_damage() -> float:
-	var weapon_damage := ItemDefs.get_damage(backpack["right_hand"])
+	var weapon_damage := ItemDefs.get_damage(_get_active_weapon_item_type())
 	return weapon_damage if weapon_damage >= 0.0 else attack_damage
 
 ## Strings several hit-check points along the equipped weapon's own length
@@ -648,7 +654,7 @@ func _get_attack_damage() -> float:
 ## rather than one bare point -- same capsule idea applied to a fist
 ## instead of a blade.
 func _get_melee_hit_offsets() -> Array:
-	var offsets := ItemDefs.get_melee_hit_offsets(backpack["right_hand"])
+	var offsets := ItemDefs.get_melee_hit_offsets(_get_active_weapon_item_type())
 	return offsets if not offsets.is_empty() else UNARMED_HIT_OFFSETS
 
 ## Direction toward the next corner of the navigation server's actual
