@@ -28,9 +28,18 @@ var icon_rect: TextureRect
 ## a transparent background (see ItemIconCapture), so a plain dark slot
 ## behind them reads far better than this theme's usual button styling
 ## would (which is designed around text labels, not full-bleed images).
+## The border (this theme's brown) is what actually separates one slot
+## from the next when slots sit flush with no gap between them (see
+## BuildingStoragePanel's 3x2 grid) -- without it, adjacent black slots
+## have nothing to distinguish where one ends and the next begins.
 static func _make_black_stylebox() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0, 0, 0, 1)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.55, 0.4, 0.25, 1)
 	return style
 
 ## Minimum row height for a slot with no fixed size of its own (see
