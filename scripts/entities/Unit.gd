@@ -612,6 +612,7 @@ func _on_velocity_computed(safe_velocity: Vector3) -> void:
 const WEAPON_ATTACK_ANIMATIONS: Dictionary = {
 	"sword": {"one_hand": "Attack_Sword", "two_hand": "Attack_TwoHanded"},
 	"steel_longsword": {"one_hand": "Attack_Sword", "two_hand": "Attack_TwoHanded"},
+	"iron_greatsword": {"two_hand": "Attack_TwoHanded"},
 }
 
 func _get_attack_animation_name() -> String:

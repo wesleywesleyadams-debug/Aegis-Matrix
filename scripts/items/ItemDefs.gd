@@ -61,6 +61,17 @@ const DEFS: Dictionary = {
 		"damage": 14.0,
 		"stats": {"Damage": "14"},
 	},
+	"iron_greatsword": {
+		"visual": preload("res://scenes/IronGreatsword.tscn"),
+		"pickup": preload("res://scenes/IronGreatswordPickup.tscn"),
+		"slot": "two_hand",
+		"name": "Iron Greatsword",
+		"display_name": "Two-Handed Sword",
+		"damage": 16.0,
+		"melee_reach": 0.75,
+		"hit_offsets": [0.0, 0.375, 0.75],
+		"stats": {"Damage": "16"},
+	},
 }
 
 static func get_visual_scene(item_type: String) -> PackedScene:
