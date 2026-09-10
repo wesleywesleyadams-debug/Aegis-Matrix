@@ -1,20 +1,16 @@
 extends Node2D
 ## Draws a live blip for every unit/building at its ground-plane position,
 ## projected into the same isometric diamond shape the terrain itself
-## forms under this game's camera (see Main.tscn's CameraRig/Camera3D
-## transforms, and MinimapPanel/Frame's own git history for the
-## derivation) -- world (x, z) -> local (x - z) * 0.7071068 on the
-## diamond's horizontal axis, -(x + z) * 0.4060 on its vertical axis.
-## Negated there because the camera's own UP vector's (x + z) contribution
-## means "further that way = higher up the actual 3D view", but Godot's
-## 2D canvas has Y increasing downward -- without the flip, the minimap
-## renders upside-down relative to what the camera actually shows.
-## GROUND_HALF_EXTENT matches Main.tscn's Ground BoxMesh (60x60, centered
-## on the origin); FILL_HALF_DIAGONAL matches Frame/Fill's own polygon
-## points, so a unit at the very edge of the map lands exactly on the
-## diamond's own edge, not outside or short of it. This node's own
-## position should be set to the same center Border/Fill use (their
-## Polygon2D position), so local (0, 0) here lines up with world (0, 0).
+## forms under this game's camera -- world (x, z) -> local (x + z) on the
+## diamond's horizontal axis, (z - x) on its vertical axis, both then
+## scaled by GROUND_HALF_EXTENT/FILL_HALF_DIAGONAL. Derived empirically
+## via Camera3D.unproject_position() on known world points (see git
+## history) rather than hand-deriving the camera's rotation matrices --
+## an earlier hand-derived version got the axis assignment backwards
+## twice in a row, so this reads straight off Godot's own projection
+## instead of re-deriving it. This node's own position should be set to
+## the same center Border/Fill use (their Polygon2D position), so local
+## (0, 0) here lines up with world (0, 0).
 
 const GROUND_HALF_EXTENT: float = 30.0
 const FILL_HALF_DIAGONAL: Vector2 = Vector2(199.0, 109.0)
@@ -29,10 +25,10 @@ const BLIP_SIZE: float = 5.0
 ## the same map.
 const TREE_COLOR: Color = Color(0.08, 0.28, 0.1, 1)
 
-## The largest |raw projected offset| a point at the very edge of the
-## ground plane reaches, before scaling into FILL_HALF_DIAGONAL -- see
-## the class doc comment's projection formula.
-const MAX_RAW: Vector2 = Vector2(2.0 * GROUND_HALF_EXTENT * 0.7071068, 2.0 * GROUND_HALF_EXTENT * 0.4060)
+## |x + z| and |z - x| both reach exactly 2 * GROUND_HALF_EXTENT at the
+## very edge of the ground plane (at whichever corner maximizes each) --
+## see the class doc comment.
+const MAX_RAW: float = 2.0 * GROUND_HALF_EXTENT
 
 func _process(_delta: float) -> void:
 	queue_redraw()
@@ -54,5 +50,5 @@ func _draw_blip(world_pos: Vector3, color: Color) -> void:
 	draw_rect(Rect2(center - Vector2.ONE * BLIP_SIZE / 2.0, Vector2.ONE * BLIP_SIZE), color)
 
 func _project(world_pos: Vector3) -> Vector2:
-	var raw := Vector2((world_pos.x - world_pos.z) * 0.7071068, -(world_pos.x + world_pos.z) * 0.4060)
+	var raw := Vector2(world_pos.x + world_pos.z, world_pos.z - world_pos.x)
 	return raw / MAX_RAW * FILL_HALF_DIAGONAL
