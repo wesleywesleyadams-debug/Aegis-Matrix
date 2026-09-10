@@ -24,7 +24,6 @@ const GRID_COLUMNS: int = 3
 ## Slots control width) -- see Main.tscn's Grid node offsets.
 
 @onready var grid: GridContainer = $Grid
-@onready var title_label: Label = $TitleLabel
 
 ## `building` may be null (nothing selected, or a unit/World object is).
 func refresh(building: Building) -> void:
@@ -33,7 +32,6 @@ func refresh(building: Building) -> void:
 	visible = building != null
 	if building == null:
 		return
-	title_label.text = "Storage: %d/%d" % [building.stored_items.size(), Building.MAX_STORAGE_SLOTS]
 	for i in Building.MAX_STORAGE_SLOTS:
 		var item_type: String = building.stored_items[i] if i < building.stored_items.size() else ""
 		var button := ItemSlotButton.new()
