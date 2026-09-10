@@ -20,7 +20,7 @@ signal item_unhovered()
 ## SLOT_SIZE is sized to comfortably clear this button theme's own
 ## natural minimum (~52px tall) rather than fighting it with a smaller
 ## custom_minimum_size, which the theme would just override anyway.
-const SLOT_SIZE: int = 104
+const SLOT_SIZE: int = 116
 const SLOT_GAP: int = 16
 const SLOT_RECTS: Dictionary = {
 	"right_hand": Rect2(0, 0, SLOT_SIZE, SLOT_SIZE),

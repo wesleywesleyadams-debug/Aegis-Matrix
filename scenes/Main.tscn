@@ -301,9 +301,9 @@ script = ExtResource("24_unit_backpack_panel")
 [node name="BackpackIcon" type="Control" parent="UI/PortraitPanel/UnitBackpackPanel"]
 layout_mode = 0
 offset_left = 16.0
-offset_top = 8.0
+offset_top = 16.0
 offset_right = 48.0
-offset_bottom = 40.0
+offset_bottom = 48.0
 mouse_filter = 2
 
 [node name="Flap" type="ColorRect" parent="UI/PortraitPanel/UnitBackpackPanel/BackpackIcon"]
@@ -348,10 +348,10 @@ color = Color(0.4, 0.28, 0.16, 1)
 
 [node name="Slots" type="Control" parent="UI/PortraitPanel/UnitBackpackPanel"]
 layout_mode = 0
-offset_left = 12.0
-offset_top = 56.0
-offset_right = 428.0
-offset_bottom = 280.0
+offset_left = 176.0
+offset_top = 16.0
+offset_right = 424.0
+offset_bottom = 264.0
 
 [node name="ItemTooltipPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
