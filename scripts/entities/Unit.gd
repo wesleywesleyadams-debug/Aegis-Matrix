@@ -293,7 +293,7 @@ func _make_room_in_hand(hand: String, displaced: Array[String]) -> void:
 	var occupant: String = backpack[hand]
 	if occupant.is_empty():
 		return
-	var gripped_two_handed := backpack["right_hand"] == backpack["left_hand"]
+	var gripped_two_handed: bool = backpack["right_hand"] == backpack["left_hand"]
 	if gripped_two_handed and ItemDefs.get_slot_kind(occupant) == "hybrid_hand":
 		unequip_slot(hand)
 	elif gripped_two_handed:
