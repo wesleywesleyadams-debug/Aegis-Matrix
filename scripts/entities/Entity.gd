@@ -72,11 +72,12 @@ func get_engage_radius_bonus() -> float:
 const ATTACK_ACTIVE_DURATION: float = 0.15
 ## How far into the "Attack" animation (as a fraction of its length) the
 ## fist/weapon reaches full extension -- measured directly off the
-## paladin's Attack clip via right-hand-to-shoulder distance sampled frame
-## by frame (peaked at t=0.627s of a 1.533s clip). perform_attack() uses
-## this to delay turning the hitbox on until the swing has actually landed,
-## instead of firing it the instant the animation starts.
-const ATTACK_IMPACT_FRACTION: float = 0.409
+## human_male model's Attack clip (a Mixamo "Punching" animation) via
+## right-hand-to-shoulder distance sampled frame by frame, peaked at frame
+## 13 of 24. perform_attack() uses this to delay turning the hitbox on
+## until the swing has actually landed, instead of firing it the instant
+## the animation starts.
+const ATTACK_IMPACT_FRACTION: float = 0.5417
 ## How close the hitbox needs to be to a target's approximate body center
 ## (see _land_hit_if_in_reach) to actually land a hit -- roughly the
 ## target's own capsule radius (0.285) plus the fist hitbox's own reach,
