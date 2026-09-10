@@ -249,6 +249,14 @@ var _hologram_material: ShaderMaterial
 
 var _attack_cooldown_remaining: float = 0.0
 var _attacking: bool = false
+## The world positions _get_melee_hit_offsets() resolved to on the
+## previous polled frame -- see _land_hit_if_in_reach(), which checks the
+## segment from each of these to its current-frame counterpart (not just
+## the current point alone) so a fast swing can't tunnel a hit point past
+## the target between two physics frames without either ever landing
+## exactly on it. Empty at the start of each swing (see perform_attack()),
+## so the first poll falls back to a plain point check.
+var _prev_hit_points: Array[Vector3] = []
 
 ## Debug visualization of the has_line_of_sight() check against attack_target
 ## -- a thin line from this entity to its target, green when clear and red
@@ -544,6 +552,17 @@ func _get_attack_damage() -> float:
 func _get_melee_reach() -> float:
 	return MELEE_REACH
 
+## Local offsets (along attack_hitbox's parent's own +Y, the same axis
+## every weapon's visual scene is authored along -- see
+## ItemDefs.get_melee_hit_offsets) sampled each frame during the active
+## window to check for a landed hit. [0.0] (just the fist) by default;
+## Unit overrides this to string several points along the equipped
+## weapon's own length, approximating a capsule along the blade rather
+## than one point at the hand -- closer to how a real weapon can land a
+## hit anywhere along its edge.
+func _get_melee_hit_offsets() -> Array:
+	return [0.0]
+
 ## True when nothing on SIGHT_OBSTACLE_MASK sits between this entity and
 ## `target` -- used to stop an in-range target from being attacked (or
 ## acquired) through a wall.
@@ -601,6 +620,7 @@ func perform_attack() -> void:
 		return
 	if attack_hitbox_mesh != null:
 		attack_hitbox_mesh.visible = true
+	_prev_hit_points.clear()
 	# Poll every physics frame across the active window rather than
 	# checking once -- the impact_delay above is timed off the fist's
 	# distance-from-shoulder peak, which doesn't necessarily land on the
@@ -626,17 +646,59 @@ func perform_attack() -> void:
 ## rather than Area3D overlap detection. target_center approximates the
 ## defender's capsule/body center the same way WeaponSlot-relative offsets
 ## do elsewhere in this file -- entity root position plus a waist/chest-
-## height offset. Returns true once a hit has actually landed, so the
-## polling loop above stops re-damaging the same swing.
+## height offset.
+##
+## Checks several points along the weapon's own length (see
+## _get_melee_hit_offsets), not just one at the fist -- approximating a
+## capsule strung along the blade, closer to how a real weapon can land a
+## hit anywhere along its edge. Each point is checked as a SEGMENT against
+## its own position on the previous polled frame, not just where it is
+## right now -- a fast swing can move a hit point (especially the tip,
+## which travels fastest) past the target between two physics frames
+## without either single frame's point ever landing exactly on it; the
+## segment between them catches that pass-through. Falls back to a plain
+## point check on the very first poll of a swing (see perform_attack(),
+## which clears _prev_hit_points there), when there's no previous frame
+## yet to sweep from.
+##
+## Returns true once a hit has actually landed, so the polling loop above
+## stops re-damaging the same swing.
 func _land_hit_if_in_reach() -> bool:
 	if not is_instance_valid(attack_target) or not attack_target.has_method("take_damage"):
 		return false
+	var hitbox_root: Node3D = attack_hitbox.get_parent() as Node3D
 	var target_center: Vector3 = attack_target.global_position + Vector3(0, 0.8, 0)
 	var reach: float = _get_melee_reach() + attack_target.get_engage_radius_bonus()
-	if attack_hitbox.global_position.distance_to(target_center) <= reach:
+	var offsets := _get_melee_hit_offsets()
+	var current_points: Array[Vector3] = []
+	var landed := false
+	for i in offsets.size():
+		var point: Vector3 = hitbox_root.to_global(Vector3(0, offsets[i], 0))
+		current_points.append(point)
+		if landed:
+			continue
+		var dist: float
+		if i < _prev_hit_points.size():
+			dist = _closest_distance_on_segment(_prev_hit_points[i], point, target_center)
+		else:
+			dist = point.distance_to(target_center)
+		if dist <= reach:
+			landed = true
+	_prev_hit_points = current_points
+	if landed:
 		attack_target.take_damage(_get_attack_damage())
-		return true
-	return false
+	return landed
+
+## Shortest distance from `point` to the line segment [a, b] -- the swept
+## check _land_hit_if_in_reach uses so a hit point's full travel between
+## two frames counts, not just its two endpoint positions.
+static func _closest_distance_on_segment(a: Vector3, b: Vector3, point: Vector3) -> float:
+	var ab := b - a
+	var length_sq := ab.length_squared()
+	if length_sq < 0.0001:
+		return a.distance_to(point)
+	var t: float = clampf((point - a).dot(ab) / length_sq, 0.0, 1.0)
+	return (a + ab * t).distance_to(point)
 
 ## Base version: just marks `target` as what to defend against, since a
 ## stationary Entity can't chase. Unit overrides this to also move toward

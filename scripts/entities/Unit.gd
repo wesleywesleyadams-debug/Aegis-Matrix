@@ -552,15 +552,19 @@ func _get_attack_animation_name() -> String:
 ## ItemDefs.get_damage) over the unarmed default -- an unequipped hand, or
 ## an item with no defined weapon damage (e.g. one not actually meant to
 ## be wielded), just falls back to attack_damage unmodified.
-##
-## Reach itself doesn't need a similar override: AttackHitbox is already
-## physically slid out to the weapon's own length whenever one's equipped
-## (see _update_attack_hitbox_position), so MELEE_REACH's plain distance
-## check naturally measures from wherever the blade tip actually is
-## through the swing, without needing a separate flat bonus added on top.
 func _get_attack_damage() -> float:
 	var weapon_damage := ItemDefs.get_damage(backpack["right_hand"])
 	return weapon_damage if weapon_damage >= 0.0 else attack_damage
+
+## Strings several hit-check points along the equipped weapon's own length
+## (see ItemDefs.get_melee_hit_offsets) instead of just the one point at
+## the fist -- e.g. a sword checks its grip, mid-blade, and tip each frame
+## (swept against their own previous-frame positions too, see
+## Entity._land_hit_if_in_reach), approximating a capsule along the blade.
+## An unequipped hand, or an item with no offsets defined, falls back to
+## [0.0] (just the fist) via ItemDefs' own default.
+func _get_melee_hit_offsets() -> Array:
+	return ItemDefs.get_melee_hit_offsets(backpack["right_hand"])
 
 ## Direction toward the next corner of the navigation server's actual
 ## computed route to the current target (see NavGroundSetup.gd, which bakes

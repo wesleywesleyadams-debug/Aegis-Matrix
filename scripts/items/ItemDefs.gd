@@ -25,6 +25,7 @@ const DEFS: Dictionary = {
 		"slot": "one_hand",
 		"damage": 8.0,
 		"melee_reach": 0.5,
+		"hit_offsets": [0.0, 0.25, 0.5],
 		"stats": {"Type": "One-Handed Weapon", "Damage": "8"},
 	},
 	"crossbow": {
@@ -65,3 +66,14 @@ static func get_damage(item_type: String) -> float:
 ## all).
 static func get_melee_reach_bonus(item_type: String) -> float:
 	return DEFS.get(item_type, {}).get("melee_reach", 0.0)
+
+## Sample points along the weapon's own length (local offsets from the
+## hand, in the direction its visual scene extends -- see Sword.tscn's
+## blade running from grip at Y=0 to tip at Y=0.9) that
+## Entity._land_hit_if_in_reach checks a hit against, approximating a
+## capsule strung along the blade rather than one point at the fist --
+## closer to how a real weapon can land a hit anywhere along its edge, not
+## only at the very tip. [0.0] (just the hand itself) for an unrecognized
+## item_type or one with no offsets defined.
+static func get_melee_hit_offsets(item_type: String) -> Array:
+	return DEFS.get(item_type, {}).get("hit_offsets", [0.0])
