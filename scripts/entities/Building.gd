@@ -19,14 +19,14 @@ var _gather_flags: Array[Node3D] = []
 
 ## Items this building is holding (see BuildingStoragePanel, shown while
 ## this building is selected) -- one entry per item, in the order they
-## were stored, up to MAX_STORAGE_SLOTS (no stacking -- 5 items takes 5
+## were stored, up to MAX_STORAGE_SLOTS (no stacking -- 6 items takes 6
 ## slots regardless of type). Units drop equipped items in here by
 ## dragging them onto the building (see RTSController._place_dragged_item)
 ## instead of the item landing on the ground the way dropping on empty
 ## space or another unit does.
 signal storage_changed(building: Building)
 var stored_items: Array[String] = []
-const MAX_STORAGE_SLOTS: int = 5
+const MAX_STORAGE_SLOTS: int = 6
 
 ## Angle passed as WorldItem.spawn_pickup's `facing_angle` when ejecting a
 ## stored item back onto the ground (see
