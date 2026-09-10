@@ -502,13 +502,15 @@ func _physics_process(_delta: float) -> void:
 ## guarded by current_animation so it doesn't restart the clip every single
 ## frame. No-op for entities with no AnimationPlayer (e.g. the older
 ## sprite-billboard peasant, if one still exists). Always deferred to while
-## a triggered one-shot animation (currently just Attack) is still
-## playing, so e.g. a target dying mid-swing and clearing attack_target
-## doesn't snap the model back to Walk/Idle before the swing finishes.
+## a triggered one-shot animation (any "Attack"-prefixed clip -- see
+## Entity._get_attack_animation_name(), which picks a weapon-specific one
+## like "Attack_Sword" over the bare-handed "Attack") is still playing, so
+## e.g. a target dying mid-swing and clearing attack_target doesn't snap
+## the model back to Walk/Idle before the swing finishes.
 func _update_locomotion_animation(is_moving: bool) -> void:
 	if animation_player == null:
 		return
-	if animation_player.is_playing() and animation_player.current_animation == "Attack":
+	if animation_player.is_playing() and animation_player.current_animation.begins_with("Attack"):
 		return
 	var target_animation := "Walk" if is_moving else "Idle"
 	if animation_player.current_animation != target_animation and animation_player.has_animation(target_animation):
@@ -516,6 +518,22 @@ func _update_locomotion_animation(is_moving: bool) -> void:
 
 func _on_velocity_computed(safe_velocity: Vector3) -> void:
 	_safe_velocity = safe_velocity
+
+## Swings whatever's actually in this unit's right hand -- a "sword" gets
+## its own one-handed slash clip ("Attack_Sword"); anything else (empty,
+## or an item with no dedicated swing animation yet, e.g. "crossbow") falls
+## back to the bare-handed punch. Keyed off backpack directly rather than
+## the equipped visual node, since that's the single source of truth for
+## what's actually equipped (see equip_item/_set_slot).
+const WEAPON_ATTACK_ANIMATIONS: Dictionary = {
+	"sword": "Attack_Sword",
+}
+
+func _get_attack_animation_name() -> String:
+	var animation_name: String = WEAPON_ATTACK_ANIMATIONS.get(backpack["right_hand"], "")
+	if not animation_name.is_empty() and animation_player != null and animation_player.has_animation(animation_name):
+		return animation_name
+	return "Attack"
 
 ## Direction toward the next corner of the navigation server's actual
 ## computed route to the current target (see NavGroundSetup.gd, which bakes

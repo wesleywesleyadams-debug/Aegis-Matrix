@@ -70,14 +70,21 @@ func get_engage_radius_bonus() -> float:
 ## How long the hitbox stays active (able to land a hit) once a swing
 ## starts, before switching off again for the rest of the cooldown.
 const ATTACK_ACTIVE_DURATION: float = 0.15
-## How far into the "Attack" animation (as a fraction of its length) the
-## fist/weapon reaches full extension -- measured directly off the
-## human_male model's Attack clip (a Mixamo "Punching" animation) via
-## right-hand-to-shoulder distance sampled frame by frame, peaked at frame
-## 13 of 24. perform_attack() uses this to delay turning the hitbox on
-## until the swing has actually landed, instead of firing it the instant
-## the animation starts.
-const ATTACK_IMPACT_FRACTION: float = 0.5417
+## How far into a given attack animation (as a fraction of its length) the
+## fist/weapon reaches full extension -- measured directly off each clip
+## via right-hand-to-shoulder distance sampled frame by frame. Keyed by
+## animation name (see _get_attack_animation_name()) since different
+## weapons swing on different timings: "Attack" is the unarmed Mixamo
+## "Punching" clip (peaked at frame 13 of 24), "Attack_Sword" is the
+## one-handed Mixamo "Stable Sword Outward Slash" clip (peaked at frame 23
+## of 49). perform_attack() uses this to delay turning the hitbox on until
+## the swing has actually landed, instead of firing it the instant the
+## animation starts. Falls back to the "Attack" entry for any animation
+## name not listed here.
+const ATTACK_IMPACT_FRACTIONS: Dictionary = {
+	"Attack": 0.5417,
+	"Attack_Sword": 0.4694,
+}
 ## How close the hitbox needs to be to a target's approximate body center
 ## (see _land_hit_if_in_reach) to actually land a hit -- roughly the
 ## target's own capsule radius (0.285) plus the fist hitbox's own reach,
@@ -490,6 +497,15 @@ func _die() -> void:
 func can_attack() -> bool:
 	return attack_hitbox != null and not _attacking and _attack_cooldown_remaining <= 0.0
 
+## Which AnimationPlayer clip perform_attack() should play for this swing --
+## "Attack" (bare-handed) by default. Unit overrides this to swing whatever
+## weapon-specific animation matches its currently-equipped right_hand item
+## (e.g. "Attack_Sword"), falling back to "Attack" for an unarmed unit or
+## one holding something with no dedicated swing animation yet. Building
+## has no weapon to equip, so the default is fine unmodified.
+func _get_attack_animation_name() -> String:
+	return "Attack"
+
 ## True when nothing on SIGHT_OBSTACLE_MASK sits between this entity and
 ## `target` -- used to stop an in-range target from being attacked (or
 ## acquired) through a wall.
@@ -517,16 +533,17 @@ func perform_attack() -> void:
 	_attacking = true
 	_attack_cooldown_remaining = attack_cooldown
 	var impact_delay := 0.0
-	if animation_player != null and animation_player.has_animation("Attack"):
-		animation_player.play("Attack")
-		var attack_animation := animation_player.get_animation("Attack")
+	var animation_name := _get_attack_animation_name()
+	if animation_player != null and animation_player.has_animation(animation_name):
+		animation_player.play(animation_name)
+		var attack_animation := animation_player.get_animation(animation_name)
 		# Center the hit window on the moment the fist/weapon is actually
-		# fully extended (measured directly off the paladin's Attack clip:
-		# right-hand-to-shoulder distance peaks at ~41% of the way through
-		# it), rather than swinging the box on the instant the animation
-		# starts -- otherwise the hitbox fires during the windup, well
-		# before the fist has reached the target.
-		impact_delay = maxf(attack_animation.length * ATTACK_IMPACT_FRACTION - ATTACK_ACTIVE_DURATION / 2.0, 0.0)
+		# fully extended (see ATTACK_IMPACT_FRACTIONS), rather than swinging
+		# the box on the instant the animation starts -- otherwise the
+		# hitbox fires during the windup, well before the fist/weapon has
+		# reached the target.
+		var impact_fraction: float = ATTACK_IMPACT_FRACTIONS.get(animation_name, ATTACK_IMPACT_FRACTIONS["Attack"])
+		impact_delay = maxf(attack_animation.length * impact_fraction - ATTACK_ACTIVE_DURATION / 2.0, 0.0)
 	if impact_delay > 0.0:
 		await get_tree().create_timer(impact_delay).timeout
 	if not is_instance_valid(self) or not is_instance_valid(attack_hitbox):
