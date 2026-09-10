@@ -134,6 +134,7 @@ const ANIMATION_BLEND_TIME: float = 0.25
 const ATTACK_IMPACT_FRACTIONS: Dictionary = {
 	"Attack": 0.5417,
 	"Attack_Sword": 0.375,
+	"Attack_TwoHanded": 0.68,
 }
 ## How close the hitbox needs to be to a target's approximate body center
 ## (see _land_hit_if_in_reach) to actually land a hit -- roughly the
