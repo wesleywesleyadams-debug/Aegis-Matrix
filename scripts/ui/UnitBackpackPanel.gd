@@ -1,10 +1,8 @@
 extends Panel
 ## Full 4-slot inventory view for whichever unit is selected -- one
-## ItemSlotButton per Unit.BACKPACK_SLOTS entry, arranged in a cross/
-## paper-doll layout (Armor top-center, Accessory bottom-center,
-## Right Hand/Left Hand straddling the seam between them on either side --
-## matching how a worn-equipment screen conventionally reads) rather than
-## a plain stacked list, always in the same positions whether or not that
+## ItemSlotButton per Unit.BACKPACK_SLOTS entry, arranged in a plain 2x2
+## grid (Right Hand/Left Hand on top, Armor/Accessory on bottom) rather
+## than a stacked list, always in the same positions whether or not that
 ## slot is actually occupied so the layout doesn't jump around as items
 ## are equipped/removed. Hidden entirely when no unit is selected.
 ## EquipmentPanel (beside the portrait) is a quick-glance shortcut to just
@@ -18,20 +16,16 @@ signal item_hovered(item_type: String)
 signal item_unhovered()
 
 ## Every slot cell is a perfect SLOT_SIZE x SLOT_SIZE square, laid out on
-## a grid with a consistent SLOT_GAP between columns -- armor/accessory
-## share the center column (top/bottom), left_hand/right_hand sit in the
-## outer columns, vertically straddling the seam between armor and
-## accessory by design (a conventional worn-equipment/paper-doll layout:
-## hands read as "worn between chest and waist" rather than a plain 2x2
-## grid). SLOT_SIZE is sized to comfortably clear this button theme's own
+## a plain 2x2 grid with a consistent SLOT_GAP between columns/rows.
+## SLOT_SIZE is sized to comfortably clear this button theme's own
 ## natural minimum (~52px tall) rather than fighting it with a smaller
 ## custom_minimum_size, which the theme would just override anyway.
 const SLOT_SIZE: int = 104
 const SLOT_GAP: int = 16
 const SLOT_RECTS: Dictionary = {
-	"armor": Rect2(SLOT_SIZE + SLOT_GAP, 0, SLOT_SIZE, SLOT_SIZE),
-	"left_hand": Rect2(0, SLOT_SIZE / 2.0 + SLOT_GAP / 2.0, SLOT_SIZE, SLOT_SIZE),
-	"right_hand": Rect2(2 * (SLOT_SIZE + SLOT_GAP), SLOT_SIZE / 2.0 + SLOT_GAP / 2.0, SLOT_SIZE, SLOT_SIZE),
+	"right_hand": Rect2(0, 0, SLOT_SIZE, SLOT_SIZE),
+	"left_hand": Rect2(SLOT_SIZE + SLOT_GAP, 0, SLOT_SIZE, SLOT_SIZE),
+	"armor": Rect2(0, SLOT_SIZE + SLOT_GAP, SLOT_SIZE, SLOT_SIZE),
 	"accessory": Rect2(SLOT_SIZE + SLOT_GAP, SLOT_SIZE + SLOT_GAP, SLOT_SIZE, SLOT_SIZE),
 }
 const SLOT_FONT_SIZE: int = 22

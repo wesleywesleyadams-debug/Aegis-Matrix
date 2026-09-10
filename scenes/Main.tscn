@@ -351,7 +351,7 @@ layout_mode = 0
 offset_left = 12.0
 offset_top = 56.0
 offset_right = 428.0
-offset_bottom = 264.0
+offset_bottom = 280.0
 
 [node name="ItemTooltipPanel" type="Panel" parent="UI/PortraitPanel"]
 layout_mode = 0
