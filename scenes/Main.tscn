@@ -372,15 +372,24 @@ script = ExtResource("25_item_tooltip_panel")
 [node name="TitleLabel" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel"]
 layout_mode = 0
 offset_left = 16.0
-offset_top = 12.0
+offset_top = 10.0
 offset_right = 424.0
-offset_bottom = 56.0
+offset_bottom = 40.0
 theme_override_font_sizes/font_size = 26
+
+[node name="SubtitleLabel" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 42.0
+offset_right = 424.0
+offset_bottom = 62.0
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.7, 0.65, 0.55, 1)
 
 [node name="StatsLabel" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel"]
 layout_mode = 0
 offset_left = 16.0
-offset_top = 60.0
+offset_top = 66.0
 offset_right = 212.0
 offset_bottom = 300.0
 theme_override_font_sizes/font_size = 22
@@ -389,7 +398,7 @@ autowrap_mode = 2
 [node name="StatsLabelRight" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel"]
 layout_mode = 0
 offset_left = 228.0
-offset_top = 60.0
+offset_top = 66.0
 offset_right = 424.0
 offset_bottom = 300.0
 theme_override_font_sizes/font_size = 22

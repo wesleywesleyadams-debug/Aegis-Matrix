@@ -17,15 +17,20 @@ class_name ItemDefs
 ## Unit._get_attack_damage/_get_melee_reach) -- "stats" is the display
 ## copy shown in ItemTooltipPanel, kept as its own dictionary rather than
 ## generated from these since not every stat line is combat-numeric.
-## "display_name" is the tooltip's title (see get_display_name) --
-## bakes the one-/two-handed distinction into the name itself ("Two-
-## Handed Crossbow") rather than a separate "Type" stat row.
+## "name" is the tooltip's title -- the item's actual proper name (e.g.
+## "Iron Longsword"), falling back to a bare capitalized item_type (see
+## get_item_name) when there isn't one yet. "display_name" is the
+## tooltip's subtitle -- bakes the hand-type distinction into a short
+## descriptor ("Hybrid-Handed Sword": fits in either hand, unlike a
+## "slot": "two_hand" item, which needs both at once) rather than a
+## separate "Type" stat row.
 const DEFS: Dictionary = {
 	"sword": {
 		"visual": preload("res://scenes/Sword.tscn"),
 		"pickup": preload("res://scenes/SwordPickup.tscn"),
 		"slot": "one_hand",
-		"display_name": "One-Handed Sword",
+		"name": "Iron Longsword",
+		"display_name": "Hybrid-Handed Sword",
 		"damage": 10.0,
 		"melee_reach": 0.5,
 		"hit_offsets": [0.0, 0.25, 0.5],
@@ -44,9 +49,16 @@ const DEFS: Dictionary = {
 static func get_visual_scene(item_type: String) -> PackedScene:
 	return DEFS.get(item_type, {}).get("visual")
 
-## Full display name for ItemTooltipPanel's title -- bakes in the
-## one-/two-handed distinction (e.g. "Two-Handed Crossbow") that used
-## to be its own separate "Type" stat row, rather than a bare
+## This item's proper name for ItemTooltipPanel's title (e.g. "Iron
+## Longsword") -- falls back to a bare item_type.capitalize() for an
+## item that hasn't been given a proper name yet, or an unrecognized
+## item_type.
+static func get_item_name(item_type: String) -> String:
+	return DEFS.get(item_type, {}).get("name", item_type.capitalize())
+
+## Hand-type descriptor for ItemTooltipPanel's subtitle -- bakes in the
+## one-/two-/hybrid-handed distinction (e.g. "Hybrid-Handed Sword") that
+## used to be its own separate "Type" stat row, rather than a bare
 ## item_type.capitalize(). Falls back to that plain capitalized form
 ## for an unrecognized item_type.
 static func get_display_name(item_type: String) -> String:
