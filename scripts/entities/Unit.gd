@@ -637,13 +637,29 @@ func get_tooltip_title() -> String:
 func get_tooltip_extra_stats() -> Dictionary:
 	return {"Level": level, "Attack": "%d" % _get_attack_damage()}
 
-## Swaps in the equipped right-hand weapon's own damage (see
+## Bonus damage multiplier for a hybrid_hand weapon gripped two-handed
+## (see BACKPACK_SLOTS' doc comment) -- swinging it with both hands
+## hits harder than one-handed/dual-wielded, on top of whatever its own
+## base damage already is. Doesn't apply to a strict "two_hand" item
+## (e.g. "iron_greatsword") -- that's always two-handed to begin with,
+## its own damage stat already accounts for that, there's no one-handed
+## baseline to be a bonus "over".
+const TWO_HANDED_HYBRID_DAMAGE_MULTIPLIER: float = 1.5
+
+## Swaps in the active weapon's own damage (see _get_active_weapon_item_type/
 ## ItemDefs.get_damage) over the unarmed default -- an unequipped hand, or
 ## an item with no defined weapon damage (e.g. one not actually meant to
-## be wielded), just falls back to attack_damage unmodified.
+## be wielded), just falls back to attack_damage unmodified. Applies
+## TWO_HANDED_HYBRID_DAMAGE_MULTIPLIER on top when that weapon is a
+## hybrid_hand one currently gripped two-handed.
 func _get_attack_damage() -> float:
-	var weapon_damage := ItemDefs.get_damage(_get_active_weapon_item_type())
-	return weapon_damage if weapon_damage >= 0.0 else attack_damage
+	var item_type := _get_active_weapon_item_type()
+	var weapon_damage := ItemDefs.get_damage(item_type)
+	if weapon_damage < 0.0:
+		return attack_damage
+	if not backpack["two_hand"].is_empty() and ItemDefs.get_slot_kind(item_type) == "hybrid_hand":
+		weapon_damage *= TWO_HANDED_HYBRID_DAMAGE_MULTIPLIER
+	return weapon_damage
 
 ## Strings several hit-check points along the equipped weapon's own length
 ## (see ItemDefs.get_melee_hit_offsets) instead of just the one point at
