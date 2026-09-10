@@ -506,6 +506,14 @@ func _recolor_mesh_recursive(node: Node, color: Color) -> void:
 ## re-triggering it if already dying (an in-flight swing that lands the
 ## same frame death starts, or a couple of frames later while the death
 ## animation is still playing, shouldn't restart the death sequence).
+## Eventually a Unit's kill count should feed both Grace (see
+## ResourceHUD) and a per-unit leveling system that automatically scales
+## up stats like attack_damage/max_health the more kills that unit has
+## -- neither exists yet, and take_damage doesn't even know who dealt
+## the damage (no attacker parameter), so there's nothing to attribute
+## a kill to yet. Whoever wires that up will need to add that
+## attribution here and in _die() below, not just tack kill-counting on
+## as an afterthought elsewhere.
 func take_damage(amount: float) -> void:
 	if _dying:
 		return
