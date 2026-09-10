@@ -464,12 +464,12 @@ text = "Storage"
 
 [node name="Grid" type="GridContainer" parent="UI/BuildingStoragePanel/Background"]
 layout_mode = 0
-offset_left = 64.0
-offset_top = 56.0
-offset_right = 376.0
+offset_left = 30.0
+offset_top = 16.0
+offset_right = 410.0
 offset_bottom = 264.0
-theme_override_constants/h_separation = 0
-theme_override_constants/v_separation = 0
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
 columns = 3
 
 [node name="MinimapPanel" type="Control" parent="UI"]

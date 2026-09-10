@@ -13,11 +13,11 @@ signal item_right_clicked(item_type: String, source_slot: String)
 signal item_hovered(item_type: String)
 signal item_unhovered()
 
-## Square cell size -- same as UnitBackpackPanel's SLOT_RECTS cells, so a
-## storage slot and a backpack slot read as the same visual unit. 3
-## columns * this fits inside the shared 416px-wide slot area with room
-## on both sides to center it (see refresh()'s GRID_MARGIN).
-const CELL_SIZE: float = 104.0
+## Square cell size -- same as UnitBackpackPanel's SLOT_SIZE, so a
+## storage slot and a backpack slot read as the same visual unit. Grid
+## gap (see Main.tscn's Grid node theme overrides) matches
+## UnitBackpackPanel's SLOT_GAP too, for the same reason.
+const CELL_SIZE: float = 116.0
 const GRID_COLUMNS: int = 3
 ## Horizontal inset centering the (CELL_SIZE * GRID_COLUMNS)-wide grid
 ## within the panel's full slot-area width (matches UnitBackpackPanel's
