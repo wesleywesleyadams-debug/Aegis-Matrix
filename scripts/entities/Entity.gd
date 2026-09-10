@@ -50,7 +50,7 @@ func get_tooltip_extra_stats() -> Dictionary:
 ## swings.
 @export var attack_damage: float = 5.0
 ## Idle time between swings is this minus ATTACK_ACTIVE_DURATION (the hit
-## window) -- 2.0 total = 0.15s hit window + 1.85s idle.
+## window) -- 2.0 total = 0.3s hit window + 1.7s idle.
 @export var attack_cooldown: float = 2.0
 
 ## Overridable hook for this entity's actual effective cooldown -- plain
@@ -108,7 +108,7 @@ func get_engage_radius_bonus() -> float:
 ## starts, before switching off again for the rest of the cooldown -- one
 ## shared value for every weapon (unarmed, sword, ...), so the hit window
 ## itself doesn't vary by what's equipped, only its damage/reach/timing do.
-const ATTACK_ACTIVE_DURATION: float = 0.15
+const ATTACK_ACTIVE_DURATION: float = 0.3
 ## How much shorter than attack_cooldown a swing's played-back length is
 ## kept -- see perform_attack()'s playback_speed, which stretches/
 ## compresses every attack animation to fit this so the swing always
