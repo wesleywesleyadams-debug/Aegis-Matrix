@@ -71,7 +71,9 @@ func get_engage_radius_bonus() -> float:
 ## debug grid's 2.6-unit cell size (see Main.tscn's DebugGrid shader).
 @export var vision_range: float = 10.4
 ## How long the hitbox stays active (able to land a hit) once a swing
-## starts, before switching off again for the rest of the cooldown.
+## starts, before switching off again for the rest of the cooldown -- one
+## shared value for every weapon (unarmed, sword, ...), so the hit window
+## itself doesn't vary by what's equipped, only its damage/reach/timing do.
 const ATTACK_ACTIVE_DURATION: float = 0.15
 ## How far into a given attack animation (as a fraction of its length) the
 ## fist/weapon reaches full extension -- measured directly off each clip

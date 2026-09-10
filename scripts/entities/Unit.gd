@@ -289,6 +289,8 @@ func _set_slot(slot: String, item_type: String) -> void:
 		visual.queue_free()
 	_slot_visuals.erase(slot)
 	var attach_point: Node3D = weapon_slot if slot == "right_hand" else (weapon_slot_left if slot == "left_hand" else null)
+	if slot == "right_hand":
+		_update_attack_hitbox_position(item_type)
 	if attach_point == null or item_type.is_empty():
 		return
 	var visual_scene: PackedScene = ItemDefs.get_visual_scene(item_type)
@@ -297,6 +299,17 @@ func _set_slot(slot: String, item_type: String) -> void:
 	var new_visual: Node3D = visual_scene.instantiate()
 	attach_point.add_child(new_visual)
 	_slot_visuals[slot] = new_visual
+
+## Slides AttackHitbox out along the hand bone's own forward axis (+Y,
+## matching how each weapon's visual scene is authored -- e.g. Sword.tscn's
+## blade extends from the grip at local Y=0 to the tip at Y=0.9) so the hit
+## detection volume actually sits at the weapon's business end when fully
+## extended, not at the fist regardless of what's equipped. Reset back to
+## the hand itself (offset 0) for an empty hand or a non-melee item.
+func _update_attack_hitbox_position(item_type: String) -> void:
+	if attack_hitbox == null:
+		return
+	attack_hitbox.position = Vector3(0, ItemDefs.get_melee_reach_bonus(item_type), 0)
 
 ## Walks to `item` (an explicit right-click order, see RTSController's
 ## _issue_pickup_order) and collects it once close enough -- see
@@ -535,17 +548,19 @@ func _get_attack_animation_name() -> String:
 		return animation_name
 	return "Attack"
 
-## Swaps in the equipped right-hand weapon's own damage/reach (see
-## ItemDefs.get_damage/get_melee_reach_bonus) over the unarmed defaults --
-## an unequipped hand, or an item with no defined weapon damage (e.g. one
-## not actually meant to be wielded), just falls back to attack_damage/
-## MELEE_REACH unmodified.
+## Swaps in the equipped right-hand weapon's own damage (see
+## ItemDefs.get_damage) over the unarmed default -- an unequipped hand, or
+## an item with no defined weapon damage (e.g. one not actually meant to
+## be wielded), just falls back to attack_damage unmodified.
+##
+## Reach itself doesn't need a similar override: AttackHitbox is already
+## physically slid out to the weapon's own length whenever one's equipped
+## (see _update_attack_hitbox_position), so MELEE_REACH's plain distance
+## check naturally measures from wherever the blade tip actually is
+## through the swing, without needing a separate flat bonus added on top.
 func _get_attack_damage() -> float:
 	var weapon_damage := ItemDefs.get_damage(backpack["right_hand"])
 	return weapon_damage if weapon_damage >= 0.0 else attack_damage
-
-func _get_melee_reach() -> float:
-	return MELEE_REACH + ItemDefs.get_melee_reach_bonus(backpack["right_hand"])
 
 ## Direction toward the next corner of the navigation server's actual
 ## computed route to the current target (see NavGroundSetup.gd, which bakes
