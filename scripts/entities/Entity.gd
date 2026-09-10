@@ -206,6 +206,16 @@ const ATTACK_BLINK_INTERVAL: float = 0.12
 ## sprite-billboard peasant).
 @onready var tabard: MeshInstance3D = model_root.find_child("Paladin_J_Nordstrom_Helmet", true, false)
 
+## Preloaded once and duplicated per-entity (each needs its own
+## hologram_color parameter) -- see _update_hologram_material().
+const HOLOGRAM_SHADER_MATERIAL: ShaderMaterial = preload("res://shaders/hologram_material.tres")
+## This entity's own duplicated hologram material instance, applied as a
+## surface override on every mesh under model_root. Created lazily the
+## first time _update_hologram_material() runs (both _ready() and the
+## player_id setter call it, and player_id's setter can fire before
+## _ready() during scene instantiation).
+var _hologram_material: ShaderMaterial
+
 var _attack_cooldown_remaining: float = 0.0
 var _attacking: bool = false
 
@@ -228,6 +238,17 @@ const PLAYER_COLORS: Dictionary = {
 	4: Color(0.55, 0.4, 0.35), # Mob -- neutral brown
 }
 
+## Hologram tint per player -- deliberately its own mapping rather than
+## reusing PLAYER_COLORS: Nature and Mob read as white/black here (a
+## "neutral"/"hostile-wildlife" hologram tint) rather than the green/brown
+## PLAYER_COLORS uses for their tabard/health-bar identity elsewhere.
+const HOLOGRAM_COLORS: Dictionary = {
+	1: Color(0.25, 0.85, 1.0), # blue
+	2: Color(1.0, 0.25, 0.25), # red
+	3: Color(0.9, 0.9, 0.9), # Nature -- white
+	4: Color(0.05, 0.05, 0.05), # Mob -- black
+}
+
 const PLAYER_NAMES: Dictionary = {
 	1: "Player 1",
 	2: "Player 2",
@@ -243,6 +264,7 @@ const PLAYER_NAMES: Dictionary = {
 	set(value):
 		player_id = value
 		_update_tabard_color()
+		_update_hologram_material()
 		if health_bar:
 			health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
 
@@ -285,6 +307,7 @@ func _ready() -> void:
 	_update_health_bar_visibility()
 	_update_tabard_color()
 	health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
+	_update_hologram_material()
 
 	_sight_line_mesh = ImmediateMesh.new()
 	_sight_line_mat = StandardMaterial3D.new()
@@ -311,6 +334,32 @@ func _update_tabard_color() -> void:
 	material = material.duplicate()
 	material.albedo_color = PLAYER_COLORS.get(player_id, Color.WHITE)
 	tabard.set_surface_override_material(1, material)
+
+## Applies (creating on first use) this entity's own hologram material,
+## tinted per HOLOGRAM_COLORS[player_id], as a surface override on every
+## MeshInstance3D under model_root -- the whole-game hologram art
+## direction, replacing whatever texture each model would otherwise show.
+## Guarded for model_root being unset: this can run from the player_id
+## setter during scene instantiation, before @onready vars (model_root
+## included) have resolved -- same guard pattern _update_tabard_color
+## already uses.
+func _update_hologram_material() -> void:
+	if model_root == null:
+		return
+	if _hologram_material == null:
+		_hologram_material = HOLOGRAM_SHADER_MATERIAL.duplicate()
+	_hologram_material.set_shader_parameter("hologram_color", HOLOGRAM_COLORS.get(player_id, Color.WHITE))
+	for mesh_instance in _find_mesh_instances(model_root):
+		for s in mesh_instance.mesh.get_surface_count():
+			mesh_instance.set_surface_override_material(s, _hologram_material)
+
+func _find_mesh_instances(n: Node) -> Array[MeshInstance3D]:
+	var result: Array[MeshInstance3D] = []
+	if n is MeshInstance3D and n.mesh != null:
+		result.append(n)
+	for c in n.get_children():
+		result.append_array(_find_mesh_instances(c))
+	return result
 
 ## Flashes this entity's own selection ring red twice -- the feedback for
 ## "a unit just targeted you for melee" (see

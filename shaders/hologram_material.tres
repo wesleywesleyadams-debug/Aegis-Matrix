@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://shaders/hologram.gdshader" id="1"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1")
+shader_parameter/hologram_color = Color(0.25, 0.85, 1, 1)
+shader_parameter/rim_power = 2.5
+shader_parameter/scanline_density = 40.0
+shader_parameter/scanline_speed = 0.6
+shader_parameter/scanline_strength = 0.35
+shader_parameter/flicker_speed = 6.0
+shader_parameter/flicker_strength = 0.08
+shader_parameter/base_alpha = 0.55

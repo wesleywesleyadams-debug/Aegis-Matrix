@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://scripts/ui/HealthBar.gd" id="10_health_bar"]
 [ext_resource type="Texture2D" path="res://assets/textures/white_pixel.png" id="11_white_pixel"]
 [ext_resource type="PackedScene" path="res://assets/models/paladin/paladin.glb" id="2_paladin_model"]
-[ext_resource type="PackedScene" path="res://assets/models/human_male/human_male_rigged.glb" id="3_human_male_model"]
+[ext_resource type="PackedScene" path="res://assets/models/human_male/human_male_6k_rigged.glb" id="3_human_male_model"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.285
