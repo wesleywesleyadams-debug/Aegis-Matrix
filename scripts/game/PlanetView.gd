@@ -1,22 +1,25 @@
 class_name PlanetView
 extends PanelContainer
-## Pop-up close-up of a selected planet: a big pixel render of the world,
-## its population/economy, and its grid of building fields. On your own
-## planets, click an empty field to order a building, click a building to
-## demolish it, or click one under construction to cancel it. The game
-## keeps running while it's open.
+## Pop-up close-up of a selected planet: a big pixel render of the world
+## with its building fields laid out in rows across the planet's face, plus
+## population/economy stats. On your own planets, click an empty field to
+## order a building, click a building to demolish it, or click one under
+## construction to cancel it. The game keeps running while it's open.
 
-const FIELD_PX := 64
-const COLS := 6
+## Largest the planet art is drawn (integer pixel scale is chosen to fit).
+const GLOBE_MAX := 448
+const SLOT_GAP := 6
+const SLOT_MAX := 72
+const SLOT_MIN := 30
 
 var game: Game
 var planet: Planet
 
+var _globe: Control
 var _art: TextureRect
 var _title: Label
 var _stats: Label
 var _fields_title: Label
-var _grid: GridContainer
 var _status: Label
 var _picker: PopupPanel
 var _picker_list: VBoxContainer
@@ -53,39 +56,32 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation", 18)
 	root.add_child(body)
 
-	var left := VBoxContainer.new()
-	left.add_theme_constant_override("separation", 8)
+	# The planet itself, with field slots placed on top of it.
+	_globe = Control.new()
+	_globe.custom_minimum_size = Vector2(GLOBE_MAX, GLOBE_MAX)
+	body.add_child(_globe)
 	_art = TextureRect.new()
-	_art.custom_minimum_size = Vector2(240, 240)
 	_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_art.stretch_mode = TextureRect.STRETCH_SCALE
 	_art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	left.add_child(_art)
-	_stats = Label.new()
-	_stats.add_theme_font_size_override("font_size", 13)
-	_stats.custom_minimum_size = Vector2(270, 0)
-	_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	left.add_child(_stats)
-	body.add_child(left)
+	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_globe.add_child(_art)
 
 	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 8)
+	right.add_theme_constant_override("separation", 10)
+	right.custom_minimum_size = Vector2(250, 0)
 	_fields_title = Label.new()
 	_fields_title.add_theme_font_size_override("font_size", 16)
 	right.add_child(_fields_title)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(COLS * (FIELD_PX + 6), 5 * (FIELD_PX + 6))
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_grid = GridContainer.new()
-	_grid.columns = COLS
-	_grid.add_theme_constant_override("h_separation", 6)
-	_grid.add_theme_constant_override("v_separation", 6)
-	scroll.add_child(_grid)
-	right.add_child(scroll)
+	_stats = Label.new()
+	_stats.add_theme_font_size_override("font_size", 13)
+	_stats.custom_minimum_size = Vector2(250, 0)
+	_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	right.add_child(_stats)
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 13)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(COLS * (FIELD_PX + 6), 0)
+	_status.custom_minimum_size = Vector2(250, 0)
 	right.add_child(_status)
 	body.add_child(right)
 
@@ -101,35 +97,100 @@ func show_planet(p: Planet) -> void:
 	if p == null:
 		_picker.hide()
 		return
-	# Big version of the planet: same pixel art, scaled up crisply.
+	# Big version of the planet: same pixel art at the largest whole-pixel
+	# scale that fits, centered in the globe area.
+	var tex_w := (p.get_node("Sprite") as Sprite2D).texture.get_width()
+	var scale_px := maxi(1, GLOBE_MAX / tex_w)
+	var d := tex_w * scale_px
 	_art.texture = Defs.tex(p.kind)
-	var scale_px := maxi(1, int(240.0 / (p.get_node("Sprite") as Sprite2D).texture.get_width()))
-	_art.custom_minimum_size = Vector2.ONE * (p.get_node("Sprite") as Sprite2D).texture.get_width() * scale_px
-	for c in _grid.get_children():
-		c.queue_free()
+	_art.position = Vector2.ONE * (GLOBE_MAX - d) / 2.0
+	_art.size = Vector2(d, d)
+	for b in _field_buttons:
+		b.queue_free()
 	_field_buttons.clear()
+	var rects := _layout_slots(p.fields, d / 2.0 - scale_px * 2.0)
 	for i in p.fields:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(FIELD_PX, FIELD_PX)
 		b.focus_mode = Control.FOCUS_NONE
-		# Building art as a crisp 3x child image; the button text shows progress.
+		b.position = rects[i].position + Vector2.ONE * GLOBE_MAX / 2.0
+		b.size = rects[i].size
+		b.custom_minimum_size = rects[i].size
+		b.add_theme_stylebox_override("normal", _slot_style(Color(0.05, 0.06, 0.14, 0.72), HUD.EDGE_LIT))
+		b.add_theme_stylebox_override("hover", _slot_style(Color(0.1, 0.14, 0.3, 0.85), Color.WHITE))
+		b.add_theme_stylebox_override("pressed", _slot_style(Color(0.02, 0.03, 0.08, 0.9), Color.WHITE))
+		b.add_theme_stylebox_override("disabled", _slot_style(Color(0.05, 0.06, 0.14, 0.55), HUD.EDGE))
+		# Building art as a crisp child image; the button text shows progress.
 		var art := TextureRect.new()
 		art.name = "Art"
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		art.offset_left = 8
-		art.offset_top = 8
-		art.offset_right = -8
-		art.offset_bottom = -8
+		var pad := rects[i].size.x * 0.14
+		art.offset_left = pad
+		art.offset_top = pad
+		art.offset_right = -pad
+		art.offset_bottom = -pad
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(art)
-		b.add_theme_font_size_override("font_size", 12)
+		b.add_theme_font_size_override("font_size", 12 if rects[i].size.x >= 48 else 10)
 		b.pressed.connect(_on_field_pressed.bind(i))
-		_grid.add_child(b)
+		_globe.add_child(b)
 		_field_buttons.append(b)
 	refresh()
+
+func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = bg
+	s.border_color = border
+	s.set_border_width_all(2)
+	return s
+
+## Places n square slots in centered rows that fit inside a circle of
+## radius r (slot corners stay on the planet). Picks the biggest slot size
+## that fits, then trims the widest rows so the shape stays balanced.
+## Returns rects relative to the circle's center.
+func _layout_slots(n: int, r: float) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	if n <= 0:
+		return out
+	var s := SLOT_MAX
+	while s >= SLOT_MIN:
+		var pitch := s + SLOT_GAP
+		var max_rows := int((2.0 * r + SLOT_GAP) / pitch)
+		# Try the fewest rows (closest to the equator) that hold n slots.
+		for k in range(1, max_rows + 1):
+			var counts: Array[int] = []
+			var ys: Array[float] = []
+			for j in k:
+				var y := (j - (k - 1) / 2.0) * pitch
+				var reach := absf(y) + s / 2.0
+				if reach >= r:
+					counts.append(0)
+				else:
+					var chord := 2.0 * sqrt(r * r - reach * reach)
+					counts.append(maxi(0, int((chord + SLOT_GAP) / pitch)))
+				ys.append(y)
+			var total := 0
+			for c in counts:
+				total += c
+			if total < n:
+				continue
+			# Trim extras from the fullest rows (outer rows first on ties).
+			while total > n:
+				var best := 0
+				for j in k:
+					if counts[j] > counts[best] or (counts[j] == counts[best] and absf(ys[j]) > absf(ys[best])):
+						best = j
+				counts[best] -= 1
+				total -= 1
+			for j in k:
+				var w := counts[j] * pitch - SLOT_GAP
+				for c in counts[j]:
+					out.append(Rect2(Vector2(-w / 2.0 + c * pitch, ys[j] - s / 2.0), Vector2(s, s)))
+			return out
+		s -= 2
+	return out
 
 func refresh() -> void:
 	if planet == null or not visible:

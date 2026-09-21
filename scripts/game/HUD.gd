@@ -68,7 +68,7 @@ func _ready() -> void:
 	planet_view.game = game
 	planet_view.anchor_left = 1.0
 	planet_view.anchor_right = 1.0
-	planet_view.offset_left = -12 - 760
+	planet_view.offset_left = -12 - 780
 	planet_view.offset_right = -12
 	planet_view.offset_top = 90
 	planet_view.grow_horizontal = Control.GROW_DIRECTION_BEGIN
