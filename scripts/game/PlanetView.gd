@@ -37,6 +37,7 @@ var _field_buttons: Array[Button] = []
 var _slot_layer: Control
 var _target_d: float = 0.0
 var _grow: float = 1.0
+var _last_us: int = 0
 ## Latest stats summary for the selection panel.
 var stats: String = ""
 
@@ -138,8 +139,12 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(planet):
 		game.clear_planet_focus()
 		return
+	# Real time, so it animates the same at any game speed (or paused).
+	var now_us := Time.get_ticks_usec()
+	var real_dt := minf((now_us - _last_us) / 1000000.0, 0.1) if _last_us > 0 else 0.0
+	_last_us = now_us
 	if _grow < 1.0:
-		_grow = minf(1.0, _grow + delta / maxf(Engine.time_scale, 0.001) / GROW_TIME)
+		_grow = minf(1.0, _grow + real_dt / GROW_TIME)
 	_place()
 
 ## Keeps the close-up centered on the planet's screen position and applies

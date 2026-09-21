@@ -115,12 +115,14 @@ func _fmt(v: float) -> String:
 
 func _build_top_bar(root: Control) -> void:
 	var bar := PanelContainer.new()
-	bar.anchor_left = 0.5
-	bar.anchor_right = 0.5
-	bar.offset_left = -580
-	bar.offset_right = 580
+	# Right-aligned next to the speed controls, keeping the left side of
+	# the screen free for other panels.
+	bar.anchor_left = 1.0
+	bar.anchor_right = 1.0
+	bar.offset_right = -12 - 170 - 10 - 330 - 10
+	bar.offset_left = bar.offset_right - 1100
+	bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	bar.offset_top = 8
-	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	bar.add_theme_stylebox_override("panel", _panel_style(8))
 	root.add_child(bar)
 	var h := HBoxContainer.new()
@@ -148,7 +150,7 @@ func _build_top_bar(root: Control) -> void:
 	h.add_child(fleet)
 	_research_button = Button.new()
 	_research_button.text = "Research [R]"
-	_research_button.custom_minimum_size = Vector2(250, 0)
+	_research_button.custom_minimum_size = Vector2(220, 0)
 	_research_button.add_theme_font_size_override("font_size", 14)
 	_research_button.focus_mode = Control.FOCUS_NONE
 	_research_button.pressed.connect(toggle_research)
@@ -171,16 +173,34 @@ func _build_menu_button(root: Control) -> void:
 	b.pressed.connect(func(): show_pause(true))
 	root.add_child(b)
 
-## Game speed slider (top-left). The notch labelled NORMAL is 1x.
+## Game speed slider (top-right, just left of the Menu button). The notch labelled NORMAL is 1x.
 func _build_speed(root: Control) -> void:
 	var panel := PanelContainer.new()
-	panel.offset_left = 12
+	panel.anchor_left = 1.0
+	panel.anchor_right = 1.0
+	panel.offset_left = -12 - 170 - 10 - 330
+	panel.offset_right = -12 - 170 - 10
+	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel.offset_top = 8
 	panel.add_theme_stylebox_override("panel", _panel_style(8))
 	root.add_child(panel)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	panel.add_child(h)
+	_play_button = Button.new()
+	_play_button.custom_minimum_size = Vector2(92, 0)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		var sb := _play_button.get_theme_stylebox(st).duplicate() as StyleBox
+		sb.content_margin_left = 8
+		sb.content_margin_right = 8
+		_play_button.add_theme_stylebox_override(st, sb)
+	_play_button.focus_mode = Control.FOCUS_NONE
+	_play_button.tooltip_text = "Pause / resume the game (Space). You can still give orders while paused."
+	_play_button.pressed.connect(toggle_play)
+	h.add_child(_play_button)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 2)
-	panel.add_child(v)
+	h.add_child(v)
 	_speed_label = _label("Speed 1x (normal)", TEXT, 14)
 	v.add_child(_speed_label)
 	_speed_slider = HSlider.new()
@@ -189,11 +209,12 @@ func _build_speed(root: Control) -> void:
 	_speed_slider.step = 1
 	_speed_slider.tick_count = SPEEDS.size()
 	_speed_slider.ticks_on_borders = true
-	_speed_slider.custom_minimum_size = Vector2(220, 20)
+	_speed_slider.custom_minimum_size = Vector2(200, 20)
 	_speed_slider.focus_mode = Control.FOCUS_NONE
 	_speed_slider.tooltip_text = "Game speed. Keys: - slower, = faster, Backspace normal."
 	_speed_slider.value = NORMAL_SPEED
 	_speed_slider.value_changed.connect(_on_speed_changed)
+	_speed_slider.value_changed.connect(func(_v): if game_paused: toggle_play())
 	v.add_child(_speed_slider)
 	var marks := HBoxContainer.new()
 	for i in SPEEDS.size():
@@ -202,6 +223,16 @@ func _build_speed(root: Control) -> void:
 		m.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		marks.add_child(m)
 	v.add_child(marks)
+	_on_speed_changed(_speed_slider.value)
+
+## Play/pause: while paused the match is frozen (time scale 0) but input,
+## the camera and menus keep working.
+var game_paused := false
+var _play_button: Button
+
+func toggle_play() -> void:
+	game_paused = not game_paused
+	_on_speed_changed(_speed_slider.value)
 
 ## Sets the speed by step index (clamped); used by the slider and hotkeys.
 func set_speed_index(i: int) -> void:
@@ -212,9 +243,15 @@ func speed_index() -> int:
 
 func _on_speed_changed(v: float) -> void:
 	var s: float = SPEEDS[int(v)]
-	Engine.time_scale = s
+	Engine.time_scale = 0.0 if game_paused else s
+	if _play_button:
+		_play_button.text = "Play" if game_paused else "Pause"
+		_play_button.modulate = Color("ffd46b") if game_paused else Color.WHITE
 	_speed_label.text = "Speed %sx%s" % [str(s), " (normal)" if int(v) == NORMAL_SPEED else ""]
 	_speed_label.add_theme_color_override("font_color", TEXT if int(v) == NORMAL_SPEED else Color("ffd46b"))
+	if game_paused:
+		_speed_label.text = "PAUSED"
+		_speed_label.add_theme_color_override("font_color", Color("ffd46b"))
 
 func _build_selection_panel(root: Control) -> void:
 	var panel := PanelContainer.new()
@@ -262,7 +299,7 @@ func _build_messages(root: Control) -> void:
 	root.add_child(_messages)
 
 func _build_help(root: Control) -> void:
-	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Tab warships · H home · R research · F found starbase (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · - / = game speed · Esc menu", DIM, 13)
+	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Tab warships · H home · R research · F found starbase (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · Space pause · - / = game speed · Esc menu", DIM, 13)
 	l.anchor_top = 1.0
 	l.anchor_bottom = 1.0
 	l.anchor_right = 1.0

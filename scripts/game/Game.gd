@@ -52,6 +52,7 @@ var _mid_drag: bool = false
 var _last_click_time: float = 0.0
 var _last_group_key: int = -1
 var _last_group_time: float = 0.0
+var _last_real_us: int = 0
 
 @onready var world: Node2D = $World
 @onready var ships_root: Node2D = $World/Ships
@@ -601,6 +602,9 @@ func _handle_key(e: InputEventKey) -> void:
 	if k == KEY_BACKSPACE:
 		hud.set_speed_index(HUD.NORMAL_SPEED)
 		return
+	if k == KEY_SPACE:
+		hud.toggle_play()
+		return
 	match k:
 		KEY_R:
 			hud.toggle_research()
@@ -676,6 +680,9 @@ func _place_starbase(pos: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	_clock += delta
+	var now_us := Time.get_ticks_usec()
+	var real_dt := minf((now_us - _last_real_us) / 1000000.0, 0.1) if _last_real_us > 0 else 0.0
+	_last_real_us = now_us
 	_update_background()
 	if paused_menu or is_over:
 		return
@@ -691,7 +698,7 @@ func _process(delta: float) -> void:
 		if m.y <= EDGE_PAN_MARGIN: dir.y = -1
 		elif m.y >= size.y - EDGE_PAN_MARGIN: dir.y = 1
 	if dir != Vector2.ZERO:
-		camera.global_position += dir.normalized() * PAN_SPEED * delta / sqrt(camera.zoom.x)
+		camera.global_position += dir.normalized() * PAN_SPEED * real_dt / sqrt(camera.zoom.x)
 		_clamp_camera()
 
 func _zoom_step(dir: int, screen_pos: Vector2) -> void:
@@ -954,6 +961,8 @@ func _enter_dev_capture() -> void:
 		"gas":
 			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable())[0])
 			selection_changed.emit()
+		"paused":
+			hud.toggle_play()
 		"save":
 			save_game()
 			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0])
