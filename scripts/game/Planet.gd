@@ -433,6 +433,8 @@ func _run_buildings(dt: float) -> void:
 				# Extractors draw from the planet's stored spice until it runs dry.
 				v = minf(v, spice_reserve / maxf(dt, 0.0001))
 				spice_reserve = maxf(0.0, spice_reserve - v * dt)
+				if spice_reserve <= 0.01:
+					spice_reserve = 0.0
 				spice_out += v
 			elif k == "spice":
 				spice_out += v
@@ -471,7 +473,7 @@ func _staff() -> void:
 	for res in Defs.STAFFING_PRIORITY:
 		for i in fields:
 			var b: String = buildings[i]
-			if b == "" or operating[i] or not Defs.BUILDINGS[b]["output"].has(res):
+			if b == "" or operating[i] or not Defs.BUILDINGS[b]["output"].has(res) or is_dry(i):
 				continue
 			var need: float = Defs.BUILDINGS[b]["pop"]
 			if left >= need:
@@ -479,10 +481,15 @@ func _staff() -> void:
 				left -= need
 	idle_pop = left
 
+## A Spice Extractor on a world whose reserve is gone: it shuts down,
+## produces nothing and releases its pop.
+func is_dry(field: int) -> bool:
+	return buildings[field] == "spice_extractor" and spice_reserve <= 0.01
+
 ## Pop needed to run every building on this planet.
 func pop_required() -> int:
 	var n := 0
 	for b in buildings:
-		if b != "":
+		if b != "" and not (b == "spice_extractor" and spice_reserve <= 0.01):
 			n += Defs.BUILDINGS[b].get("pop", 0)
 	return n

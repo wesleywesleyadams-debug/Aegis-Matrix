@@ -312,7 +312,7 @@ func refresh() -> void:
 		s += "\nBuildings need %d pop (%d unassigned)" % [planet.pop_required(), int(planet.idle_pop)]
 		var idle := 0
 		for k in planet.fields:
-			if planet.buildings[k] != "" and not planet.operating[k]:
+			if planet.buildings[k] != "" and not planet.operating[k] and not planet.is_dry(k):
 				idle += 1
 		if idle > 0:
 			s += "\n%d building%s IDLE: not enough pop" % [idle, "" if idle == 1 else "s"]
@@ -343,8 +343,8 @@ func refresh() -> void:
 		if built != "":
 			(b.get_node("Art") as TextureRect).texture = Defs.tex("bld_" + built)
 			var running: bool = planet.operating[i] if i < planet.operating.size() else true
-			var dry: bool = built == "spice_extractor" and planet.spice_reserve <= 0.0
-			b.text = ("DRY" if dry else "") if running else "IDLE"
+			var dry: bool = planet.is_dry(i)
+			b.text = "DRY" if dry else ("" if running else "IDLE")
 			b.modulate = Color.WHITE if running else Color(1, 1, 1, 0.4)
 			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], "" if running else " (idle: not enough pop)", Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
 		elif job != "":
