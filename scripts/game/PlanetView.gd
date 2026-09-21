@@ -230,6 +230,12 @@ func _on_field_pressed(i: int) -> void:
 	want.y = clampi(want.y, 0, win.y - _picker.size.y - 8)
 	_picker.position = want + get_window().position
 	_picker.popup()
+	# Size is only final once shown; nudge back inside the window if needed.
+	var sz := _picker.size
+	var p := _picker.position - get_window().position
+	p.x = clampi(p.x, 0, win.x - sz.x - 8)
+	p.y = clampi(p.y, 0, win.y - sz.y - 8)
+	_picker.position = p + get_window().position
 
 ## One row in the build picker: building art, name, and its cost with
 ## resource icons. Disabled rows show why in their tooltip.

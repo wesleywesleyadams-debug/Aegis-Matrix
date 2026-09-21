@@ -82,13 +82,15 @@ func _ready() -> void:
 	operating.fill(false)
 	for i in mini(start_buildings.size(), fields):
 		buildings[i] = start_buildings[i]
-	# A starting world always has at least one Farm.
-	if owner_id != 0 and not buildings.has("farm"):
-		var slot := buildings.find("")
-		if slot >= 0:
-			buildings[slot] = "farm"
+	# A starting world always has at least one Farm and one Power Plant.
 	if owner_id != 0:
-		pop = start_pop if start_pop > 0.0 else Defs.START_POP
+		for must in ["farm", "generator"]:
+			if not buildings.has(must):
+				var slot := buildings.find("")
+				if slot >= 0:
+					buildings[slot] = must
+	if owner_id != 0:
+		pop = start_pop if start_pop > 0.0 else Defs.HOME_START_POP
 	_econ_timer = randf() * ECON_TICK
 
 func type_def() -> Dictionary:

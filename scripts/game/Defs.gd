@@ -113,6 +113,9 @@ const PLANET_TYPES := {
 }
 const POP_PER_SIZE := 1000
 const START_POP := 100.0
+## Worlds owned at match start (home planets) begin with this many pops,
+## enough to staff their starting Farm and Power Plant.
+const HOME_START_POP := 200.0
 ## 1 new pop per minute for every 2 pop (a "pop pair").
 const GROWTH_PER_PAIR_PER_MIN := 1.0
 ## Every pop eats 1 food per minute. Pops left unfed for STARVE_SECONDS
