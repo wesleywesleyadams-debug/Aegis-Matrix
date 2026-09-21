@@ -111,7 +111,7 @@ func _ready() -> void:
 	camera.zoom = Vector2.ONE * ZOOM_LEVELS[_zoom_index]
 	Music.play_track(Music.IN_GAME_TRACK)
 	if loaded:
-		notify("Saved game loaded.")
+		notify("Saved game loaded.", "note_save")
 	else:
 		message.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"))
 	_enter_dev_capture()
@@ -290,8 +290,7 @@ func _on_tech_done(pid: int, tech_id: String) -> void:
 		if s.owner_id == pid and s.has_method("refresh_stats"):
 			s.refresh_stats()
 	if pid == player_id:
-		notify("Research complete: %s." % Defs.TECHS[tech_id]["name"])
-		sfx.play_ui("claim")
+		notify("Research complete: %s." % Defs.TECHS[tech_id]["name"], "note_tech")
 	tech_completed.emit(pid, tech_id)
 
 # ---------------------------------------------------------------- queries
@@ -313,11 +312,11 @@ func _physics_process(delta: float) -> void:
 	for k in ["food", "minerals", "spice"]:
 		var empty: bool = resources[player_id][k] <= 0.0001
 		if empty and not _was_empty.get(k, false):
-			alert("Out of %s!" % Defs.RESOURCE_NAMES[k].to_lower())
+			alert("Out of %s!" % Defs.RESOURCE_NAMES[k].to_lower(), "alert_resource")
 		_was_empty[k] = empty
 	var starved := energy_starved(player_id)
 	if starved and not _was_starved:
-		alert("Out of energy! Ship production halted and ships slowed to 25%.")
+		alert("Out of energy! Ship production halted and ships slowed to 25%.", "alert_energy")
 	_was_starved = starved
 	_rate_timer += delta
 	if _rate_timer >= 1.0:
@@ -452,7 +451,7 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 	starbases_root.add_child(sb)
 	sb.died.connect(_on_starbase_died)
 	if pid == player_id:
-		notify("Starbase construction started.")
+		notify("Starbase construction started.", "note_starbase")
 	return sb
 
 func fire(from: SpaceEntity, to: SpaceEntity, weapon: String, damage: float) -> void:
@@ -487,14 +486,15 @@ func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
 
 func planet_claimed(p: Planet, old_owner: int) -> void:
 	if p.owner_id == player_id:
-		notify(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name)
-		sfx.play_ui("claim")
+		notify(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name, "note_colony")
 	elif old_owner == player_id:
-		alert("%s lost to the enemy!" % p.planet_name)
+		alert("%s lost to the enemy!" % p.planet_name, "alert_planet_lost", true)
 	selection_changed.emit()
 
 func _on_starbase_died(sb: SpaceEntity) -> void:
 	selection.erase(sb)
+	if sb.owner_id == player_id and not (sb as Starbase).under_construction:
+		alert("A starbase has been destroyed!", "alert_starbase_lost", true)
 	await get_tree().process_frame
 	var mine := false
 	var theirs := false
@@ -514,8 +514,10 @@ func _on_starbase_died(sb: SpaceEntity) -> void:
 ## colonized, research done...). Not rate limited.
 const NOTIFY_COLOR := Color("7fd8ff")
 
-func notify(text: String) -> void:
+func notify(text: String, sound: String = "") -> void:
 	message.emit(text, NOTIFY_COLOR)
+	if sound != "":
+		sfx.play_ui(sound)
 
 ## Red alert + alarm sound for being attacked or running out of a
 ## resource. At most one every ALERT_COOLDOWN seconds (game time), whatever
@@ -523,12 +525,16 @@ func notify(text: String) -> void:
 const ALERT_COOLDOWN := 15.0
 var _last_alert_time: float = -1000.0
 
-func alert(text: String) -> void:
-	if now() - _last_alert_time < ALERT_COOLDOWN:
+## `sound` names the alert's own alarm (see Sfx.NAMES), so each kind of
+## trouble is recognisable by ear.
+## `critical` alerts (a planet lost, a starbase destroyed) always sound,
+## even inside the cooldown.
+func alert(text: String, sound: String = "alert", critical: bool = false) -> void:
+	if not critical and now() - _last_alert_time < ALERT_COOLDOWN:
 		return
 	_last_alert_time = now()
 	message.emit(text, Color("ff6a5a"))
-	sfx.play_ui("alert")
+	sfx.play_ui(sound)
 
 func _end_match(won: bool) -> void:
 	if is_over:
@@ -659,8 +665,7 @@ func save_game() -> void:
 	if path == "":
 		message.emit("Couldn't write the save file.", Color("ff6a5a"))
 	else:
-		notify("Game saved.")
-		sfx.play_ui("click")
+		notify("Game saved.", "note_save")
 
 func request_build(sb: Starbase, ship_type: String) -> void:
 	var why := sb.enqueue(ship_type)

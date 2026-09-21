@@ -30,6 +30,25 @@ func _init() -> void:
 		"alert": _arp([330.0, 247.0, 330.0, 247.0], 0.1, 0.25),
 		"click": _sweep(0.03, 900.0, 700.0, 0.15, true),
 		"deny": _sweep(0.15, 180.0, 120.0, 0.25, true),
+		# Alerts, escalating with severity.
+		# Minor: short and mild.
+		"alert_ships": _seq([[740, 0.07, 0.14, "tri"], [740, 0.07, 0.14, "tri"]], 0.06),
+		"alert_resource": _seq([[196, 0.12, 0.17, "sq"], [185, 0.16, 0.17, "sq"]], 0.06),
+		# Serious: sirens and klaxons.
+		"alert_planet": _join([_sweep(0.35, 900.0, 380.0, 0.24, true), _sweep(0.35, 900.0, 380.0, 0.24, true)]),
+		"alert_starbase": _seq([[220, 0.22, 0.3, "sq"], [165, 0.22, 0.3, "sq"], [220, 0.22, 0.3, "sq"], [165, 0.3, 0.3, "sq"]], 0.03),
+		"alert_energy": _sweep(0.7, 700.0, 70.0, 0.3, false),
+		"alert_starved": _seq([[110, 0.9, 0.32, "trem"]], 0.0),
+		# Critical: long, low, dissonant, with a deep thump.
+		"alert_planet_lost": _doom(2.2, [98.0, 138.6, 196.0]),
+		"alert_starbase_lost": _doom(2.6, [82.4, 116.5, 164.8]),
+		# Notifications: quiet, soft, pleasant (major intervals, light echo).
+		"note_ship": _echo(_seq([[587, 0.06, 0.07, "tri"], [880, 0.1, 0.07, "tri"]], 0.01)),
+		"note_tech": _echo(_seq([[660, 0.08, 0.065, "tri"], [880, 0.08, 0.065, "tri"], [1320, 0.18, 0.065, "tri"]], 0.01)),
+		"note_building": _echo(_seq([[392, 0.07, 0.08, "tri"], [523, 0.12, 0.08, "tri"]], 0.02)),
+		"note_colony": _echo(_seq([[392, 0.09, 0.07, "tri"], [494, 0.09, 0.07, "tri"], [587, 0.09, 0.07, "tri"], [784, 0.22, 0.07, "tri"]], 0.0)),
+		"note_starbase": _echo(_seq([[523, 0.1, 0.075, "tri"], [659, 0.1, 0.075, "tri"], [784, 0.1, 0.075, "tri"], [1047, 0.26, 0.075, "tri"]], 0.02)),
+		"note_save": _echo(_seq([[1047, 0.07, 0.06, "tri"]], 0.0)),
 	}
 	for name in sfx:
 		_save("sfx_" + name, sfx[name])
@@ -171,4 +190,69 @@ func _music(spec: Dictionary) -> PackedFloat32Array:
 	for i in range(d, n):
 		out[i] += out[i - d] * 0.35
 
+	return out
+
+## Note sequence: each note is [freq, seconds, amp, wave] where wave is
+## "sq" (square), "tri" (triangle) or "trem" (triangle with tremolo).
+## Short fade in/out per note to avoid clicks; `gap` seconds of silence
+## between notes.
+func _seq(notes: Array, gap: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for n in notes:
+		var f: float = n[0]
+		var count := int(float(n[1]) * RATE)
+		var amp: float = n[2]
+		var wave: String = n[3]
+		for i in count:
+			var ph := fmod(f * i / RATE, 1.0)
+			var v := (1.0 if ph < 0.5 else -1.0) if wave == "sq" else 4.0 * absf(ph - 0.5) - 1.0
+			if wave == "trem":
+				v *= 0.6 + 0.4 * sin(TAU * 7.0 * i / RATE)
+			var env := minf(1.0, float(i) / (0.005 * RATE)) * minf(1.0, float(count - i) / (0.03 * RATE))
+			out.append(v * amp * env)
+		for i in int(gap * RATE):
+			out.append(0.0)
+	return out
+
+func _join(parts: Array) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for p in parts:
+		out.append_array(p)
+	return out
+
+## Adds a soft 120 ms echo tail.
+func _echo(s: PackedFloat32Array) -> PackedFloat32Array:
+	var d := int(0.12 * RATE)
+	var out := s.duplicate()
+	for i in d * 2:
+		out.append(0.0)
+	for i in range(d, out.size()):
+		out[i] += out[i - d] * 0.35
+	return out
+
+## Worst-case alarm: a detuned, dissonant low chord that slowly sags in
+## pitch, over a sub-bass impact, fading out over `dur` seconds.
+func _doom(dur: float, freqs: Array) -> PackedFloat32Array:
+	var n := int(dur * RATE)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var phases := []
+	for f in freqs:
+		phases.append(0.0)
+		phases.append(0.0)
+	for i in n:
+		var t := float(i) / n
+		var bend := 1.0 - 0.18 * t
+		var v := 0.0
+		for j in freqs.size():
+			for k in 2:
+				var idx := j * 2 + k
+				var f: float = freqs[j] * bend * (1.0 + 0.006 * k)
+				phases[idx] = fmod(phases[idx] + f / RATE, 1.0)
+				# Saw-ish tone for grit.
+				v += (2.0 * phases[idx] - 1.0) * 0.5
+		v /= freqs.size() * 2.0
+		var thump := sin(TAU * lerpf(70.0, 30.0, minf(t * 4.0, 1.0)) * i / RATE) * exp(-t * 9.0) * 1.2
+		var env := minf(1.0, t * 40.0) * pow(1.0 - t, 1.3)
+		out[i] = (v * 0.9 + thump) * 0.45 * env
 	return out

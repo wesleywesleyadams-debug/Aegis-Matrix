@@ -5,7 +5,9 @@ extends Node
 ## the camera is quieter; UI sounds play non-positionally. Each sound is
 ## rate-limited so a 30-ship volley doesn't clip.
 
-const NAMES := ["laser", "torpedo", "shield", "boom", "boom_big", "build", "claim", "alert", "click", "deny"]
+const NAMES := ["laser", "torpedo", "shield", "boom", "boom_big", "build", "claim", "alert", "click", "deny",
+	"alert_starbase", "alert_ships", "alert_planet", "alert_planet_lost", "alert_starbase_lost", "alert_resource", "alert_energy", "alert_starved",
+	"note_ship", "note_tech", "note_building", "note_colony", "note_starbase", "note_save"]
 const POOL_SIZE := 24
 const MIN_GAP := {"laser": 0.04, "torpedo": 0.08, "shield": 0.05, "boom": 0.06, "boom_big": 0.1}
 

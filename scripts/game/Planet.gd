@@ -183,7 +183,7 @@ func _economy(dt: float) -> void:
 			hungry = 0.0
 			starve_timer = 0.0
 			if owner_id == g.player_id and died >= 1.0:
-				g.alert("%d pops starved on %s." % [int(died), planet_name])
+				g.alert("%d pops starved on %s." % [int(died), planet_name], "alert_starved")
 	else:
 		# Fed again within the window: nobody dies.
 		hungry = 0.0
@@ -213,7 +213,7 @@ func _check_conquest() -> void:
 			claim_progress = 0.0
 		claim_progress += 0.5
 		if owner_id == Game.instance.player_id:
-			Game.instance.alert("%s is under attack!" % planet_name)
+			Game.instance.alert("%s is under attack!" % planet_name, "alert_planet")
 		if claim_progress >= CONQUER_TIME:
 			var old := owner_id
 			owner_id = who
@@ -344,8 +344,7 @@ func _run_buildings(dt: float) -> void:
 	if construction["progress"] >= d["time"]:
 		buildings[construction["field"]] = construction["id"]
 		if owner_id == g.player_id:
-			g.notify("%s completed on %s." % [d["name"], planet_name])
-			g.sfx.play_ui("build")
+			g.notify("%s completed on %s." % [d["name"], planet_name], "note_building")
 		construction = {}
 
 ## Assigns pop to buildings: food first, then energy, minerals, spice.
