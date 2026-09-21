@@ -39,6 +39,7 @@ var _refresh: float = 0.0
 var planet_view: PlanetView
 var _speed_slider: HSlider
 var _speed_label: Label
+var _sel_panel: PanelContainer
 
 ## Game speed steps; index NORMAL_SPEED is 1x.
 const SPEEDS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 4.0]
@@ -201,6 +202,7 @@ func _on_speed_changed(v: float) -> void:
 
 func _build_selection_panel(root: Control) -> void:
 	var panel := PanelContainer.new()
+	_sel_panel = panel
 	panel.anchor_top = 1.0
 	panel.anchor_bottom = 1.0
 	panel.offset_left = 12
@@ -434,6 +436,7 @@ func _on_match_over(won: bool) -> void:
 # ---------------------------------------------------------------- selection panel
 
 func _rebuild_selection() -> void:
+	_sel_panel.visible = not (game.selection.filter(func(e): return is_instance_valid(e)).is_empty() and is_instance_valid(game.focused_planet))
 	for c in _sel_body.get_children():
 		c.queue_free()
 	_build_buttons.clear()

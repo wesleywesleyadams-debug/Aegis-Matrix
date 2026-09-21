@@ -79,6 +79,9 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	process_physics_priority = -10
+	# No account controls during a match.
+	SignedInLabel.visible = false
+	tree_exiting.connect(func(): SignedInLabel.visible = true)
 	Engine.time_scale = 1.0
 	RenderingServer.set_default_clear_color(Color("07060f"))
 	for sb in get_tree().get_nodes_in_group("starbases"):

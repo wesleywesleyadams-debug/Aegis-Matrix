@@ -24,7 +24,12 @@ var planet: Planet
 var _globe: Control
 var _art: TextureRect
 var _title: Label
-var _close: Button
+var _subtitle: Label
+var _details: Label
+## Draws the subtle ring around the planet, the leader line and the name bubble.
+var _deco: Control
+var _ring_color := Color(1, 1, 1, 0.5)
+var _ring := {}
 var _picker: PopupPanel
 var _picker_list: VBoxContainer
 var _menu_field: int = -1
@@ -53,19 +58,16 @@ func _ready() -> void:
 	_slot_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_globe.add_child(_slot_layer)
 
-	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 20)
-	_title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	_title.add_theme_constant_override("outline_size", 6)
-	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_title)
-	_close = Button.new()
-	_close.text = " X "
-	_close.focus_mode = Control.FOCUS_NONE
-	_close.tooltip_text = "Close (Esc)"
-	_close.pressed.connect(func(): game.clear_planet_focus())
-	add_child(_close)
+	_deco = Control.new()
+	_deco.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_deco.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_deco.draw.connect(_draw_deco)
+	add_child(_deco)
+	move_child(_deco, 0)
+	_title = _float_label(18, HORIZONTAL_ALIGNMENT_CENTER)
+	_subtitle = _float_label(12, HORIZONTAL_ALIGNMENT_CENTER)
+	_details = _float_label(14, HORIZONTAL_ALIGNMENT_RIGHT)
+	_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	_picker = PopupPanel.new()
 	_picker_list = VBoxContainer.new()
@@ -155,11 +157,55 @@ func _place() -> void:
 	_art.size = Vector2(_target_d, _target_d)
 	_slot_layer.modulate.a = clampf((_grow - 0.6) / 0.4, 0.0, 1.0)
 	_slot_layer.visible = _slot_layer.modulate.a > 0.0
-	_title.modulate.a = _slot_layer.modulate.a if planet.fields > 0 else k
-	_close.modulate.a = _title.modulate.a
-	_title.size = Vector2(_target_d, 28)
-	_title.position = center + Vector2(-_target_d / 2.0, -d / 2.0 - 34)
-	_close.position = center + Vector2(d / 2.0 + 8.0, -d / 2.0 - 40.0)
+	# Callout: subtle ring around the planet, line out to a name bubble at
+	# the upper-left, details floating beside the bubble.
+	var a := _slot_layer.modulate.a if planet.fields > 0 else k
+	var ring_r := d / 2.0 + 26.0
+	var dir := Vector2(-1, -1).normalized()
+	var br := 58.0
+	var bubble := center + dir * (ring_r + 70.0 + br)
+	var vp := get_viewport_rect().size
+	bubble = bubble.clamp(Vector2(br + 8, br + 80), vp - Vector2(br + 8, br + 8))
+	_ring = {"center": center, "r": ring_r, "from": center + dir * ring_r, "to": bubble - (bubble - (center + dir * ring_r)).normalized() * br, "bubble": bubble, "br": br, "alpha": a}
+	_ring_color = Defs.team_color(planet.owner_id) if planet.owner_id != 0 else Color(0.8, 0.85, 1.0)
+	_ring_color.a = 0.55
+	_deco.queue_redraw()
+	for l in [_title, _subtitle, _details]:
+		l.modulate.a = a
+	_title.size = Vector2(br * 2.0, 24)
+	_title.position = bubble + Vector2(-br, -20)
+	_subtitle.size = Vector2(br * 2.0, 18)
+	_subtitle.position = bubble + Vector2(-br, 6)
+	_details.size = Vector2(340, 0)
+	_details.position = Vector2(bubble.x - br - 350, bubble.y - 10)
+	if _details.position.x < 8:
+		# No room on the left: float the details under the bubble instead.
+		_details.position = Vector2(maxf(8.0, bubble.x - 170), bubble.y + br + 8)
+		_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	else:
+		_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+## Borderless outlined text that floats over the map.
+func _float_label(size: int, align: HorizontalAlignment) -> Label:
+	var l := Label.new()
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	l.add_theme_constant_override("outline_size", 6)
+	l.horizontal_alignment = align
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(l)
+	return l
+
+## Ring around the planet, a leader line out to a small name bubble.
+func _draw_deco() -> void:
+	if _ring.is_empty():
+		return
+	var c: Color = _ring_color
+	c.a *= _ring["alpha"]
+	_deco.draw_arc(_ring["center"], _ring["r"], 0.0, TAU, 128, c, 1.5, true)
+	_deco.draw_line(_ring["from"], _ring["to"], c, 1.5, true)
+	_deco.draw_circle(_ring["bubble"], _ring["br"], Color(0.02, 0.03, 0.08, 0.55 * _ring["alpha"]))
+	_deco.draw_arc(_ring["bubble"], _ring["br"], 0.0, TAU, 64, c, 1.5, true)
 
 func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
 	var st := StyleBoxFlat.new()
@@ -226,8 +272,10 @@ func refresh() -> void:
 	var t := planet.type_def()
 	var mine := planet.owner_id == game.player_id
 	var used0 := planet.fields - planet.buildings.count("")
-	_title.text = ("%s  ·  %s  ·  Size %d  ·  %d/%d built" % [planet.planet_name, t["label"], planet.fields, used0, planet.fields]) if planet.fields > 0 else "%s  ·  %s" % [planet.planet_name, t["label"]]
-	_title.add_theme_color_override("font_color", Defs.team_color(planet.owner_id))
+	_title.text = planet.planet_name
+	_title.add_theme_color_override("font_color", Defs.team_color(planet.owner_id) if planet.owner_id != 0 else Color(0.85, 0.9, 1.0))
+	_subtitle.text = ("%s · Size %d
+%d/%d built" % [t["label"], planet.fields, used0, planet.fields]) if planet.fields > 0 else t["label"]
 	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else "Enemy world")
 	var s := owner_text
 	if not planet.is_habitable():
@@ -263,6 +311,7 @@ func refresh() -> void:
 			var cd: Dictionary = Defs.BUILDINGS[planet.construction["id"]]
 			s += "\nBuilding %s: %d%%%s. %d more queued." % [cd["name"], int(100.0 * planet.construction["progress"] / cd["time"]), " (STALLED)" if planet.construction_stalled else "", planet.construction_queue.size()]
 	stats = s
+	_details.text = s
 	for i in _field_buttons.size():
 		var b := _field_buttons[i]
 		var built: String = planet.buildings[i]
