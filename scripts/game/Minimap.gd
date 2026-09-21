@@ -7,13 +7,7 @@ extends Control
 var game: Game
 var _dragging := false
 
-var _icon_minerals: Texture2D
-var _icon_spice: Texture2D
-
 func _ready() -> void:
-	_icon_minerals = Defs.tex("icon_minerals")
-	_icon_spice = Defs.tex("icon_spice")
-	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	custom_minimum_size = Vector2(336, 224)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -46,11 +40,10 @@ func _draw() -> void:
 	var tree := game.get_tree()
 	for star in tree.get_nodes_in_group("stars"):
 		draw_circle(_map_to_ui(star.global_position), 5.0, Color("ffb347"))
-	# Asteroids as tiny resource icons (minerals / spice), sized by rock.
+	# Asteroids as small blips in their resource's color (minerals teal,
+	# spice orange).
 	for a in tree.get_nodes_in_group("asteroids"):
-		var tex: Texture2D = _icon_spice if a.resource == "spice" else _icon_minerals
-		var s := 8.0 if a.radius >= 12.0 else 6.0
-		draw_texture_rect(tex, Rect2(_map_to_ui(a.global_position) - Vector2(s, s) / 2.0, Vector2(s, s)), false)
+		draw_rect(Rect2(_map_to_ui(a.global_position) - Vector2(1, 1), Vector2(2, 2)), Defs.RESOURCE_COLORS[a.resource])
 	for p in tree.get_nodes_in_group("planets"):
 		var c := Defs.team_color(p.owner_id) if p.owner_id != 0 else Color("7a809a")
 		var pos := _map_to_ui(p.global_position)
