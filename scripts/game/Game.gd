@@ -900,7 +900,17 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 	var sb := selected_starbase()
 	if ships.is_empty():
 		if sb:
-			sb.set_rally(world_pos)
+			# Rally onto a rock or gas giant: new barges/skimmers mine it.
+			var obj: Node2D = asteroid_at(world_pos)
+			if obj == null:
+				var gp := planet_at(world_pos)
+				if gp and not gp.is_habitable():
+					obj = gp
+			sb.set_rally(obj.global_position if obj else world_pos, obj)
+			if obj:
+				hud.flash_target(obj, "")
+			else:
+				hud.ping(world_pos, Color.WHITE)
 		return
 	var target := entity_at(world_pos)
 	var rock := asteroid_at(world_pos)
@@ -1020,6 +1030,16 @@ func _enter_dev_capture() -> void:
 		var sb0 := nearest_starbase(player_id, Vector2.ZERO)
 		sb0.enqueue("corvette")
 		_set_selection([sb0], false)
+	if OS.get_environment("SL_SHOT_OPEN") == "rally":
+		var sbr := nearest_starbase(player_id, Vector2.ZERO)
+		var spr := nearest_asteroid(sbr.global_position, 5000.0, "spice")
+		sbr.set_rally(spr.global_position, spr)
+		sbr.enqueue("miner")
+		sbr.enqueue("miner")
+		get_tree().create_timer(40.0).timeout.connect(func():
+			for s in get_tree().get_nodes_in_group("ships"):
+				if s.owner_id == player_id and s.is_miner() and is_instance_valid(s.mine_target):
+					print("RALLYTEST miner -> ", s.mine_target.name, " (", s.mine_target.resource, ") state ", s.state))
 	if OS.get_environment("SL_SHOT_OPEN") == "siege":
 		var ep: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.is_enemy_of(player_id))[0]
 		for i in 8:

@@ -15,6 +15,9 @@ var build_progress: float = 0.0
 var build_stalled: bool = false
 var rally_point: Vector2
 var has_rally: bool = false
+## Optional rally object (an asteroid or gas giant): new mining ships work
+## it straight away; everything else gathers beside it.
+var rally_target: Node2D
 var under_construction: bool = false
 var construct_progress: float = 0.0
 
@@ -79,8 +82,9 @@ func cancel(index: int) -> void:
 		build_progress = 0.0
 	queue.remove_at(index)
 
-func set_rally(pos: Vector2) -> void:
+func set_rally(pos: Vector2, obj: Node2D = null) -> void:
 	rally_point = pos
+	rally_target = obj
 	has_rally = true
 	queue_redraw()
 
@@ -150,6 +154,10 @@ func _launch(ship_type: String) -> void:
 	if owner_id == g.player_id:
 		g.notify("%s ready." % Defs.SHIPS[ship_type]["name"], "note_ship")
 	ship.rotation = dir.angle()
+	# Rallied to a rock or gas giant this ship can work: mine it.
+	if is_instance_valid(rally_target) and ship.can_mine(rally_target) and rally_target.amount > 0:
+		ship.order_mine(rally_target)
+		return
 	if ship.def["role"] == "skimmer":
 		var giant := g.nearest_gas_giant(global_position, 4000.0)
 		if giant:
