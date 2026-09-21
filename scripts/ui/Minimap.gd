@@ -23,17 +23,16 @@ extends Control
 ## top-left corner sits.
 
 const CENTER: Vector2 = Vector2(210, 120)
-const GROUND_HALF_EXTENT: float = 30.0
+const GROUND_HALF_EXTENT: float = 90.0
 const FILL_HALF_DIAGONAL: Vector2 = Vector2(199.0, 109.0)
 ## Blips are small squares, not circles -- reads as a cleaner, more
 ## "map icon" look at this size than a circle does, and matches
 ## strategy-game minimap convention (a dot per unit/building).
 const BLIP_SIZE: float = 5.0
-## Trees (World.gd, "world" group) always show this fixed dark green,
-## not Entity.PLAYER_COLORS[3] (Nature's own, lighter neutral green
-## used for tabard/health-bar identity) -- scenery, not a faction, so
-## it reads distinctly from an actual Nature-owned unit/building on
-## the same map.
+## Trees/resource nodes (World.gd, "world" group) always show this fixed
+## dark green, not Entity.PLAYER_COLORS[9] (Gaia's own white, used for
+## tabard/health-bar identity) -- scenery, not a faction, so it reads
+## distinctly from an actual Gaia-owned unit/building on the same map.
 const TREE_COLOR: Color = Color(0.08, 0.28, 0.1, 1)
 const VIEW_BOUNDS_COLOR: Color = Color(1, 1, 1, 0.85)
 const VIEW_BOUNDS_WIDTH: float = 2.0

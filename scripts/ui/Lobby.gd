@@ -2,10 +2,9 @@ extends Control
 ## Pre-match setup screen. Two panels: Players (left) lists up to
 ## MAX_PLAYER_SLOTS pre-match slots, each with a slot-type/race/team choice
 ## (see GameState.player_slots); Match Settings (right) holds the
-## match-wide options (Starting Item/Map/Starting Units are single-option
-## placeholders for now, same "wired up as real OptionButtons so adding
-## more options later is just adding entries" status the old Race/AI
-## Opponents fields had).
+## match-wide options (Starting Item/Map are single-option placeholders for
+## now, same "wired up as real OptionButtons so adding more options later is
+## just adding entries" status the old Race/AI Opponents fields had).
 ##
 ## Only slot 1 (the player) and slot 2 (the one opposing side the match
 ## actually spawns -- see RTSController._assign_players) do anything right
@@ -18,7 +17,7 @@ const RACE_OPTIONS: Array = [["human", "Human"], ["elf", "Elf"], ["orc", "Orc"],
 const TEAM_OPTIONS: Array = [["1", 1], ["2", 2], ["3", 3], ["4", 4], ["No Team", 0]]
 ## Purely a visual accent for each slot's player-number badge -- distinct
 ## from Entity.PLAYER_COLORS (which only defines real gameplay colors for
-## players 1/2, plus the fixed Nature/Mob neutral factions) since slots
+## players 1/2, plus the fixed Gaia/Mob neutral factions) since slots
 ## 3-8 here don't correspond to any actual in-match faction yet.
 const BADGE_COLORS: Array = [
 	Color(0.2, 0.45, 0.9), Color(0.85, 0.2, 0.2), Color(0.2, 0.7, 0.3), Color(0.85, 0.75, 0.2),
@@ -28,10 +27,7 @@ const BADGE_COLORS: Array = [
 ## not active" language as the old Play As buttons' UNSELECTED_MODULATE.
 const OPEN_BADGE_COLOR := Color(0.5, 0.45, 0.4)
 
-const MAX_STARTING_UNITS: int = 8
-
 @onready var players_grid: GridContainer = $MainHBox/PlayersPanel/PlayersVBox/PlayersGrid
-@onready var starting_units_spinbox: SpinBox = $MainHBox/SettingsPanel/SettingsVBox/StartingUnitsRow/SpinBox
 @onready var start_button: Button = $MainHBox/SettingsPanel/SettingsVBox/ButtonRow/StartButton
 @onready var back_button: Button = $MainHBox/SettingsPanel/SettingsVBox/ButtonRow/BackButton
 @onready var options_button: Button = $MainHBox/SettingsPanel/SettingsVBox/OptionsButton
@@ -51,11 +47,6 @@ var _slot_rows: Array = []
 func _ready() -> void:
 	Music.play_track(Music.LOBBY_TRACK)
 	_username = _resolve_username()
-
-	starting_units_spinbox.min_value = 1
-	starting_units_spinbox.max_value = MAX_STARTING_UNITS
-	starting_units_spinbox.value = GameState.starting_unit_count
-	starting_units_spinbox.value_changed.connect(_on_starting_units_changed)
 
 	options_button.pressed.connect(OptionsMenu.open)
 	start_button.pressed.connect(_on_start_pressed)
@@ -102,13 +93,6 @@ func _on_active_account_changed() -> void:
 	_username = _resolve_username()
 	for row in _slot_rows:
 		row["slot"].set_item_text(0, _username)
-
-## Every lobby control saves immediately on change (not just when Start is
-## pressed) so whatever was last set is still there even if the player
-## quits straight from the lobby instead of actually starting a match.
-func _on_starting_units_changed(value: float) -> void:
-	GameState.starting_unit_count = int(value)
-	GameState.save_settings()
 
 ## Builds one row per slot in GameState.player_slots, below the header row
 ## already in the scene -- GridContainer lays out direct children in
@@ -216,7 +200,6 @@ func _sync_human_player_id() -> void:
 			return
 
 func _on_start_pressed() -> void:
-	GameState.starting_unit_count = int(starting_units_spinbox.value)
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _on_back_pressed() -> void:

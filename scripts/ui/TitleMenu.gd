@@ -4,6 +4,7 @@ extends Control
 @onready var load_button: Button = $VBox/LoadButton
 @onready var account_button: Button = $VBox/AccountButton
 @onready var options_button: Button = $VBox/OptionsButton
+@onready var editor_button: Button = $VBox/EditorButton
 @onready var quit_button: Button = $VBox/QuitButton
 @onready var dim: ColorRect = $Dim
 @onready var load_list_panel: Panel = $LoadListPanel
@@ -16,6 +17,7 @@ func _ready() -> void:
 	load_button.pressed.connect(_on_load_pressed)
 	account_button.pressed.connect(AccountMenu.open)
 	options_button.pressed.connect(OptionsMenu.open)
+	editor_button.pressed.connect(_on_editor_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 	close_button.pressed.connect(_on_close_load_list_pressed)
 	load_list_panel.visible = false
@@ -54,6 +56,9 @@ func _on_active_account_changed() -> void:
 
 func _on_play_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
+
+func _on_editor_pressed() -> void:
+	get_tree().change_scene_to_file("res://scenes/MapEditor.tscn")
 
 ## Returns {"path": String, "name": String, "timestamp": float} for every
 ## save file, newest first.

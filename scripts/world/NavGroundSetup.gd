@@ -46,6 +46,18 @@ const CELL_SIZE: float = 0.1
 const CELL_HEIGHT: float = 0.05
 
 func _ready() -> void:
+	bake()
+
+## Bakes (or re-bakes) the navmesh from whatever "nav_source"-tagged
+## geometry currently exists in the tree -- pulled out of _ready() into
+## its own callable method so a caller that dynamically adds/removes
+## obstacles AFTER this node's own _ready() already ran (e.g.
+## RTSController populating a custom map-editor-authored map, whose
+## buildings/trees didn't exist yet when this node first baked) can
+## call this again to pick them up. Synchronous (no callback) -- both
+## calls block until done, which is fine for a one-time bake of a
+## handful of static shapes.
+func bake() -> void:
 	var map := get_world_3d().navigation_map
 	NavigationServer3D.map_set_cell_size(map, CELL_SIZE)
 	NavigationServer3D.map_set_cell_height(map, CELL_HEIGHT)
@@ -59,8 +71,6 @@ func _ready() -> void:
 	navmesh.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
 	navmesh.geometry_source_group_name = NAV_SOURCE_GROUP
 
-	# Synchronous (no callback) -- both calls block until done, which is
-	# fine for a one-time bake of a handful of static shapes at level load.
 	var source_geometry := NavigationMeshSourceGeometryData3D.new()
 	NavigationServer3D.parse_source_geometry_data(navmesh, source_geometry, get_tree().root)
 	NavigationServer3D.bake_from_source_geometry_data(navmesh, source_geometry)

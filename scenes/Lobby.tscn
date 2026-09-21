@@ -128,19 +128,6 @@ item_count = 1
 selected = 0
 popup/item_0/text = "Grasslands"
 
-[node name="StartingUnitsRow" type="HBoxContainer" parent="MainHBox/SettingsPanel/SettingsVBox"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Label" type="Label" parent="MainHBox/SettingsPanel/SettingsVBox/StartingUnitsRow"]
-layout_mode = 2
-custom_minimum_size = Vector2(110, 0)
-text = "Starting Units"
-
-[node name="SpinBox" type="SpinBox" parent="MainHBox/SettingsPanel/SettingsVBox/StartingUnitsRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-
 [node name="OptionsButton" type="Button" parent="MainHBox/SettingsPanel/SettingsVBox"]
 layout_mode = 2
 text = "Options"

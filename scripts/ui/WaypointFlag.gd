@@ -21,5 +21,14 @@ static func spawn(parent: Node, world_position: Vector3, number: int = 1) -> Way
 	var flag: WaypointFlag = SCENE.instantiate()
 	parent.add_child(flag)
 	flag.global_position = world_position
+	# Counteract whatever non-uniform scale `parent` might itself have --
+	# e.g. Building.gather_points parents a flag directly under the
+	# building, and Castle.tscn scales its own whole footprint 5x, which
+	# would otherwise make its gather flag render 5x bigger than every
+	# other waypoint flag in the game. This marker's size should always
+	# read the same regardless of which node happens to own it.
+	if parent is Node3D:
+		var parent_scale: Vector3 = parent.global_transform.basis.get_scale()
+		flag.scale = Vector3.ONE / parent_scale
 	flag.set_number(number)
 	return flag

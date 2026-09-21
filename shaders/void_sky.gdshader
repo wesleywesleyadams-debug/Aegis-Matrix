@@ -9,16 +9,16 @@ shader_type sky;
 // RTSCamera._clamp_to_map), but should read as "living empty space"
 // rather than a static painted backdrop on the rare frame it is.
 
-uniform vec3 void_color : source_color = vec3(0.01, 0.0, 0.02);
-uniform float star_density : hint_range(0.0, 1.0) = 0.35;
-uniform float star_brightness : hint_range(0.0, 4.0) = 1.4;
+uniform vec3 void_color : source_color = vec3(0.0, 0.0, 0.0);
+uniform float star_density : hint_range(0.0, 1.0) = 0.42;
+uniform float star_brightness : hint_range(0.0, 4.0) = 1.8;
 uniform float star_radius : hint_range(0.01, 0.4) = 0.12;
 uniform float twinkle_speed : hint_range(0.0, 10.0) = 2.0;
 
 uniform float comet_period : hint_range(1.0, 120.0) = 22.0;
 uniform float comet_duration : hint_range(0.5, 10.0) = 3.5;
 
-uniform float nebula_intensity : hint_range(0.0, 3.0) = 1.4;
+uniform float nebula_intensity : hint_range(0.0, 3.0) = 1.9;
 uniform float nebula_drift_speed : hint_range(0.0, 0.2) = 0.012;
 
 // Cheap hash -- no texture lookup, just enough pseudo-randomness per
@@ -56,19 +56,36 @@ vec2 cube_face_uv(vec3 dir, out float face_seed) {
 	return dir.xy / a.z;
 }
 
+// Reconstructs the unit direction a cube-face-local UV coordinate
+// corresponds to -- the inverse of cube_face_uv's projection. Needed so
+// stars() can measure each candidate star's distance to `dir` as a true
+// angle on the sphere rather than a distance in the (mildly stretched
+// near face edges/corners) local UV plane -- that stretching is what
+// made stars look skewed/elliptical instead of round near face
+// boundaries.
+vec3 cube_face_to_dir(float face_seed, vec2 uv) {
+	if (face_seed == 0.0) return vec3(1.0, uv.x, uv.y);
+	if (face_seed == 1.0) return vec3(-1.0, uv.x, uv.y);
+	if (face_seed == 2.0) return vec3(uv.x, 1.0, uv.y);
+	if (face_seed == 3.0) return vec3(uv.x, -1.0, uv.y);
+	if (face_seed == 4.0) return vec3(uv.x, uv.y, 1.0);
+	return vec3(uv.x, uv.y, -1.0);
+}
+
 // Round dots everywhere on the sky -- see cube_face_uv's doc comment
 // for why a cube-face projection instead of the two more obvious (but
 // distortion-prone) approaches. One candidate star position is
 // jittered per grid cell in the chosen face's local UV space, then
-// drawn as an actual circle (distance-based falloff, fixed
-// star_radius), so it stays round from every direction rather than
-// stretching near any particular view angle.
+// reconstructed back into a real 3D direction so its distance to `dir`
+// can be measured as a true angle on the sphere -- this keeps every
+// star perfectly round no matter where on a face (including edges and
+// corners) it falls, instead of the local-UV-plane distance stretching
+// unevenly near those regions.
 vec3 stars(vec3 dir) {
 	float face_seed;
 	vec2 face_uv = cube_face_uv(dir, face_seed);
 	vec2 uv = face_uv * STAR_GRID_SCALE;
 	vec2 cell = floor(uv);
-	vec2 local_uv = fract(uv) - 0.5;
 	vec3 seed = vec3(cell, face_seed);
 
 	float presence = hash(seed + 1.0);
@@ -76,8 +93,10 @@ vec3 stars(vec3 dir) {
 		return vec3(0.0);
 	}
 	vec2 jitter = (vec2(hash(seed + 2.0), hash(seed + 3.0)) - 0.5) * 0.7;
-	float dist_to_star = length(local_uv - jitter);
-	float dot_mask = smoothstep(star_radius, 0.0, dist_to_star);
+	vec2 star_uv = (cell + 0.5 + jitter) / STAR_GRID_SCALE;
+	vec3 star_dir = normalize(cube_face_to_dir(face_seed, star_uv));
+	float angle_to_star = acos(clamp(dot(dir, star_dir), -1.0, 1.0));
+	float dot_mask = smoothstep(star_radius / STAR_GRID_SCALE, 0.0, angle_to_star);
 
 	// Each star gets its own phase (from a second hash) so they don't
 	// all twinkle in lockstep, plus its own base brightness so the
@@ -146,16 +165,17 @@ vec3 nebula(vec3 dir) {
 	float density = ridged_fbm(uv * 1.1 + warp);
 	float density2 = ridged_fbm(uv * 1.4 + warp * 1.3 + 4.0);
 
-	vec3 deep = vec3(0.06, 0.0, 0.12);
-	vec3 magenta = vec3(0.55, 0.08, 0.65);
-	vec3 blue = vec3(0.08, 0.12, 0.55);
-	vec3 color = mix(deep, magenta, smoothstep(0.15, 0.75, density));
-	color = mix(color, blue, smoothstep(0.35, 0.85, density2) * 0.65);
+	vec3 deep = vec3(0.08, 0.0, 0.16);
+	vec3 magenta = vec3(0.75, 0.1, 0.85);
+	vec3 teal = vec3(0.06, 0.45, 0.55);
+	vec3 color = mix(deep, magenta, smoothstep(0.12, 0.7, density));
+	color = mix(color, teal, smoothstep(0.3, 0.85, density2) * 0.6);
 	// Bright wisp highlights where density peaks, like the reference
 	// image's lit cloud edges rather than a flat-shaded gradient.
-	color += vec3(0.5, 0.25, 0.7) * smoothstep(0.72, 0.95, density);
+	color += vec3(0.95, 0.55, 1.0) * smoothstep(0.68, 0.95, density);
+	color += vec3(0.4, 0.9, 0.95) * smoothstep(0.78, 0.98, density2) * 0.5;
 
-	float mask = smoothstep(0.12, 0.5, density);
+	float mask = smoothstep(0.05, 0.42, density);
 	return color * mask * nebula_intensity;
 }
 
@@ -225,16 +245,16 @@ vec3 planet(vec3 dir, vec3 center, float radius, float rotate_speed, vec3 base_c
 		float limb = smoothstep(radius, radius * 0.3, d);
 		color = surface * limb;
 		float edge_factor = clamp(d / radius, 0.0, 1.0);
-		float rim = pow(edge_factor, 5.0) * limb;
-		color += atmosphere_color * rim * 1.4;
+		float rim = pow(edge_factor, 3.5) * limb;
+		color += atmosphere_color * rim * 1.8;
 	}
 	// Atmosphere halo -- a soft glow extending past the disc's own
 	// silhouette, not clipped to d < radius like the surface itself.
 	// Zeroed inside the disc (d < radius) since that region already got
 	// its own edge brightening above -- this is purely the outer glow.
-	float halo = 1.0 - smoothstep(radius, radius * 1.6, d);
+	float halo = 1.0 - smoothstep(radius, radius * 2.2, d);
 	halo = d < radius ? 0.0 : halo;
-	color += atmosphere_color * halo * 0.5;
+	color += atmosphere_color * halo * 0.85;
 	if (has_ring) {
 		float ring_dist = length(vec2(local_u, local_v / 0.32));
 		float ring_mask = smoothstep(radius * 1.3, radius * 1.38, ring_dist) - smoothstep(radius * 1.85, radius * 1.93, ring_dist);
@@ -245,12 +265,5 @@ vec3 planet(vec3 dir, vec3 center, float radius, float rotate_speed, vec3 base_c
 }
 
 void sky() {
-	vec3 dir = EYEDIR;
-	vec3 color = void_color;
-	color += nebula(dir);
-	color += stars(dir);
-	color += comet(dir);
-	color += planet(dir, normalize(vec3(0.5, 0.3, -0.75)), 0.26, 0.1, vec3(0.08, 0.12, 0.35), vec3(0.4, 0.15, 0.55), vec3(0.55, 0.35, 0.85), true, vec3(0.65, 0.55, 0.7));
-	color += planet(dir, normalize(vec3(-0.45, 0.55, 0.65)), 0.13, -0.18, vec3(0.35, 0.28, 0.18), vec3(0.65, 0.5, 0.35), vec3(0.8, 0.55, 0.35), false, vec3(0.0));
-	COLOR = color;
+	COLOR = void_color;
 }

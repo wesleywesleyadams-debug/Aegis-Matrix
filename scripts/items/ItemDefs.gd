@@ -30,60 +30,18 @@ class_name ItemDefs
 ## descriptor ("Hybrid-Handed Sword": fits in either hand, unlike a
 ## "slot": "two_hand" item, which needs both at once) rather than a
 ## separate "Type" stat row.
-const DEFS: Dictionary = {
-	"sword": {
-		"visual": preload("res://scenes/Sword.tscn"),
-		"pickup": preload("res://scenes/SwordPickup.tscn"),
-		"slot": "hybrid_hand",
-		"name": "Iron Longsword",
-		"display_name": "Hybrid-Handed Sword",
-		"damage": 10.0,
-		"melee_reach": 0.5,
-		"hit_offsets": [0.0, 0.25, 0.5],
-		"stats": {"Damage": "10"},
-	},
-	"steel_longsword": {
-		"visual": preload("res://scenes/SteelSword.tscn"),
-		"pickup": preload("res://scenes/SteelSwordPickup.tscn"),
-		"slot": "hybrid_hand",
-		"name": "Steel Longsword",
-		"display_name": "Hybrid-Handed Sword",
-		"damage": 12.0,
-		"melee_reach": 0.5,
-		"hit_offsets": [0.0, 0.25, 0.5],
-		"stats": {"Damage": "12"},
-	},
-	"iron_shortsword": {
-		"visual": preload("res://scenes/IronShortsword.tscn"),
-		"pickup": preload("res://scenes/IronShortswordPickup.tscn"),
-		"slot": "one_hand",
-		"name": "Iron Short Sword",
-		"display_name": "One-Handed Sword",
-		"damage": 8.0,
-		"melee_reach": 0.3,
-		"hit_offsets": [0.0, 0.15, 0.3],
-		"stats": {"Damage": "8"},
-	},
-	"crossbow": {
-		"visual": preload("res://scenes/Crossbow.tscn"),
-		"pickup": preload("res://scenes/CrossbowPickup.tscn"),
-		"slot": "two_hand",
-		"display_name": "Two-Handed Crossbow",
-		"damage": 14.0,
-		"stats": {"Damage": "14"},
-	},
-	"iron_greatsword": {
-		"visual": preload("res://scenes/IronGreatsword.tscn"),
-		"pickup": preload("res://scenes/IronGreatswordPickup.tscn"),
-		"slot": "two_hand",
-		"name": "Iron Greatsword",
-		"display_name": "Two-Handed Sword",
-		"damage": 16.0,
-		"melee_reach": 0.75,
-		"hit_offsets": [0.0, 0.375, 0.75],
-		"stats": {"Damage": "16"},
-	},
-}
+## Empty for now -- every weapon/armor/accessory item type that used to
+## live here was pulled from the live game (see
+## scripts/RTSController.gd's own removed World pickups and
+## scenes/Main.tscn) in favor of units dealing damage from their own
+## base stats directly (Unit._get_attack_damage already fell back to
+## `attack_damage` whenever ItemDefs had no entry for the active weapon,
+## so removing every entry here doesn't need any change on that side --
+## it just makes the fallback the only path). The full item set (every
+## weapon scene, armor scene, and this file's old entries) is preserved
+## on the `weapon-backup-pre-aoe2-combat` branch if a pickup-based item
+## system is ever wanted again.
+const DEFS: Dictionary = {}
 
 static func get_visual_scene(item_type: String) -> PackedScene:
 	return DEFS.get(item_type, {}).get("visual")
@@ -131,14 +89,13 @@ static func get_damage(item_type: String) -> float:
 static func get_melee_reach_bonus(item_type: String) -> float:
 	return DEFS.get(item_type, {}).get("melee_reach", 0.0)
 
-## Sample points along the weapon's own length (local offsets from the
-## hand, in the direction its visual scene extends -- see Sword.tscn's
-## blade running from grip at Y=0 to tip at Y=0.9) that
-## Entity._land_hit_if_in_reach checks a hit against, approximating a
-## capsule strung along the blade rather than one point at the fist --
-## closer to how a real weapon can land a hit anywhere along its edge, not
-## only at the very tip. Empty for an unrecognized item_type or one with
-## no offsets defined (e.g. an unequipped hand, or the crossbow, which has
+## The two endpoints (local offsets from the hand, in the direction its
+## visual scene extends -- see Sword.tscn's blade running from grip at
+## Y=0 to tip at Y=0.9) of the capsule Entity._land_hit_if_in_reach checks
+## a hit against -- [crossguard, tip], so a real weapon can land a hit
+## anywhere along its full edge, not only at the very tip nor only at a
+## handful of sampled points. Empty for an unrecognized item_type or one
+## with none defined (e.g. an unequipped hand, or the crossbow, which has
 ## no melee swing at all) -- callers (see Unit._get_melee_hit_offsets) treat
 ## that as "fall back to the unarmed fist span" rather than "one point at
 ## the hand", since those are different things.

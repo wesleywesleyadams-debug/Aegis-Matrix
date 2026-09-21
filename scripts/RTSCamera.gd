@@ -18,12 +18,12 @@ extends Node3D
 @export var edge_pan_enabled: bool = true
 
 ## How far the rig's own XZ position may stray from the map center --
-## matches Main.tscn's Ground BoxMesh half-extent (60x60, centered on
+## matches Main.tscn's Ground BoxMesh half-extent (180x180, centered on
 ## the origin). Without this, edge-panning (or Minimap's click-to-
 ## recenter, which also calls clamp_to_map() -- see its own git
 ## history) can push the camera arbitrarily far off the map, past the
 ## ground plane entirely, showing nothing but sky/void.
-const PAN_BOUND: float = 30.0
+const PAN_BOUND: float = 90.0
 
 @onready var camera: Camera3D = $Camera3D
 

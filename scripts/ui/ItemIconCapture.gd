@@ -1,12 +1,14 @@
 extends Node
 ## Autoload singleton ("ItemIcons") that renders a still icon of any
 ## equippable item's actual 3D visual (see ItemDefs.get_visual_scene) on
-## demand, the same "capture the real model instead of drawing a generic
-## shape" idea IconCapture.gd already uses for unit portraits/selection-tray
-## icons -- items just don't move, so unlike IconCapture this owns its own
-## isolated SubViewport/World3D (own_world_3d = true) with its own lighting
-## rather than sharing the main scene's, so it works regardless of which
-## HUD panel or scene asks for an icon first.
+## demand -- unit/building icons (SelectionPanel, PortraitPanel,
+## TrainingPanel) went the other way and dropped live capture entirely in
+## favor of a static placeholder (see UnitIconPlaceholder), since there's
+## no dedicated per-type art for those yet; item icons still capture the
+## real equipped visual since ItemDefs already has one per item. Owns its
+## own isolated SubViewport/World3D (own_world_3d = true) with its own
+## lighting rather than sharing the main scene's, so it works regardless
+## of which HUD panel or scene asks for an icon first.
 ##
 ## Icons are captured once per item_type and cached for the rest of the
 ## session (a sword always looks like a sword) -- callers go through

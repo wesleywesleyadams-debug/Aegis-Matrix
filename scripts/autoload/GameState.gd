@@ -12,16 +12,27 @@ var load_on_start: bool = false
 ## Only meaningful when load_on_start is true.
 var load_save_path: String = ""
 
-## Lobby selection carried into a freshly started (non-loaded) match.
-## Race/item/map/AI have only one option each right now, so only this
-## actually changes anything about the match Main.tscn starts with.
-var starting_unit_count: int = 8
+## Same "carry an argument across change_scene_to_file" pattern as
+## load_on_start/load_save_path above, but for a map-editor-authored
+## custom map (see scripts/MapEditorController.gd) being loaded into
+## Main.tscn for a real playtest rather than a mid-match save being
+## resumed -- RTSController._ready() checks this separately from
+## load_on_start, since a custom map replaces the whole starting
+## roster/buildings rather than restoring position/health onto an
+## already-existing one.
+var load_map_on_start: bool = false
+## Which map file to load, e.g. "user://maps/my_map.json". Only
+## meaningful when load_map_on_start is true.
+var load_map_path: String = ""
 
-## Player 3 -- "Nature" (see Entity.PLAYER_NAMES) -- is a neutral,
+## Player 9 -- "Gaia" (see Entity.PLAYER_NAMES) -- is a neutral,
 ## world-owned faction, not a playable one. There's simply no lobby control
-## that offers it as a Play As choice (only Player 1/Player 2 exist).
-const NATURE_PLAYER_ID: int = 3
-## Player 4 -- "Mob" (see Entity.PLAYER_NAMES) -- same deal as Nature: a
+## that offers it as a Play As choice (only Player 1/Player 2 exist). Kept
+## well past Player 1/2/Mob's own ids (unlike AoE2's own Gaia, which is
+## player 0) so a real playable Player 3+ could exist someday without
+## colliding with this reserved id.
+const NATURE_PLAYER_ID: int = 9
+## Player 4 -- "Mob" (see Entity.PLAYER_NAMES) -- same deal as Gaia: a
 ## non-playable faction with no lobby control offering it.
 const MOB_PLAYER_ID: int = 4
 
@@ -32,6 +43,18 @@ const MOB_PLAYER_ID: int = 4
 ## actual match logic only knows about a single human-controlled player id,
 ## not the full per-slot lobby setup.
 var human_player_id: int = 1
+
+## The human player's own Paths progress -- see PathState/PathDefs' own
+## doc comments for the actual mechanics. Lives here (not owned by
+## PathsPanel, which only holds a reference) so gameplay code anywhere
+## (Entity/Unit/Building/ResourceHUD -- see PathPerks.gd) can check
+## "does the human player currently have path X" without depending on a
+## UI node existing. Reset at the start of every match (see
+## RTSController._ready()) so perks from a previous match never carry
+## over -- an autoload persists for the whole app session, unlike
+## ResourceHUD's own per-match economy dict, which is scene-owned and
+## naturally starts fresh each match.
+var human_path_state: PathState = PathState.new()
 
 ## Up to 8 pre-match player slots (see Lobby.gd's Players panel), one dict
 ## per slot: {"slot_type": "human"/"ai"/"open", "race": String, "team": int
@@ -105,6 +128,21 @@ var show_combat_hitboxes: bool = false:
 		show_combat_hitboxes = value
 		combat_hitboxes_visibility_changed.emit(value)
 
+## Whether every equipped item's GripMarker (the red sphere authored onto
+## its GripPoint node -- see e.g. IronGreatsword.tscn) is shown. Off by
+## default, same reasoning as show_combat_hitboxes: a grip-alignment
+## debugging aid, not something a normal match should show.
+## GripPointsToggleButton (see Main.tscn's UI) flips this; Unit listens for
+## the change so it applies live to whatever's already equipped, not just
+## items equipped after.
+signal grip_points_visibility_changed(visible_now: bool)
+var show_grip_points: bool = false:
+	set(value):
+		if value == show_grip_points:
+			return
+		show_grip_points = value
+		grip_points_visibility_changed.emit(value)
+
 ## Which UI font is applied to the shared theme (see OptionsMenu._apply_font)
 ## -- one of OptionsMenu.FONT_OPTIONS' keys.
 var ui_font: String = "medieval"
@@ -139,6 +177,15 @@ func saves_dir() -> String:
 	var key := _sanitize_for_path(active_account) if not active_account.is_empty() else GUEST_SAVES_KEY
 	return "%s/%s" % [SAVES_ROOT, key]
 
+## Root folder every account's map-editor-authored maps live under -- same
+## per-account split as saves_dir(), same reasoning (MapEditorController/
+## TitleMenu both call this rather than hardcoding "user://maps").
+const MAPS_ROOT: String = "user://maps"
+
+func maps_dir() -> String:
+	var key := _sanitize_for_path(active_account) if not active_account.is_empty() else GUEST_SAVES_KEY
+	return "%s/%s" % [MAPS_ROOT, key]
+
 ## Account names are free-form user text (spaces, unicode, ...) but folder
 ## names can't contain path separators or the handful of characters
 ## Windows forbids -- swap those out rather than letting DirAccess silently
@@ -165,6 +212,22 @@ func account_settings_path() -> String:
 
 func _ready() -> void:
 	load_settings()
+	_enforce_fullscreen()
+
+## Re-asserts borderless fullscreen in code, on top of the [display]
+## project settings (window/size/mode=3, window/size/borderless=true) --
+## belt-and-suspenders against the Windows taskbar staying visible, which
+## can happen if the OS ever hands the window a size that isn't pixel-
+## exact with the monitor's real resolution (multi-monitor setups, a
+## display added/removed since launch, some DPI-scaling configurations).
+## Exclusive fullscreen (mode 4) hides the taskbar more reliably but was
+## reverted project-wide because combining it with borderless=true caused
+## HUD elements to render partially off-screen -- see project.godot's
+## [display] section.
+func _enforce_fullscreen() -> void:
+	var window := get_window()
+	window.mode = Window.MODE_FULLSCREEN
+	window.borderless = true
 
 ## Writes both the global (account bookkeeping) and the active account's own
 ## settings file. Called right after each individual setting changes (a
@@ -191,8 +254,8 @@ func save_account_settings() -> void:
 	config.set_value("audio", "music_enabled", music_enabled)
 	config.set_value("visuals", "show_debug_grid", show_debug_grid)
 	config.set_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
+	config.set_value("visuals", "show_grip_points", show_grip_points)
 	config.set_value("visuals", "ui_font", ui_font)
-	config.set_value("lobby", "starting_unit_count", starting_unit_count)
 	config.set_value("lobby", "human_player_id", human_player_id)
 	config.set_value("lobby", "player_slots", player_slots)
 	var path := account_settings_path()
@@ -241,8 +304,8 @@ func load_account_settings() -> void:
 	music_enabled = config.get_value("audio", "music_enabled", music_enabled)
 	show_debug_grid = config.get_value("visuals", "show_debug_grid", show_debug_grid)
 	show_combat_hitboxes = config.get_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
+	show_grip_points = config.get_value("visuals", "show_grip_points", show_grip_points)
 	ui_font = config.get_value("visuals", "ui_font", ui_font)
-	starting_unit_count = config.get_value("lobby", "starting_unit_count", starting_unit_count)
 	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)
 	player_slots = config.get_value("lobby", "player_slots", player_slots)
 
@@ -253,11 +316,11 @@ func load_account_settings() -> void:
 func _reset_account_settings_to_defaults() -> void:
 	show_debug_grid = true
 	show_combat_hitboxes = false
+	show_grip_points = false
 	ui_font = "medieval"
 	master_volume_db = 0.0
 	music_volume_db = -8.0
 	audio_enabled = true
 	music_enabled = true
-	starting_unit_count = 8
 	human_player_id = 1
 	player_slots = _default_player_slots()

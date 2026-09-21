@@ -8,6 +8,13 @@ class_name Entity
 ## unmodified and what Unit overrides to add chasing on top of.
 
 const TURN_SPEED: float = 12.0
+## How close model_root's current facing needs to be to the target's
+## actual direction, in radians, before _update_attack_target lets a swing
+## fire -- see its own doc comment for why this exists (facing turns
+## gradually, not instantly, so without this gate a swing could fire while
+## still facing wherever the unit happened to be facing before the target
+## came into range).
+const FACING_TOLERANCE: float = deg_to_rad(8.0)
 
 ## Identifies this entity's type for UI purposes -- e.g. the selection
 ## tray groups same-type units into one icon with a count badge rather
@@ -104,17 +111,6 @@ func get_engage_radius_bonus() -> float:
 ## with a clear has_line_of_sight()) should be revealed. 4 tiles at the
 ## debug grid's 2.6-unit cell size (see Main.tscn's DebugGrid shader).
 @export var vision_range: float = 10.4
-## How long the hitbox stays active (able to land a hit) once a swing
-## starts, before switching off again for the rest of the cooldown -- one
-## shared value for every weapon (unarmed, sword, ...), so the hit window
-## itself doesn't vary by what's equipped, only its damage/reach/timing do.
-const ATTACK_ACTIVE_DURATION: float = 0.3
-## How much shorter than attack_cooldown a swing's played-back length is
-## kept -- see perform_attack()'s playback_speed, which stretches/
-## compresses every attack animation to fit this so the swing always
-## visibly finishes before the next one starts, no matter the clip's
-## native length or how attack_cooldown gets tuned.
-const ATTACK_ANIMATION_COOLDOWN_MARGIN: float = 0.1
 ## Crossfade duration used for every animation_player.play() call on this
 ## entity (swinging into an attack, and Unit's own Idle/Walk switches) --
 ## AnimationPlayer.play()'s default custom_blend (-1) falls back to 0,
@@ -125,24 +121,6 @@ const ATTACK_ANIMATION_COOLDOWN_MARGIN: float = 0.1
 ## the two poses are, without needing the clips themselves to share a
 ## pose at the cut point.
 const ANIMATION_BLEND_TIME: float = 0.25
-## How far into a given attack animation (as a fraction of its length) the
-## fist/weapon reaches full extension -- measured directly off each clip
-## via right-hand-to-shoulder distance sampled frame by frame. Keyed by
-## animation name (see _get_attack_animation_name()) since different
-## weapons swing on different timings: "Attack" is the unarmed Mixamo
-## "Punching" clip (peaked at frame 13 of 24), "Attack_Sword" is the
-## one-handed Mixamo "Stable Sword Outward Slash" clip, trimmed to drop its
-## static wind-up hold (see _blender_trim_sword_attack.py -- the raw clip's
-## first 8 of 49 frames barely move at all) and re-measured on the trimmed
-## clip, peaked at frame 15 of 40. perform_attack() uses this to delay turning the hitbox on until
-## the swing has actually landed, instead of firing it the instant the
-## animation starts. Falls back to the "Attack" entry for any animation
-## name not listed here.
-const ATTACK_IMPACT_FRACTIONS: Dictionary = {
-	"Attack": 0.5417,
-	"Attack_Sword": 0.375,
-	"Attack_TwoHanded": 0.45,
-}
 ## How close the hitbox needs to be to a target's approximate body center
 ## (see _land_hit_if_in_reach) to actually land a hit -- roughly the
 ## target's own capsule radius (0.285) plus the fist hitbox's own reach,
@@ -235,6 +213,12 @@ const SELECTION_RING_COLOR: Color = Color(0.3, 1, 0.4, 1)
 ## Flash color for blink_attack_target() -- distinct red, unmistakable
 ## against the ring's normal green.
 const ATTACK_TARGET_BLINK_COLOR: Color = Color(1, 0.15, 0.15, 1)
+## Amber, matching Building.CONSTRUCTION_BLINK_COLOR's own "you just
+## tasked something onto me" language -- used for a World resource node
+## (Oak Tree, Crystal Cave, ...) when peasants are right-clicked onto it
+## to gather (see RTSController._handle_right_click), the same one-shot
+## feedback moment blink_attack_target already gives an attack order.
+const GATHER_TARGET_BLINK_COLOR: Color = Color(1.0, 0.75, 0.15, 1.0)
 ## How long each on/off phase of blink_attack_target() lasts -- same
 ## rhythm WorldItem.blink_selection() uses for "you just right-clicked
 ## this item".
@@ -243,6 +227,12 @@ const ATTACK_BLINK_INTERVAL: float = 0.12
 ## animations (e.g. Unit's paladin model) -- null for sprite-billboard
 ## entities and for Building, which never plays Walk/Idle.
 @onready var animation_player: AnimationPlayer = model_root.find_child("AnimationPlayer", true, false)
+## Same "present only for a rigged/skinned model" caveat as animation_player
+## above -- null for sprite-billboard entities and Building. See Unit's
+## _apply_grip_pose(), which overrides individual finger bones on this
+## every frame to curl around whatever's equipped, independent of
+## whatever animation clip is currently playing.
+@onready var skeleton: Skeleton3D = model_root.find_child("Skeleton3D", true, false)
 @onready var health_bar: Node3D = $HealthBar
 ## Melee hitbox -- for a rigged/skinned entity (see ParentUnit.tscn) this is
 ## a small fist-sized box nested under WeaponSlot, a BoneAttachment3D on the
@@ -259,6 +249,16 @@ const ATTACK_BLINK_INTERVAL: float = 0.12
 ## math. Null for anything without an AttackHitbox to begin with.
 @onready var attack_hitbox_mesh: MeshInstance3D = (
 	attack_hitbox.get_node_or_null("HitboxMesh") if attack_hitbox != null else null
+)
+## Same idea as attack_hitbox, but for a weapon actually held in left_hand
+## (see ParentUnit.tscn's AttackHitboxLeft, nested under WeaponSlotLeft) --
+## only relevant while dual-wielding (see Unit._get_attack_animation_name's
+## "dual_wield" grip), since left_hand's weapon is otherwise visual-only.
+## Null for anything without one (e.g. Building, or an older model built
+## before this existed).
+@onready var attack_hitbox_left: Area3D = model_root.find_child("AttackHitboxLeft", true, false)
+@onready var attack_hitbox_left_mesh: MeshInstance3D = (
+	attack_hitbox_left.get_node_or_null("HitboxMesh") if attack_hitbox_left != null else null
 )
 ## Purely visual -- a translucent yellow sphere matching the Hurtbox's own
 ## radius (see get_engage_radius_bonus), shown persistently (not just
@@ -278,26 +278,25 @@ const ATTACK_BLINK_INTERVAL: float = 0.12
 ## sprite-billboard peasant).
 @onready var tabard: MeshInstance3D = model_root.find_child("Paladin_J_Nordstrom_Helmet", true, false)
 
-## Preloaded once and duplicated per-entity (each needs its own
-## hologram_color parameter) -- see _update_hologram_material().
-const HOLOGRAM_SHADER_MATERIAL: ShaderMaterial = preload("res://shaders/hologram_material.tres")
-## This entity's own duplicated hologram material instance, applied as a
-## surface override on every mesh under model_root. Created lazily the
-## first time _update_hologram_material() runs (both _ready() and the
-## player_id setter call it, and player_id's setter can fire before
-## _ready() during scene instantiation).
-var _hologram_material: ShaderMaterial
-
 var _attack_cooldown_remaining: float = 0.0
 var _attacking: bool = false
+## The actual swing-timing/hit-detection logic lives in CombatBehavior.gd
+## now -- see its own doc comment for why it's a plain delegate object
+## rather than folded into this class or a full ECS component. Built in
+## _ready() (needs `self` to exist first).
+var _combat: CombatBehavior
 ## The world positions _get_melee_hit_offsets() resolved to on the
-## previous polled frame -- see _land_hit_if_in_reach(), which checks the
+## previous polled frame, for the right-hand/two-hand hitbox (attack_hitbox)
+## -- see _land_hit_if_in_reach(), which checks the
 ## segment from each of these to its current-frame counterpart (not just
 ## the current point alone) so a fast swing can't tunnel a hit point past
 ## the target between two physics frames without either ever landing
 ## exactly on it. Empty at the start of each swing (see perform_attack()),
 ## so the first poll falls back to a plain point check.
-var _prev_hit_points: Array[Vector3] = []
+var _prev_hit_points_right: Array[Vector3] = []
+## Same as _prev_hit_points_right, but for the left-hand hitbox
+## (attack_hitbox_left) while dual-wielding.
+var _prev_hit_points_left: Array[Vector3] = []
 
 ## Debug visualization of the has_line_of_sight() check against attack_target
 ## -- a thin line from this entity to its target, green when clear and red
@@ -308,32 +307,21 @@ var _sight_line: MeshInstance3D
 var _sight_line_mesh: ImmediateMesh
 var _sight_line_mat: StandardMaterial3D
 
-## Players 3+ (Nature, Mob) are non-playable factions -- see
-## GameState.NATURE_PLAYER_ID/MOB_PLAYER_ID -- with no lobby control ever
+## Player 4/9 (Mob, Gaia) are non-playable factions -- see
+## GameState.MOB_PLAYER_ID/NATURE_PLAYER_ID -- with no lobby control ever
 ## offering them as a Play As choice (only Player 1/Player 2 exist).
 const PLAYER_COLORS: Dictionary = {
 	1: Color(0.2, 0.45, 0.9), # blue
 	2: Color(0.85, 0.2, 0.2), # red
-	3: Color(0.45, 0.62, 0.28), # Nature -- neutral green
 	4: Color(0.55, 0.4, 0.35), # Mob -- neutral brown
-}
-
-## Hologram tint per player -- deliberately its own mapping rather than
-## reusing PLAYER_COLORS: Nature and Mob read as white/black here (a
-## "neutral"/"hostile-wildlife" hologram tint) rather than the green/brown
-## PLAYER_COLORS uses for their tabard/health-bar identity elsewhere.
-const HOLOGRAM_COLORS: Dictionary = {
-	1: Color(0.25, 0.85, 1.0), # blue
-	2: Color(1.0, 0.25, 0.25), # red
-	3: Color(0.9, 0.9, 0.9), # Nature -- white
-	4: Color(0.05, 0.05, 0.05), # Mob -- black
+	9: Color(1, 1, 1), # Gaia -- white
 }
 
 const PLAYER_NAMES: Dictionary = {
 	1: "Player 1",
 	2: "Player 2",
-	3: "Nature",
 	4: "Mob",
+	9: "Gaia",
 }
 
 ## Which player owns this entity. Whichever of Player 1/2 the human chose
@@ -344,7 +332,6 @@ const PLAYER_NAMES: Dictionary = {
 	set(value):
 		player_id = value
 		_update_tabard_color()
-		_update_hologram_material()
 		if health_bar:
 			health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
 
@@ -390,14 +377,64 @@ func _on_combat_hitboxes_visibility_changed(visible_now: bool) -> void:
 	if hurtbox_mesh != null:
 		hurtbox_mesh.visible = visible_now
 
+## Pulls this Entity's stats from UnitDefs and BuildingDefs, keyed by
+## unit_type_id -- see either file's own doc comment for why every entry
+## currently reproduces whatever this Entity's @export default/.tscn
+## override already was, so this causes zero behavior change on its own;
+## it exists so a future stat change/new type only touches one
+## dictionary entry, not several constants spread across
+## Entity.gd/Unit.gd/Building.gd/individual .tscn files. Run first thing
+## in _ready(), before current_health is copied from max_health, so a
+## def-file HP entry affects starting health too. A type with no
+## matching entry (or a stat key that entry doesn't define) leaves this
+## Entity's existing value untouched (see each Defs file's -1.0 "no
+## override" sentinel).
+##
+## Deliberately doesn't branch on `self is Unit`/`self is Building` --
+## Entity.gd is Unit/Building's own base class, and referencing either
+## derived class_name from here creates a circular script-parse
+## dependency (Unit/Building extends Entity, which would need to resolve
+## Unit/Building's type first). Since unit_type_id strings never collide
+## between the two Defs files' key sets ("peasant" vs. "hut"/"castle"/
+## "wall"/"tower"/"building"), just trying both lookups and applying
+## whichever actually has a matching entry sidesteps that entirely.
+## MAX_SPEED is only ever a Unit property (Building has no such field),
+## set dynamically via set() rather than a static Unit-typed
+## reference/cast for the same reason -- Object.set() on a nonexistent
+## property is a silent no-op, so this is still safe for a Building.
+func _apply_type_defs() -> void:
+	var defs_max_health := UnitDefs.get_max_health(unit_type_id)
+	var defs_attack_damage := UnitDefs.get_attack_damage(unit_type_id)
+	var defs_attack_cooldown := UnitDefs.get_attack_cooldown(unit_type_id)
+	var defs_attack_range := UnitDefs.get_attack_range(unit_type_id)
+	var defs_vision_range := UnitDefs.get_vision_range(unit_type_id)
+	var defs_max_speed := UnitDefs.get_max_speed(unit_type_id)
+	if defs_max_health >= 0.0:
+		max_health = defs_max_health
+	if defs_attack_damage >= 0.0:
+		attack_damage = defs_attack_damage
+	if defs_attack_cooldown >= 0.0:
+		attack_cooldown = defs_attack_cooldown
+	if defs_attack_range >= 0.0:
+		attack_range = defs_attack_range
+	if defs_vision_range >= 0.0:
+		vision_range = defs_vision_range
+	if defs_max_speed >= 0.0:
+		set("MAX_SPEED", defs_max_speed)
+
+	var defs_building_max_health := BuildingDefs.get_max_health(unit_type_id)
+	if defs_building_max_health >= 0.0:
+		max_health = defs_building_max_health
+
 func _ready() -> void:
+	_combat = CombatBehavior.new(self)
+	_apply_type_defs()
 	selection_ring.visible = false
 	current_health = max_health
 	health_bar.set_health_fraction(1.0)
 	_update_health_bar_visibility()
 	_update_tabard_color()
 	health_bar.set_fill_color(PLAYER_COLORS.get(player_id, Color.WHITE))
-	_update_hologram_material()
 
 	if hurtbox_mesh != null:
 		hurtbox_mesh.visible = GameState.show_combat_hitboxes
@@ -429,39 +466,6 @@ func _update_tabard_color() -> void:
 	material.albedo_color = PLAYER_COLORS.get(player_id, Color.WHITE)
 	tabard.set_surface_override_material(1, material)
 
-## Applies (creating on first use) this entity's own hologram material,
-## tinted per HOLOGRAM_COLORS[player_id], as a surface override on every
-## MeshInstance3D under model_root -- the whole-game hologram art
-## direction, replacing whatever texture each model would otherwise show.
-## Guarded for model_root being unset: this can run from the player_id
-## setter during scene instantiation, before @onready vars (model_root
-## included) have resolved -- same guard pattern _update_tabard_color
-## already uses.
-func _update_hologram_material() -> void:
-	if model_root == null:
-		return
-	if _hologram_material == null:
-		_hologram_material = HOLOGRAM_SHADER_MATERIAL.duplicate()
-	_hologram_material.set_shader_parameter("hologram_color", HOLOGRAM_COLORS.get(player_id, Color.WHITE))
-	for mesh_instance in _find_mesh_instances(model_root):
-		for s in mesh_instance.mesh.get_surface_count():
-			mesh_instance.set_surface_override_material(s, _hologram_material)
-
-func _find_mesh_instances(n: Node) -> Array[MeshInstance3D]:
-	var result: Array[MeshInstance3D] = []
-	# HitboxMesh (see attack_hitbox_mesh) sits under model_root/.../WeaponSlot
-	# so it tracks the swing correctly, but it's a debug-only visual with
-	# its own deliberate yellow material (see perform_attack()/
-	# GameState.show_combat_hitboxes) -- it must NOT get swept up into the
-	# hologram material along with the model's real meshes.
-	if n.name == "HitboxMesh":
-		return result
-	if n is MeshInstance3D and n.mesh != null:
-		result.append(n)
-	for c in n.get_children():
-		result.append_array(_find_mesh_instances(c))
-	return result
-
 ## Flashes this entity's own selection ring red twice -- the feedback for
 ## "a unit just targeted you for melee" (see
 ## RTSController._issue_attack_order), reusing WorldItem.blink_selection()'s
@@ -470,10 +474,13 @@ func _find_mesh_instances(n: Node) -> Array[MeshInstance3D]:
 ## selected, then restores it to whatever `selected` actually is (and its
 ## normal green) once done, so blinking an unselected enemy's ring doesn't
 ## leave it stuck visible, and blinking a selected one doesn't leave it red.
-func blink_attack_target(times: int = 2) -> void:
+## `color` defaults to the attack-target red but is overridable -- see
+## Building.blink_construction_target(), the other "you just tasked a unit
+## onto me" moment that reuses this same on/off rhythm with its own color.
+func blink_attack_target(times: int = 2, color: Color = ATTACK_TARGET_BLINK_COLOR) -> void:
 	if selection_ring == null:
 		return
-	_recolor_selection_ring(ATTACK_TARGET_BLINK_COLOR)
+	_recolor_selection_ring(color)
 	for i in times:
 		selection_ring.visible = true
 		await get_tree().create_timer(ATTACK_BLINK_INTERVAL).timeout
@@ -510,26 +517,35 @@ func _recolor_mesh_recursive(node: Node, color: Color) -> void:
 		_recolor_mesh_recursive(child, color)
 
 ## Reduces health by `amount` (clamped at 0) and updates the floating bar.
-## Triggers _die() once health actually reaches 0 -- no-ops instead of
-## re-triggering it if already dying (an in-flight swing that lands the
-## same frame death starts, or a couple of frames later while the death
-## animation is still playing, shouldn't restart the death sequence).
-## Eventually a Unit's kill count should feed both Grace (see
-## ResourceHUD) and a per-unit leveling system that automatically scales
-## up stats like attack_damage/max_health the more kills that unit has
-## -- neither exists yet, and take_damage doesn't even know who dealt
-## the damage (no attacker parameter), so there's nothing to attribute
-## a kill to yet. Whoever wires that up will need to add that
-## attribution here and in _die() below, not just tack kill-counting on
-## as an afterthought elsewhere.
-func take_damage(amount: float) -> void:
+## Triggers _die(attacker) once health actually reaches 0 -- no-ops
+## instead of re-triggering it if already dying (an in-flight swing that
+## lands the same frame death starts, or a couple of frames later while
+## the death animation is still playing, shouldn't restart the death
+## sequence). `attacker` (added for Path of Betrayal/Death -- see
+## PathPerks.apply_kill_refund/apply_death_drop, both keyed off the
+## KILLER's own player_id) is optional and only ever passed by
+## CombatBehavior's own melee-hit call site; nothing else deals damage
+## in this project yet. Path of Purity's "immune to the first hit of
+## every fight" (see _try_consume_purity_shield -- Entity's own version
+## always refuses, Unit overrides it) is checked before any of that,
+## since a blocked hit deals no damage and can't kill anything.
+func take_damage(amount: float, attacker: Entity = null) -> void:
 	if _dying:
+		return
+	if _try_consume_purity_shield():
 		return
 	current_health = maxf(current_health - amount, 0.0)
 	health_bar.set_health_fraction(current_health / max_health)
 	_update_health_bar_visibility()
 	if current_health <= 0.0:
-		_die()
+		_die(attacker)
+
+## Always refuses (no shield to consume) -- see Unit's own override for
+## the actual Path of Purity mechanic. A World object or Building has no
+## "fight" concept to speak of, so this is a no-op for them by design,
+## not an oversight.
+func _try_consume_purity_shield() -> bool:
+	return false
 
 func heal(amount: float) -> void:
 	current_health = minf(current_health + amount, max_health)
@@ -575,7 +591,7 @@ const DEATH_SINK_DEPTH: float = 1.0
 ## queue_free() at the very end naturally drops it from every group at the
 ## moment it's actually gone, which is the right time for vision to go
 ## with it.
-func _die() -> void:
+func _die(attacker: Entity = null) -> void:
 	if _dying:
 		return
 	_dying = true
@@ -585,6 +601,10 @@ func _die() -> void:
 	selection_ring.visible = false
 	health_bar.visible = false
 	selected = false
+	if attacker != null and is_instance_valid(attacker):
+		var resource_hud: ResourceHUD = get_tree().current_scene.get_node_or_null("UI/ResourceHUD")
+		PathPerks.apply_kill_refund(attacker.player_id, resource_hud)
+		PathPerks.apply_death_drop(attacker.player_id, resource_hud)
 	if animation_player != null and animation_player.has_animation("Death"):
 		animation_player.play("Death")
 		await animation_player.animation_finished
@@ -595,8 +615,11 @@ func _die() -> void:
 	if is_instance_valid(self):
 		queue_free()
 
+## Thin forwarder -- see CombatBehavior.gd, where the actual combat
+## logic (perform_attack/can_attack/hit-detection) now lives. Built in
+## _ready() (see _combat).
 func can_attack() -> bool:
-	return attack_hitbox != null and not _attacking and _attack_cooldown_remaining <= 0.0
+	return _combat.can_attack()
 
 ## Which AnimationPlayer clip perform_attack() should play for this swing --
 ## "Attack" (bare-handed) by default. Unit overrides this to swing whatever
@@ -608,35 +631,49 @@ func _get_attack_animation_name() -> String:
 	return "Attack"
 
 ## How much damage this swing actually deals -- attack_damage (the unarmed
-## amount) by default. Unit overrides this to use the equipped weapon's
-## own damage (see ItemDefs.get_damage) whenever backpack.right_hand holds
-## one with a defined value.
-func _get_attack_damage() -> float:
+## amount) by default. Unit overrides this to use a weapon's own damage
+## (see ItemDefs.get_damage) whenever one's equipped. item_type lets a
+## caller ask about a SPECIFIC hand's weapon (e.g. left_hand's, while
+## dual-wielding -- see perform_attack()) rather than always the "active"
+## one (right_hand/two_hand); "" (the default) means "the active weapon",
+## same as before this parameter existed.
+func _get_attack_damage(item_type: String = "") -> float:
 	return attack_damage
 
 ## How close this entity's hitbox needs to reach a target to land a hit --
-## MELEE_REACH (the unarmed fist's reach) by default. Unit overrides this
-## to add the equipped weapon's own reach bonus (see
-## ItemDefs.get_melee_reach_bonus) whenever backpack.right_hand holds one,
-## e.g. a sword's blade extending reach well past a bare fist's.
-func _get_melee_reach() -> float:
+## MELEE_REACH (the unarmed fist's reach), not currently overridden by
+## Unit. A weapon's added reach is instead baked directly into where the
+## hitbox itself sits (see Unit._update_attack_hitbox_position), not into
+## this value. See _get_attack_damage's doc comment for what item_type
+## does (accepted here too for a uniform signature across all three
+## per-swing lookups, even though this one ignores it today).
+func _get_melee_reach(item_type: String = "") -> float:
 	return MELEE_REACH
 
-## Local offsets (along attack_hitbox's parent's own +Y, the same axis
-## every weapon's visual scene is authored along -- see
-## ItemDefs.get_melee_hit_offsets) sampled each frame during the active
-## window to check for a landed hit. UNARMED_HIT_OFFSETS is a single
-## point (a sphere, via MELEE_REACH, centered on it -- not a line like a
-## weapon's multi-point capsule, since a fist is compact, not long) set
-## slightly forward of the hand bone (which Mixamo places at the wrist)
-## so it actually sits at the fist's center rather than the wrist itself.
-## Unit overrides this to string several points along an equipped
-## weapon's own length instead, e.g. a sword's grip/mid-blade/tip -- same
-## idea, just a longer capsule for a longer weapon.
-const UNARMED_HIT_OFFSETS: Array = [0.08]
+## The [start, end] capsule endpoints (along a hitbox's parent's own +Y,
+## the same axis every weapon's visual scene is authored along -- see
+## ItemDefs.get_melee_hit_offsets) _land_hit_if_in_reach checks a hit
+## against each frame. Mirrors "dagger"'s own hit_offsets (see
+## ItemDefs.DEFS) rather than being a separate, smaller span of its own --
+## a bare fist's hit-check sphere is now the same size as the smallest
+## real weapon's, not its own even-smaller thing. Unit overrides this to
+## span an equipped weapon's own length instead, from crossguard to tip --
+## same idea, just a longer capsule for a longer weapon. See
+## _get_attack_damage's doc comment for what item_type does.
+const UNARMED_HIT_OFFSETS: Array = [0.0, 0.15]
 
-func _get_melee_hit_offsets() -> Array:
+func _get_melee_hit_offsets(item_type: String = "") -> Array:
 	return UNARMED_HIT_OFFSETS
+
+## The item_type actually held in left_hand right now, or "" if left_hand
+## is empty/this entity has no such concept (Building, an unarmed unit,
+## one wielding a two-handed/hybrid-two-handed weapon whose left_hand slot
+## sits empty by design -- see BACKPACK_SLOTS' doc comment). "" by
+## default; Unit overrides this to read backpack["left_hand"] directly.
+## perform_attack() uses this (together with attack_hitbox_left) to decide
+## whether a swing should also check a left-hand hit, dual-wielding only.
+func _get_left_hand_weapon_item_type() -> String:
+	return ""
 
 ## True when nothing on SIGHT_OBSTACLE_MASK sits between this entity and
 ## `target` -- used to stop an in-range target from being attacked (or
@@ -650,132 +687,29 @@ func has_line_of_sight(target: Node3D) -> bool:
 	var result := space_state.intersect_ray(query)
 	return result.is_empty()
 
-## Swings: shows the fist-tracking hitbox visual during the active window
-## and lands a hit directly on attack_target if it's actually in reach at
-## that moment. Damage is decided by an explicit distance check
-## (_land_hit_if_in_reach), not Area3D's overlap signal -- headless testing
-## found the signal/get_overlapping_bodies() unreliable for a small,
-## fast-moving hitbox repositioned every frame via BoneAttachment3D: it sat
-## genuinely within centimeters of the target's capsule for several
-## consecutive physics frames without ever being reported as overlapping (a
-## physics-server broadphase sync-lag class of issue, not a geometry one).
+## Thin forwarder -- see CombatBehavior.gd (_combat, built in _ready()),
+## where the actual swing-timing/hit-detection logic now lives.
 func perform_attack() -> void:
-	if not can_attack():
-		return
-	_attacking = true
-	var effective_cooldown := _get_attack_cooldown()
-	_attack_cooldown_remaining = effective_cooldown
-	var impact_delay := 0.0
-	var animation_name := _get_attack_animation_name()
-	if animation_player != null and animation_player.has_animation(animation_name):
-		var attack_animation := animation_player.get_animation(animation_name)
-		# Stretch/compress playback so the clip's own length always matches
-		# effective_cooldown regardless of the clip's native length or
-		# however attack_cooldown gets tuned later -- otherwise a long swing
-		# (the sword's is 2.07s) can run longer than a short cooldown and
-		# overlap the next swing, while a short one leaves the animation
-		# finishing well before the next swing is due.
-		# ATTACK_ANIMATION_COOLDOWN_MARGIN keeps a small gap so the swing
-		# visibly finishes before the next one starts rather than landing
-		# exactly as the next begins.
-		var target_duration: float = maxf(effective_cooldown - ATTACK_ANIMATION_COOLDOWN_MARGIN, 0.05)
-		var playback_speed: float = attack_animation.length / target_duration
-		animation_player.play(animation_name, ANIMATION_BLEND_TIME, playback_speed)
-		# Center the hit window on the moment the fist/weapon is actually
-		# fully extended (see ATTACK_IMPACT_FRACTIONS), rather than swinging
-		# the box on the instant the animation starts -- otherwise the
-		# hitbox fires during the windup, well before the fist/weapon has
-		# reached the target. Measured against target_duration (the clip's
-		# actual played-back length), not attack_animation.length (its
-		# native, unscaled length), since playback_speed above stretches or
-		# compresses the real timeline.
-		var impact_fraction: float = ATTACK_IMPACT_FRACTIONS.get(animation_name, ATTACK_IMPACT_FRACTIONS["Attack"])
-		impact_delay = maxf(target_duration * impact_fraction - ATTACK_ACTIVE_DURATION / 2.0, 0.0)
-	if impact_delay > 0.0:
-		await get_tree().create_timer(impact_delay).timeout
-	if not is_instance_valid(self) or not is_instance_valid(attack_hitbox):
-		return
-	if attack_hitbox_mesh != null:
-		attack_hitbox_mesh.visible = GameState.show_combat_hitboxes
-	_prev_hit_points.clear()
-	# Poll every physics frame across the active window rather than
-	# checking once -- the impact_delay above is timed off the fist's
-	# distance-from-shoulder peak, which doesn't necessarily land on the
-	# exact same frame as the fist's closest approach to wherever this
-	# particular target actually is standing, so a single check can miss
-	# the true closest moment by a frame or two.
-	var elapsed := 0.0
-	var hit_landed := false
-	while elapsed < ATTACK_ACTIVE_DURATION:
-		if not is_instance_valid(self):
-			return
-		if not hit_landed:
-			hit_landed = _land_hit_if_in_reach()
-		await get_tree().physics_frame
-		if not is_instance_valid(self):
-			return
-		elapsed += get_physics_process_delta_time()
-	if attack_hitbox_mesh != null and is_instance_valid(attack_hitbox_mesh):
-		attack_hitbox_mesh.visible = false
-	_attacking = false
+	_combat.perform_attack()
 
-## See perform_attack()'s doc comment for why this is an explicit check
-## rather than Area3D overlap detection. target_center approximates the
-## defender's capsule/body center the same way WeaponSlot-relative offsets
-## do elsewhere in this file -- entity root position plus a waist/chest-
-## height offset.
-##
-## Checks several points along the weapon's own length (see
-## _get_melee_hit_offsets), not just one at the fist -- approximating a
-## capsule strung along the blade, closer to how a real weapon can land a
-## hit anywhere along its edge. Each point is checked as a SEGMENT against
-## its own position on the previous polled frame, not just where it is
-## right now -- a fast swing can move a hit point (especially the tip,
-## which travels fastest) past the target between two physics frames
-## without either single frame's point ever landing exactly on it; the
-## segment between them catches that pass-through. Falls back to a plain
-## point check on the very first poll of a swing (see perform_attack(),
-## which clears _prev_hit_points there), when there's no previous frame
-## yet to sweep from.
-##
-## Returns true once a hit has actually landed, so the polling loop above
-## stops re-damaging the same swing.
-func _land_hit_if_in_reach() -> bool:
-	if not is_instance_valid(attack_target) or not attack_target.has_method("take_damage"):
-		return false
-	var hitbox_root: Node3D = attack_hitbox.get_parent() as Node3D
-	var target_center: Vector3 = attack_target.global_position + Vector3(0, 0.8, 0)
-	var reach: float = _get_melee_reach() + attack_target.get_engage_radius_bonus()
-	var offsets := _get_melee_hit_offsets()
-	var current_points: Array[Vector3] = []
-	var landed := false
-	for i in offsets.size():
-		var point: Vector3 = hitbox_root.to_global(Vector3(0, offsets[i], 0))
-		current_points.append(point)
-		if landed:
-			continue
-		var dist: float
-		if i < _prev_hit_points.size():
-			dist = _closest_distance_on_segment(_prev_hit_points[i], point, target_center)
-		else:
-			dist = point.distance_to(target_center)
-		if dist <= reach:
-			landed = true
-	_prev_hit_points = current_points
-	if landed:
-		attack_target.take_damage(_get_attack_damage())
-	return landed
-
-## Shortest distance from `point` to the line segment [a, b] -- the swept
-## check _land_hit_if_in_reach uses so a hit point's full travel between
-## two frames counts, not just its two endpoint positions.
-static func _closest_distance_on_segment(a: Vector3, b: Vector3, point: Vector3) -> float:
-	var ab := b - a
-	var length_sq := ab.length_squared()
-	if length_sq < 0.0001:
-		return a.distance_to(point)
-	var t: float = clampf((point - a).dot(ab) / length_sq, 0.0, 1.0)
-	return (a + ab * t).distance_to(point)
+## Multiplier on the hit-check sphere's radius -- a mutable static (not
+## const) specifically so a test harness can dial it up and re-test
+## within one running process instead of editing this file and
+## recompiling for every trial. 1.0 is the sphere's "just encloses the
+## weapon's reach" baseline size; leave at 1.0 for normal play. Read by
+## CombatBehavior.gd (the actual hit-check) and Unit._update_attack_
+## hitbox_size (the debug visual, kept in sync with it) -- stayed on
+## Entity.gd rather than moving to CombatBehavior.gd since Unit.gd
+## already references it class-qualified as Entity.HIT_CHECK_SPHERE_SCALE.
+static var HIT_CHECK_SPHERE_SCALE: float = 4.0
+## The smallest a hit-check sphere's un-scaled radius (half of
+## offsets[end] - offsets[start], before HIT_CHECK_SPHERE_SCALE) is ever
+## allowed to be -- matches "dagger"'s own (see ItemDefs.DEFS: hit_offsets
+## [0.0, 0.15], so (0.15 - 0.0) / 2.0), the shortest real weapon. Nothing
+## (including bare fists, see UNARMED_HIT_OFFSETS) gets a smaller
+## hit-check sphere than the dagger's. See HIT_CHECK_SPHERE_SCALE's doc
+## comment for why this also stayed on Entity.gd.
+const MIN_HIT_SPHERE_RADIUS: float = 0.075
 
 ## Base version: just marks `target` as what to defend against, since a
 ## stationary Entity can't chase. Unit overrides this to also move toward
@@ -840,12 +774,27 @@ func _update_attack_target(delta: float) -> bool:
 		return false
 
 	if dist > 0.01:
-		_face_direction(to_target.normalized(), delta)
+		var target_angle := atan2(to_target.x, to_target.z)
+		_face_angle(target_angle, delta)
+		# _face_angle only steps model_root.rotation.y partway toward
+		# target_angle each frame (lerp_angle, see TURN_SPEED) -- it
+		# doesn't snap there instantly. Swinging before that catches up
+		# means the swing can fire while still facing whatever direction
+		# the unit happened to be facing before this target came into
+		# range, not actually toward the target -- which is exactly the
+		# kind of misalignment ATTACK_IMPACT_FRACTIONS' hitbox-contact
+		# measurements assume ISN'T happening (see its doc comment on
+		# Attack_DualWield, whose 3 swing directions make it especially
+		# sensitive to this). Hold off swinging until facing is within
+		# FACING_TOLERANCE of the target, rather than firing on the very
+		# first in-range frame regardless of current orientation.
+		if absf(angle_difference(model_root.rotation.y, target_angle)) > FACING_TOLERANCE:
+			return true
 	perform_attack()
 	return true
 
 ## Two entities are hostile to each other only if they're on opposite
-## sides of the two actual playable factions (player_id 1/2) -- Nature/Mob
+## sides of the two actual playable factions (player_id 1/2) -- Gaia/Mob
 ## (player_id 3/4, see PLAYER_NAMES) are left alone by aggressive stance
 ## even though they'd technically have a "different player_id", since
 ## nothing establishes them as active combatants yet.

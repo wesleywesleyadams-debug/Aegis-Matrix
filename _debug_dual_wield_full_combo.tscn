@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/_debug_dual_wield_full_combo.gd" id="1"]
+[node name="Debug" type="Node3D"]
+script = ExtResource("1")

@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://dmu57muaupbtk"]
+
+[sub_resource type="BoxMesh" id="Mesh_torso"]
+size = Vector3(0.42, 0.5, 0.28)
+
+[sub_resource type="StandardMaterial3D" id="Mat_plate"]
+albedo_color = Color(0.5, 0.52, 0.56, 1)
+metallic = 0.75
+roughness = 0.35
+
+[sub_resource type="SphereMesh" id="Mesh_grip_marker"]
+radius = 0.02
+height = 0.04
+
+[sub_resource type="StandardMaterial3D" id="Mat_grip_marker"]
+render_priority = 10
+no_depth_test = true
+shading_mode = 0
+albedo_color = Color(1, 0, 0, 1)
+
+[node name="ArmorBase" type="Node3D" unique_id=1716872890]
+
+[node name="Plate" type="MeshInstance3D" parent="." unique_id=36550902]
+mesh = SubResource("Mesh_torso")
+surface_material_override/0 = SubResource("Mat_plate")
+
+[node name="GripPoint" type="Marker3D" parent="." unique_id=983626811]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+
+[node name="GripMarker" type="MeshInstance3D" parent="GripPoint" unique_id=189576049]
+mesh = SubResource("Mesh_grip_marker")
+surface_material_override/0 = SubResource("Mat_grip_marker")

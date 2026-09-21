@@ -19,6 +19,10 @@ const FADE_OUT_DURATION: float = 1.0
 @onready var subtitle_label: Label = $SubtitleLabel
 @onready var stats_label: RichTextLabel = $StatsLabel
 @onready var stats_label_right: RichTextLabel = $StatsLabelRight
+## Bottom-left, small (12pt) faction/race readout -- only ever set for a
+## Unit (see show_entity); empty/hidden for an item or a non-Unit Entity
+## (Building, World), which have no race concept at all.
+@onready var faction_label: Label = $FactionLabel
 
 ## Whatever fade-out is currently running, if any -- killed and replaced
 ## on every show_item/show_entity/hide_item call rather than left to run
@@ -65,11 +69,25 @@ func show_item(item_type: String, source_slot: String = "") -> void:
 ## a tree, a unit, a building. No subtitle (nothing generic to say);
 ## just its display name and current/max health for now, plus whatever
 ## `extra_stats` the caller passes (e.g. a unit's Level/Attack, or a
-## tree's Wood yield), prepended before Health.
+## tree's Wood yield), prepended before Health. A Unit also gets its
+## race/faction (e.g. "Human") shown separately at the bottom-left in a
+## small font -- see faction_label -- rather than replacing its actual
+## name as the title (Unit.get_tooltip_title() used to do that; now it
+## returns the real display name like everything else, and race lives
+## here instead).
 func show_entity(display_name: String, entity: Entity, extra_stats: Dictionary = {}) -> void:
 	var stats := extra_stats.duplicate()
-	stats["Health"] = "%d/%d" % [entity.current_health, entity.max_health]
+	# A pure resource node (World.has_health == false -- Oak/Apple Tree,
+	# Crystal Cave, Mist Fissure) has no health at all, not just a hidden
+	# bar -- showing a "Health: 1/1" row here would contradict that.
+	if not (entity is World and not entity.has_health):
+		stats["Health"] = "%d/%d" % [entity.current_health, entity.max_health]
 	_show_stats(display_name, "", stats)
+	if entity is Unit:
+		faction_label.text = entity.race.capitalize()
+		faction_label.visible = true
+	else:
+		faction_label.visible = false
 
 ## Splits stats into two even columns (left column gets the extra line
 ## when the count is odd) rather than one tall single-column list, so
@@ -84,6 +102,9 @@ func _show_stats(title: String, subtitle: String, stats: Dictionary) -> void:
 	modulate.a = 1.0
 	title_label.text = title
 	subtitle_label.text = subtitle
+	# Default hidden -- only show_entity (Unit case) turns this back on;
+	# an item hover (show_item) has no race/faction concept at all.
+	faction_label.visible = false
 	var lines: Array[String] = []
 	for stat_name in stats:
 		lines.append("%s: %s" % [stat_name, stats[stat_name]])

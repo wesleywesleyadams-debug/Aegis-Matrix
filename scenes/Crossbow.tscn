@@ -1,35 +1,5 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=2 format=3]
 
-[sub_resource type="BoxMesh" id="Mesh_stock"]
-size = Vector3(0.06, 0.05, 0.62)
+[ext_resource type="PackedScene" path="res://scenes/CrossbowBase.tscn" id="1_base"]
 
-[sub_resource type="StandardMaterial3D" id="Mat_stock"]
-albedo_color = Color(0.4, 0.26, 0.15, 1)
-roughness = 0.8
-
-[sub_resource type="BoxMesh" id="Mesh_bow_arm"]
-size = Vector3(0.55, 0.03, 0.03)
-
-[sub_resource type="StandardMaterial3D" id="Mat_bow_arm"]
-albedo_color = Color(0.18, 0.16, 0.14, 1)
-metallic = 0.3
-roughness = 0.5
-
-[sub_resource type="BoxMesh" id="Mesh_string"]
-size = Vector3(0.5, 0.01, 0.01)
-
-[node name="Crossbow" type="Node3D"]
-
-[node name="Stock" type="MeshInstance3D" parent="."]
-mesh = SubResource("Mesh_stock")
-surface_material_override/0 = SubResource("Mat_stock")
-
-[node name="BowArm" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.28)
-mesh = SubResource("Mesh_bow_arm")
-surface_material_override/0 = SubResource("Mat_bow_arm")
-
-[node name="String" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0.32)
-mesh = SubResource("Mesh_string")
-surface_material_override/0 = SubResource("Mat_bow_arm")
+[node name="Crossbow" instance=ExtResource("1_base")]

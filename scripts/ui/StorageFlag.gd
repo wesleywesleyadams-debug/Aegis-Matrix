@@ -26,6 +26,14 @@ func set_color(color: Color) -> void:
 static func spawn(parent: Node3D, local_position: Vector3, color: Color) -> StorageFlag:
 	var flag: StorageFlag = SCENE.instantiate()
 	parent.add_child(flag)
-	flag.position = local_position
+	# Counteract whatever non-uniform scale `parent` might itself have --
+	# e.g. Castle.tscn scales its own whole footprint 5x, which would
+	# otherwise both push local_position 5x further out than intended AND
+	# render this flag 5x bigger than every other building's (see the
+	# identical fix in WaypointFlag.spawn). This marker's offset/size
+	# should always read the same regardless of which building owns it.
+	var parent_scale: Vector3 = parent.global_transform.basis.get_scale()
+	flag.position = local_position / parent_scale
+	flag.scale = Vector3.ONE / parent_scale
 	flag.set_color(color)
 	return flag

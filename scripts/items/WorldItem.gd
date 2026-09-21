@@ -172,8 +172,14 @@ func _build_selection_frame() -> Node3D:
 ## now has a new item" moments and should look like one.
 func collect(unit: Unit) -> void:
 	var displaced := unit.equip_item(item_type)
-	for old_item_type in displaced:
-		spawn_pickup(old_item_type, unit.global_position, unit.model_root.rotation.y, get_parent())
+	# Spread multiple displaced items (e.g. two hybrid swords bumped out of
+	# both hands at once by a two-handed weapon) to either side of "behind
+	# the unit" rather than all aiming for the same spot -- see
+	# spawn_pickup's angle_offset doc comment.
+	var angle_step := PI / 2.0
+	for i in displaced.size():
+		var angle_offset := (i - (displaced.size() - 1) / 2.0) * angle_step
+		spawn_pickup(displaced[i], unit.global_position, unit.model_root.rotation.y, get_parent(), angle_offset)
 	ItemReceivedEffect.spawn(item_type, unit)
 	queue_free()
 
@@ -181,13 +187,19 @@ func collect(unit: Unit) -> void:
 ## (the dropping unit's own position) and animates it popping up and
 ## landing one tile behind `facing_angle` (that unit's current facing,
 ## read straight off model_root's own rotation.y) rather than just
-## appearing there. No-op (returns null) for an unknown item_type.
-static func spawn_pickup(item_type: String, near_position: Vector3, facing_angle: float, parent: Node) -> Node3D:
+## appearing there. `angle_offset` rotates that "behind" landing direction
+## (e.g. collect()'s multi-item eject passes opposite offsets so two items
+## displaced at once -- a two-handed weapon bumping two gripped hybrid
+## swords out of both hands -- scatter to either side instead of both
+## aiming for the same spot and immediately fighting over
+## _find_clear_landing_spot's nudge). No-op (returns null) for an unknown
+## item_type.
+static func spawn_pickup(item_type: String, near_position: Vector3, facing_angle: float, parent: Node, angle_offset: float = 0.0) -> Node3D:
 	var scene: PackedScene = ItemDefs.get_pickup_scene(item_type)
 	if scene == null:
 		return null
 
-	var behind := -Vector3(sin(facing_angle), 0.0, cos(facing_angle))
+	var behind := -Vector3(sin(facing_angle + angle_offset), 0.0, cos(facing_angle + angle_offset))
 	var landing_position := near_position + behind * TILE_SIZE + Vector3(0, DROPPED_ITEM_HEIGHT, 0)
 	landing_position = _find_clear_landing_spot(landing_position, parent.get_tree())
 
