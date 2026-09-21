@@ -14,6 +14,7 @@ extends Control
 
 func _ready() -> void:
 	Music.play_track(Music.TITLE_TRACK)
+	_build_new_game_page()
 	play_button.pressed.connect(_on_play_pressed)
 	load_button.pressed.connect(_on_load_pressed)
 	account_button.pressed.connect(AccountMenu.open)
@@ -55,6 +56,10 @@ func _ready() -> void:
 	tree_exiting.connect(func(): SignedInLabel.visible = true)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and _new_game_page.visible:
+		_show_new_game_page(false)
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel") and load_list_panel.visible:
 		_on_close_load_list_pressed()
 		get_viewport().set_input_as_handled()
@@ -67,8 +72,42 @@ func _on_active_account_changed() -> void:
 	if load_list_panel.visible:
 		_on_load_pressed()
 
+## New Game opens a second page: Single-Player, Multi-Player, Campaign.
 func _on_play_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
+	_show_new_game_page(true)
+
+var _new_game_page: VBoxContainer
+
+func _build_new_game_page() -> void:
+	_new_game_page = VBoxContainer.new()
+	_new_game_page.add_theme_constant_override("separation", 12)
+	_new_game_page.visible = false
+	add_child(_new_game_page)
+	for spec in [
+		["Single-Player", func(): get_tree().change_scene_to_file("res://scenes/Lobby.tscn"), ""],
+		["Multi-Player", Callable(), "Coming soon"],
+		["Campaign", Callable(), "Coming soon"],
+		["Back", func(): _show_new_game_page(false), ""],
+	]:
+		var b := Button.new()
+		b.text = spec[0]
+		if spec[1].is_valid():
+			b.pressed.connect(spec[1])
+		else:
+			b.disabled = true
+			b.tooltip_text = spec[2]
+		_new_game_page.add_child(b)
+
+## Swaps the main menu (and the account section and Quit under it) for the
+## New Game page, or back.
+func _show_new_game_page(on: bool) -> void:
+	vbox.visible = not on
+	quit_button.visible = not on
+	AccountMenu.background.visible = not on
+	_new_game_page.visible = on
+	if on:
+		_new_game_page.size = Vector2(vbox.size.x, 0)
+		_new_game_page.position = vbox.position
 
 func _on_editor_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/MapEditor.tscn")
@@ -128,6 +167,9 @@ func _on_quit_pressed() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_READY and OS.get_environment("SL_TITLE_SHOT") != "":
 		await get_tree().create_timer(1.0).timeout
+		if OS.get_environment("SL_TITLE_SHOT") == "new":
+			_on_play_pressed()
+			await get_tree().process_frame
 		if OS.get_environment("SL_TITLE_SHOT") == "create":
 			AccountMenu._on_create_account_pressed()
 			await get_tree().create_timer(0.3).timeout
