@@ -5,12 +5,14 @@ extends Node2D
 ## produces food, energy and (some types) spice. Growth: 1 pop per minute
 ## per pair of pop, while fed (spice covers food deficits 1:1), up to the
 ## type's ceiling. Neutral planets are settled by a Colony Ship over
-## COLONIZE_TIME seconds. Enemy planets are taken by bombarding them: each
-## point of weapon damage kills POP_PER_DAMAGE pops and halts growth; at 0
+## COLONIZE_TIME seconds. Enemy planets are taken by bombarding them: a
+## corvette shot kills 1 pop, and every shot scales with its damage (twice a
+## corvette's damage = 2 pops). Bombardment also halts growth; at 0
 ## pop every building is destroyed and the planet turns neutral, ready for
 ## anyone to colonize.
 
-const POP_PER_DAMAGE := 0.25
+## Pops killed per point of damage, pegged so one base corvette shot = 1 pop.
+static var POP_PER_DAMAGE: float = 1.0 / float(Defs.SHIPS["corvette"]["damage"])
 const COLONIZE_TIME := 60.0
 ## A planet counts as under siege for this long after its last hit.
 const SIEGE_TIME := 3.0
