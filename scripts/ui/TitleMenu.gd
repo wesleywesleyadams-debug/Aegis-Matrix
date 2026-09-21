@@ -6,6 +6,7 @@ extends Control
 @onready var options_button: Button = $VBox/OptionsButton
 @onready var editor_button: Button = $VBox/EditorButton
 @onready var quit_button: Button = $VBox/QuitButton
+@onready var vbox: VBoxContainer = $VBox
 @onready var dim: ColorRect = $Dim
 @onready var load_list_panel: Panel = $LoadListPanel
 @onready var saves_list: VBoxContainer = $LoadListPanel/OuterVBox/ScrollContainer/SavesList
@@ -38,8 +39,14 @@ func _ready() -> void:
 	# they land on the title screen (whether that's the game's very first
 	# launch, or just coming back here not signed in) -- already signed in
 	# (e.g. "Stay signed in" restored a session) skips this entirely.
-	if GameState.active_account.is_empty():
-		AccountMenu.open()
+	# Account options live right under the main menu (no pop-up). Wait a
+	# frame so the menu has its final size.
+	await get_tree().process_frame
+	AccountMenu.dock(vbox.get_global_rect().end.y + 24.0)
+	tree_exiting.connect(AccountMenu.undock)
+	# The corner Sign In link would duplicate the options shown here.
+	SignedInLabel.visible = false
+	tree_exiting.connect(func(): SignedInLabel.visible = true)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and load_list_panel.visible:
@@ -115,6 +122,9 @@ func _on_quit_pressed() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_READY and OS.get_environment("SL_TITLE_SHOT") != "":
 		await get_tree().create_timer(1.0).timeout
+		if OS.get_environment("SL_TITLE_SHOT") == "create":
+			AccountMenu._on_create_account_pressed()
+			await get_tree().create_timer(0.3).timeout
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("user://title.png")
 		get_tree().quit()

@@ -68,6 +68,11 @@ func _ready() -> void:
 	GameState.active_account_changed.connect(_on_active_account_changed)
 
 func _on_active_account_changed() -> void:
+	if _docked:
+		new_account_panel.visible = false
+		sign_in_panel.visible = false
+		_refresh_accounts_list()
+		return
 	if not GameState.active_account.is_empty():
 		close()
 
@@ -80,7 +85,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif new_account_panel.visible:
 		_on_new_account_cancel_pressed()
 		get_viewport().set_input_as_handled()
-	elif background.visible:
+	elif background.visible and not _docked:
 		close()
 		get_viewport().set_input_as_handled()
 
@@ -272,3 +277,84 @@ func _on_steam_pressed() -> void:
 		new_name = "%s (Steam)" % SteamService.persona_name
 	GameState.accounts.append({"name": new_name, "password_hash": "", "steam_id": SteamService.steam_id})
 	_sign_in_as(new_name, true)
+
+# ---------------------------------------------------------------- docked mode
+
+## True while the account panel is shown inline under the title screen's
+## main menu (no dim, no Close button) instead of as a pop-up.
+var _docked := false
+var _saved_offsets := []
+var _sub_saved := {}
+
+## Shows the account options inline, top edge at `top_y` (screen px),
+## horizontally centered. The title screen calls this on load.
+func dock(top_y: float) -> void:
+	_docked = true
+	background.color = Color(0, 0, 0, 0)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _saved_offsets.is_empty():
+		_saved_offsets = [account_panel.anchor_top, account_panel.anchor_bottom, account_panel.offset_top, account_panel.offset_bottom]
+	var h := account_panel.offset_bottom - account_panel.offset_top
+	h = minf(minf(h, 400.0), get_viewport().get_visible_rect().size.y - top_y - 16.0)
+	account_panel.anchor_top = 0.0
+	account_panel.anchor_bottom = 0.0
+	account_panel.offset_top = top_y
+	account_panel.offset_bottom = top_y + h
+	# Contents follow the panel's (now shorter) height.
+	var outer := account_panel.get_node("OuterVBox") as Control
+	outer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	outer.offset_left = 14
+	outer.offset_top = 14
+	outer.offset_right = -14
+	outer.offset_bottom = -14
+	# Let the account list shrink to fit (it scrolls when there are many).
+	(outer.get_node("ScrollContainer") as Control).custom_minimum_size.y = 60.0
+	# The sign-in / create-account forms open in the same spot, in place of
+	# the account list, instead of popping up over the screen.
+	for sub in [new_account_panel, sign_in_panel]:
+		if not _sub_saved.has(sub):
+			_sub_saved[sub] = [sub.anchor_left, sub.anchor_right, sub.anchor_top, sub.anchor_bottom, sub.offset_left, sub.offset_right, sub.offset_top, sub.offset_bottom]
+		var sh: float = sub.offset_bottom - sub.offset_top
+		var sw: float = sub.offset_right - sub.offset_left
+		sub.anchor_left = 0.5
+		sub.anchor_right = 0.5
+		sub.anchor_top = 0.0
+		sub.anchor_bottom = 0.0
+		sub.offset_left = -sw / 2.0
+		sub.offset_right = sw / 2.0
+		sub.offset_top = top_y
+		sub.offset_bottom = top_y + sh
+	account_close_button.visible = false
+	open()
+
+## Back to the normal pop-up (used when leaving the title screen).
+func undock() -> void:
+	if not _docked:
+		return
+	_docked = false
+	background.color = Color(0, 0, 0, 0.6)
+	background.mouse_filter = Control.MOUSE_FILTER_STOP
+	account_panel.anchor_top = _saved_offsets[0]
+	account_panel.anchor_bottom = _saved_offsets[1]
+	account_panel.offset_top = _saved_offsets[2]
+	account_panel.offset_bottom = _saved_offsets[3]
+	account_panel.visible = true
+	for sub in _sub_saved:
+		var v: Array = _sub_saved[sub]
+		sub.anchor_left = v[0]
+		sub.anchor_right = v[1]
+		sub.anchor_top = v[2]
+		sub.anchor_bottom = v[3]
+		sub.offset_left = v[4]
+		sub.offset_right = v[5]
+		sub.offset_top = v[6]
+		sub.offset_bottom = v[7]
+	account_close_button.visible = true
+	(account_panel.get_node("OuterVBox/ScrollContainer") as Control).custom_minimum_size.y = 170.0
+	close()
+
+## While docked, show either the account list or one of its forms, never
+## both stacked on top of each other.
+func _process(_delta: float) -> void:
+	if _docked and background.visible:
+		account_panel.visible = not (new_account_panel.visible or sign_in_panel.visible)
