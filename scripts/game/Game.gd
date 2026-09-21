@@ -900,15 +900,28 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 	var sb := selected_starbase()
 	if ships.is_empty():
 		if sb:
-			# Rally onto a rock or gas giant: new barges/skimmers mine it.
-			var obj: Node2D = asteroid_at(world_pos)
-			if obj == null:
-				var gp := planet_at(world_pos)
-				if gp and not gp.is_habitable():
-					obj = gp
+			# Rally onto an object: new ships act on it when they launch
+			# (barges mine rocks, colony ships settle free planets, warships
+			# attack enemy ships/starbases or bombard enemy planets).
+			var obj: Node2D = null
+			var kind := ""
+			var foe := entity_at(world_pos)
+			if foe and foe.is_enemy_of(player_id):
+				obj = foe
+				kind = "attack"
+			elif asteroid_at(world_pos):
+				obj = asteroid_at(world_pos)
+			else:
+				var rp := planet_at(world_pos)
+				if rp:
+					obj = rp
+					if rp.is_enemy_of(player_id):
+						kind = "attack"
+					elif rp.owner_id == 0 and rp.is_habitable():
+						kind = "colonize"
 			sb.set_rally(obj.global_position if obj else world_pos, obj)
 			if obj:
-				hud.flash_target(obj, "")
+				hud.flash_target(obj, kind)
 			else:
 				hud.ping(world_pos, Color.WHITE)
 		return
@@ -1030,6 +1043,21 @@ func _enter_dev_capture() -> void:
 		var sb0 := nearest_starbase(player_id, Vector2.ZERO)
 		sb0.enqueue("corvette")
 		_set_selection([sb0], false)
+	if OS.get_environment("SL_SHOT_OPEN") == "rally2":
+		var sb2 := nearest_starbase(player_id, Vector2.ZERO)
+		var enemy_p: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.is_enemy_of(player_id))[0]
+		var free_p: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == 0 and p.is_habitable())[0]
+		resources[player_id]["spice"] = 500.0
+		sb2.set_rally(enemy_p.global_position, enemy_p)
+		sb2.enqueue("corvette")
+		get_tree().create_timer(9.0).timeout.connect(func():
+			sb2.set_rally(free_p.global_position, free_p)
+			sb2.enqueue("colony"))
+		get_tree().create_timer(30.0).timeout.connect(func():
+			for s in get_tree().get_nodes_in_group("ships"):
+				if s.owner_id == player_id and s.state in [Ship.State.BOMBARD, Ship.State.COLONIZE]:
+					print("RALLY2 ", s.ship_type, " state ", Ship.State.keys()[s.state])
+			print("RALLY2 done"))
 	if OS.get_environment("SL_SHOT_OPEN") == "rally":
 		var sbr := nearest_starbase(player_id, Vector2.ZERO)
 		var spr := nearest_asteroid(sbr.global_position, 5000.0, "spice")

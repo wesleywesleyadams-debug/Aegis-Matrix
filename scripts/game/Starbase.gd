@@ -15,8 +15,10 @@ var build_progress: float = 0.0
 var build_stalled: bool = false
 var rally_point: Vector2
 var has_rally: bool = false
-## Optional rally object (an asteroid or gas giant): new mining ships work
-## it straight away; everything else gathers beside it.
+## Optional rally object. New ships act on it as they launch: barges mine
+## rocks / skimmers gas giants, colony ships settle a free planet, warships
+## attack an enemy ship/starbase or bombard an enemy planet. Anything else
+## gathers at the rally point.
 var rally_target: Node2D
 var under_construction: bool = false
 var construct_progress: float = 0.0
@@ -95,6 +97,8 @@ func _physics_process(delta: float) -> void:
 	if under_construction:
 		_construct(delta)
 		return
+	if selected and is_instance_valid(rally_target):
+		queue_redraw()
 	_regen_shields(delta)
 	g.add_resources(owner_id, {
 		"energy": Defs.STARBASE["energy_per_sec"] * g.mod(owner_id, "energy") * delta,
@@ -154,6 +158,19 @@ func _launch(ship_type: String) -> void:
 	if owner_id == g.player_id:
 		g.notify("%s ready." % Defs.SHIPS[ship_type]["name"], "note_ship")
 	ship.rotation = dir.angle()
+	if is_instance_valid(rally_target):
+		var rt := rally_target
+		var role: String = ship.def["role"]
+		if role == "colony" and rt is Planet and rt.owner_id == 0 and rt.is_habitable():
+			ship.order_colonize(rt)
+			return
+		if role == "warship":
+			if rt is Planet and rt.is_enemy_of(owner_id):
+				ship.order_bombard(rt)
+				return
+			if rt is SpaceEntity and rt.is_alive() and rt.is_enemy_of(owner_id):
+				ship.order_attack(rt)
+				return
 	# Rallied to a rock or gas giant this ship can work: mine it.
 	if is_instance_valid(rally_target) and ship.can_mine(rally_target) and rally_target.amount > 0:
 		ship.order_mine(rally_target)
@@ -188,6 +205,6 @@ func _draw() -> void:
 		var frac: float = construct_progress / Defs.STARBASE["build_time"]
 		draw_arc(Vector2.ZERO, radius + 8.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 48, Color("ffd46b") if not build_stalled else Color("ff6a5a"), 2.0)
 	if selected and has_rally:
-		var to := to_local(rally_point)
+		var to := to_local(rally_target.global_position if is_instance_valid(rally_target) else rally_point)
 		draw_dashed_line(Vector2.ZERO, to, Color(Defs.team_color(owner_id), 0.5), 1.0, 4.0)
 		draw_rect(Rect2(to - Vector2(2, 2), Vector2(4, 4)), Defs.team_color(owner_id))
