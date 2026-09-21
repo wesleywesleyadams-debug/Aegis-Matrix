@@ -514,6 +514,8 @@ func _handle_key(e: InputEventKey) -> void:
 	if k == KEY_ESCAPE:
 		if placing_starbase:
 			placing_starbase = false
+		elif is_instance_valid(focused_planet):
+			clear_planet_focus()
 		elif hud.research_open():
 			hud.toggle_research()
 		else:
@@ -667,6 +669,12 @@ func _focus_planet(p: Planet) -> void:
 	focused_planet = p
 	if p:
 		p.focused = true
+	hud.show_planet(p)
+
+## Closes the planet view (and its selection-panel summary).
+func clear_planet_focus() -> void:
+	_focus_planet(null)
+	selection_changed.emit()
 
 func _on_selected_died(e: SpaceEntity) -> void:
 	selection.erase(e)
@@ -829,6 +837,11 @@ func _enter_dev_capture() -> void:
 		camera.zoom = Vector2.ONE * ZOOM_LEVELS[_zoom_index]
 	if parts.size() > 4:
 		center_on(Vector2(float(parts[3]), float(parts[4])))
+	if OS.get_environment("SL_SHOT_OPEN") == "planet":
+		var hp0: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0]
+		hp0.order_build(0, "farm")
+		hp0.order_build(1, "mine")
+		hp0.order_build(2, "farm")
 	if OS.get_environment("SL_SHOT_OPEN") == "research":
 		queue_research(player_id, "ion_cannons")
 		queue_research(player_id, "plasma_lances")
@@ -839,7 +852,10 @@ func _enter_dev_capture() -> void:
 		"starbase":
 			_set_selection([nearest_starbase(player_id, Vector2.ZERO)], false)
 		"planet":
-			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0])
+			var home_p: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0]
+			home_p.order_build(3, "generator")
+			home_p.order_build(4, "habitat")
+			_focus_planet(home_p)
 			selection_changed.emit()
 	await get_tree().create_timer(0.3 * Engine.time_scale).timeout
 	await RenderingServer.frame_post_draw

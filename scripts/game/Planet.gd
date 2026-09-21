@@ -43,6 +43,14 @@ var energy_out: float = 0.0
 var spice_out: float = 0.0
 var growth_per_min: float = 0.0
 
+## Buildable fields (count set by planet size) and what occupies each ("" = empty).
+var fields: int = 3
+var buildings: Array[String] = []
+## Construction: the active job and the queue behind it, each {"field": int, "id": String}.
+var construction: Dictionary = {}
+var construction_queue: Array = []
+var construction_stalled: bool = false
+
 var _check_timer: float = 0.0
 var _econ_timer: float = 0.0
 
@@ -52,6 +60,9 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	add_to_group("planets")
+	fields = Defs.field_count($Sprite.texture.get_width())
+	buildings.resize(fields)
+	buildings.fill("")
 	if owner_id != 0:
 		pop = start_pop if start_pop > 0.0 else Defs.START_POP
 	_econ_timer = randf() * ECON_TICK
@@ -60,9 +71,13 @@ func type_def() -> Dictionary:
 	return Defs.PLANET_TYPES[kind]
 
 func max_pop() -> float:
+	var extra := 0.0
+	for b in buildings:
+		if b != "":
+			extra += Defs.BUILDINGS[b].get("max_pop", 0)
 	if owner_id == 0:
-		return type_def()["max_pop"]
-	return type_def()["max_pop"] * Game.instance.mod(owner_id, "max_pop")
+		return type_def()["max_pop"] + extra
+	return (type_def()["max_pop"] + extra) * Game.instance.mod(owner_id, "max_pop")
 
 func orbit_radius() -> float:
 	return radius + 70.0
@@ -70,6 +85,8 @@ func orbit_radius() -> float:
 func colonize(pid: int) -> void:
 	var old := owner_id
 	owner_id = pid
+	construction = {}
+	construction_queue.clear()
 	pop = Defs.START_POP
 	claim_progress = 0.0
 	Game.instance.planet_claimed(self, old)
@@ -103,6 +120,7 @@ func _economy(dt: float) -> void:
 	energy_out = (t["energy"] + k * Defs.ENERGY_PER_1000_POP) * g.mod(owner_id, "energy")
 	spice_out = t["spice"] * minf(1.0, pop / 1000.0 + 0.25)
 	g.add_resources(owner_id, {"food": food_made_per_min / 60.0 * dt, "energy": energy_out * dt, "spice": spice_out * dt})
+	_run_buildings(dt)
 	# Every pop eats from the empire stockpile; spice covers any deficit.
 	var fed := g.pay_over_time(owner_id, {"food": food_eaten_per_min / 60.0}, dt) if pop > 0.0 else 1.0
 	starving = fed < 0.999
@@ -149,6 +167,8 @@ func _check_conquest() -> void:
 			var old := owner_id
 			owner_id = who
 			pop = maxf(1.0, pop * 0.5)
+			construction = {}
+			construction_queue.clear()
 			claim_progress = 0.0
 			Game.instance.planet_claimed(self, old)
 	else:
@@ -173,3 +193,101 @@ func _draw() -> void:
 	if claim_progress > 0.0:
 		var col2 := Defs.team_color(claim_owner)
 		draw_arc(Vector2.ZERO, r + 3.0, -PI / 2.0, -PI / 2.0 + TAU * claim_progress / CONQUER_TIME, 48, col2, 2.0)
+
+# ---------------------------------------------------------------- fields & buildings
+
+## "" if `id` may be ordered on `field` by the owner, else a reason.
+func can_build(field: int, id: String) -> String:
+	if field < 0 or field >= fields:
+		return "No such field"
+	if buildings[field] != "":
+		return "Field is occupied"
+	if field_job(field) != "":
+		return "Field already has construction ordered"
+	var only: Array = Defs.BUILDINGS[id]["only"]
+	if not only.is_empty() and kind not in only:
+		return "%s can't be built on a %s world" % [Defs.BUILDINGS[id]["name"], type_def()["label"]]
+	return ""
+
+## The building being built or queued on a field, or "".
+func field_job(field: int) -> String:
+	if construction.get("field", -1) == field:
+		return construction["id"]
+	for j in construction_queue:
+		if j["field"] == field:
+			return j["id"]
+	return ""
+
+func order_build(field: int, id: String) -> String:
+	var why := can_build(field, id)
+	if why == "":
+		construction_queue.append({"field": field, "id": id})
+	return why
+
+## Cancels construction on a field; the paid share of an active job is refunded.
+func cancel_build(field: int) -> void:
+	if construction.get("field", -1) == field:
+		var d: Dictionary = Defs.BUILDINGS[construction["id"]]
+		var frac: float = construction["progress"] / d["time"]
+		var refund := {}
+		for k in d["cost"]:
+			refund[k] = d["cost"][k] * frac
+		Game.instance.add_resources(owner_id, refund)
+		construction = {}
+	construction_queue = construction_queue.filter(func(j): return j["field"] != field)
+
+func demolish(field: int) -> void:
+	buildings[field] = ""
+
+func count_building(id: String) -> int:
+	return buildings.count(id)
+
+func free_fields() -> int:
+	var n := 0
+	for i in fields:
+		if buildings[i] == "" and field_job(i) == "":
+			n += 1
+	return n
+
+## Per-tick building output and construction payments (called from _economy).
+func _run_buildings(dt: float) -> void:
+	var g := Game.instance
+	var t := type_def()
+	var out := {}
+	for b in buildings:
+		if b == "":
+			continue
+		for k in Defs.BUILDINGS[b]["output"]:
+			var v: float = Defs.BUILDINGS[b]["output"][k]
+			if k == "food":
+				# Farms: per-minute figure, scaled by fertility and Hydroponics.
+				v = v * (0.5 + 0.5 * t["fertility"]) * g.mod(owner_id, "food") / 60.0
+				food_made_per_min += v * 60.0
+			elif k == "energy":
+				v *= g.mod(owner_id, "energy")
+				energy_out += v
+			elif k == "spice":
+				spice_out += v
+			out[k] = out.get(k, 0.0) + v * dt
+	if not out.is_empty():
+		g.add_resources(owner_id, out)
+
+	construction_stalled = false
+	if construction.is_empty():
+		if construction_queue.is_empty():
+			return
+		var j: Dictionary = construction_queue.pop_front()
+		construction = {"field": j["field"], "id": j["id"], "progress": 0.0}
+	var d: Dictionary = Defs.BUILDINGS[construction["id"]]
+	var per_sec := {}
+	for k in d["cost"]:
+		per_sec[k] = d["cost"][k] / d["time"]
+	var f := g.pay_over_time(owner_id, per_sec, dt)
+	construction_stalled = f < 0.999
+	construction["progress"] += dt * f
+	if construction["progress"] >= d["time"]:
+		buildings[construction["field"]] = construction["id"]
+		if owner_id == g.player_id:
+			g.message.emit("%s completed on %s." % [d["name"], planet_name], Color("7fd8ff"))
+			g.sfx.play_ui("build")
+		construction = {}

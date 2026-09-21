@@ -36,6 +36,7 @@ var _build_buttons := {}
 var _queue_row: HBoxContainer
 var _info_label: Label
 var _refresh: float = 0.0
+var planet_view: PlanetView
 var _speed_slider: HSlider
 var _speed_label: Label
 
@@ -63,6 +64,15 @@ func _ready() -> void:
 	_build_minimap(root)
 	_build_messages(root)
 	_build_help(root)
+	planet_view = PlanetView.new()
+	planet_view.game = game
+	planet_view.anchor_left = 1.0
+	planet_view.anchor_right = 1.0
+	planet_view.offset_left = -12 - 760
+	planet_view.offset_right = -12
+	planet_view.offset_top = 90
+	planet_view.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	root.add_child(planet_view)
 	_build_research(root)
 	_build_pause(root)
 	_build_end(root)
@@ -348,6 +358,9 @@ func _build_research(root: Control) -> void:
 	close.pressed.connect(toggle_research)
 	v.add_child(close)
 
+func show_planet(p: Planet) -> void:
+	planet_view.show_planet(p)
+
 func research_open() -> bool:
 	return _research_modal.visible
 
@@ -611,6 +624,7 @@ func _process(delta: float) -> void:
 		_update_top_bar()
 		_update_selection_info()
 		_refresh_research()
+		planet_view.refresh()
 	var now := Game.now()
 	_pings = _pings.filter(func(p): return now - p["t"] < 0.5)
 	_overlay.queue_redraw()

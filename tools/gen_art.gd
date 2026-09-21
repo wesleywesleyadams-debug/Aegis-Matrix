@@ -41,6 +41,7 @@ func _init() -> void:
 	_gen_backgrounds()
 	_gen_icons()
 	_gen_icons2()
+	_gen_buildings()
 	_gen_title()
 	print("Star Lords art generated.")
 	quit()
@@ -614,3 +615,50 @@ func _gen_icons2() -> void:
 					s.set_pixel(x, y, SPICE[2] if d < 1.0 else (SPICE[1] if x + y < 13 else SPICE[0]))
 	_outline(s)
 	_save(s, "icon_spice")
+
+## 16x16 building icons for planet fields.
+func _gen_buildings() -> void:
+	var specs := {
+		"farm": func(x: int, y: int) -> Color:
+			if y >= 3 and y <= 13 and x >= 2 and x <= 13:
+				return Color("8fe060") if (y - 3) % 3 == 0 else (Color("4fa83a") if (y - 3) % 3 == 1 else Color("5a3f2a"))
+			return Color(0, 0, 0, 0),
+		"generator": func(x: int, y: int) -> Color:
+			if x >= 5 and x <= 10 and y >= 4 and y <= 14:
+				return Color("566184") if x < 8 else Color("363d5c")
+			if absf(x - 7.5) + absf(y - 3.0) < 3.0:
+				return Color("ffd46b")
+			return Color(0, 0, 0, 0),
+		"mine": func(x: int, y: int) -> Color:
+			if y >= 10 and y <= 14 and x >= 1 and x <= 14:
+				return Color("8a7069") if y < 12 else Color("5d4a4f")
+			if x >= 6 and x <= 9 and y >= 2 and y <= 10:
+				return Color("c3cde4") if x < 8 else Color("8490b3")
+			if y == 11 and (x == 4 or x == 11):
+				return Color("3fd6b0")
+			return Color(0, 0, 0, 0),
+		"habitat": func(x: int, y: int) -> Color:
+			var d := Vector2(x + 0.5 - 8.0, (y + 0.5 - 12.0) * 1.2).length()
+			if y <= 12 and d < 7.0:
+				return Color("a8f0ff") if d < 4.0 and y < 9 else Color("3fa7d6")
+			if y > 12 and y <= 14 and x >= 1 and x <= 14:
+				return Color("566184")
+			return Color(0, 0, 0, 0),
+		"spice_extractor": func(x: int, y: int) -> Color:
+			if (x == 4 or x == 11) and y >= 3 and y <= 14:
+				return Color("8490b3")
+			if y == 3 and x >= 4 and x <= 11:
+				return Color("8490b3")
+			if x >= 6 and x <= 9 and y >= 6 and y <= 14:
+				return Color("ff9a2e") if y < 10 else Color("a3461f")
+			return Color(0, 0, 0, 0),
+	}
+	for name in specs:
+		var img := _img(16, 16)
+		for y in 16:
+			for x in 16:
+				var c: Color = specs[name].call(x, y)
+				if c.a > 0.0:
+					img.set_pixel(x, y, c)
+		_outline(img)
+		_save(img, "bld_" + name)

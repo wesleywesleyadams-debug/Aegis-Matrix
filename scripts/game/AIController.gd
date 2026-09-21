@@ -76,6 +76,21 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				if rock.resource == "spice":
 					on_spice += 1
 
+	# Develop planets: farms when food is falling, otherwise a rotating mix.
+	var food_rate: float = game.rates[pid].get("food", 0.0)
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.owner_id != pid or not p.construction.is_empty() or not p.construction_queue.is_empty() or p.free_fields() == 0:
+			continue
+		var pick := "farm"
+		if food_rate > 1.0:
+			var cycle := ["generator", "mine", "farm", "habitat"]
+			pick = cycle[(p.fields - p.free_fields()) % cycle.size()]
+			if res["spice"] < 80.0 and p.kind in Defs.BUILDINGS["spice_extractor"]["only"] and p.count_building("spice_extractor") == 0:
+				pick = "spice_extractor"
+		for i in p.fields:
+			if p.order_build(i, pick) == "":
+				break
+
 	# Defend: enemies near the starbase pull every warship home.
 	var threat := game.nearest_enemy(base, 450.0)
 	if threat:

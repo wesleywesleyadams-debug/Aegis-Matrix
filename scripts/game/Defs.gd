@@ -106,6 +106,34 @@ const FOOD_GROWN_PER_POP_PER_MIN := 1.3
 ## Extra energy per second from each 1,000 pop.
 const ENERGY_PER_1000_POP := 1.5
 
+## Planet fields: 3 on the smallest world up to 30 on the largest, by
+## sprite diameter (moon 28px .. gas giant 104px).
+const MIN_FIELDS := 3
+const MAX_FIELDS := 30
+const FIELD_SIZE_MIN_PX := 28.0
+const FIELD_SIZE_MAX_PX := 104.0
+
+static func field_count(planet_diameter_px: float) -> int:
+	var t := clampf((planet_diameter_px - FIELD_SIZE_MIN_PX) / (FIELD_SIZE_MAX_PX - FIELD_SIZE_MIN_PX), 0.0, 1.0)
+	return int(round(lerpf(MIN_FIELDS, MAX_FIELDS, t)))
+
+## Buildings placed on planet fields. Costs are paid over build time like
+## ships. output: food per MINUTE; energy/minerals/spice per SECOND.
+## only: planet kinds it can be built on (empty = any).
+const BUILDINGS := {
+	"farm": {"name": "Farm", "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 200.0}, "only": [],
+		"desc": "+100 to +200 food/min depending on fertility (boosted by Hydroponics)."},
+	"generator": {"name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 3.0}, "only": [],
+		"desc": "+3 energy/s."},
+	"mine": {"name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 1.5}, "only": [],
+		"desc": "+1.5 minerals/s."},
+	"habitat": {"name": "Habitat", "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
+		"desc": "+1,500 population cap."},
+	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.2}, "only": ["planet_gas", "planet_lava"],
+		"desc": "+0.2 spice/s. Gas giants and molten worlds only."},
+}
+const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor"]
+
 const SHIELD_REGEN_DELAY := 4.0
 const SHIELD_REGEN_PER_SEC := 0.08 # fraction of max shield
 
