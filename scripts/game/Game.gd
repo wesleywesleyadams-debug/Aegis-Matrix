@@ -44,6 +44,7 @@ var _grid := {}
 var _rate_acc := {}
 var _rate_timer: float = 0.0
 var _was_starved := false
+var _was_empty := {}
 var _zoom_index: int = 2
 var _drag_start_screen: Vector2
 var _mouse_down: bool = false
@@ -110,7 +111,7 @@ func _ready() -> void:
 	camera.zoom = Vector2.ONE * ZOOM_LEVELS[_zoom_index]
 	Music.play_track(Music.IN_GAME_TRACK)
 	if loaded:
-		message.emit("Saved game loaded.", Color("7fd8ff"))
+		notify("Saved game loaded.")
 	else:
 		message.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"))
 	_enter_dev_capture()
@@ -289,7 +290,7 @@ func _on_tech_done(pid: int, tech_id: String) -> void:
 		if s.owner_id == pid and s.has_method("refresh_stats"):
 			s.refresh_stats()
 	if pid == player_id:
-		message.emit("Research complete: %s." % Defs.TECHS[tech_id]["name"], Color("7fd8ff"))
+		notify("Research complete: %s." % Defs.TECHS[tech_id]["name"])
 		sfx.play_ui("claim")
 	tech_completed.emit(pid, tech_id)
 
@@ -308,6 +309,12 @@ func _physics_process(delta: float) -> void:
 	for pid in players:
 		pay_over_time(pid, {"energy": upkeep(pid)}, delta)
 		_tick_research(pid, delta)
+	# Any other resource hitting zero.
+	for k in ["food", "minerals", "spice"]:
+		var empty: bool = resources[player_id][k] <= 0.0001
+		if empty and not _was_empty.get(k, false):
+			alert("Out of %s!" % Defs.RESOURCE_NAMES[k].to_lower())
+		_was_empty[k] = empty
 	var starved := energy_starved(player_id)
 	if starved and not _was_starved:
 		alert("Out of energy! Ship production halted and ships slowed to 25%.")
@@ -445,7 +452,7 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 	starbases_root.add_child(sb)
 	sb.died.connect(_on_starbase_died)
 	if pid == player_id:
-		message.emit("Starbase construction started.", Defs.team_color(pid))
+		notify("Starbase construction started.")
 	return sb
 
 func fire(from: SpaceEntity, to: SpaceEntity, weapon: String, damage: float) -> void:
@@ -480,7 +487,7 @@ func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
 
 func planet_claimed(p: Planet, old_owner: int) -> void:
 	if p.owner_id == player_id:
-		message.emit(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name, Defs.team_color(player_id))
+		notify(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name)
 		sfx.play_ui("claim")
 	elif old_owner == player_id:
 		alert("%s lost to the enemy!" % p.planet_name)
@@ -503,8 +510,16 @@ func _on_starbase_died(sb: SpaceEntity) -> void:
 	elif not theirs:
 		_end_match(true)
 
-## Warning message + alarm sound, at most one every ALERT_COOLDOWN
-## seconds (game time) no matter what raised it.
+## Light-blue notification for good news / progress (ship built, planet
+## colonized, research done...). Not rate limited.
+const NOTIFY_COLOR := Color("7fd8ff")
+
+func notify(text: String) -> void:
+	message.emit(text, NOTIFY_COLOR)
+
+## Red alert + alarm sound for being attacked or running out of a
+## resource. At most one every ALERT_COOLDOWN seconds (game time), whatever
+## raised it.
 const ALERT_COOLDOWN := 15.0
 var _last_alert_time: float = -1000.0
 
@@ -644,7 +659,7 @@ func save_game() -> void:
 	if path == "":
 		message.emit("Couldn't write the save file.", Color("ff6a5a"))
 	else:
-		message.emit("Game saved.", Color("6fe07a"))
+		notify("Game saved.")
 		sfx.play_ui("click")
 
 func request_build(sb: Starbase, ship_type: String) -> void:
@@ -971,6 +986,10 @@ func _enter_dev_capture() -> void:
 		"gas":
 			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable())[0])
 			selection_changed.emit()
+		"bigbar":
+			resources[player_id] = {"food": 123456.0, "minerals": 98765.0, "energy": 54321.0, "spice": 9999.0}
+			queue_research(player_id, "dark_matter")
+			research[player_id] = {"id": "dark_matter", "progress": 30.0, "stalled": true}
 		"paused":
 			hud.toggle_play()
 		"save":

@@ -212,6 +212,8 @@ func _check_conquest() -> void:
 			claim_owner = who
 			claim_progress = 0.0
 		claim_progress += 0.5
+		if owner_id == Game.instance.player_id:
+			Game.instance.alert("%s is under attack!" % planet_name)
 		if claim_progress >= CONQUER_TIME:
 			var old := owner_id
 			owner_id = who
@@ -342,7 +344,7 @@ func _run_buildings(dt: float) -> void:
 	if construction["progress"] >= d["time"]:
 		buildings[construction["field"]] = construction["id"]
 		if owner_id == g.player_id:
-			g.message.emit("%s completed on %s." % [d["name"], planet_name], Color("7fd8ff"))
+			g.notify("%s completed on %s." % [d["name"], planet_name])
 			g.sfx.play_ui("build")
 		construction = {}
 

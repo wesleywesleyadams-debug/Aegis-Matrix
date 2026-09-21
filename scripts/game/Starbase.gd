@@ -140,7 +140,7 @@ func _construct(delta: float) -> void:
 		refresh_stats()
 		_update_site_look()
 		if owner_id == g.player_id:
-			g.message.emit("Starbase complete.", Defs.team_color(owner_id))
+			g.notify("Starbase complete.")
 			g.sfx.play_ui("build")
 		g.selection_changed.emit()
 
@@ -150,6 +150,7 @@ func _launch(ship_type: String) -> void:
 	var ship := g.spawn_ship(ship_type, owner_id, global_position + dir * (radius + 6.0))
 	if owner_id == g.player_id:
 		g.sfx.play_ui("build")
+		g.notify("%s ready." % Defs.SHIPS[ship_type]["name"])
 	ship.rotation = dir.angle()
 	if ship.def["role"] == "skimmer":
 		var giant := g.nearest_gas_giant(global_position, 4000.0)

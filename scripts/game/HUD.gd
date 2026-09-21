@@ -113,6 +113,8 @@ func _fmt(v: float) -> String:
 
 # ---------------------------------------------------------------- layout
 
+const TOP_BAR_WIDTH := 1380
+
 func _build_top_bar(root: Control) -> void:
 	var bar := PanelContainer.new()
 	# Right-aligned next to the speed controls, keeping the left side of
@@ -120,13 +122,16 @@ func _build_top_bar(root: Control) -> void:
 	bar.anchor_left = 1.0
 	bar.anchor_right = 1.0
 	bar.offset_right = -12 - 170 - 10 - 330 - 10
-	bar.offset_left = bar.offset_right - 1100
+	# Fixed width sized for the longest contents, so it never resizes as
+	# numbers or the research status change.
+	bar.offset_left = bar.offset_right - TOP_BAR_WIDTH
+	bar.clip_contents = true
 	bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	bar.offset_top = 8
 	bar.add_theme_stylebox_override("panel", _panel_style(8))
 	root.add_child(bar)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 20)
+	h.add_theme_constant_override("separation", 10)
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar.add_child(h)
 	for key in Defs.RESOURCES:
@@ -135,27 +140,42 @@ func _build_top_bar(root: Control) -> void:
 		box.mouse_filter = Control.MOUSE_FILTER_STOP
 		box.add_child(_icon("icon_" + key))
 		var l := _label("0")
+		# Longest realistic text: food "123.5k +1805/min", others "54.3k -12.5/s".
+		l.custom_minimum_size = Vector2(150 if key == "food" else 116, 0)
+		l.clip_text = true
 		box.add_child(l)
 		_res_labels[key] = l
 		_res_boxes[key] = box
 		h.add_child(box)
 	_pop_label = _label("Pop 0", TEXT)
+	_pop_label.custom_minimum_size = Vector2(84, 0)
+	_pop_label.clip_text = true
 	_pop_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	h.add_child(_pop_label)
 	var fleet := HBoxContainer.new()
 	fleet.add_theme_constant_override("separation", 6)
 	fleet.add_child(_icon("icon_fleet"))
 	_fleet_label = _label("0/0")
+	_fleet_label.custom_minimum_size = Vector2(196, 0)
+	_fleet_label.clip_text = true
 	fleet.add_child(_fleet_label)
 	h.add_child(fleet)
 	_research_button = Button.new()
 	_research_button.text = "Research [R]"
-	_research_button.custom_minimum_size = Vector2(220, 0)
+	_research_button.custom_minimum_size = Vector2(222, 0)
+	_research_button.clip_text = true
+	_research_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	for st in ["normal", "hover", "pressed", "focus"]:
+		var rsb := _research_button.get_theme_stylebox(st).duplicate() as StyleBox
+		rsb.content_margin_left = 8
+		rsb.content_margin_right = 8
+		_research_button.add_theme_stylebox_override(st, rsb)
 	_research_button.add_theme_font_size_override("font_size", 14)
 	_research_button.focus_mode = Control.FOCUS_NONE
 	_research_button.pressed.connect(toggle_research)
 	h.add_child(_research_button)
 	_clock = _label("00:00", DIM)
+	_clock.custom_minimum_size = Vector2(50, 0)
 	h.add_child(_clock)
 
 ## Top-right Menu button: opens the same menu as Esc (Resume, Save Game,
@@ -602,7 +622,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.set_anchors_preset(Control.PRESET_FULL_RECT)
 		h.offset_left = 6
-		h.add_theme_constant_override("separation", 8)
+		h.add_theme_constant_override("separation", 12)
 		h.add_child(_icon("ship_" + t, 2))
 		var v := VBoxContainer.new()
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
