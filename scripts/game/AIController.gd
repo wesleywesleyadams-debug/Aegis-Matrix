@@ -95,7 +95,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		if food_rate > 1.0:
 			var cycle := ["generator", "mine", "farm", "habitat"]
 			pick = cycle[(p.fields - p.free_fields()) % cycle.size()]
-			if res["spice"] < 80.0 and p.kind in Defs.BUILDINGS["spice_extractor"]["only"] and p.count_building("spice_extractor") == 0:
+			if res["spice"] < 80.0 and p.spice_reserve > 1000.0 and p.count_building("spice_extractor") == 0:
 				pick = "spice_extractor"
 		for i in p.fields:
 			if p.order_build(i, pick) == "":

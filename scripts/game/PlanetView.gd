@@ -211,6 +211,16 @@ func _draw_deco() -> void:
 	_deco.draw_line(_ring["from"], _ring["to"], c, 1.5, true)
 	_deco.draw_circle(_ring["bubble"], _ring["br"], Color(0.02, 0.03, 0.08, 0.55 * _ring["alpha"]))
 	_deco.draw_arc(_ring["bubble"], _ring["br"], 0.0, TAU, 64, c, 1.5, true)
+	# Spice reserve bar under the name bubble, in the spice color.
+	if is_instance_valid(planet) and planet.max_spice_reserve > 0.0:
+		var sc: Color = Defs.RESOURCE_COLORS["spice"]
+		var w: float = _ring["br"] * 2.0
+		var tl: Vector2 = _ring["bubble"] + Vector2(-_ring["br"], _ring["br"] + 10.0)
+		var frac := clampf(planet.spice_reserve / planet.max_spice_reserve, 0.0, 1.0)
+		_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(0, 0, 0, 0.7 * _ring["alpha"]))
+		_deco.draw_rect(Rect2(tl, Vector2(w * frac, 8)), Color(sc, _ring["alpha"]))
+		_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(sc, 0.8 * _ring["alpha"]), false, 1.0)
+		_deco.draw_string(get_theme_default_font(), tl + Vector2(0, 24), "Spice %d / %d" % [int(planet.spice_reserve), int(planet.max_spice_reserve)], HORIZONTAL_ALIGNMENT_CENTER, w, 12, Color(sc, _ring["alpha"]))
 
 func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
 	var st := StyleBoxFlat.new()
@@ -295,6 +305,8 @@ func refresh() -> void:
 	elif planet.owner_id != 0:
 		s += "\nPopulation %d / %d  (+%d/min)" % [int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min)]
 		s += "\nPlanetary shield %d / %d" % [int(planet.shield), int(planet.max_shield())]
+		if planet.type_def().has("spice_reserve"):
+			s += "\nSpice reserve: %d%s" % [int(planet.spice_reserve), "  (exhausted)" if planet.spice_reserve <= 0.0 else ""]
 		if planet.under_siege():
 			s += "\nUNDER BOMBARDMENT: growth halted, %d%% of pops left" % int(ceil(100.0 * planet.pop / maxf(planet.siege_start_pop, 1.0)))
 		s += "\nBuildings need %d pop (%d unassigned)" % [planet.pop_required(), int(planet.idle_pop)]
@@ -312,6 +324,8 @@ func refresh() -> void:
 			s += "\nSTARVING: %d pops die in %ds unless fed" % [int(planet.hungry), int(Defs.STARVE_SECONDS - planet.starve_timer)]
 	else:
 		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
+		if planet.type_def().has("spice_reserve"):
+			s += "\nSpice reserve: %d (extract with Spice Extractors)" % int(planet.spice_reserve)
 		if planet.colonizing_owner != 0:
 			s += "\nBeing colonized: %d%%" % int(100.0 * planet.colonize_progress / Planet.COLONIZE_TIME)
 	if mine and planet.fields > 0:
@@ -329,7 +343,8 @@ func refresh() -> void:
 		if built != "":
 			(b.get_node("Art") as TextureRect).texture = Defs.tex("bld_" + built)
 			var running: bool = planet.operating[i] if i < planet.operating.size() else true
-			b.text = "" if running else "IDLE"
+			var dry: bool = built == "spice_extractor" and planet.spice_reserve <= 0.0
+			b.text = ("DRY" if dry else "") if running else "IDLE"
 			b.modulate = Color.WHITE if running else Color(1, 1, 1, 0.4)
 			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], "" if running else " (idle: not enough pop)", Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
 		elif job != "":

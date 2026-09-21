@@ -107,14 +107,16 @@ const ENERGY_STARVED_FACTOR := 0.25
 ## Planet types. A planet's size = its number of fields, and its base
 ## population cap is size * POP_PER_SIZE (a size 19 world: 19 fields, 19k pops).
 ## fertility is informational for now (farms produce a flat amount).
+## spice_reserve: spice stored underground for Spice Extractors. Barren
+## worlds hold the most (desert above all); lush worlds very little.
 ## energy: base energy/sec once colonized. spice: spice/sec once colonized.
 const PLANET_TYPES := {
-	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 0.0, "spice": 0.0},
-	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 0.0, "spice": 0.0},
-	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 0.0, "spice": 0.0},
-	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 0.0, "spice": 0.08},
+	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 0.0, "spice": 0.0, "spice_reserve": 200},
+	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 0.0, "spice": 0.0, "spice_reserve": 5000},
+	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 0.0, "spice": 0.0, "spice_reserve": 1200},
+	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 0.0, "spice": 0.08, "spice_reserve": 2000},
 	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy": 0.0, "spice": 0.0},
-	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 0.0, "spice": 0.0},
+	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 0.0, "spice": 0.0, "spice_reserve": 3000},
 }
 const POP_PER_SIZE := 1000
 const START_POP := 100.0
@@ -154,8 +156,8 @@ const BUILDINGS := {
 		"desc": "+1.5 minerals/s. Needs 100 pop."},
 	"habitat": {"name": "Habitat", "pop": 0, "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
 		"desc": "+1,500 population cap. Needs no staff."},
-	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.2}, "only": ["planet_lava"],
-		"desc": "+0.2 spice/s. Molten worlds only. Needs 200 pop."},
+	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.5}, "only": [],
+		"desc": "+0.5 spice/s from the planet's spice reserve (large on barren worlds, tiny on lush ones). Needs 200 pop."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor"]
 ## Buildings only operate with enough pop on the planet ("pop" above).

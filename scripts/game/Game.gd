@@ -1043,6 +1043,14 @@ func _enter_dev_capture() -> void:
 		var sb0 := nearest_starbase(player_id, Vector2.ZERO)
 		sb0.enqueue("corvette")
 		_set_selection([sb0], false)
+	if OS.get_environment("SL_SHOT_OPEN") == "desert":
+		var dp: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.kind == "planet_desert")[0]
+		dp.colonize(player_id)
+		dp.pop = 600.0
+		dp.buildings[0] = "farm"
+		dp.buildings[1] = "spice_extractor"
+		dp.buildings[2] = "spice_extractor"
+		get_tree().create_timer(20.0).timeout.connect(func(): print("DESERT reserve ", dp.spice_reserve, " spice_out ", dp.spice_out))
 	if OS.get_environment("SL_SHOT_OPEN") == "rally2":
 		var sb2 := nearest_starbase(player_id, Vector2.ZERO)
 		var enemy_p: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.is_enemy_of(player_id))[0]
@@ -1114,6 +1122,9 @@ func _enter_dev_capture() -> void:
 			var r0 := nearest_asteroid(nearest_starbase(player_id, Vector2.ZERO).global_position, 2000.0)
 			_focus_asteroid(r0)
 			center_on(r0.global_position)
+			selection_changed.emit()
+		"desert":
+			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return p.kind == "planet_desert")[0])
 			selection_changed.emit()
 		"sun":
 			var sun0: Star = get_tree().get_nodes_in_group("stars")[0]

@@ -84,6 +84,10 @@ var amount: int = 0
 ## Seconds (game time) until a depleted gas giant refills its reserve.
 const REPLENISH_SECONDS := 600.0
 var depleted_timer: float = 0.0
+## Desert worlds: spice stored underground, drawn down by Spice Extractors.
+var spice_reserve: float = 0.0
+## The reserve this world started with (the spice bar's full length).
+var max_spice_reserve: float = 0.0
 
 var _check_timer: float = 0.0
 var _econ_timer: float = 0.0
@@ -95,6 +99,8 @@ func _ready() -> void:
 		return
 	add_to_group("planets")
 	fields = Defs.field_count($Sprite.texture.get_width()) if is_habitable() else 0
+	spice_reserve = float(type_def().get("spice_reserve", 0))
+	max_spice_reserve = spice_reserve
 	if not is_habitable():
 		resource = "minerals"
 		amount = int(type_def().get("gas_reserve", 0))
@@ -360,6 +366,8 @@ func can_build(field: int, id: String) -> String:
 	var only: Array = Defs.BUILDINGS[id]["only"]
 	if not only.is_empty() and kind not in only:
 		return "%s can't be built on a %s world" % [Defs.BUILDINGS[id]["name"], type_def()["label"]]
+	if id == "spice_extractor" and spice_reserve <= 0.0:
+		return "No spice reserve left on this world"
 	return ""
 
 ## The building being built or queued on a field, or "".
@@ -421,6 +429,11 @@ func _run_buildings(dt: float) -> void:
 			elif k == "energy":
 				v *= g.mod(owner_id, "energy")
 				energy_out += v
+			elif k == "spice" and b == "spice_extractor":
+				# Extractors draw from the planet's stored spice until it runs dry.
+				v = minf(v, spice_reserve / maxf(dt, 0.0001))
+				spice_reserve = maxf(0.0, spice_reserve - v * dt)
+				spice_out += v
 			elif k == "spice":
 				spice_out += v
 			out[k] = out.get(k, 0.0) + v * dt
