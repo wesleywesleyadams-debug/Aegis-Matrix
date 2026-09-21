@@ -95,6 +95,9 @@ const UPKEEP_SCALE_SHIPS := 100.0
 ## multiplied by 1 + (starbases / STARBASE_UPKEEP_SCALE)^3, so ~10 is
 ## sustainable and going past it gets very expensive fast (x9 at 10, x28 at 15).
 const STARBASE_UPKEEP_SCALE := 5.0
+## With no energy in the stockpile, ships move and fire at this fraction of
+## normal speed, and starbases can't produce ships.
+const ENERGY_STARVED_FACTOR := 0.25
 
 ## Planet types. A planet's size = its number of fields, and its base
 ## population cap is size * POP_PER_SIZE (a size 19 world: 19 fields, 19k pops).

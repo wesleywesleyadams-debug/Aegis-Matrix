@@ -89,7 +89,7 @@ func refresh_stats() -> void:
 	shield = max_shield * sh_frac
 
 func max_speed() -> float:
-	return def["speed"] * Game.instance.mod(owner_id, "speed")
+	return def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id)
 
 func cargo_cap() -> int:
 	return int(def.get("cargo", 0) * Game.instance.mod(owner_id, "cargo"))
@@ -154,7 +154,9 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_regen_shields(delta)
-	_cooldown -= delta
+	# Out of energy: weapons recharge (and engines run) at a quarter speed.
+	var power := Game.instance.ship_speed_factor(owner_id)
+	_cooldown -= delta * power
 	_acquire_timer -= delta
 
 	var desired := Vector2.ZERO
@@ -314,7 +316,7 @@ func _steer(desired: Vector2, delta: float, face: SpaceEntity) -> void:
 		face_dir = velocity
 	if face_dir != Vector2.ZERO:
 		# Bigger hulls turn slower.
-		var turn_rate := clampf(6.0 * 8.0 / radius, 1.2, 6.0)
+		var turn_rate := clampf(6.0 * 8.0 / radius, 1.2, 6.0) * Game.instance.ship_speed_factor(owner_id)
 		rotation = rotate_toward(rotation, face_dir.angle(), turn_rate * delta)
 
 	var thrusting := velocity.length() > 12.0

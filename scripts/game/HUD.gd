@@ -652,8 +652,12 @@ func _update_top_bar() -> void:
 		_res_labels[k].text = "%s %s" % [_fmt(r.get(k, 0.0)), rate_txt]
 		_res_labels[k].add_theme_color_override("font_color", BAD if rate < -0.01 and r.get(k, 0.0) < 50.0 else TEXT)
 		_res_boxes[k].tooltip_text = "%s: %d stockpiled, %s net" % [Defs.RESOURCE_NAMES[k], int(r.get(k, 0.0)), rate_txt]
+	if game.energy_starved(pid):
+		_res_labels["energy"].add_theme_color_override("font_color", BAD)
+		_res_labels["energy"].text += "  NO ENERGY"
 	_res_boxes["spice"].tooltip_text += "\nSpice automatically covers shortfalls of food, minerals and energy (1:1)."
-	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/s for ships and starbases%s" % [game.upkeep(pid), "" if game.upkeep_paid[pid] else " (UNPAID: shields won't regenerate)"]
+	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/s for ships and starbases%s" % [game.upkeep(pid), "
+OUT OF ENERGY: ship production halted, ships at 25%% speed" if game.energy_starved(pid) else ""]
 	_pop_label.text = "Pop %s" % _fmt(game.total_pop(pid))
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats 1 food per minute."
 	_fleet_label.text = "%d ships · upkeep x%.2f" % [game.ship_count(pid), game.upkeep_multiplier(pid)]

@@ -31,7 +31,6 @@ var rates := {}
 var researched := {}      # pid -> {tech_id: true}
 var research := {}        # pid -> {"id": String, "progress": float, "stalled": bool} or {}
 var research_queue := {}  # pid -> Array of tech ids
-var upkeep_paid := {}     # pid -> bool (false = shields stop regenerating)
 
 var selection: Array[SpaceEntity] = []
 var focused_planet: Planet
@@ -44,6 +43,7 @@ var placing_starbase: bool = false
 var _grid := {}
 var _rate_acc := {}
 var _rate_timer: float = 0.0
+var _was_starved := false
 var _zoom_index: int = 2
 var _drag_start_screen: Vector2
 var _mouse_down: bool = false
@@ -76,7 +76,6 @@ func _enter_tree() -> void:
 		researched[pid] = {}
 		research[pid] = {}
 		research_queue[pid] = []
-		upkeep_paid[pid] = true
 
 func _ready() -> void:
 	process_physics_priority = -10
@@ -194,6 +193,15 @@ func total_pop(pid: int) -> float:
 			n += p.pop
 	return n
 
+## Out of energy (stockpile at or below 0): starbases can't produce ships
+## and ships move and fire at ENERGY_STARVED_FACTOR speed.
+func energy_starved(pid: int) -> bool:
+	return resources.has(pid) and resources[pid]["energy"] <= 0.0001
+
+## Speed multiplier for a player's ships (1.0, or the starved factor).
+func ship_speed_factor(pid: int) -> float:
+	return Defs.ENERGY_STARVED_FACTOR if energy_starved(pid) else 1.0
+
 func upkeep(pid: int) -> float:
 	var u := 0.0
 	for s in get_tree().get_nodes_in_group("ships"):
@@ -281,8 +289,13 @@ func _physics_process(delta: float) -> void:
 	if is_over:
 		return
 	for pid in players:
-		upkeep_paid[pid] = pay_over_time(pid, {"energy": upkeep(pid)}, delta) >= 0.999
+		pay_over_time(pid, {"energy": upkeep(pid)}, delta)
 		_tick_research(pid, delta)
+	var starved := energy_starved(player_id)
+	if starved and not _was_starved:
+		message.emit("Out of energy! Ship production halted and ships slowed to 25%.", Color("ff6a5a"))
+		sfx.play_ui("alert")
+	_was_starved = starved
 	_rate_timer += delta
 	if _rate_timer >= 1.0:
 		for pid in players:
@@ -881,6 +894,12 @@ func _enter_dev_capture() -> void:
 		hp0.order_build(0, "farm")
 		hp0.order_build(1, "mine")
 		hp0.order_build(2, "farm")
+	if OS.get_environment("SL_SHOT_OPEN") == "starve":
+		resources[player_id]["energy"] = 0.0
+		resources[player_id]["spice"] = 0.0
+		var sb0 := nearest_starbase(player_id, Vector2.ZERO)
+		sb0.enqueue("corvette")
+		_set_selection([sb0], false)
 	if OS.get_environment("SL_SHOT_OPEN") == "gas":
 		researched[player_id]["gas_skimming"] = true
 		resources[player_id]["minerals"] = 2000.0

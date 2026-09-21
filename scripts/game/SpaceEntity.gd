@@ -50,7 +50,7 @@ func _die() -> void:
 	queue_free()
 
 func _regen_shields(delta: float) -> void:
-	if max_shield > 0.0 and shield < max_shield and Game.now() - _last_hit_time > Defs.SHIELD_REGEN_DELAY and Game.instance.upkeep_paid.get(owner_id, true):
+	if max_shield > 0.0 and shield < max_shield and Game.now() - _last_hit_time > Defs.SHIELD_REGEN_DELAY:
 		shield = minf(max_shield, shield + max_shield * Defs.SHIELD_REGEN_PER_SEC * delta)
 		queue_redraw()
 

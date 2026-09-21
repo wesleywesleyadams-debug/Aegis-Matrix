@@ -99,7 +99,10 @@ func _physics_process(delta: float) -> void:
 	})
 
 	build_stalled = false
-	if not queue.is_empty():
+	if not queue.is_empty() and g.energy_starved(owner_id):
+		# No energy: ship production halts entirely.
+		build_stalled = true
+	elif not queue.is_empty():
 		var d: Dictionary = Defs.SHIPS[queue[0]]
 		var per_sec := {}
 		for k in d["cost"]:
