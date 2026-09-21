@@ -82,16 +82,19 @@ const STARBASE := {
 
 const FLEET_CAP := 40
 
-## Planet types. max_pop: population ceiling. fertility scales food output.
+## Planet types. A planet's size = its number of fields, and its base
+## population cap is size * POP_PER_SIZE (a size 19 world: 19 fields, 19k pops).
+## fertility is informational for now (farms produce a flat amount).
 ## energy: base energy/sec once colonized. spice: spice/sec once colonized.
 const PLANET_TYPES := {
-	"planet_terran": {"label": "Terran", "max_pop": 12000, "fertility": 1.0, "energy": 4.0, "spice": 0.0},
-	"planet_desert": {"label": "Desert", "max_pop": 10000, "fertility": 0.45, "energy": 4.5, "spice": 0.0},
-	"planet_ice": {"label": "Arctic", "max_pop": 8000, "fertility": 0.6, "energy": 4.0, "spice": 0.0},
-	"planet_lava": {"label": "Molten", "max_pop": 4000, "fertility": 0.15, "energy": 6.0, "spice": 0.08},
-	"planet_gas": {"label": "Gas Giant", "max_pop": 3000, "fertility": 0.0, "energy": 5.0, "spice": 0.15},
-	"planet_moon": {"label": "Barren Moon", "max_pop": 2000, "fertility": 0.2, "energy": 2.0, "spice": 0.0},
+	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 4.0, "spice": 0.0},
+	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 4.5, "spice": 0.0},
+	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 4.0, "spice": 0.0},
+	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 6.0, "spice": 0.08},
+	"planet_gas": {"label": "Gas Giant", "fertility": 0.0, "energy": 5.0, "spice": 0.15},
+	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 2.0, "spice": 0.0},
 }
+const POP_PER_SIZE := 1000
 const START_POP := 100.0
 ## 1 new pop per minute for every 2 pop (a "pop pair").
 const GROWTH_PER_PAIR_PER_MIN := 1.0
@@ -118,8 +121,8 @@ static func field_count(planet_diameter_px: float) -> int:
 ## ships. output: food per MINUTE; energy/minerals/spice per SECOND.
 ## only: planet kinds it can be built on (empty = any).
 const BUILDINGS := {
-	"farm": {"name": "Farm", "pop": 100, "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 200.0}, "only": [],
-		"desc": "+100 to +200 food/min depending on fertility (boosted by Hydroponics). Needs 100 pop."},
+	"farm": {"name": "Farm", "pop": 100, "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 2000.0}, "only": [],
+		"desc": "+2,000 food/min: feeds 2,000 pops (boosted by Hydroponics). Needs 100 pop."},
 	"generator": {"name": "Power Plant", "pop": 100, "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 3.0}, "only": [],
 		"desc": "+3 energy/s. Needs 100 pop."},
 	"mine": {"name": "Mining Complex", "pop": 100, "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 1.5}, "only": [],

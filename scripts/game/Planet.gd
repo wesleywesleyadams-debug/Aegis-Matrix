@@ -89,9 +89,10 @@ func max_pop() -> float:
 	for b in buildings:
 		if b != "":
 			extra += Defs.BUILDINGS[b].get("max_pop", 0)
+	var base := float(fields * Defs.POP_PER_SIZE)
 	if owner_id == 0:
-		return type_def()["max_pop"] + extra
-	return (type_def()["max_pop"] + extra) * Game.instance.mod(owner_id, "max_pop")
+		return base + extra
+	return (base + extra) * Game.instance.mod(owner_id, "max_pop")
 
 func orbit_radius() -> float:
 	return radius + 70.0
@@ -276,8 +277,8 @@ func _run_buildings(dt: float) -> void:
 		for k in Defs.BUILDINGS[b]["output"]:
 			var v: float = Defs.BUILDINGS[b]["output"][k]
 			if k == "food":
-				# Farms: per-minute figure, scaled by fertility and Hydroponics.
-				v = v * (0.5 + 0.5 * t["fertility"]) * g.mod(owner_id, "food") / 60.0
+				# Farms: per-minute figure, boosted by Hydroponics.
+				v = v * g.mod(owner_id, "food") / 60.0
 				food_made_per_min += v * 60.0
 			elif k == "energy":
 				v *= g.mod(owner_id, "energy")

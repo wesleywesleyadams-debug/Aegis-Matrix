@@ -543,7 +543,7 @@ func _build_planet_panel(p: Planet) -> void:
 	head.add_child(ic)
 	var col := VBoxContainer.new()
 	var owner_text := "Unclaimed" if p.owner_id == 0 else ("Yours" if p.owner_id == game.player_id else "Enemy")
-	col.add_child(_label("%s  ·  %s" % [p.planet_name, t["label"]], Defs.team_color(p.owner_id), 20))
+	col.add_child(_label("%s  ·  %s  ·  Size %d" % [p.planet_name, t["label"], p.fields], Defs.team_color(p.owner_id), 20))
 	col.add_child(_label(owner_text, DIM, 14))
 	head.add_child(col)
 	_sel_body.add_child(head)
@@ -607,7 +607,7 @@ func _update_selection_info() -> void:
 func _planet_text(p: Planet) -> String:
 	var t := p.type_def()
 	if p.owner_id == 0:
-		return "Pop cap %s · Fertility %d%% · Energy %.1f/s%s\nSend a Colony Ship (right-click) to settle it." % [_fmt(t["max_pop"]), int(t["fertility"] * 100.0), t["energy"], (" · Spice %.2f/s" % t["spice"]) if t["spice"] > 0.0 else ""]
+		return "Size %d · Pop cap %s · Energy %.1f/s%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), t["energy"],(" · Spice %.2f/s" % t["spice"]) if t["spice"] > 0.0 else ""]
 	var lines := "Population %s / %s   (+%s/min)" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min)]
 	lines += "\nFood: grown %s/min · eaten %s/min · net %+d/min" % [_fmt(p.food_made_per_min), _fmt(p.food_eaten_per_min), int(p.food_made_per_min - p.food_eaten_per_min)]
 	lines += "\nEnergy %.1f/s%s" % [p.energy_out, ("   Spice %.2f/s" % p.spice_out) if p.spice_out > 0.0 else ""]

@@ -136,7 +136,7 @@ func refresh() -> void:
 		return
 	var t := planet.type_def()
 	var mine := planet.owner_id == game.player_id
-	_title.text = "%s  ·  %s" % [planet.planet_name, t["label"]]
+	_title.text = "%s  ·  %s  ·  Size %d" % [planet.planet_name, t["label"], planet.fields]
 	_title.add_theme_color_override("font_color", Defs.team_color(planet.owner_id))
 	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else "Enemy world")
 	var s := owner_text
@@ -156,7 +156,7 @@ func refresh() -> void:
 		if planet.starving:
 			s += "\nSTARVING: %d pops die in %ds unless fed" % [int(planet.hungry), int(Defs.STARVE_SECONDS - planet.starve_timer)]
 	else:
-		s += "\nPop cap %d · Fertility %d%%\nSend a Colony Ship to settle it." % [t["max_pop"], int(t["fertility"] * 100.0)]
+		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
 	_stats.text = s
 	var used := planet.fields - planet.buildings.count("")
 	_fields_title.text = "Fields: %d / %d built" % [used, planet.fields]
