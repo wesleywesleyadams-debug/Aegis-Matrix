@@ -183,7 +183,7 @@ func _economy(dt: float) -> void:
 			hungry = 0.0
 			starve_timer = 0.0
 			if owner_id == g.player_id and died >= 1.0:
-				g.message.emit("%d pops starved on %s." % [int(died), planet_name], Color("ff6a5a"))
+				g.alert("%d pops starved on %s." % [int(died), planet_name])
 	else:
 		# Fed again within the window: nobody dies.
 		hungry = 0.0

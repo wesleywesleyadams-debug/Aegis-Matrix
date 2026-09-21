@@ -19,7 +19,6 @@ var under_construction: bool = false
 var construct_progress: float = 0.0
 
 var _cooldown: float = 0.0
-var _last_alert: float = -100.0
 
 @onready var base_sprite: Sprite2D = $Base
 @onready var team_sprite: Sprite2D = $Team
@@ -170,10 +169,8 @@ func has_rally_or(fallback: Vector2) -> Vector2:
 func take_damage(amount: float, from: SpaceEntity = null) -> void:
 	super.take_damage(amount, from)
 	var g := Game.instance
-	if owner_id == g.player_id and hp > 0.0 and Game.now() - _last_alert > 15.0:
-		_last_alert = Game.now()
-		g.message.emit("Your starbase is under attack!", Color("ff6a5a"))
-		g.sfx.play_ui("alert")
+	if owner_id == g.player_id and hp > 0.0:
+		g.alert("Your starbase is under attack!")
 
 func _draw() -> void:
 	if Engine.is_editor_hint():

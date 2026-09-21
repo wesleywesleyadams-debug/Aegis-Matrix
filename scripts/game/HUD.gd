@@ -258,19 +258,24 @@ func _build_selection_panel(root: Control) -> void:
 	_sel_panel = panel
 	panel.anchor_top = 1.0
 	panel.anchor_bottom = 1.0
+	# Pinned to the bottom-left; grows upward to fit its contents (no
+	# scrolling) and shrinks back when there's less to show.
 	panel.offset_left = 12
-	panel.offset_top = -300
 	panel.offset_right = 652
 	panel.offset_bottom = -12
+	panel.offset_top = -12
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	panel.add_theme_stylebox_override("panel", _panel_style())
 	root.add_child(panel)
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	panel.add_child(scroll)
 	_sel_body = VBoxContainer.new()
 	_sel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sel_body.add_theme_constant_override("separation", 8)
-	scroll.add_child(_sel_body)
+	panel.add_child(_sel_body)
+	# A starbase's build queue floats just above the panel.
+	_queue_row = HBoxContainer.new()
+	_queue_row.add_theme_constant_override("separation", 6)
+	_queue_row.visible = false
+	root.add_child(_queue_row)
 
 func _build_minimap(root: Control) -> void:
 	var frame := PanelContainer.new()
@@ -493,7 +498,9 @@ func _rebuild_selection() -> void:
 	for c in _sel_body.get_children():
 		c.queue_free()
 	_build_buttons.clear()
-	_queue_row = null
+	for c in _queue_row.get_children():
+		c.free()
+	_queue_row.visible = false
 	_info_label = null
 	var sel: Array = game.selection.filter(func(e): return is_instance_valid(e))
 	if sel.is_empty():
@@ -608,9 +615,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		grid.add_child(b)
 		_build_buttons[t] = b
 	_sel_body.add_child(grid)
-	_queue_row = HBoxContainer.new()
-	_queue_row.add_theme_constant_override("separation", 6)
-	_sel_body.add_child(_queue_row)
+	_queue_row.visible = true
 	_sel_body.add_child(_label("Right-click to set the rally point. Click a queued ship to cancel (paid share refunded).", DIM, 12))
 
 func _build_planet_panel(p: Planet) -> void:
@@ -661,7 +666,7 @@ Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id),
 			var d: Dictionary = Defs.SHIPS[sb.queue[0]]
 			txt += "\nBuilding %s %d%%%s" % [d["name"], int(100.0 * sb.build_progress / d["build_time"]), "  STALLED: waiting for resources" if sb.build_stalled else ""]
 	_info_label.text = txt
-	if e is Starbase and _queue_row:
+	if e is Starbase and _queue_row.visible:
 		var sb := e as Starbase
 		for t in _build_buttons:
 			var why := sb.can_queue(t)
@@ -670,10 +675,20 @@ Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id),
 				_build_buttons[t].tooltip_text = why
 		if _queue_row.get_child_count() != sb.queue.size():
 			for c in _queue_row.get_children():
-				c.queue_free()
+				c.free()
 			for i in sb.queue.size():
 				var qb := Button.new()
-				qb.custom_minimum_size = Vector2(64, 40)
+				qb.custom_minimum_size = Vector2(72, 48)
+				for st in ["normal", "hover", "pressed"]:
+					var qsb := qb.get_theme_stylebox(st).duplicate() as StyleBox
+					qsb.content_margin_left = 6
+					qsb.content_margin_right = 6
+					qsb.content_margin_top = 4
+					qsb.content_margin_bottom = 4
+					qb.add_theme_stylebox_override(st, qsb)
+				qb.add_theme_font_size_override("font_size", 12)
+				qb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				qb.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 				qb.focus_mode = Control.FOCUS_NONE
 				qb.icon = Defs.tex("ship_" + sb.queue[i])
 				qb.expand_icon = true
@@ -709,6 +724,7 @@ func _process(delta: float) -> void:
 		_update_selection_info()
 		_refresh_research()
 		planet_view.refresh()
+	_fit_selection_panel()
 	var now := Game.now()
 	_pings = _pings.filter(func(p): return now - p["t"] < 0.5)
 	_overlay.queue_redraw()
@@ -746,6 +762,15 @@ Total ship+starbase upkeep: %.1f energy/s." % [int(Defs.UPKEEP_SCALE_SHIPS), gam
 		_research_button.modulate = Color(1, 0.6, 0.55) if cur["stalled"] else Color.WHITE
 	var s := int(Game.now())
 	_clock.text = "%02d:%02d" % [s / 60, s % 60]
+
+## Shrink-wraps the bottom-left panel to its contents (it grows upward) and
+## parks the build queue row just above it.
+func _fit_selection_panel() -> void:
+	_sel_panel.size.y = 0.0
+	_sel_panel.position.y = _sel_panel.get_parent_area_size().y - 12.0 - _sel_panel.size.y
+	if _queue_row.visible:
+		_queue_row.size = Vector2.ZERO
+		_queue_row.position = Vector2(12.0, _sel_panel.position.y - _queue_row.size.y - 8.0)
 
 func set_drag_rect(r: Rect2) -> void:
 	_drag_rect = r

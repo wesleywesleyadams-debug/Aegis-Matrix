@@ -310,8 +310,7 @@ func _physics_process(delta: float) -> void:
 		_tick_research(pid, delta)
 	var starved := energy_starved(player_id)
 	if starved and not _was_starved:
-		message.emit("Out of energy! Ship production halted and ships slowed to 25%.", Color("ff6a5a"))
-		sfx.play_ui("alert")
+		alert("Out of energy! Ship production halted and ships slowed to 25%.")
 	_was_starved = starved
 	_rate_timer += delta
 	if _rate_timer >= 1.0:
@@ -484,8 +483,7 @@ func planet_claimed(p: Planet, old_owner: int) -> void:
 		message.emit(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name, Defs.team_color(player_id))
 		sfx.play_ui("claim")
 	elif old_owner == player_id:
-		message.emit("%s lost to the enemy!" % p.planet_name, Color("ff6a5a"))
-		sfx.play_ui("alert")
+		alert("%s lost to the enemy!" % p.planet_name)
 	selection_changed.emit()
 
 func _on_starbase_died(sb: SpaceEntity) -> void:
@@ -504,6 +502,18 @@ func _on_starbase_died(sb: SpaceEntity) -> void:
 		_end_match(false)
 	elif not theirs:
 		_end_match(true)
+
+## Warning message + alarm sound, at most one every ALERT_COOLDOWN
+## seconds (game time) no matter what raised it.
+const ALERT_COOLDOWN := 15.0
+var _last_alert_time: float = -1000.0
+
+func alert(text: String) -> void:
+	if now() - _last_alert_time < ALERT_COOLDOWN:
+		return
+	_last_alert_time = now()
+	message.emit(text, Color("ff6a5a"))
+	sfx.play_ui("alert")
 
 func _end_match(won: bool) -> void:
 	if is_over:
@@ -969,6 +979,8 @@ func _enter_dev_capture() -> void:
 			selection_changed.emit()
 		"starbase":
 			_set_selection([nearest_starbase(player_id, Vector2.ZERO)], false)
+			for t in ["miner", "corvette", "corvette"]:
+				nearest_starbase(player_id, Vector2.ZERO).enqueue(t)
 		"planet":
 			var home_p: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0]
 			home_p.order_build(3, "generator")
