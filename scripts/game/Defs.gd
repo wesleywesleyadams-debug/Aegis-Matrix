@@ -99,10 +99,7 @@ const GROWTH_PER_PAIR_PER_MIN := 1.0
 ## die; feeding them before then (food or spice) resets the clock.
 const FOOD_PER_POP_PER_MIN := 1.0
 const STARVE_SECONDS := 60.0
-## Food grown per minute: fertility * (FOOD_BASE_PER_MIN + pop * FOOD_GROWN_PER_POP_PER_MIN).
-## Fertility 1.0 feeds itself with ~30% to spare; poorer worlds run a deficit.
-const FOOD_BASE_PER_MIN := 90.0
-const FOOD_GROWN_PER_POP_PER_MIN := 1.3
+## Food comes only from Farms (see BUILDINGS), scaled by planet fertility.
 ## Extra energy per second from each 1,000 pop.
 const ENERGY_PER_1000_POP := 1.5
 
@@ -121,18 +118,21 @@ static func field_count(planet_diameter_px: float) -> int:
 ## ships. output: food per MINUTE; energy/minerals/spice per SECOND.
 ## only: planet kinds it can be built on (empty = any).
 const BUILDINGS := {
-	"farm": {"name": "Farm", "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 200.0}, "only": [],
-		"desc": "+100 to +200 food/min depending on fertility (boosted by Hydroponics)."},
-	"generator": {"name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 3.0}, "only": [],
-		"desc": "+3 energy/s."},
-	"mine": {"name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 1.5}, "only": [],
-		"desc": "+1.5 minerals/s."},
-	"habitat": {"name": "Habitat", "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
-		"desc": "+1,500 population cap."},
-	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.2}, "only": ["planet_gas", "planet_lava"],
-		"desc": "+0.2 spice/s. Gas giants and molten worlds only."},
+	"farm": {"name": "Farm", "pop": 100, "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 200.0}, "only": [],
+		"desc": "+100 to +200 food/min depending on fertility (boosted by Hydroponics). Needs 100 pop."},
+	"generator": {"name": "Power Plant", "pop": 100, "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 3.0}, "only": [],
+		"desc": "+3 energy/s. Needs 100 pop."},
+	"mine": {"name": "Mining Complex", "pop": 100, "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 1.5}, "only": [],
+		"desc": "+1.5 minerals/s. Needs 100 pop."},
+	"habitat": {"name": "Habitat", "pop": 0, "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
+		"desc": "+1,500 population cap. Needs no staff."},
+	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.2}, "only": ["planet_gas", "planet_lava"],
+		"desc": "+0.2 spice/s. Gas giants and molten worlds only. Needs 200 pop."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor"]
+## Buildings only operate with enough pop on the planet ("pop" above).
+## Pop is assigned automatically in this order of output.
+const STAFFING_PRIORITY: Array[String] = ["food", "energy", "minerals", "spice"]
 
 const SHIELD_REGEN_DELAY := 4.0
 const SHIELD_REGEN_PER_SEC := 0.08 # fraction of max shield

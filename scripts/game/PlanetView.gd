@@ -142,6 +142,13 @@ func refresh() -> void:
 	var s := owner_text
 	if planet.owner_id != 0:
 		s += "\nPopulation %d / %d  (+%d/min)" % [int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min)]
+		s += "\nBuildings need %d pop (%d unassigned)" % [planet.pop_required(), int(planet.idle_pop)]
+		var idle := 0
+		for k in planet.fields:
+			if planet.buildings[k] != "" and not planet.operating[k]:
+				idle += 1
+		if idle > 0:
+			s += "\n%d building%s IDLE: not enough pop" % [idle, "" if idle == 1 else "s"]
 		s += "\nFood grown %d/min, eaten %d/min" % [int(planet.food_made_per_min), int(planet.food_eaten_per_min)]
 		s += "\nEnergy %.1f/s" % planet.energy_out
 		if planet.spice_out > 0.0:
@@ -159,9 +166,10 @@ func refresh() -> void:
 		var job := planet.field_job(i)
 		if built != "":
 			(b.get_node("Art") as TextureRect).texture = Defs.tex("bld_" + built)
-			b.text = ""
-			b.modulate = Color.WHITE
-			b.tooltip_text = "%s\n%s%s" % [Defs.BUILDINGS[built]["name"], Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
+			var running: bool = planet.operating[i] if i < planet.operating.size() else true
+			b.text = "" if running else "IDLE"
+			b.modulate = Color.WHITE if running else Color(1, 1, 1, 0.4)
+			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], "" if running else " (idle: not enough pop)", Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
 		elif job != "":
 			(b.get_node("Art") as TextureRect).texture = Defs.tex("bld_" + job)
 			var active: bool = planet.construction.get("field", -1) == i

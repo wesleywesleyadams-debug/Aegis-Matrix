@@ -23,6 +23,8 @@ const ECON_TICK := 0.25
 		queue_redraw()
 ## Starting population if owned at match start (0 = Defs.START_POP).
 @export var start_pop: float = 0.0
+## Buildings already standing at match start (filled into the first fields).
+@export var start_buildings: PackedStringArray = []
 
 var radius: float = 24.0
 var pop: float = 0.0
@@ -50,6 +52,9 @@ var buildings: Array[String] = []
 var construction: Dictionary = {}
 var construction_queue: Array = []
 var construction_stalled: bool = false
+## Whether each field's building has enough pop to run, and pop left unassigned.
+var operating: Array[bool] = []
+var idle_pop: float = 0.0
 
 var _check_timer: float = 0.0
 var _econ_timer: float = 0.0
@@ -63,6 +68,15 @@ func _ready() -> void:
 	fields = Defs.field_count($Sprite.texture.get_width())
 	buildings.resize(fields)
 	buildings.fill("")
+	operating.resize(fields)
+	operating.fill(false)
+	for i in mini(start_buildings.size(), fields):
+		buildings[i] = start_buildings[i]
+	# A starting world always has at least one Farm.
+	if owner_id != 0 and not buildings.has("farm"):
+		var slot := buildings.find("")
+		if slot >= 0:
+			buildings[slot] = "farm"
 	if owner_id != 0:
 		pop = start_pop if start_pop > 0.0 else Defs.START_POP
 	_econ_timer = randf() * ECON_TICK
@@ -115,7 +129,7 @@ func _economy(dt: float) -> void:
 	var g := Game.instance
 	var t := type_def()
 	var k := pop / 1000.0
-	food_made_per_min = t["fertility"] * (Defs.FOOD_BASE_PER_MIN + pop * Defs.FOOD_GROWN_PER_POP_PER_MIN) * g.mod(owner_id, "food")
+	food_made_per_min = 0.0 # farms add to this in _run_buildings
 	food_eaten_per_min = pop * Defs.FOOD_PER_POP_PER_MIN
 	energy_out = (t["energy"] + k * Defs.ENERGY_PER_1000_POP) * g.mod(owner_id, "energy")
 	spice_out = t["spice"] * minf(1.0, pop / 1000.0 + 0.25)
@@ -254,8 +268,10 @@ func _run_buildings(dt: float) -> void:
 	var g := Game.instance
 	var t := type_def()
 	var out := {}
-	for b in buildings:
-		if b == "":
+	_staff()
+	for i in fields:
+		var b: String = buildings[i]
+		if b == "" or not operating[i]:
 			continue
 		for k in Defs.BUILDINGS[b]["output"]:
 			var v: float = Defs.BUILDINGS[b]["output"][k]
@@ -291,3 +307,31 @@ func _run_buildings(dt: float) -> void:
 			g.message.emit("%s completed on %s." % [d["name"], planet_name], Color("7fd8ff"))
 			g.sfx.play_ui("build")
 		construction = {}
+
+## Assigns pop to buildings: food first, then energy, minerals, spice.
+## A building runs only if its full "pop" requirement can be met.
+func _staff() -> void:
+	var left := pop
+	operating.fill(false)
+	for i in fields:
+		var b: String = buildings[i]
+		if b != "" and Defs.BUILDINGS[b].get("pop", 0) == 0:
+			operating[i] = true
+	for res in Defs.STAFFING_PRIORITY:
+		for i in fields:
+			var b: String = buildings[i]
+			if b == "" or operating[i] or not Defs.BUILDINGS[b]["output"].has(res):
+				continue
+			var need: float = Defs.BUILDINGS[b]["pop"]
+			if left >= need:
+				operating[i] = true
+				left -= need
+	idle_pop = left
+
+## Pop needed to run every building on this planet.
+func pop_required() -> int:
+	var n := 0
+	for b in buildings:
+		if b != "":
+			n += Defs.BUILDINGS[b].get("pop", 0)
+	return n
