@@ -903,7 +903,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 				s.order_attack(target)
 			else:
 				s.order_move(world_pos)
-		hud.ping(world_pos, Color("ff5a5a"))
+		hud.flash_target(target, true)
 		return
 	if rock:
 		for s in ships:
@@ -911,7 +911,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 				s.order_mine(rock)
 			else:
 				s.order_move(rock.global_position)
-		hud.ping(world_pos, Defs.RESOURCE_COLORS[rock.resource])
+		hud.flash_target(rock, false)
 		return
 	if planet and not planet.is_habitable():
 		var handled := false
@@ -923,7 +923,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 		if ships.any(func(s): return s.def["role"] == "colony"):
 			message.emit("Gas giants are uninhabitable.", Color("ff8a5a"))
 		if handled:
-			hud.ping(world_pos, Color("3fd6b0"))
+			hud.flash_target(planet, false)
 			if ships.is_empty():
 				return
 	if planet and planet.owner_id == 0:
@@ -932,20 +932,21 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 			colonists.sort_custom(func(a, b): return a.global_position.distance_to(planet.global_position) < b.global_position.distance_to(planet.global_position))
 			colonists[0].order_colonize(planet)
 			ships.erase(colonists[0])
-			hud.ping(world_pos, Color("8fe060"))
+			hud.flash_target(planet, false)
 			if ships.is_empty():
 				return
 	if target is Starbase and target.owner_id == player_id:
 		for s in ships:
 			if s.is_miner() and s.cargo > 0:
 				s.order_return()
+		hud.flash_target(target, false)
 	var slots := _formation(ships, world_pos)
 	for i in ships.size():
 		if attack_move:
 			ships[i].order_attack_move(slots[i])
 		else:
 			ships[i].order_move(slots[i])
-	hud.ping(world_pos, Color("ffb04a") if attack_move else Color("7fd8ff"))
+	hud.ping(world_pos, Color("ff5a5a") if attack_move else Color.WHITE)
 
 ## Grid formation facing the direction of travel, biggest hulls in front.
 func _formation(ships: Array, goal: Vector2) -> Array:
@@ -1046,6 +1047,12 @@ func _enter_dev_capture() -> void:
 			_focus_star(sun0)
 			center_on(sun0.global_position)
 			selection_changed.emit()
+		"flash":
+			var en: SpaceEntity = get_tree().get_nodes_in_group("starbases").filter(func(s): return s.owner_id != player_id)[0]
+			center_on(en.global_position)
+			hud.flash_target(en, true)
+			var rk := nearest_asteroid(en.global_position, 900.0)
+			hud.flash_target(rk, false)
 		"paused":
 			hud.toggle_play()
 		"save":
@@ -1062,7 +1069,7 @@ func _enter_dev_capture() -> void:
 			home_p.order_build(4, "habitat")
 			_focus_planet(home_p)
 			selection_changed.emit()
-	await get_tree().create_timer(0.3 * Engine.time_scale).timeout
+	await get_tree().create_timer(0.05 if OS.get_environment("SL_SHOT_OPEN") == "flash" else 0.3 * Engine.time_scale).timeout
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("user://shot.png")
 	get_tree().quit()

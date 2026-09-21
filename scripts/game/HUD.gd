@@ -17,6 +17,10 @@ const STATE_LABELS := {"done": "RESEARCHED", "active": "RESEARCHING", "queued": 
 var game: Game
 var _drag_rect := Rect2()
 var _pings: Array = []
+## Order feedback on a target object: red = attack, white = anything else.
+## Flashes twice (real time, so it looks the same at any game speed).
+var _flashes: Array = []
+const FLASH_TIME := 0.5
 
 var _res_labels := {}
 var _res_boxes := {}
@@ -788,6 +792,7 @@ func _process(delta: float) -> void:
 	_fit_selection_panel()
 	var now := Game.now()
 	_pings = _pings.filter(func(p): return now - p["t"] < 0.5)
+	_flashes = _flashes.filter(func(f): return is_instance_valid(f["node"]) and Time.get_ticks_msec() / 1000.0 - f["real"] < FLASH_TIME)
 	_overlay.queue_redraw()
 
 func _update_top_bar() -> void:
@@ -836,6 +841,10 @@ func _fit_selection_panel() -> void:
 func set_drag_rect(r: Rect2) -> void:
 	_drag_rect = r
 
+func flash_target(node: Node2D, attack: bool) -> void:
+	if is_instance_valid(node):
+		_flashes.append({"node": node, "real": Time.get_ticks_msec() / 1000.0, "color": Color("ff4a4a") if attack else Color.WHITE})
+
 func ping(world_pos: Vector2, color: Color) -> void:
 	_pings.append({"pos": world_pos, "t": Game.now(), "color": color})
 
@@ -863,6 +872,24 @@ func _draw_overlay() -> void:
 		var c := GOOD if ok else BAD
 		_overlay.draw_arc(sp, Defs.STARBASE["radius"] * z, 0, TAU, 48, c, 2.0)
 		_overlay.draw_arc(sp, Defs.STARBASE["min_spacing"] * z, 0, TAU, 96, Color(c, 0.35), 1.0)
+	# Target flashes: a ring with corner brackets, blinking twice.
+	var real_now := Time.get_ticks_msec() / 1000.0
+	for f in _flashes:
+		var age: float = real_now - f["real"]
+		if age > FLASH_TIME:
+			continue
+		# Two flashes: on, off, on, off.
+		if int(age / (FLASH_TIME / 4.0)) % 2 == 1:
+			continue
+		var node: Node2D = f["node"]
+		var r: float = node.get("radius") if node.get("radius") != null else 12.0
+		var center: Vector2 = xf * node.global_position
+		var sr := (r + 6.0) * game.camera.zoom.x
+		_overlay.draw_arc(center, sr, 0.0, TAU, 48, f["color"], 3.0)
+		for d in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+			var c: Vector2 = center + d * sr * 0.9
+			_overlay.draw_line(c, c - Vector2(d.x * 8.0, 0), f["color"], 2.0)
+			_overlay.draw_line(c, c - Vector2(0, d.y * 8.0), f["color"], 2.0)
 	var now := Game.now()
 	for p in _pings:
 		var k: float = (now - p["t"]) / 0.5
