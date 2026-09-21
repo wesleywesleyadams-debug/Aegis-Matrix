@@ -9,11 +9,13 @@ const TARGET_MINERS := 6
 
 var players: Array[int] = []
 var _state := {}
+## Per-player state restored from a save (set before setup()).
+var saved_state := {}
 
 func setup(ai_players: Array) -> void:
 	for pid in ai_players:
 		players.append(pid)
-		_state[pid] = {"wave": 8, "timer": randf(), "claimers": []}
+		_state[pid] = saved_state.get(pid, {"wave": 8, "timer": randf(), "claimers": []})
 
 func _process(delta: float) -> void:
 	var game := Game.instance

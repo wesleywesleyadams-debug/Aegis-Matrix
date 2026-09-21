@@ -61,6 +61,7 @@ func _ready() -> void:
 
 	_build_top_bar(root)
 	_build_speed(root)
+	_build_menu_button(root)
 	_build_selection_panel(root)
 	_build_minimap(root)
 	_build_messages(root)
@@ -154,6 +155,21 @@ func _build_top_bar(root: Control) -> void:
 	h.add_child(_research_button)
 	_clock = _label("00:00", DIM)
 	h.add_child(_clock)
+
+## Top-right Menu button: opens the same menu as Esc (Resume, Save Game,
+## Options, Quit to Title).
+func _build_menu_button(root: Control) -> void:
+	var b := Button.new()
+	b.text = "Menu [Esc]"
+	b.focus_mode = Control.FOCUS_NONE
+	b.anchor_left = 1.0
+	b.anchor_right = 1.0
+	b.offset_left = -12 - 170
+	b.offset_right = -12
+	b.offset_top = 8
+	b.offset_bottom = 8 + 46
+	b.pressed.connect(func(): show_pause(true))
+	root.add_child(b)
 
 ## Game speed slider (top-left). The notch labelled NORMAL is 1x.
 func _build_speed(root: Control) -> void:
@@ -284,7 +300,7 @@ func _build_pause(root: Control) -> void:
 	var parts := _modal(root, "PAUSED")
 	_pause = parts[0]
 	var v: VBoxContainer = parts[1]
-	for pair in [["Resume", func(): show_pause(false)], ["Options", func(): OptionsMenu.open()], ["Quit to Title", _quit_to_title]]:
+	for pair in [["Resume", func(): show_pause(false)], ["Save Game", func(): game.save_game()], ["Options", func(): OptionsMenu.open()], ["Quit to Title", _quit_to_title]]:
 		var b := Button.new()
 		b.text = pair[0]
 		b.pressed.connect(pair[1])

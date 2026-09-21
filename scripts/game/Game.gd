@@ -66,6 +66,10 @@ static func now() -> float:
 	return _clock
 
 func _enter_tree() -> void:
+	# Dev aid: SL_LOAD=<path> starts the match from that save file.
+	if OS.get_environment("SL_LOAD") != "":
+		GameState.load_on_start = true
+		GameState.load_save_path = OS.get_environment("SL_LOAD")
 	instance = self
 	_clock = 0.0
 	player_id = clampi(GameState.human_player_id, 1, 2)
@@ -84,21 +88,30 @@ func _ready() -> void:
 	tree_exiting.connect(func(): SignedInLabel.visible = true)
 	Engine.time_scale = 1.0
 	RenderingServer.set_default_clear_color(Color("07060f"))
+	# Resuming a saved match? Rebuild it before anything else runs.
+	var loaded := false
+	if GameState.load_on_start:
+		GameState.load_on_start = false
+		loaded = SaveGame.apply(self, SaveGame.read(GameState.load_save_path))
 	for sb in get_tree().get_nodes_in_group("starbases"):
 		(sb as Starbase).died.connect(_on_starbase_died)
 	ai.setup([3 - player_id])
-	# Starting barges go straight to work.
-	for s in get_tree().get_nodes_in_group("ships"):
-		if s.is_miner():
-			var rock := nearest_asteroid(s.global_position, 900.0)
-			if rock:
-				s.order_mine(rock)
-	var home := nearest_starbase(player_id, Vector2.ZERO)
-	if home:
-		camera.global_position = home.global_position
+	if not loaded:
+		# Starting barges go straight to work.
+		for s in get_tree().get_nodes_in_group("ships"):
+			if s.is_miner():
+				var rock := nearest_asteroid(s.global_position, 900.0)
+				if rock:
+					s.order_mine(rock)
+		var home := nearest_starbase(player_id, Vector2.ZERO)
+		if home:
+			camera.global_position = home.global_position
 	camera.zoom = Vector2.ONE * ZOOM_LEVELS[_zoom_index]
 	Music.play_track(Music.IN_GAME_TRACK)
-	message.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"))
+	if loaded:
+		message.emit("Saved game loaded.", Color("7fd8ff"))
+	else:
+		message.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"))
 	_enter_dev_capture()
 
 # ---------------------------------------------------------------- economy
@@ -609,6 +622,17 @@ func _handle_key(e: InputEventKey) -> void:
 					if Defs.SHIPS[t]["hotkey"] == k:
 						request_build(sb, t)
 
+## Writes the match to a new save file (Esc menu > Save Game).
+func save_game() -> void:
+	var label: String = {"single": "Single-Player", "multi": "Multi-Player", "campaign": "Campaign"}.get(GameState.game_mode, "Game")
+	var t := int(now())
+	var path := SaveGame.write(self, "%s · %02d:%02d match time" % [label, t / 60, t % 60])
+	if path == "":
+		message.emit("Couldn't write the save file.", Color("ff6a5a"))
+	else:
+		message.emit("Game saved.", Color("6fe07a"))
+		sfx.play_ui("click")
+
 func request_build(sb: Starbase, ship_type: String) -> void:
 	var why := sb.enqueue(ship_type)
 	if why != "":
@@ -929,6 +953,10 @@ func _enter_dev_capture() -> void:
 			hud.planet_view._on_field_pressed(5)
 		"gas":
 			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable())[0])
+			selection_changed.emit()
+		"save":
+			save_game()
+			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0])
 			selection_changed.emit()
 		"starbase":
 			_set_selection([nearest_starbase(player_id, Vector2.ZERO)], false)
