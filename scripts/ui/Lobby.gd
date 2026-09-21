@@ -57,6 +57,13 @@ func _ready() -> void:
 	options_button.pressed.connect(OptionsMenu.open)
 	start_button.pressed.connect(_on_start_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+	# Full-width "Exit to Main Menu" under the Start row.
+	back_button.text = "Exit to Main Menu"
+	var row := back_button.get_parent()
+	row.remove_child(back_button)
+	row.get_parent().add_child(back_button)
+	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	_add_mode_title()
 	_populate_players_grid()
