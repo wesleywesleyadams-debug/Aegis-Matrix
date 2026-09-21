@@ -33,7 +33,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		return
 	var res: Dictionary = game.resources[pid]
 	var ships: Array = game.get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == pid)
-	var miners := ships.filter(func(s): return s.is_miner())
+	var miners := ships.filter(func(s): return s.def["role"] == "miner")
+	var skimmers := ships.filter(func(s): return s.def["role"] == "skimmer")
+	var giant := game.nearest_gas_giant(base.global_position, 4000.0)
 	var war := ships.filter(func(s): return s.def["role"] == "warship")
 	var colonists := ships.filter(func(s): return s.def["role"] == "colony")
 
@@ -50,6 +52,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		var free_planet := _nearest_planet(base.global_position, game, func(p): return p.owner_id == 0)
 		if miners.size() + base.queue.count("miner") < TARGET_MINERS:
 			base.enqueue("miner")
+		elif giant and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2:
+			base.enqueue("skimmer")
 		elif free_planet and colonists.is_empty() and not base.queue.has("colony") and res["spice"] >= 20.0:
 			base.enqueue("colony")
 		else:
@@ -62,6 +66,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			var p := _nearest_planet(c.global_position, game, func(pl): return pl.owner_id == 0)
 			if p:
 				c.order_colonize(p)
+
+	for s in skimmers:
+		if s.state == Ship.State.IDLE and giant:
+			s.order_mine(giant)
 
 	# Idle miners go back to work; one goes after spice when it's low.
 	var on_spice := miners.filter(func(m): return is_instance_valid(m.mine_target) and m.mine_target.resource == "spice").size()

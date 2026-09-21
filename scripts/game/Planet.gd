@@ -56,6 +56,13 @@ var construction_stalled: bool = false
 var operating: Array[bool] = []
 var idle_pop: float = 0.0
 
+## Gas giants: mined by Gas Skimmers (duck-types like an Asteroid).
+var resource: String = ""
+var amount: int = 0
+## Seconds (game time) until a depleted gas giant refills its reserve.
+const REPLENISH_SECONDS := 600.0
+var depleted_timer: float = 0.0
+
 var _check_timer: float = 0.0
 var _econ_timer: float = 0.0
 
@@ -65,7 +72,10 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	add_to_group("planets")
-	fields = Defs.field_count($Sprite.texture.get_width())
+	fields = Defs.field_count($Sprite.texture.get_width()) if is_habitable() else 0
+	if not is_habitable():
+		resource = "minerals"
+		amount = int(type_def().get("gas_reserve", 0))
 	buildings.resize(fields)
 	buildings.fill("")
 	operating.resize(fields)
@@ -84,6 +94,19 @@ func _ready() -> void:
 func type_def() -> Dictionary:
 	return Defs.PLANET_TYPES[kind]
 
+func is_habitable() -> bool:
+	return type_def().get("habitable", true)
+
+## Gas giant skimming; returns how much was actually taken.
+func extract(n: int) -> int:
+	var got := mini(n, amount)
+	amount -= got
+	if amount <= 0 and depleted_timer <= 0.0:
+		depleted_timer = REPLENISH_SECONDS
+		$Sprite.modulate = Color(0.45, 0.45, 0.5)
+		queue_redraw()
+	return got
+
 func max_pop() -> float:
 	var extra := 0.0
 	for b in buildings:
@@ -98,6 +121,8 @@ func orbit_radius() -> float:
 	return radius + 70.0
 
 func colonize(pid: int) -> void:
+	if not is_habitable():
+		return
 	var old := owner_id
 	owner_id = pid
 	construction = {}
@@ -109,6 +134,13 @@ func colonize(pid: int) -> void:
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	if depleted_timer > 0.0:
+		depleted_timer -= delta
+		if depleted_timer <= 0.0:
+			depleted_timer = 0.0
+			amount = int(type_def().get("gas_reserve", 0))
+			$Sprite.modulate = Color.WHITE
+			queue_redraw()
 	_econ_timer += delta
 	if _econ_timer >= ECON_TICK:
 		_economy(_econ_timer)
@@ -164,7 +196,7 @@ func _economy(dt: float) -> void:
 		pop = minf(pop, cap)
 
 func _check_conquest() -> void:
-	if owner_id == 0:
+	if owner_id == 0 or not is_habitable():
 		claim_progress = 0.0
 		return
 	var present := {}
@@ -194,6 +226,9 @@ func _check_conquest() -> void:
 func _draw() -> void:
 	if Engine.is_editor_hint():
 		return
+	if depleted_timer > 0.0:
+		var f := ThemeDB.fallback_font
+		draw_string(f, Vector2(-radius, radius + 12.0), "DEPLETED", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, 8, Color(1, 0.55, 0.45))
 	var r := radius + 5.0
 	if owner_id != 0 or focused:
 		# Owner ring: dotted pixel circle (white while focused).

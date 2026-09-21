@@ -18,7 +18,9 @@ var velocity: Vector2 = Vector2.ZERO
 var move_goal: Vector2
 var attack_move_goal: Vector2
 var target: SpaceEntity
-var mine_target: Asteroid
+## An Asteroid (barges) or a gas giant Planet (skimmers); both expose
+## resource, amount, radius and extract().
+var mine_target: Node2D
 var cargo: int = 0
 var cargo_type: String = "minerals"
 var colonize_target: Planet
@@ -61,7 +63,20 @@ func _apply_visuals() -> void:
 	flame.position = Vector2(-hull.texture.get_width() / 2.0 - 2.0, 0)
 
 func is_miner() -> bool:
-	return def.get("role", "") == "miner"
+	return def.get("role", "") in ["miner", "skimmer"]
+
+## Barges mine asteroids; skimmers mine gas giants.
+func can_mine(target: Node2D) -> bool:
+	if def.get("role", "") == "miner":
+		return target is Asteroid
+	if def.get("role", "") == "skimmer":
+		return target is Planet and not (target as Planet).is_habitable()
+	return false
+
+func _find_mine_target(resource: String) -> Node2D:
+	if def["role"] == "skimmer":
+		return Game.instance.nearest_gas_giant(global_position, 3000.0)
+	return Game.instance.nearest_asteroid(global_position, 900.0, resource)
 
 ## Re-derives hull/shield caps from research, keeping current fractions.
 func refresh_stats() -> void:
@@ -101,8 +116,8 @@ func order_attack(e: SpaceEntity) -> void:
 	state = State.ATTACK
 	target = e
 
-func order_mine(a: Asteroid) -> void:
-	if not is_miner():
+func order_mine(a: Node2D) -> void:
+	if not can_mine(a):
 		order_move(a.global_position)
 		return
 	if cargo > 0 and a.resource != cargo_type:
@@ -181,13 +196,13 @@ func _physics_process(delta: float) -> void:
 				face_target = target
 		State.MINE_GO:
 			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
-				var want := mine_target.resource if is_instance_valid(mine_target) else cargo_type
-				mine_target = Game.instance.nearest_asteroid(global_position, 900.0, want)
+				var want: String = mine_target.resource if is_instance_valid(mine_target) else cargo_type
+				mine_target = _find_mine_target(want)
 				if mine_target == null:
 					state = State.RETURN if cargo > 0 else State.IDLE
 			else:
-				var reach := mine_target.radius + radius + 4.0
-				if global_position.distance_to(mine_target.global_position) <= reach:
+				var reach: float = mine_target.radius + radius + 4.0
+				if global_position.distance_to(mine_target.global_position) <= reach + 4.0:
 					state = State.MINING
 					_mine_timer = def["mine_time"]
 				else:
@@ -204,7 +219,7 @@ func _physics_process(delta: float) -> void:
 					state = State.RETURN
 					queue_redraw()
 		State.COLONIZE:
-			if not is_instance_valid(colonize_target) or colonize_target.owner_id != 0:
+			if not is_instance_valid(colonize_target) or colonize_target.owner_id != 0 or not colonize_target.is_habitable():
 				state = State.IDLE
 				move_goal = global_position
 			else:

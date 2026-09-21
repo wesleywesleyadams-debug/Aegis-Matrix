@@ -136,11 +136,20 @@ func refresh() -> void:
 		return
 	var t := planet.type_def()
 	var mine := planet.owner_id == game.player_id
-	_title.text = "%s  ·  %s  ·  Size %d" % [planet.planet_name, t["label"], planet.fields]
+	_title.text = ("%s  ·  %s  ·  Size %d" % [planet.planet_name, t["label"], planet.fields]) if planet.fields > 0 else "%s  ·  %s" % [planet.planet_name, t["label"]]
 	_title.add_theme_color_override("font_color", Defs.team_color(planet.owner_id))
 	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else "Enemy world")
 	var s := owner_text
-	if planet.owner_id != 0:
+	if not planet.is_habitable():
+		s = "Uninhabitable. No regions to build on; cannot be colonized."
+		if planet.depleted_timer > 0.0:
+			var left := int(planet.depleted_timer)
+			s += "\nDEPLETED: reserve refills in %d:%02d" % [left / 60, left % 60]
+		else:
+			s += "\nMineral reserve: %d" % planet.amount
+		s += "\nMine it with Gas Skimmers (research Gas Skimming)."
+		s += "\nSkimmers haul what they mine back to a starbase."
+	elif planet.owner_id != 0:
 		s += "\nPopulation %d / %d  (+%d/min)" % [int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min)]
 		s += "\nBuildings need %d pop (%d unassigned)" % [planet.pop_required(), int(planet.idle_pop)]
 		var idle := 0
@@ -159,7 +168,7 @@ func refresh() -> void:
 		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
 	_stats.text = s
 	var used := planet.fields - planet.buildings.count("")
-	_fields_title.text = "Fields: %d / %d built" % [used, planet.fields]
+	_fields_title.text = ("Fields: %d / %d built" % [used, planet.fields]) if planet.fields > 0 else "No habitable regions"
 	for i in _field_buttons.size():
 		var b := _field_buttons[i]
 		var built: String = planet.buildings[i]

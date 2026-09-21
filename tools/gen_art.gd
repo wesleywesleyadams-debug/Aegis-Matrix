@@ -157,6 +157,11 @@ func _gen_ships() -> void:
 		[[2, 14, 4.0, 4.0], [4, 11, 6.5, 6.5], [13, 18, 2.5, 0.6], [0, 3, 2.0, 2.0]],
 		func(x: int, dy: float) -> bool: return (x == 6 or x == 9) and absf(dy) > 1.5,
 		[14, 2], [-1.0, 0.0], [5, 10])
+	# Gas skimmer: long intake scoop up front, tanks behind.
+	_ship("skimmer", 20, 15,
+		[[2, 12, 3.5, 3.5], [3, 10, 1.6, 1.6, 5.0], [11, 20, 2.0, 5.5], [0, 3, 2.0, 2.0]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 3.4 and x < 11,
+		[8, 2], [-1.0, 0.0], [6, 14])
 	# Constructor: boxy hull with twin crane booms.
 	_ship("constructor", 18, 15,
 		[[2, 12, 4.0, 4.0], [3, 9, 1.8, 1.8, 5.0], [11, 18, 0.9, 0.9, 3.5], [0, 3, 2.0, 2.0]],

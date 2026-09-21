@@ -35,6 +35,13 @@ const SHIPS := {
 		"cargo": 10, "mine_time": 2.5,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
+	"skimmer": {
+		"name": "Gas Skimmer", "role": "skimmer", "hotkey": KEY_M, "requires": "gas_skimming",
+		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0, "supply": 1,
+		"cost": {"minerals": 90, "spice": 10}, "build_time": 12.0, "upkeep": 0.1,
+		"cargo": 5, "mine_time": 4.0,
+		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
+	},
 	"colony": {
 		"name": "Colony Ship", "role": "colony", "hotkey": KEY_X,
 		"hp": 120.0, "shield": 20.0, "speed": 60.0, "radius": 9.0, "supply": 2,
@@ -67,7 +74,7 @@ const SHIPS := {
 	},
 }
 
-const BUILD_ORDER: Array[String] = ["miner", "colony", "constructor", "corvette", "destroyer", "cruiser"]
+const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor", "corvette", "destroyer", "cruiser"]
 
 const STARBASE := {
 	"name": "Starbase", "hp": 2400.0, "shield": 800.0, "radius": 26.0,
@@ -91,7 +98,7 @@ const PLANET_TYPES := {
 	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 4.5, "spice": 0.0},
 	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 4.0, "spice": 0.0},
 	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 6.0, "spice": 0.08},
-	"planet_gas": {"label": "Gas Giant", "fertility": 0.0, "energy": 5.0, "spice": 0.15},
+	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy": 0.0, "spice": 0.0},
 	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 2.0, "spice": 0.0},
 }
 const POP_PER_SIZE := 1000
@@ -129,8 +136,8 @@ const BUILDINGS := {
 		"desc": "+1.5 minerals/s. Needs 100 pop."},
 	"habitat": {"name": "Habitat", "pop": 0, "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
 		"desc": "+1,500 population cap. Needs no staff."},
-	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.2}, "only": ["planet_gas", "planet_lava"],
-		"desc": "+0.2 spice/s. Gas giants and molten worlds only. Needs 200 pop."},
+	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.2}, "only": ["planet_lava"],
+		"desc": "+0.2 spice/s. Molten worlds only. Needs 200 pop."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor"]
 ## Buildings only operate with enough pop on the planet ("pop" above).
@@ -152,6 +159,8 @@ const TECHS := {
 		"effects": {"food": 0.30}, "desc": "+30% food production."},
 	"deep_drills": {"name": "Deep-Core Drills", "tier": 1, "requires": [], "cost": {"energy": 400}, "time": 40.0,
 		"effects": {"cargo": 0.40}, "desc": "Mining barges carry +40% ore."},
+	"gas_skimming": {"name": "Gas Skimming", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 50.0,
+		"effects": {}, "desc": "Unlocks the Gas Skimmer, which mines minerals from gas giants."},
 	"plasma_lances": {"name": "Plasma Lances", "tier": 2, "requires": ["ion_cannons"], "cost": {"energy": 1200, "spice": 30}, "time": 90.0,
 		"effects": {"damage": 0.25}, "desc": "+25% weapon damage."},
 	"nanite_plating": {"name": "Nanite Plating", "tier": 2, "requires": ["deflectors"], "cost": {"energy": 1000, "spice": 25}, "time": 80.0,

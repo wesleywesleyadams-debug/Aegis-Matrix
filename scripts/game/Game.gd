@@ -324,6 +324,18 @@ func nearest_asteroid(pos: Vector2, max_dist: float, resource: String = "mineral
 			best = a
 	return best
 
+func nearest_gas_giant(pos: Vector2, max_dist: float) -> Planet:
+	var best: Planet = null
+	var best_d := max_dist
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.is_habitable() or p.amount <= 0:
+			continue
+		var d := pos.distance_to(p.global_position)
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
+
 func nearest_starbase(pid: int, pos: Vector2, include_sites: bool = false) -> Starbase:
 	var best: Starbase = null
 	var best_d := INF
@@ -772,6 +784,19 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 				s.order_move(rock.global_position)
 		hud.ping(world_pos, Defs.RESOURCE_COLORS[rock.resource])
 		return
+	if planet and not planet.is_habitable():
+		var handled := false
+		for s in ships.duplicate():
+			if s.can_mine(planet):
+				s.order_mine(planet)
+				ships.erase(s)
+				handled = true
+		if ships.any(func(s): return s.def["role"] == "colony"):
+			message.emit("Gas giants are uninhabitable.", Color("ff8a5a"))
+		if handled:
+			hud.ping(world_pos, Color("3fd6b0"))
+			if ships.is_empty():
+				return
 	if planet and planet.owner_id == 0:
 		var colonists: Array = ships.filter(func(s): return s.def["role"] == "colony")
 		if not colonists.is_empty():
@@ -842,6 +867,15 @@ func _enter_dev_capture() -> void:
 		hp0.order_build(0, "farm")
 		hp0.order_build(1, "mine")
 		hp0.order_build(2, "farm")
+	if OS.get_environment("SL_SHOT_OPEN") == "gas":
+		researched[player_id]["gas_skimming"] = true
+		resources[player_id]["minerals"] = 2000.0
+		resources[player_id]["spice"] = 200.0
+		var gas_p: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable())[0]
+		gas_p.amount = 12
+		var sk := spawn_ship("skimmer", player_id, gas_p.global_position + Vector2(-260, 120))
+		sk.order_mine(gas_p)
+		center_on(gas_p.global_position)
 	if OS.get_environment("SL_SHOT_OPEN") == "research":
 		queue_research(player_id, "ion_cannons")
 		queue_research(player_id, "plasma_lances")
@@ -849,6 +883,9 @@ func _enter_dev_capture() -> void:
 	match OS.get_environment("SL_SHOT_OPEN"):
 		"research":
 			hud.toggle_research()
+		"gas":
+			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable())[0])
+			selection_changed.emit()
 		"starbase":
 			_set_selection([nearest_starbase(player_id, Vector2.ZERO)], false)
 		"planet":

@@ -151,6 +151,11 @@ func _launch(ship_type: String) -> void:
 	if owner_id == g.player_id:
 		g.sfx.play_ui("build")
 	ship.rotation = dir.angle()
+	if ship.def["role"] == "skimmer":
+		var giant := g.nearest_gas_giant(global_position, 4000.0)
+		if giant:
+			ship.order_mine(giant)
+			return
 	if ship.is_miner():
 		var rock := g.nearest_asteroid(has_rally_or(global_position), 900.0)
 		if rock:

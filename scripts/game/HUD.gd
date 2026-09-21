@@ -329,7 +329,7 @@ func _build_research(root: Control) -> void:
 			if Defs.TECHS[id]["tier"] != tier:
 				continue
 			var b := Button.new()
-			b.custom_minimum_size = Vector2(340, 100)
+			b.custom_minimum_size = Vector2(340, 84)
 			b.focus_mode = Control.FOCUS_NONE
 			b.pressed.connect(func(): game.request_research(id); _refresh_research())
 			var lab := Label.new()
@@ -338,7 +338,7 @@ func _build_research(root: Control) -> void:
 			lab.offset_top = 6
 			lab.offset_right = -10
 			lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			lab.add_theme_font_size_override("font_size", 14)
+			lab.add_theme_font_size_override("font_size", 13)
 			lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			b.add_child(lab)
 			var bar := ColorRect.new()
@@ -489,6 +489,8 @@ func _build_ship_controls(s: Ship) -> void:
 			_add_found_button()
 		"miner":
 			_sel_body.add_child(_label("Right-click an asteroid to mine it. Orange-flecked rocks hold spice.", DIM, 13))
+		"skimmer":
+			_sel_body.add_child(_label("Right-click a gas giant to mine minerals from it.", DIM, 13))
 
 func _add_found_button() -> void:
 	var b := Button.new()
@@ -543,7 +545,7 @@ func _build_planet_panel(p: Planet) -> void:
 	head.add_child(ic)
 	var col := VBoxContainer.new()
 	var owner_text := "Unclaimed" if p.owner_id == 0 else ("Yours" if p.owner_id == game.player_id else "Enemy")
-	col.add_child(_label("%s  ·  %s  ·  Size %d" % [p.planet_name, t["label"], p.fields], Defs.team_color(p.owner_id), 20))
+	col.add_child(_label(("%s  ·  %s  ·  Size %d" % [p.planet_name, t["label"], p.fields]) if p.fields > 0 else "%s  ·  %s" % [p.planet_name, t["label"]], Defs.team_color(p.owner_id), 20))
 	col.add_child(_label(owner_text, DIM, 14))
 	head.add_child(col)
 	_sel_body.add_child(head)
@@ -565,7 +567,7 @@ func _update_selection_info() -> void:
 		txt += "   Shield %d/%d" % [ceili(e.shield), e.max_shield]
 	if e is Ship:
 		var s := e as Ship
-		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to asteroid", "Mining", "Returning cargo", "Colonizing", "Flying to build site"][s.state]
+		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Flying to gas giant"][s.state]
 		if s.is_miner():
 			txt += "   Cargo %d/%d %s" % [s.cargo, s.cargo_cap(), s.cargo_type]
 		elif s.def["weapon"] != "":
@@ -606,6 +608,8 @@ func _update_selection_info() -> void:
 
 func _planet_text(p: Planet) -> String:
 	var t := p.type_def()
+	if not p.is_habitable():
+		return "Uninhabitable gas giant · %s\nGas Skimmers mine it and haul the minerals to a starbase." % [("DEPLETED, refills in %ds" % int(p.depleted_timer)) if p.depleted_timer > 0.0 else "Mineral reserve %d" % p.amount]
 	if p.owner_id == 0:
 		return "Size %d · Pop cap %s · Energy %.1f/s%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), t["energy"],(" · Spice %.2f/s" % t["spice"]) if t["spice"] > 0.0 else ""]
 	var lines := "Population %s / %s   (+%s/min)" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min)]
