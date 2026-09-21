@@ -6,11 +6,14 @@ extends PanelContainer
 ## order a building, click a building to demolish it, or click one under
 ## construction to cancel it. The game keeps running while it's open.
 
-## Largest the planet art is drawn (integer pixel scale is chosen to fit).
-const GLOBE_MAX := 448
+## Field slots are a fixed size; the planet art is scaled up (whole-pixel
+## steps) until every slot fits on its face.
+const SLOT := 64
 const SLOT_GAP := 6
-const SLOT_MAX := 72
-const SLOT_MIN := 30
+## Smallest the close-up planet is drawn, even with few fields.
+const GLOBE_MIN := 320
+## Ring of open planet surface kept around the slot block (px).
+const GLOBE_MARGIN := 64
 
 var game: Game
 var planet: Planet
@@ -58,7 +61,7 @@ func _ready() -> void:
 
 	# The planet itself, with field slots placed on top of it.
 	_globe = Control.new()
-	_globe.custom_minimum_size = Vector2(GLOBE_MAX, GLOBE_MAX)
+	_globe.custom_minimum_size = Vector2(GLOBE_MIN, GLOBE_MIN)
 	body.add_child(_globe)
 	_art = TextureRect.new()
 	_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -100,19 +103,25 @@ func show_planet(p: Planet) -> void:
 	# Big version of the planet: same pixel art at the largest whole-pixel
 	# scale that fits, centered in the globe area.
 	var tex_w := (p.get_node("Sprite") as Sprite2D).texture.get_width()
-	var scale_px := maxi(1, GLOBE_MAX / tex_w)
+	# Smallest circle that holds all fields, then the smallest whole-pixel
+	# planet scale whose disc (minus its outline) covers that circle.
+	var need_r := _radius_for(p.fields)
+	var scale_px := maxi(1, int(ceil(float(GLOBE_MIN) / tex_w)))
+	while tex_w * scale_px / 2.0 - scale_px * 2.0 < need_r + GLOBE_MARGIN:
+		scale_px += 1
 	var d := tex_w * scale_px
+	_globe.custom_minimum_size = Vector2(d, d)
 	_art.texture = Defs.tex(p.kind)
-	_art.position = Vector2.ONE * (GLOBE_MAX - d) / 2.0
+	_art.position = Vector2.ZERO
 	_art.size = Vector2(d, d)
 	for b in _field_buttons:
 		b.queue_free()
 	_field_buttons.clear()
-	var rects := _layout_slots(p.fields, d / 2.0 - scale_px * 2.0)
+	var rects := _layout_slots(p.fields, need_r)
 	for i in p.fields:
 		var b := Button.new()
 		b.focus_mode = Control.FOCUS_NONE
-		b.position = rects[i].position + Vector2.ONE * GLOBE_MAX / 2.0
+		b.position = rects[i].position + Vector2.ONE * d / 2.0
 		b.size = rects[i].size
 		b.custom_minimum_size = rects[i].size
 		b.add_theme_stylebox_override("normal", _slot_style(Color(0.05, 0.06, 0.14, 0.72), HUD.EDGE_LIT))
@@ -146,50 +155,53 @@ func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
 	s.set_border_width_all(2)
 	return s
 
-## Places n square slots in centered rows that fit inside a circle of
-## radius r (slot corners stay on the planet). Picks the biggest slot size
-## that fits, then trims the widest rows so the shape stays balanced.
-## Returns rects relative to the circle's center.
+## Smallest circle radius that fits n fixed-size slots.
+func _radius_for(n: int) -> float:
+	var r := float(SLOT)
+	while _layout_slots(n, r).size() < n:
+		r += 4.0
+	return r
+
+## Places n SLOT-sized squares in centered rows inside a circle of radius r
+## (slot corners stay on the planet), using the fewest rows possible and
+## trimming the widest rows so the shape stays balanced. Returns rects
+## relative to the circle's center, or fewer than n if they don't fit.
 func _layout_slots(n: int, r: float) -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	if n <= 0:
 		return out
-	var s := SLOT_MAX
-	while s >= SLOT_MIN:
-		var pitch := s + SLOT_GAP
-		var max_rows := int((2.0 * r + SLOT_GAP) / pitch)
-		# Try the fewest rows (closest to the equator) that hold n slots.
-		for k in range(1, max_rows + 1):
-			var counts: Array[int] = []
-			var ys: Array[float] = []
+	var s := float(SLOT)
+	var pitch := s + SLOT_GAP
+	var max_rows := int((2.0 * r + SLOT_GAP) / pitch)
+	for k in range(1, max_rows + 1):
+		var counts: Array[int] = []
+		var ys: Array[float] = []
+		for j in k:
+			var y := (j - (k - 1) / 2.0) * pitch
+			var reach := absf(y) + s / 2.0
+			if reach >= r:
+				counts.append(0)
+			else:
+				var chord := 2.0 * sqrt(r * r - reach * reach)
+				counts.append(maxi(0, int((chord + SLOT_GAP) / pitch)))
+			ys.append(y)
+		var total := 0
+		for c in counts:
+			total += c
+		if total < n:
+			continue
+		while total > n:
+			var best := 0
 			for j in k:
-				var y := (j - (k - 1) / 2.0) * pitch
-				var reach := absf(y) + s / 2.0
-				if reach >= r:
-					counts.append(0)
-				else:
-					var chord := 2.0 * sqrt(r * r - reach * reach)
-					counts.append(maxi(0, int((chord + SLOT_GAP) / pitch)))
-				ys.append(y)
-			var total := 0
-			for c in counts:
-				total += c
-			if total < n:
-				continue
-			# Trim extras from the fullest rows (outer rows first on ties).
-			while total > n:
-				var best := 0
-				for j in k:
-					if counts[j] > counts[best] or (counts[j] == counts[best] and absf(ys[j]) > absf(ys[best])):
-						best = j
-				counts[best] -= 1
-				total -= 1
-			for j in k:
-				var w := counts[j] * pitch - SLOT_GAP
-				for c in counts[j]:
-					out.append(Rect2(Vector2(-w / 2.0 + c * pitch, ys[j] - s / 2.0), Vector2(s, s)))
-			return out
-		s -= 2
+				if counts[j] > counts[best] or (counts[j] == counts[best] and absf(ys[j]) > absf(ys[best])):
+					best = j
+			counts[best] -= 1
+			total -= 1
+		for j in k:
+			var w := counts[j] * pitch - SLOT_GAP
+			for c in counts[j]:
+				out.append(Rect2(Vector2(-w / 2.0 + c * pitch, ys[j] - s / 2.0), Vector2(s, s)))
+		return out
 	return out
 
 func refresh() -> void:
