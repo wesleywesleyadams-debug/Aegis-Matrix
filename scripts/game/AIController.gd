@@ -1,8 +1,9 @@
 class_name AIController
 extends Node
-## Simple computer opponent: keeps ~6 miners working, builds a mixed fleet,
-## claims nearby neutral planets, defends its starbase, and launches
-## growing attack waves at the nearest enemy asset.
+## Simple computer opponent: keeps miners working (including one on spice
+## once spice is scarce), colonizes nearby worlds, researches, builds a
+## mixed fleet while it can afford the running costs, defends its
+## starbase, and launches growing attack waves.
 
 const TARGET_MINERS := 6
 
@@ -30,25 +31,50 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	var base := game.nearest_starbase(pid, Vector2.ZERO)
 	if base == null:
 		return
+	var res: Dictionary = game.resources[pid]
 	var ships: Array = game.get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == pid)
 	var miners := ships.filter(func(s): return s.is_miner())
-	var war := ships.filter(func(s): return not s.is_miner())
+	var war := ships.filter(func(s): return s.def["role"] == "warship")
+	var colonists := ships.filter(func(s): return s.def["role"] == "colony")
 
-	# Economy first.
-	var queued_miners := base.queue.count("miner")
-	if miners.size() + queued_miners < TARGET_MINERS and base.queue.size() < 2:
-		base.enqueue("miner")
-	elif base.queue.size() < 2:
-		var pick := _pick_warship(pid, game)
-		if pick != "":
-			base.enqueue(pick)
+	# Research: keep one tech going if energy isn't collapsing.
+	if game.research[pid].is_empty() and game.research_queue[pid].is_empty() and res["energy"] > 150.0:
+		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available")
+		# Skip pure-spice techs unless spice is plentiful.
+		options = options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
+		if not options.is_empty():
+			game.queue_research(pid, options.pick_random())
 
-	# Idle miners go back to work.
+	# Builds: only queue when stockpiles can roughly cover the next item.
+	if base.queue.size() < 2:
+		var free_planet := _nearest_planet(base.global_position, game, func(p): return p.owner_id == 0)
+		if miners.size() + base.queue.count("miner") < TARGET_MINERS:
+			base.enqueue("miner")
+		elif free_planet and colonists.is_empty() and not base.queue.has("colony") and res["spice"] >= 20.0:
+			base.enqueue("colony")
+		else:
+			var pick := _pick_warship(pid, game)
+			if pick != "" and res["minerals"] >= Defs.SHIPS[pick]["cost"]["minerals"] * 0.5:
+				base.enqueue(pick)
+
+	for c in colonists:
+		if c.state == Ship.State.IDLE or c.state == Ship.State.MOVE:
+			var p := _nearest_planet(c.global_position, game, func(pl): return pl.owner_id == 0)
+			if p:
+				c.order_colonize(p)
+
+	# Idle miners go back to work; one goes after spice when it's low.
+	var on_spice := miners.filter(func(m): return is_instance_valid(m.mine_target) and m.mine_target.resource == "spice").size()
 	for m in miners:
 		if m.state == Ship.State.IDLE:
-			var rock := game.nearest_asteroid(m.global_position, 1200.0)
+			var want := "spice" if res["spice"] < 60.0 and on_spice == 0 else "minerals"
+			var rock := game.nearest_asteroid(m.global_position, 1600.0, want)
+			if rock == null:
+				rock = game.nearest_asteroid(m.global_position, 1600.0)
 			if rock:
 				m.order_mine(rock)
+				if rock.resource == "spice":
+					on_spice += 1
 
 	# Defend: enemies near the starbase pull every warship home.
 	var threat := game.nearest_enemy(base, 450.0)
@@ -59,18 +85,6 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		return
 
 	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
-
-	# Send a pair of idle corvettes to claim the nearest unowned planet.
-	st["claimers"] = st["claimers"].filter(func(s): return is_instance_valid(s))
-	if st["claimers"].is_empty() and idle.size() >= 2:
-		var planet := _nearest_planet(base.global_position, game, func(p): return p.owner_id != pid)
-		if planet:
-			for s in idle.slice(0, 2):
-				s.order_attack_move(planet.global_position + Vector2.from_angle(randf() * TAU) * planet.radius * 1.4)
-				st["claimers"].append(s)
-			idle = idle.slice(2)
-
-	# Attack wave once the idle fleet is big enough.
 	var idle_supply := 0
 	for s in idle:
 		idle_supply += s.def["supply"]
@@ -83,8 +97,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 func _pick_warship(pid: int, game: Game) -> String:
 	var options: Array[String] = ["corvette", "corvette", "destroyer", "destroyer", "cruiser"]
 	options.shuffle()
+	var sb := game.nearest_starbase(pid, Vector2.ZERO)
 	for t in options:
-		if game.can_afford(pid, Defs.SHIPS[t]["cost"]) and game.supply_used(pid) + Defs.SHIPS[t]["supply"] <= Defs.FLEET_CAP:
+		if sb.can_queue(t) == "":
 			return t
 	return ""
 
@@ -100,7 +115,7 @@ func _nearest_planet(from: Vector2, game: Game, filter: Callable) -> Planet:
 	return best
 
 func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
-	# Enemy-held planets first (they're closer and pay the enemy), then the base.
+	# Enemy-held planets first (they're closer and feed the enemy), then the base.
 	var p := _nearest_planet(from, game, func(pl): return pl.owner_id != 0 and pl.owner_id != pid)
 	var enemy_base: Starbase = null
 	for sb in game.get_tree().get_nodes_in_group("starbases"):

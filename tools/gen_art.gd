@@ -18,6 +18,7 @@ const GLASS := [Color("1b4f7a"), Color("3fa7d6"), Color("a8f0ff")]
 const ENGINE := [Color("ff7a3d"), Color("ffd46b"), Color("fff6d0")]
 const ROCK := [Color("241c24"), Color("3b2f36"), Color("5d4a4f"), Color("8a7069"), Color("b39a86")]
 const MINERAL := [Color("1f7a6a"), Color("3fd6b0"), Color("b8ffe9")]
+const SPICE := [Color("a3461f"), Color("ff9a2e"), Color("ffe08a")]
 
 const BAYER := [
 	[0, 8, 2, 10],
@@ -39,6 +40,7 @@ func _init() -> void:
 	_gen_fx()
 	_gen_backgrounds()
 	_gen_icons()
+	_gen_icons2()
 	_gen_title()
 	print("Star Lords art generated.")
 	quit()
@@ -149,6 +151,16 @@ func _gen_ships() -> void:
 		[[3, 32, 6.0, 4.0], [30, 38, 3.5, 0.6], [6, 17, 11.5, 5.0], [0, 5, 5.0, 5.0], [24, 34, 1.2, 0.6, 5.5], [10, 15, 2.0, 2.0, 9.0]],
 		func(x: int, dy: float) -> bool: return absf(dy) > 8.0 or (x >= 21 and x <= 23),
 		[26, 4], [-4.0, -3.0, -1.0, 0.0, 2.0, 3.0], [9, 13, 18, 28])
+	# Colony ship: fat habitat drum with a small bridge.
+	_ship("colony", 18, 15,
+		[[2, 14, 4.0, 4.0], [4, 11, 6.5, 6.5], [13, 18, 2.5, 0.6], [0, 3, 2.0, 2.0]],
+		func(x: int, dy: float) -> bool: return (x == 6 or x == 9) and absf(dy) > 1.5,
+		[14, 2], [-1.0, 0.0], [5, 10])
+	# Constructor: boxy hull with twin crane booms.
+	_ship("constructor", 18, 15,
+		[[2, 12, 4.0, 4.0], [3, 9, 1.8, 1.8, 5.0], [11, 18, 0.9, 0.9, 3.5], [0, 3, 2.0, 2.0]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 3.5 and x < 10,
+		[8, 2], [-1.0, 0.0], [6])
 	# Mining barge: cargo pods and a forward grab claw.
 	_ship("miner", 16, 15,
 		[[2, 11, 3.5, 3.5], [3, 9, 1.5, 1.5, 5.0], [10, 16, 1.5, 0.6, 3.0], [0, 3, 2.0, 2.0]],
@@ -328,7 +340,7 @@ func _gen_star() -> void:
 
 # ---------------------------------------------------------------- asteroids
 
-func _rock(size: int, seed_v: int, mineral: bool) -> Image:
+func _rock(size: int, seed_v: int, mineral: bool, glint: Array = MINERAL) -> Image:
 	var img := _img(size, size)
 	var noise := FastNoiseLite.new()
 	noise.seed = seed_v
@@ -349,7 +361,7 @@ func _rock(size: int, seed_v: int, mineral: bool) -> Image:
 				l -= 0.25
 			var c: Color = _ramp_pick(ROCK, clampf(l, 0, 1), x, y)
 			if mineral and noise.get_noise_2d(x * 2.3 + 40.0, y * 2.3) > 0.32:
-				c = MINERAL[clampi(int(l * 3.0), 0, 2)]
+				c = glint[clampi(int(l * 3.0), 0, 2)]
 			img.set_pixel(x, y, c)
 	_outline(img, Color("07060f"))
 	return img
@@ -361,6 +373,8 @@ func _gen_asteroids() -> void:
 		_save(_rock(26, 200 + i, true), "asteroid_big_%d" % i)
 	for i in 3:
 		_save(_rock(10, 300 + i, false), "debris_%d" % i)
+	for i in 2:
+		_save(_rock(18, 400 + i, true, SPICE), "spice_%d" % i)
 
 # ---------------------------------------------------------------- fx
 
@@ -574,3 +588,29 @@ func _paste(dst: Image, name: String, cx: int, cy: int, team: Color = Color.WHIT
 	if flip:
 		src.flip_x()
 	dst.blend_rect(src, Rect2i(Vector2i.ZERO, src.get_size()), Vector2i(cx - src.get_width() / 2, cy - src.get_height() / 2))
+
+func _gen_icons2() -> void:
+	# Food: green sprout.
+	var f := _img(12, 12)
+	var leaf_l := _pts([[6, 7], [1, 3], [2, 1], [6, 4]])
+	var leaf_r := _pts([[6, 5], [11, 1], [10, 5], [7, 7]])
+	for y in 12:
+		for x in 12:
+			if _inside(leaf_l, x, y) or _inside(leaf_r, x, y):
+				f.set_pixel(x, y, Color("8fe060") if y < 4 else Color("4fa83a"))
+			elif x == 6 and y >= 5:
+				f.set_pixel(x, y, Color("4fa83a"))
+	for x in range(3, 10):
+		f.set_pixel(x, 11, Color("8a5a3a"))
+	_outline(f)
+	_save(f, "icon_food")
+	# Spice: glowing orange grain cluster.
+	var s := _img(12, 12)
+	for y in 12:
+		for x in 12:
+			for c in [Vector2(4, 7), Vector2(8, 6), Vector2(6, 3.5)]:
+				var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
+				if d < 2.6:
+					s.set_pixel(x, y, SPICE[2] if d < 1.0 else (SPICE[1] if x + y < 13 else SPICE[0]))
+	_outline(s)
+	_save(s, "icon_spice")

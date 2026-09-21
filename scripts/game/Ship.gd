@@ -4,9 +4,9 @@ extends SpaceEntity
 ## A single ship. Stats come from Defs.SHIPS[ship_type]; sprites are
 ## assets/pixel/ship_<type>.png plus a team-tinted overlay layer.
 
-enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN }
+enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD }
 
-@export_enum("miner", "corvette", "destroyer", "cruiser") var ship_type: String = "corvette":
+@export_enum("miner", "colony", "constructor", "corvette", "destroyer", "cruiser") var ship_type: String = "corvette":
 	set(v):
 		ship_type = v
 		if is_node_ready():
@@ -20,6 +20,9 @@ var attack_move_goal: Vector2
 var target: SpaceEntity
 var mine_target: Asteroid
 var cargo: int = 0
+var cargo_type: String = "minerals"
+var colonize_target: Planet
+var build_site: Vector2
 
 var _cooldown: float = 0.0
 var _mine_timer: float = 0.0
@@ -38,9 +41,8 @@ func _ready() -> void:
 	add_to_group("ships")
 	def = Defs.SHIPS[ship_type]
 	display_name = def["name"]
-	max_hp = def["hp"]
+	refresh_stats()
 	hp = max_hp
-	max_shield = def["shield"]
 	shield = max_shield
 	radius = def["radius"]
 	move_goal = global_position
@@ -60,6 +62,22 @@ func _apply_visuals() -> void:
 
 func is_miner() -> bool:
 	return def.get("role", "") == "miner"
+
+## Re-derives hull/shield caps from research, keeping current fractions.
+func refresh_stats() -> void:
+	var g := Game.instance
+	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
+	var sh_frac := shield / max_shield if max_shield > 0.0 else 1.0
+	max_hp = def["hp"] * g.mod(owner_id, "hull")
+	max_shield = def["shield"] * g.mod(owner_id, "shield")
+	hp = max_hp * hp_frac
+	shield = max_shield * sh_frac
+
+func max_speed() -> float:
+	return def["speed"] * Game.instance.mod(owner_id, "speed")
+
+func cargo_cap() -> int:
+	return int(def.get("cargo", 0) * Game.instance.mod(owner_id, "cargo"))
 
 # ---------------------------------------------------------------- orders
 
@@ -87,12 +105,28 @@ func order_mine(a: Asteroid) -> void:
 	if not is_miner():
 		order_move(a.global_position)
 		return
+	if cargo > 0 and a.resource != cargo_type:
+		state = State.RETURN
+	else:
+		state = State.RETURN if cargo >= cargo_cap() else State.MINE_GO
 	mine_target = a
-	state = State.RETURN if cargo >= def["cargo"] else State.MINE_GO
 
 func order_return() -> void:
 	if is_miner() and cargo > 0:
 		state = State.RETURN
+
+func order_colonize(p: Planet) -> void:
+	if def["role"] != "colony":
+		order_move(p.global_position)
+		return
+	colonize_target = p
+	state = State.COLONIZE
+
+func order_build_starbase(pos: Vector2) -> void:
+	if def["role"] != "constructor":
+		return
+	build_site = pos
+	state = State.BUILD
 
 func order_stop() -> void:
 	state = State.IDLE
@@ -113,7 +147,7 @@ func _physics_process(delta: float) -> void:
 
 	match state:
 		State.IDLE:
-			if not is_miner() and _acquire_timer <= 0.0:
+			if def["weapon"] != "" and _acquire_timer <= 0.0:
 				var e := Game.instance.nearest_enemy(self, def["range"] + 60.0)
 				if e:
 					attack_move_goal = global_position
@@ -146,8 +180,9 @@ func _physics_process(delta: float) -> void:
 					desired = _arrive(target.global_position, 1.0)
 				face_target = target
 		State.MINE_GO:
-			if not is_instance_valid(mine_target) or mine_target.minerals <= 0:
-				mine_target = Game.instance.nearest_asteroid(global_position, 900.0)
+			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
+				var want := mine_target.resource if is_instance_valid(mine_target) else cargo_type
+				mine_target = Game.instance.nearest_asteroid(global_position, 900.0, want)
 				if mine_target == null:
 					state = State.RETURN if cargo > 0 else State.IDLE
 			else:
@@ -158,15 +193,43 @@ func _physics_process(delta: float) -> void:
 				else:
 					desired = _arrive(mine_target.global_position, 1.0, reach)
 		State.MINING:
-			if not is_instance_valid(mine_target) or mine_target.minerals <= 0:
+			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
 				state = State.MINE_GO
 			else:
 				_mine_timer -= delta
 				queue_redraw()
 				if _mine_timer <= 0.0:
-					cargo += mine_target.extract(def["cargo"])
+					cargo_type = mine_target.resource
+					cargo += mine_target.extract(cargo_cap() - cargo)
 					state = State.RETURN
 					queue_redraw()
+		State.COLONIZE:
+			if not is_instance_valid(colonize_target) or colonize_target.owner_id != 0:
+				state = State.IDLE
+				move_goal = global_position
+			else:
+				var reach := colonize_target.radius + radius + 6.0
+				if global_position.distance_to(colonize_target.global_position) <= reach + 4.0:
+					colonize_target.colonize(owner_id)
+					_dead = true
+					died.emit(self)
+					queue_free()
+					return
+				desired = _arrive(colonize_target.global_position, 1.0, reach)
+		State.BUILD:
+			if global_position.distance_to(build_site) <= 8.0:
+				if Game.instance.starbase_site_problem(build_site) == "":
+					Game.instance.found_starbase(owner_id, build_site)
+					_dead = true
+					died.emit(self)
+					queue_free()
+					return
+				if owner_id == Game.instance.player_id:
+					Game.instance.message.emit("Starbase site is blocked.", Color("ff8a5a"))
+				state = State.IDLE
+				move_goal = global_position
+			else:
+				desired = _arrive(build_site, 1.0)
 		State.RETURN:
 			var base := Game.instance.nearest_starbase(owner_id, global_position)
 			if base == null:
@@ -174,7 +237,7 @@ func _physics_process(delta: float) -> void:
 			else:
 				var reach := base.radius + radius + 2.0
 				if global_position.distance_to(base.global_position) <= reach + 4.0:
-					Game.instance.add_resources(owner_id, {"minerals": cargo})
+					Game.instance.add_resources(owner_id, {cargo_type: float(cargo)})
 					cargo = 0
 					state = State.MINE_GO if is_instance_valid(mine_target) else State.IDLE
 					if state == State.IDLE:
@@ -203,7 +266,7 @@ func _arrive(goal: Vector2, urgency: float, stop_at: float = 0.0) -> Vector2:
 	var dist := to.length() - stop_at
 	if dist <= 1.0:
 		return Vector2.ZERO
-	var speed: float = def["speed"]
+	var speed: float = max_speed()
 	var slow := clampf(dist / 60.0, 0.15, 1.0)
 	if urgency <= 0.0:
 		slow = clampf(dist / 30.0, 0.0, 0.5)
@@ -224,7 +287,7 @@ func _separation() -> Vector2:
 	return push
 
 func _steer(desired: Vector2, delta: float, face: SpaceEntity) -> void:
-	var speed: float = def["speed"]
+	var speed: float = max_speed()
 	var accel := speed * 2.2
 	velocity = velocity.move_toward(desired.limit_length(speed), accel * delta)
 	global_position += velocity * delta

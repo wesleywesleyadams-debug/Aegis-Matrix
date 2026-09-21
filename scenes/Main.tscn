@@ -45,293 +45,334 @@ position = Vector2(-1350, 560)
 kind = "planet_terran"
 planet_name = "Terra Nova"
 owner_id = 1
-yield_mult = 1.5
 
 [node name="Glacius" parent="World/Planets" instance=ExtResource("6_planet")]
 position = Vector2(1350, -560)
 kind = "planet_ice"
 planet_name = "Glacius"
 owner_id = 2
-yield_mult = 1.5
 
 [node name="Jovara" parent="World/Planets" instance=ExtResource("6_planet")]
 position = Vector2(0, -760)
 kind = "planet_gas"
 planet_name = "Jovara"
 owner_id = 0
-yield_mult = 2.0
 
 [node name="Kess" parent="World/Planets" instance=ExtResource("6_planet")]
 position = Vector2(150, -690)
 kind = "planet_moon"
 planet_name = "Kess"
 owner_id = 0
-yield_mult = 0.5
 
 [node name="Pyre" parent="World/Planets" instance=ExtResource("6_planet")]
 position = Vector2(0, 760)
 kind = "planet_lava"
 planet_name = "Pyre"
 owner_id = 0
-yield_mult = 1.0
 
 [node name="Dunmar" parent="World/Planets" instance=ExtResource("6_planet")]
 position = Vector2(-720, -420)
 kind = "planet_desert"
 planet_name = "Dunmar"
 owner_id = 0
-yield_mult = 1.0
 
 [node name="Sarn" parent="World/Planets" instance=ExtResource("6_planet")]
 position = Vector2(720, 420)
 kind = "planet_desert"
 planet_name = "Sarn"
 owner_id = 0
-yield_mult = 1.0
 
 [node name="Asteroids" type="Node2D" parent="World"]
 
 [node name="Rock0" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1248, 871)
 variant = "asteroid_0"
-minerals = 350
+amount = 350
 
 [node name="Rock1" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1327, 764)
 variant = "asteroid_2"
-minerals = 350
+amount = 350
 
 [node name="Rock2" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1192, 859)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock3" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1233, 805)
 variant = "asteroid_big_1"
-minerals = 700
+amount = 700
 
 [node name="Rock4" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1163, 846)
 variant = "asteroid_0"
-minerals = 350
+amount = 350
 
 [node name="Rock5" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1328, 842)
 variant = "asteroid_1"
-minerals = 350
+amount = 350
 
 [node name="Rock6" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1250, 900)
 variant = "asteroid_0"
-minerals = 350
+amount = 350
 
 [node name="Rock7" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1555, 358)
 variant = "asteroid_2"
-minerals = 350
+amount = 350
 
 [node name="Rock8" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1490, 247)
 variant = "asteroid_2"
-minerals = 350
+amount = 350
 
 [node name="Rock9" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1536, 308)
 variant = "asteroid_big_1"
-minerals = 700
+amount = 700
 
 [node name="Rock10" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1490, 414)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock11" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1469, 349)
 variant = "asteroid_big_1"
-minerals = 700
+amount = 700
 
 [node name="Rock12" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-1551, 360)
 variant = "asteroid_2"
-minerals = 350
+amount = 350
 
 [node name="Rock13" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1295, -805)
 variant = "asteroid_big_1"
-minerals = 700
+amount = 700
 
 [node name="Rock14" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1271, -757)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock15" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1330, -778)
 variant = "asteroid_0"
-minerals = 350
+amount = 350
 
 [node name="Rock16" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1171, -865)
 variant = "asteroid_1"
-minerals = 350
+amount = 350
 
 [node name="Rock17" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1172, -796)
 variant = "asteroid_1"
-minerals = 350
+amount = 350
 
 [node name="Rock18" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1209, -879)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock19" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1270, -834)
 variant = "asteroid_2"
-minerals = 350
+amount = 350
 
 [node name="Rock20" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1533, -298)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock21" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1499, -375)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock22" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1476, -312)
 variant = "asteroid_2"
-minerals = 350
+amount = 350
 
 [node name="Rock23" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1536, -344)
 variant = "asteroid_0"
-minerals = 350
+amount = 350
 
 [node name="Rock24" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1489, -356)
 variant = "asteroid_1"
-minerals = 350
+amount = 350
 
 [node name="Rock25" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(1436, -281)
 variant = "asteroid_1"
-minerals = 350
+amount = 350
 
 [node name="Rock26" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-332, 227)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock27" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-268, 323)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock28" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-308, 250)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock29" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-283, 253)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock30" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-292, 255)
 variant = "asteroid_0"
-minerals = 350
+amount = 350
 
 [node name="Rock31" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-301, 326)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock32" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(357, -263)
 variant = "asteroid_1"
-minerals = 350
+amount = 350
 
 [node name="Rock33" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(308, -301)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock34" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(302, -217)
 variant = "asteroid_0"
-minerals = 350
+amount = 350
 
 [node name="Rock35" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(310, -268)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock36" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(294, -259)
 variant = "asteroid_0"
-minerals = 350
+amount = 350
 
 [node name="Rock37" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(326, -236)
 variant = "asteroid_1"
-minerals = 350
+amount = 350
 
 [node name="Rock38" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-792, -912)
 variant = "asteroid_2"
-minerals = 350
+amount = 350
 
 [node name="Rock39" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-823, -872)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock40" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-885, -890)
 variant = "asteroid_big_1"
-minerals = 700
+amount = 700
 
 [node name="Rock41" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-887, -892)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock42" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(-785, -901)
 variant = "asteroid_1"
-minerals = 350
+amount = 350
 
 [node name="Rock43" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(820, 939)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock44" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(783, 920)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
 [node name="Rock45" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(846, 945)
 variant = "asteroid_big_0"
-minerals = 700
+amount = 700
 
 [node name="Rock46" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(842, 913)
 variant = "asteroid_2"
-minerals = 350
+amount = 350
 
 [node name="Rock47" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
 position = Vector2(737, 881)
 variant = "asteroid_3"
-minerals = 350
+amount = 350
 
-[node name="Starbases" type="Node2D" parent="World"]
+[node name="Spice0" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(20, -402)
+variant = "spice_0"
+amount = 150
+
+[node name="Spice1" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-11, -415)
+variant = "spice_0"
+amount = 150
+
+[node name="Spice2" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-21, -433)
+variant = "spice_1"
+amount = 150
+
+[node name="Spice3" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-13, 437)
+variant = "spice_1"
+amount = 150
+
+[node name="Spice4" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-40, 433)
+variant = "spice_1"
+amount = 150
+
+[node name="Spice5" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-10, 428)
+variant = "spice_0"
+amount = 150
+
+[node name="Spice6" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-977, -79)
+variant = "spice_1"
+amount = 150
+
+[node name="Spice7" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-994, -93)
+variant = "spice_0"
+amount = 150
+
+[node name="Spice8" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(984, 74)
+variant = "spice_1"
+amount = 150
+
+[node name="Spice9" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(983, 59)
+variant = "spice_1"
+amount = 150[node name="Starbases" type="Node2D" parent="World"]
 
 [node name="Starbase1" parent="World/Starbases" instance=ExtResource("5_starbase")]
 position = Vector2(-1200, 470)
