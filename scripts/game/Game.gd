@@ -916,6 +916,12 @@ func _enter_dev_capture() -> void:
 	match OS.get_environment("SL_SHOT_OPEN"):
 		"research":
 			hud.toggle_research()
+		"picker":
+			var hp2: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0]
+			_focus_planet(hp2)
+			selection_changed.emit()
+			await get_tree().process_frame
+			hud.planet_view._on_field_pressed(5)
 		"gas":
 			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable())[0])
 			selection_changed.emit()

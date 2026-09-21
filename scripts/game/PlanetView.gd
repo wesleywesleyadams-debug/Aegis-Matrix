@@ -18,7 +18,8 @@ var _stats: Label
 var _fields_title: Label
 var _grid: GridContainer
 var _status: Label
-var _menu: PopupMenu
+var _picker: PopupPanel
+var _picker_list: VBoxContainer
 var _menu_field: int = -1
 var _field_buttons: Array[Button] = []
 
@@ -88,15 +89,17 @@ func _ready() -> void:
 	right.add_child(_status)
 	body.add_child(right)
 
-	_menu = PopupMenu.new()
-	_menu.id_pressed.connect(_on_menu)
-	add_child(_menu)
+	_picker = PopupPanel.new()
+	_picker_list = VBoxContainer.new()
+	_picker_list.add_theme_constant_override("separation", 4)
+	_picker.add_child(_picker_list)
+	add_child(_picker)
 
 func show_planet(p: Planet) -> void:
 	planet = p
 	visible = p != null
 	if p == null:
-		_menu.hide()
+		_picker.hide()
 		return
 	# Big version of the planet: same pixel art, scaled up crisply.
 	_art.texture = Defs.tex(p.kind)
@@ -206,35 +209,79 @@ func refresh() -> void:
 func _on_field_pressed(i: int) -> void:
 	if planet == null or planet.owner_id != game.player_id:
 		return
-	_menu.clear()
 	_menu_field = i
+	for c in _picker_list.get_children():
+		c.queue_free()
 	var built: String = planet.buildings[i]
 	var job := planet.field_job(i)
 	if built != "":
-		_menu.add_item("Demolish %s (no refund)" % Defs.BUILDINGS[built]["name"], 1000)
+		_add_pick("Demolish %s (no refund)" % Defs.BUILDINGS[built]["name"], "bld_" + built, {}, -1.0, 1000, "")
 	elif job != "":
-		_menu.add_item("Cancel %s" % Defs.BUILDINGS[job]["name"], 1001)
+		_add_pick("Cancel %s (paid share refunded)" % Defs.BUILDINGS[job]["name"], "bld_" + job, {}, -1.0, 1001, "")
 	else:
 		for n in Defs.BUILDING_ORDER.size():
 			var id: String = Defs.BUILDING_ORDER[n]
 			var d: Dictionary = Defs.BUILDINGS[id]
-			_menu.add_item("%s  —  %s over %ds" % [d["name"], Defs.cost_text(d["cost"]), d["time"]], n)
-			var why := planet.can_build(i, id)
-			_menu.set_item_disabled(n, why != "")
-			_menu.set_item_tooltip(n, d["desc"] if why == "" else why)
-	_menu.position = Vector2i(get_viewport().get_mouse_position()) + get_window().position
-	_menu.reset_size()
-	_menu.popup()
+			_add_pick(d["name"], "bld_" + id, d["cost"], d["time"], n, planet.can_build(i, id), d["desc"])
+	_picker.reset_size()
+	var want := Vector2i(get_viewport().get_mouse_position()) + Vector2i(12, 12)
+	var win := Vector2i(get_viewport().get_visible_rect().size)
+	want.x = clampi(want.x, 0, win.x - _picker.size.x - 8)
+	want.y = clampi(want.y, 0, win.y - _picker.size.y - 8)
+	_picker.position = want + get_window().position
+	_picker.popup()
+
+## One row in the build picker: building art, name, and its cost with
+## resource icons. Disabled rows show why in their tooltip.
+func _add_pick(title: String, art: String, cost: Dictionary, seconds: float, action: int, why: String, desc: String = "") -> void:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(420, 48)
+	b.focus_mode = Control.FOCUS_NONE
+	b.disabled = why != ""
+	b.tooltip_text = why if why != "" else desc
+	var h := HBoxContainer.new()
+	h.set_anchors_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 8
+	h.offset_right = -8
+	h.add_theme_constant_override("separation", 10)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon := TextureRect.new()
+	icon.texture = Defs.tex(art)
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(32, 32)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(icon)
+	var name_l := Label.new()
+	name_l.text = title
+	name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	name_l.add_theme_font_size_override("font_size", 15)
+	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(name_l)
+	if not cost.is_empty():
+		var row := CostRow.make(cost, 13, seconds)
+		row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(row)
+	b.add_child(h)
+	if b.disabled:
+		b.modulate = Color(1, 1, 1, 0.45)
+	b.pressed.connect(_on_menu.bind(action))
+	_picker_list.add_child(b)
 
 func _on_menu(id: int) -> void:
 	if planet == null or _menu_field < 0:
 		return
+	_picker.hide()
 	if id == 1000:
 		planet.demolish(_menu_field)
 	elif id == 1001:
 		planet.cancel_build(_menu_field)
 	else:
 		var why := planet.order_build(_menu_field, Defs.BUILDING_ORDER[id])
+		_picker.hide()
 		if why != "":
 			game.message.emit(why + ".", HUD.BAD)
 			game.sfx.play_ui("deny")

@@ -329,18 +329,30 @@ func _build_research(root: Control) -> void:
 			if Defs.TECHS[id]["tier"] != tier:
 				continue
 			var b := Button.new()
-			b.custom_minimum_size = Vector2(340, 84)
+			b.custom_minimum_size = Vector2(340, 100)
+			b.clip_contents = true
 			b.focus_mode = Control.FOCUS_NONE
 			b.pressed.connect(func(): game.request_research(id); _refresh_research())
+			# Title line, then the cost with resource icons, then the effect.
+			var box := VBoxContainer.new()
+			box.set_anchors_preset(Control.PRESET_FULL_RECT)
+			box.offset_left = 10
+			box.offset_top = 5
+			box.offset_right = -10
+			box.add_theme_constant_override("separation", 2)
+			box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			var lab := Label.new()
-			lab.set_anchors_preset(Control.PRESET_FULL_RECT)
-			lab.offset_left = 10
-			lab.offset_top = 6
-			lab.offset_right = -10
-			lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			lab.add_theme_font_size_override("font_size", 13)
 			lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			b.add_child(lab)
+			box.add_child(lab)
+			box.add_child(CostRow.make(Defs.TECHS[id]["cost"], 13, Defs.TECHS[id]["time"]))
+			var desc := Label.new()
+			desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			desc.custom_minimum_size = Vector2(318, 0)
+			desc.add_theme_font_size_override("font_size", 12)
+			desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			box.add_child(desc)
+			b.add_child(box)
 			var bar := ColorRect.new()
 			bar.anchor_top = 1.0
 			bar.anchor_bottom = 1.0
@@ -350,7 +362,7 @@ func _build_research(root: Control) -> void:
 			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			b.add_child(bar)
 			col.add_child(b)
-			_tech_buttons[id] = {"button": b, "label": lab, "bar": bar}
+			_tech_buttons[id] = {"button": b, "label": lab, "desc": desc, "bar": bar}
 		cols.add_child(col)
 	var close := Button.new()
 	close.text = "Close [R]"
@@ -386,12 +398,14 @@ func _refresh_research() -> void:
 		var req := ""
 		if not t["requires"].is_empty():
 			req = "\nNeeds: " + ", ".join(t["requires"].map(func(r): return Defs.TECHS[r]["name"]))
-		w["label"].text = "%s\n%s over %ds\n%s%s" % [line, Defs.cost_text(t["cost"]), t["time"], t["desc"], req]
+		w["label"].text = line
+		w["desc"].text = t["desc"] + req
 		for style in ["normal", "hover", "pressed"]:
 			var sb: StyleBoxFlat = _panel_style(6, STATE_COLORS[st].lightened(0.3 if style == "normal" else 0.55))
 			sb.bg_color = STATE_COLORS[st].darkened(0.3 if style != "hover" else 0.15)
 			w["button"].add_theme_stylebox_override(style, sb)
 		w["label"].add_theme_color_override("font_color", DIM if st == "locked" else (Color.WHITE if st in ["active", "done"] else TEXT))
+		w["desc"].add_theme_color_override("font_color", DIM if st == "locked" else TEXT)
 		var frac := 0.0
 		if st == "active":
 			frac = cur["progress"] / t["time"]
@@ -494,13 +508,22 @@ func _build_ship_controls(s: Ship) -> void:
 
 func _add_found_button() -> void:
 	var b := Button.new()
-	b.text = "Found Starbase [F]  (%s over %ds)" % [Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"]]
+	b.text = "Found Starbase [F]"
+	b.custom_minimum_size = Vector2(0, 40)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var cost := CostRow.make(Defs.STARBASE["cost"], 13, Defs.STARBASE["build_time"])
+	cost.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	cost.offset_left = -230
+	cost.offset_right = -10
+	cost.offset_top = -12
+	cost.offset_bottom = 12
+	cost.alignment = BoxContainer.ALIGNMENT_END
+	b.add_child(cost)
 	var pid := game.player_id
 	var n := game.starbase_count(pid)
 	var now_u: float = n * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n)
 	var next_u: float = (n + 1) * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n + 1)
-	b.tooltip_text = "You have %d starbase%s. Starbase #%d raises total starbase upkeep from %.1f to %.1f energy/s (x%.1f each).
-Upkeep climbs steeply past 10 starbases." % [n, "" if n == 1 else "s", n + 1, now_u, next_u, game.starbase_upkeep_multiplier(pid, n + 1)]
+	b.tooltip_text = "You have %d starbase%s. Starbase #%d raises total starbase upkeep from %.1f to %.1f energy/s (x%.1f each).\nUpkeep climbs steeply past 10 starbases." % [n, "" if n == 1 else "s", n + 1, now_u, next_u, game.starbase_upkeep_multiplier(pid, n + 1)]
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(game.start_starbase_placement)
 	_sel_body.add_child(b)
@@ -526,11 +549,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.alignment = BoxContainer.ALIGNMENT_CENTER
 		v.add_child(_label("[%s] %s" % [OS.get_keycode_string(d["hotkey"]), d["name"]], TEXT, 13))
-		var parts := []
-		for r in Defs.RESOURCES:
-			if d["cost"].has(r):
-				parts.append("%d %s" % [d["cost"][r], r.substr(0, 3)])
-		v.add_child(_label(" ".join(parts), Color("8fe8cf"), 12))
+		v.add_child(CostRow.make(d["cost"], 12, -1.0, 1))
 		h.add_child(v)
 		b.add_child(h)
 		b.pressed.connect(func(): game.request_build(sb, t))
@@ -619,7 +638,7 @@ func _planet_text(p: Planet) -> String:
 	if not p.is_habitable():
 		return "Uninhabitable gas giant · %s\nGas Skimmers mine it and haul the minerals to a starbase." % [("DEPLETED, refills in %ds" % int(p.depleted_timer)) if p.depleted_timer > 0.0 else "Mineral reserve %d" % p.amount]
 	if p.owner_id == 0:
-		return "Size %d · Pop cap %s · Energy %.1f/s%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), t["energy"],(" · Spice %.2f/s" % t["spice"]) if t["spice"] > 0.0 else ""]
+		return "Size %d · Pop cap %s%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), (" · Spice %.2f/s" % t["spice"]) if t["spice"] > 0.0 else ""]
 	var lines := "Population %s / %s   (+%s/min)" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min)]
 	lines += "\nFood: grown %s/min · eaten %s/min · net %+d/min" % [_fmt(p.food_made_per_min), _fmt(p.food_eaten_per_min), int(p.food_made_per_min - p.food_eaten_per_min)]
 	lines += "\nEnergy %.1f/s%s" % [p.energy_out, ("   Spice %.2f/s" % p.spice_out) if p.spice_out > 0.0 else ""]

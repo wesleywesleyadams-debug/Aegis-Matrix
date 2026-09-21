@@ -104,12 +104,12 @@ const ENERGY_STARVED_FACTOR := 0.25
 ## fertility is informational for now (farms produce a flat amount).
 ## energy: base energy/sec once colonized. spice: spice/sec once colonized.
 const PLANET_TYPES := {
-	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 4.0, "spice": 0.0},
-	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 4.5, "spice": 0.0},
-	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 4.0, "spice": 0.0},
-	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 6.0, "spice": 0.08},
+	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 0.0, "spice": 0.0},
+	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 0.0, "spice": 0.0},
+	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 0.0, "spice": 0.0},
+	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 0.0, "spice": 0.08},
 	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy": 0.0, "spice": 0.0},
-	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 2.0, "spice": 0.0},
+	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 0.0, "spice": 0.0},
 }
 const POP_PER_SIZE := 1000
 const START_POP := 100.0
@@ -120,8 +120,8 @@ const GROWTH_PER_PAIR_PER_MIN := 1.0
 const FOOD_PER_POP_PER_MIN := 1.0
 const STARVE_SECONDS := 60.0
 ## Food comes only from Farms (see BUILDINGS), scaled by planet fertility.
-## Extra energy per second from each 1,000 pop.
-const ENERGY_PER_1000_POP := 1.5
+## Planets and pops produce and consume no energy on their own; only Power
+## Plants (and starbase reactors) make it.
 
 ## Planet fields: 3 on the smallest world up to 30 on the largest, by
 ## sprite diameter (moon 28px .. gas giant 104px).
