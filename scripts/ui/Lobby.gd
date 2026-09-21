@@ -176,6 +176,16 @@ func _add_mode_title() -> void:
 	title.offset_top = 40
 	title.offset_bottom = 120
 	add_child(title)
+	if GameState.load_on_start:
+		var note := Label.new()
+		note.text = "Resuming saved game: %s" % GameState.load_save_name
+		note.add_theme_font_size_override("font_size", 20)
+		note.add_theme_color_override("font_color", Color(1, 0.83, 0.42))
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		note.offset_top = 128
+		note.offset_bottom = 160
+		add_child(note)
 
 func _slot_type_index(slot_type: String) -> int:
 	match slot_type:
@@ -242,4 +252,6 @@ func _on_start_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _on_back_pressed() -> void:
+	GameState.load_on_start = false
+	GameState.load_save_path = ""
 	get_tree().change_scene_to_file("res://scenes/TitleMenu.tscn")

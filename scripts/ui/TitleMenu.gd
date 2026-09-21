@@ -210,7 +210,7 @@ func _on_load_pressed() -> void:
 		var date_str := Time.get_datetime_string_from_unix_time(int(save["timestamp"]), true)
 		button.text = "%s
 %s" % [save["name"], date_str.replace("T", "  ")]
-		button.pressed.connect(_on_save_entry_pressed.bind(save["path"]))
+		button.pressed.connect(_on_save_entry_pressed.bind(save["path"], mode, save["name"]))
 		_save_lists[mode].add_child(button)
 		counts[mode] = counts.get(mode, 0) + 1
 	for mode in _save_lists:
@@ -226,10 +226,18 @@ func _on_load_pressed() -> void:
 	AccountMenu.background.visible = false
 	load_list_panel.visible = true
 
-func _on_save_entry_pressed(path: String) -> void:
+## Single-player and campaign saves resume straight into the match; a
+## multi-player save goes to the multi-player lobby first so players can
+## gather, and Start Match there resumes it.
+func _on_save_entry_pressed(path: String, mode: String, save_name: String) -> void:
 	GameState.load_on_start = true
 	GameState.load_save_path = path
-	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	GameState.load_save_name = save_name
+	GameState.game_mode = mode
+	if mode == "multi":
+		get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
+	else:
+		get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _on_close_load_list_pressed() -> void:
 	load_list_panel.visible = false
@@ -244,6 +252,11 @@ func _on_quit_pressed() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_READY and OS.get_environment("SL_TITLE_SHOT") != "":
 		await get_tree().create_timer(1.0).timeout
+		if OS.get_environment("SL_TITLE_SHOT") == "loadmulti":
+			for s in _list_saves():
+				if s["mode"] == "multi":
+					_on_save_entry_pressed(s["path"], "multi", s["name"])
+					return
 		if OS.get_environment("SL_TITLE_SHOT") == "load":
 			_on_load_pressed()
 			await get_tree().process_frame
