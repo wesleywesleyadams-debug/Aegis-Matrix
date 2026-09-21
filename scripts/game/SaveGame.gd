@@ -48,7 +48,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			"construction": p.construction, "construction_queue": p.construction_queue,
 			"amount": p.amount, "depleted_timer": p.depleted_timer,
 			"hungry": p.hungry, "starve_timer": p.starve_timer,
-			"claim_owner": p.claim_owner, "claim_progress": p.claim_progress,
+			"siege_start_pop": p.siege_start_pop, "since_hit": Game.now() - p.last_hit_time,
 		}
 	for a in tree.get_nodes_in_group("asteroids"):
 		if not a.is_queued_for_deletion():
@@ -88,6 +88,9 @@ static func _order_of(s: Ship) -> Dictionary:
 				return {"kind": "colonize", "target": String(s.colonize_target.name)}
 		Ship.State.BUILD:
 			return {"kind": "build", "at": _v(s.build_site)}
+		Ship.State.BOMBARD:
+			if is_instance_valid(s.bombard_target):
+				return {"kind": "bombard", "target": String(s.bombard_target.name)}
 	return {"kind": "idle"}
 
 static func write(game: Game, save_name: String) -> String:
@@ -161,8 +164,8 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			(p.get_node("Sprite") as Sprite2D).modulate = Color(0.45, 0.45, 0.5)
 		p.hungry = float(d.get("hungry", 0.0))
 		p.starve_timer = float(d.get("starve_timer", 0.0))
-		p.claim_owner = int(d.get("claim_owner", 0))
-		p.claim_progress = float(d.get("claim_progress", 0.0))
+		p.siege_start_pop = float(d.get("siege_start_pop", 0.0))
+		p.last_hit_time = Game.now() - float(d.get("since_hit", 1000.0))
 		p.queue_redraw()
 	var rocks := {}
 	for a in tree.get_nodes_in_group("asteroids"):
@@ -221,6 +224,9 @@ static func apply(game: Game, data: Dictionary) -> bool:
 				if planets.has(o["target"]):
 					s.order_colonize(planets[o["target"]])
 			"build": s.order_build_starbase(_p(o["at"]))
+			"bombard":
+				if planets.has(o["target"]):
+					s.order_bombard(planets[o["target"]])
 	for e in tree.get_nodes_in_group("entities"):
 		if e.has_method("refresh_stats"):
 			var hp: float = e.hp

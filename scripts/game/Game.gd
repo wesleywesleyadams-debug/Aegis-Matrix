@@ -456,7 +456,7 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 		notify("Starbase construction started.", "note_starbase")
 	return sb
 
-func fire(from: SpaceEntity, to: SpaceEntity, weapon: String, damage: float) -> void:
+func fire(from: SpaceEntity, to: Node2D, weapon: String, damage: float) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"))
@@ -491,6 +491,14 @@ func planet_claimed(p: Planet, old_owner: int) -> void:
 		notify(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name, "note_colony")
 	elif old_owner == player_id:
 		alert("%s lost to the enemy!" % p.planet_name, "alert_planet_lost", true)
+	selection_changed.emit()
+
+## A bombarded planet ran out of pops and went neutral.
+func planet_depopulated(p: Planet, old_owner: int, attacker: int) -> void:
+	if old_owner == player_id:
+		alert("%s has been depopulated and lost!" % p.planet_name, "alert_planet_lost", true)
+	elif attacker == player_id:
+		notify("%s depopulated. It can now be colonized." % p.planet_name, "note_colony")
 	selection_changed.emit()
 
 func _on_starbase_died(sb: SpaceEntity) -> void:
@@ -903,7 +911,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 				s.order_attack(target)
 			else:
 				s.order_move(world_pos)
-		hud.flash_target(target, true)
+		hud.flash_target(target, "attack")
 		return
 	if rock:
 		for s in ships:
@@ -911,7 +919,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 				s.order_mine(rock)
 			else:
 				s.order_move(rock.global_position)
-		hud.flash_target(rock, false)
+		hud.flash_target(rock, "")
 		return
 	if planet and not planet.is_habitable():
 		var handled := false
@@ -923,23 +931,32 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 		if ships.any(func(s): return s.def["role"] == "colony"):
 			message.emit("Gas giants are uninhabitable.", Color("ff8a5a"))
 		if handled:
-			hud.flash_target(planet, false)
+			hud.flash_target(planet, "")
 			if ships.is_empty():
 				return
+	if planet and planet.is_enemy_of(player_id):
+		# Bombard: warships fire on the planet until its pops are gone.
+		for s in ships:
+			if s.def["role"] == "warship":
+				s.order_bombard(planet)
+			else:
+				s.order_move(world_pos)
+		hud.flash_target(planet, "attack")
+		return
 	if planet and planet.owner_id == 0:
 		var colonists: Array = ships.filter(func(s): return s.def["role"] == "colony")
 		if not colonists.is_empty():
 			colonists.sort_custom(func(a, b): return a.global_position.distance_to(planet.global_position) < b.global_position.distance_to(planet.global_position))
 			colonists[0].order_colonize(planet)
 			ships.erase(colonists[0])
-			hud.flash_target(planet, false)
+			hud.flash_target(planet, "colonize")
 			if ships.is_empty():
 				return
 	if target is Starbase and target.owner_id == player_id:
 		for s in ships:
 			if s.is_miner() and s.cargo > 0:
 				s.order_return()
-		hud.flash_target(target, false)
+		hud.flash_target(target, "")
 	var slots := _formation(ships, world_pos)
 	for i in ships.size():
 		if attack_move:
@@ -1003,6 +1020,14 @@ func _enter_dev_capture() -> void:
 		var sb0 := nearest_starbase(player_id, Vector2.ZERO)
 		sb0.enqueue("corvette")
 		_set_selection([sb0], false)
+	if OS.get_environment("SL_SHOT_OPEN") == "siege":
+		var ep: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.is_enemy_of(player_id))[0]
+		for i in 8:
+			spawn_ship("corvette", player_id, ep.global_position + Vector2(-200 - i * 12, 60 + i * 14)).order_bombard(ep)
+		var np: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == 0 and p.is_habitable())[0]
+		spawn_ship("colony", player_id, np.global_position + Vector2(-120, 0)).order_colonize(np)
+		hud.flash_target(np, "colonize")
+		print("SIEGE target ", ep.planet_name, " pop ", ep.pop, "  colonize ", np.planet_name)
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()
@@ -1050,9 +1075,9 @@ func _enter_dev_capture() -> void:
 		"flash":
 			var en: SpaceEntity = get_tree().get_nodes_in_group("starbases").filter(func(s): return s.owner_id != player_id)[0]
 			center_on(en.global_position)
-			hud.flash_target(en, true)
+			hud.flash_target(en, "attack")
 			var rk := nearest_asteroid(en.global_position, 900.0)
-			hud.flash_target(rk, false)
+			hud.flash_target(rk, "")
 		"paused":
 			hud.toggle_play()
 		"save":

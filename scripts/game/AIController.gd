@@ -110,6 +110,12 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		return
 
 	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
+	# Idle warships next to an enemy planet start bombarding it.
+	for s in idle.duplicate():
+		var ep := _nearest_planet(s.global_position, game, func(pl): return pl.is_enemy_of(pid))
+		if ep and s.global_position.distance_to(ep.global_position) < 350.0:
+			s.order_bombard(ep)
+			idle.erase(s)
 	if idle.size() >= st["wave"]:
 		var goal := _attack_goal(pid, base.global_position, game)
 		for s in idle:

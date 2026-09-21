@@ -4,11 +4,18 @@ extends Node2D
 ## A world. Colonized planets hold population that eats food, grows, and
 ## produces food, energy and (some types) spice. Growth: 1 pop per minute
 ## per pair of pop, while fed (spice covers food deficits 1:1), up to the
-## type's ceiling. Neutral planets need a Colony Ship; enemy planets flip
-## after CONQUER_TIME seconds of your warships in orbit with no defenders
-## present, keeping half their population.
+## type's ceiling. Neutral planets are settled by a Colony Ship over
+## COLONIZE_TIME seconds. Enemy planets are taken by bombarding them: each
+## point of weapon damage kills POP_PER_DAMAGE pops and halts growth; at 0
+## pop every building is destroyed and the planet turns neutral, ready for
+## anyone to colonize.
 
-const CONQUER_TIME := 15.0
+const POP_PER_DAMAGE := 0.25
+const COLONIZE_TIME := 60.0
+## A planet counts as under siege for this long after its last hit.
+const SIEGE_TIME := 3.0
+## The siege bar resets if the bombardment stops for this long.
+const SIEGE_MEMORY := 10.0
 const ECON_TICK := 0.25
 
 @export_enum("planet_terran", "planet_desert", "planet_ice", "planet_lava", "planet_gas", "planet_moon") var kind: String = "planet_terran":
@@ -29,8 +36,13 @@ const ECON_TICK := 0.25
 var radius: float = 24.0
 var pop: float = 0.0
 var starving: bool = false
-var claim_owner: int = 0
-var claim_progress: float = 0.0
+## Bombardment: pop at the start of the current siege and time of last hit.
+var siege_start_pop: float = 0.0
+var last_hit_time: float = -1000.0
+## Colonization in progress: whose, how far, and the ship doing it.
+var colonizing_owner: int = 0
+var colonize_progress: float = 0.0
+var colonizer: Node2D
 var focused: bool = false:
 	set(v):
 		focused = v
@@ -130,8 +142,11 @@ func colonize(pid: int) -> void:
 	construction = {}
 	construction_queue.clear()
 	pop = Defs.START_POP
-	claim_progress = 0.0
+	colonizing_owner = 0
+	colonize_progress = 0.0
+	colonizer = null
 	Game.instance.planet_claimed(self, old)
+	queue_redraw()
 
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
@@ -147,10 +162,13 @@ func _process(delta: float) -> void:
 	if _econ_timer >= ECON_TICK:
 		_economy(_econ_timer)
 		_econ_timer = 0.0
-	_check_timer -= delta
-	if _check_timer <= 0.0:
-		_check_timer = 0.5
-		_check_conquest()
+	# A colonization attempt ends if its ship is lost.
+	if colonizing_owner != 0 and not is_instance_valid(colonizer):
+		colonizing_owner = 0
+		colonize_progress = 0.0
+		queue_redraw()
+	if owner_id != 0 and Game.now() - last_hit_time < SIEGE_MEMORY:
+		queue_redraw()
 
 func _economy(dt: float) -> void:
 	if owner_id == 0:
@@ -189,7 +207,7 @@ func _economy(dt: float) -> void:
 		hungry = 0.0
 		starve_timer = 0.0
 	var cap := max_pop()
-	if not starving and pop < cap:
+	if not starving and pop < cap and not under_siege():
 		var pairs := floorf(pop / 2.0)
 		growth_per_min = pairs * Defs.GROWTH_PER_PAIR_PER_MIN * g.mod(owner_id, "growth")
 		pop = minf(cap, pop + growth_per_min / 60.0 * dt)
@@ -197,35 +215,65 @@ func _economy(dt: float) -> void:
 		growth_per_min = 0.0
 		pop = minf(pop, cap)
 
-func _check_conquest() -> void:
-	if owner_id == 0 or not is_habitable():
-		claim_progress = 0.0
+# ---------------------------------------------------------------- siege & colonization
+
+func is_alive() -> bool:
+	return owner_id != 0 and pop > 0.0 and is_inside_tree()
+
+func is_enemy_of(pid: int) -> bool:
+	return owner_id != 0 and pid != 0 and owner_id != pid
+
+func under_siege() -> bool:
+	return owner_id != 0 and Game.now() - last_hit_time < SIEGE_TIME
+
+## Weapon fire from bombarding ships: kills pops (shields don't apply).
+func take_damage(amount: float, from: Node2D = null) -> void:
+	if owner_id == 0:
 		return
-	var present := {}
-	for s in Game.instance.ships_near(global_position, orbit_radius()):
-		if s.def["role"] == "warship":
-			present[s.owner_id] = true
-	var prev := claim_progress
-	if present.size() == 1 and not present.has(owner_id):
-		var who: int = present.keys()[0]
-		if who != claim_owner:
-			claim_owner = who
-			claim_progress = 0.0
-		claim_progress += 0.5
-		if owner_id == Game.instance.player_id:
-			Game.instance.alert("%s is under attack!" % planet_name, "alert_planet")
-		if claim_progress >= CONQUER_TIME:
-			var old := owner_id
-			owner_id = who
-			pop = maxf(1.0, pop * 0.5)
-			construction = {}
-			construction_queue.clear()
-			claim_progress = 0.0
-			Game.instance.planet_claimed(self, old)
-	else:
-		claim_progress = maxf(0.0, claim_progress - 0.5)
-	if prev != claim_progress:
-		queue_redraw()
+	var g := Game.instance
+	if g.now() - last_hit_time > SIEGE_MEMORY or siege_start_pop <= 0.0:
+		siege_start_pop = maxf(pop, 1.0)
+	last_hit_time = g.now()
+	pop -= amount * POP_PER_DAMAGE
+	if owner_id == g.player_id:
+		g.alert("%s is being bombarded!" % planet_name, "alert_planet")
+	if pop <= 0.0:
+		var attacker: int = from.owner_id if is_instance_valid(from) and from.get("owner_id") != null else 0
+		_depopulate(attacker)
+	queue_redraw()
+
+## 0 pop: every building and construction job is destroyed and the planet
+## becomes neutral.
+func _depopulate(attacker: int) -> void:
+	var old := owner_id
+	pop = 0.0
+	buildings.fill("")
+	operating.fill(false)
+	construction = {}
+	construction_queue.clear()
+	hungry = 0.0
+	starve_timer = 0.0
+	siege_start_pop = 0.0
+	owner_id = 0
+	Game.instance.planet_depopulated(self, old, attacker)
+
+## Called every tick by a colony ship sitting in orbit. The first empire
+## to start keeps the slot until its ship is lost.
+func progress_colonize(ship: Node2D, dt: float) -> bool:
+	if owner_id != 0 or not is_habitable():
+		return false
+	if colonizing_owner != 0 and colonizing_owner != ship.owner_id and is_instance_valid(colonizer):
+		return false
+	if colonizing_owner != ship.owner_id:
+		colonize_progress = 0.0
+	colonizing_owner = ship.owner_id
+	colonizer = ship
+	colonize_progress += dt
+	queue_redraw()
+	if colonize_progress >= COLONIZE_TIME:
+		colonize(ship.owner_id)
+		return true
+	return false
 
 func _draw() -> void:
 	if Engine.is_editor_hint():
@@ -244,9 +292,21 @@ func _draw() -> void:
 			if focused or i % 3 != 2:
 				var a := TAU * i / n
 				draw_rect(Rect2(Vector2.from_angle(a) * r - Vector2(0.5, 0.5), Vector2(1, 1)), col)
-	if claim_progress > 0.0:
-		var col2 := Defs.team_color(claim_owner)
-		draw_arc(Vector2.ZERO, r + 3.0, -PI / 2.0, -PI / 2.0 + TAU * claim_progress / CONQUER_TIME, 48, col2, 2.0)
+	var f2 := ThemeDB.fallback_font
+	# Siege: ring showing the share of pops left since bombardment began.
+	if owner_id != 0 and Game.now() - last_hit_time < SIEGE_MEMORY and siege_start_pop > 0.0:
+		var frac := clampf(pop / siege_start_pop, 0.0, 1.0)
+		# In the owning player's color, draining as pops die.
+		var oc := Defs.team_color(owner_id)
+		draw_arc(Vector2.ZERO, r + 4.0, 0.0, TAU, 64, Color(oc, 0.2), 3.0)
+		draw_arc(Vector2.ZERO, r + 4.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 64, oc, 3.0)
+		draw_string(f2, Vector2(-100.0, -r - 10.0), "%d%% pops left" % int(ceil(frac * 100.0)), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 8, oc)
+	# Colonization: ring filling up in the colonizer's color.
+	if colonizing_owner != 0 and colonize_progress > 0.0:
+		var col3 := Defs.team_color(colonizing_owner)
+		draw_arc(Vector2.ZERO, r + 4.0, 0.0, TAU, 64, Color(col3, 0.2), 3.0)
+		draw_arc(Vector2.ZERO, r + 4.0, -PI / 2.0, -PI / 2.0 + TAU * colonize_progress / COLONIZE_TIME, 64, col3, 3.0)
+		draw_string(f2, Vector2(-100.0, -r - 10.0), "Colonizing %d%%" % int(100.0 * colonize_progress / COLONIZE_TIME), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 8, col3)
 
 # ---------------------------------------------------------------- fields & buildings
 

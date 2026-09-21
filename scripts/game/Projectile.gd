@@ -4,14 +4,14 @@ extends Sprite2D
 ## applies damage on contact; lasers that lose their target fizzle out.
 
 var shooter: SpaceEntity
-var target: SpaceEntity
+var target: Node2D # a SpaceEntity or a Planet being bombarded
 var damage: float
 var speed: float
 var homing: bool
 var life: float = 3.0
 var _vel: Vector2
 
-func setup(from: SpaceEntity, to: SpaceEntity, weapon: String, dmg: float) -> void:
+func setup(from: SpaceEntity, to: Node2D, weapon: String, dmg: float) -> void:
 	shooter = from
 	target = to
 	damage = dmg

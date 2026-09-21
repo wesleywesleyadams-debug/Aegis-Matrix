@@ -4,7 +4,7 @@ extends SpaceEntity
 ## A single ship. Stats come from Defs.SHIPS[ship_type]; sprites are
 ## assets/pixel/ship_<type>.png plus a team-tinted overlay layer.
 
-enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD }
+enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD }
 
 @export_enum("miner", "colony", "constructor", "corvette", "destroyer", "cruiser") var ship_type: String = "corvette":
 	set(v):
@@ -24,6 +24,7 @@ var mine_target: Node2D
 var cargo: int = 0
 var cargo_type: String = "minerals"
 var colonize_target: Planet
+var bombard_target: Planet
 var build_site: Vector2
 
 var _cooldown: float = 0.0
@@ -142,6 +143,16 @@ func order_colonize(p: Planet) -> void:
 	colonize_target = p
 	state = State.COLONIZE
 
+## Warships: close to weapons range of an enemy planet and fire on it until
+## its population is gone.
+func order_bombard(p: Planet) -> void:
+	if def["weapon"] == "":
+		order_move(p.global_position)
+		return
+	bombard_target = p
+	target = null
+	state = State.BOMBARD
+
 func order_build_starbase(pos: Vector2) -> void:
 	if def["role"] != "constructor":
 		return
@@ -231,13 +242,24 @@ func _physics_process(delta: float) -> void:
 				move_goal = global_position
 			else:
 				var reach := colonize_target.radius + radius + 6.0
-				if global_position.distance_to(colonize_target.global_position) <= reach + 4.0:
-					colonize_target.colonize(owner_id)
+				# In orbit: colonizing takes Planet.COLONIZE_TIME; the ship is
+				# used up when the colony is founded.
+				if global_position.distance_to(colonize_target.global_position) <= reach + 4.0 and colonize_target.progress_colonize(self, delta):
 					_dead = true
 					died.emit(self)
 					queue_free()
 					return
 				desired = _arrive(colonize_target.global_position, 1.0, reach)
+		State.BOMBARD:
+			if not is_instance_valid(bombard_target) or not bombard_target.is_enemy_of(owner_id):
+				bombard_target = null
+				state = State.IDLE
+				move_goal = global_position
+			else:
+				var keep: float = def["range"] * 0.8 + bombard_target.radius
+				if global_position.distance_to(bombard_target.global_position) > keep:
+					desired = _arrive(bombard_target.global_position, 1.0, keep)
+				face_target = null
 		State.BUILD:
 			if global_position.distance_to(build_site) <= 8.0:
 				if Game.instance.starbase_site_problem(build_site) == "":
@@ -272,8 +294,10 @@ func _physics_process(delta: float) -> void:
 
 	# Fire at whatever is in range, even while moving.
 	if def["weapon"] != "" and _cooldown <= 0.0:
-		var shoot: SpaceEntity = target if is_instance_valid(target) and target.is_alive() else null
-		if shoot == null or global_position.distance_to(shoot.global_position) > def["range"]:
+		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
+		if state == State.BOMBARD and is_instance_valid(bombard_target):
+			shoot = bombard_target
+		if shoot == null or global_position.distance_to(shoot.global_position) > def["range"] + shoot.radius:
 			shoot = Game.instance.nearest_enemy(self, def["range"])
 		if shoot and global_position.distance_to(shoot.global_position) <= def["range"] + shoot.radius:
 			Game.instance.fire(self, shoot, def["weapon"], def["damage"])

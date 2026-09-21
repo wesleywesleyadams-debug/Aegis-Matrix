@@ -715,7 +715,7 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 		txt += "   Shield %d/%d" % [ceili(e.shield), e.max_shield]
 	if e is Ship:
 		var s := e as Ship
-		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Flying to gas giant"][s.state]
+		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Bombarding planet"][s.state]
 		if s.is_miner():
 			txt += "   Cargo %d/%d %s" % [s.cargo, s.cargo_cap(), s.cargo_type]
 		elif s.def["weapon"] != "":
@@ -841,9 +841,11 @@ func _fit_selection_panel() -> void:
 func set_drag_rect(r: Rect2) -> void:
 	_drag_rect = r
 
-func flash_target(node: Node2D, attack: bool) -> void:
+## kind: "attack" (red), "colonize" (green), anything else (white).
+func flash_target(node: Node2D, kind: String) -> void:
 	if is_instance_valid(node):
-		_flashes.append({"node": node, "real": Time.get_ticks_msec() / 1000.0, "color": Color("ff4a4a") if attack else Color.WHITE})
+		var c: Color = {"attack": Color("ff4a4a"), "colonize": Color("6fe07a")}.get(kind, Color.WHITE)
+		_flashes.append({"node": node, "real": Time.get_ticks_msec() / 1000.0, "color": c})
 
 func ping(world_pos: Vector2, color: Color) -> void:
 	_pings.append({"pos": world_pos, "t": Game.now(), "color": color})
