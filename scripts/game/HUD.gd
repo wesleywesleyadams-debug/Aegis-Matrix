@@ -523,6 +523,9 @@ func _rebuild_selection() -> void:
 	_queue_row.visible = false
 	_info_label = null
 	var sel: Array = game.selection.filter(func(e): return is_instance_valid(e))
+	if sel.is_empty() and is_instance_valid(game.focused_asteroid):
+		_build_asteroid_panel(game.focused_asteroid)
+		return
 	if sel.is_empty():
 		if is_instance_valid(game.focused_planet):
 			_build_planet_panel(game.focused_planet)
@@ -638,6 +641,19 @@ func _build_starbase_controls(sb: Starbase) -> void:
 	_queue_row.visible = true
 	_sel_body.add_child(_label("Right-click to set the rally point. Click a queued ship to cancel (paid share refunded).", DIM, 12))
 
+func _build_asteroid_panel(a: Asteroid) -> void:
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var ic := _icon(a.variant, 3)
+	head.add_child(ic)
+	var col := VBoxContainer.new()
+	col.add_child(_label(a.display_name(), Defs.RESOURCE_COLORS[a.resource], 20))
+	_info_label = _label("")
+	col.add_child(_info_label)
+	head.add_child(col)
+	_sel_body.add_child(head)
+	_sel_body.add_child(_label("Right-click with Mining Barges selected to mine it. Barges haul each load to a starbase.", DIM, 12))
+
 func _build_planet_panel(p: Planet) -> void:
 	var t := p.type_def()
 	var head := HBoxContainer.new()
@@ -658,6 +674,11 @@ func _update_selection_info() -> void:
 	if _info_label == null:
 		return
 	var sel: Array = game.selection.filter(func(e): return is_instance_valid(e))
+	if sel.is_empty() and is_instance_valid(game.focused_asteroid):
+		var a := game.focused_asteroid
+		_info_label.text = "%s left: %d / %d  (%d%%)
+Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_amount, int(100.0 * a.amount / maxf(a.max_amount, 1)), a.miners_on(game.player_id)]
+		return
 	if sel.is_empty() and is_instance_valid(game.focused_planet):
 		planet_view.refresh()
 		_info_label.text = planet_view.stats

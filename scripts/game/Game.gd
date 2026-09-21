@@ -34,6 +34,7 @@ var research_queue := {}  # pid -> Array of tech ids
 
 var selection: Array[SpaceEntity] = []
 var focused_planet: Planet
+var focused_asteroid: Asteroid
 var control_groups := {}
 var paused_menu: bool = false
 var is_over: bool = false
@@ -599,7 +600,7 @@ func _handle_key(e: InputEventKey) -> void:
 	if k == KEY_ESCAPE:
 		if placing_starbase:
 			placing_starbase = false
-		elif is_instance_valid(focused_planet):
+		elif is_instance_valid(focused_planet) or is_instance_valid(focused_asteroid):
 			clear_planet_focus()
 		elif hud.research_open():
 			hud.toggle_research()
@@ -757,6 +758,7 @@ func _set_selection(list: Array, additive: bool) -> void:
 				e.selected = false
 		selection.clear()
 		_focus_planet(null)
+		_focus_asteroid(null)
 	for e in list:
 		if e not in selection:
 			selection.append(e)
@@ -765,6 +767,13 @@ func _set_selection(list: Array, additive: bool) -> void:
 				e.died.connect(_on_selected_died)
 	placing_starbase = false
 	selection_changed.emit()
+
+func _focus_asteroid(a: Asteroid) -> void:
+	if is_instance_valid(focused_asteroid):
+		focused_asteroid.focused = false
+	focused_asteroid = a
+	if a:
+		a.focused = true
 
 func _focus_planet(p: Planet) -> void:
 	if p and p != focused_planet:
@@ -778,6 +787,7 @@ func _focus_planet(p: Planet) -> void:
 
 ## Closes the planet view (and its selection-panel summary).
 func clear_planet_focus() -> void:
+	_focus_asteroid(null)
 	_focus_planet(null)
 	selection_changed.emit()
 
@@ -794,6 +804,11 @@ func _click_select(world_pos: Vector2, additive: bool) -> void:
 		if p:
 			_focus_planet(p)
 			selection_changed.emit()
+		else:
+			var rock := asteroid_at(world_pos)
+			if rock:
+				_focus_asteroid(rock)
+				selection_changed.emit()
 		return
 	if e.owner_id != player_id:
 		_set_selection([e], false)
@@ -995,6 +1010,11 @@ func _enter_dev_capture() -> void:
 			resources[player_id] = {"food": 123456.0, "minerals": 98765.0, "energy": 54321.0, "spice": 9999.0}
 			queue_research(player_id, "dark_matter")
 			research[player_id] = {"id": "dark_matter", "progress": 30.0, "stalled": true}
+		"rock":
+			var r0 := nearest_asteroid(nearest_starbase(player_id, Vector2.ZERO).global_position, 2000.0)
+			_focus_asteroid(r0)
+			center_on(r0.global_position)
+			selection_changed.emit()
 		"paused":
 			hud.toggle_play()
 		"save":

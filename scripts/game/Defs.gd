@@ -87,6 +87,11 @@ const STARBASE := {
 	"min_spacing": 500.0,
 }
 
+## Asteroid reserves scale with rock size: amount = width_px^2 * this.
+## Small 16px rock ~410 minerals, large 26px ~1080; spice rocks are scarcer.
+const ASTEROID_MINERALS_PER_PX2 := 1.6
+const ASTEROID_SPICE_PER_PX2 := 0.5
+
 ## No hard fleet cap: each ship's energy upkeep is multiplied by
 ## 1 + (ship_count / UPKEEP_SCALE_SHIPS)^2, so total upkeep climbs steeply and
 ## fleets plateau (around 200 ships on a strong late-game economy).
