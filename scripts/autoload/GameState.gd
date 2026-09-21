@@ -44,6 +44,10 @@ const MOB_PLAYER_ID: int = 4
 ## not the full per-slot lobby setup.
 var human_player_id: int = 1
 
+## Which New Game option started this match setup: "single" or "multi"
+## (both use the same lobby for now; networking isn't implemented yet).
+var game_mode: String = "single"
+
 ## The human player's own Paths progress -- see PathState/PathDefs' own
 ## doc comments for the actual mechanics. Lives here (not owned by
 ## PathsPanel, which only holds a reference) so gameplay code anywhere

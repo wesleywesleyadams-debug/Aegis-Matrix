@@ -84,8 +84,8 @@ func _build_new_game_page() -> void:
 	_new_game_page.visible = false
 	add_child(_new_game_page)
 	for spec in [
-		["Single-Player", func(): get_tree().change_scene_to_file("res://scenes/Lobby.tscn"), ""],
-		["Multi-Player", Callable(), "Coming soon"],
+		["Single-Player", func(): _open_lobby("single"), ""],
+		["Multi-Player", func(): _open_lobby("multi"), ""],
 		["Campaign", Callable(), "Coming soon"],
 		["Back", func(): _show_new_game_page(false), ""],
 	]:
@@ -97,6 +97,11 @@ func _build_new_game_page() -> void:
 			b.disabled = true
 			b.tooltip_text = spec[2]
 		_new_game_page.add_child(b)
+
+## Both modes use the lobby; the chosen mode is kept on GameState.
+func _open_lobby(mode: String) -> void:
+	GameState.game_mode = mode
+	get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
 
 ## Swaps the main menu (and the account section and Quit under it) for the
 ## New Game page, or back.
