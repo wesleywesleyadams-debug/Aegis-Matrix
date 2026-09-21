@@ -35,6 +35,7 @@ var research_queue := {}  # pid -> Array of tech ids
 var selection: Array[SpaceEntity] = []
 var focused_planet: Planet
 var focused_asteroid: Asteroid
+var focused_star: Star
 var control_groups := {}
 var paused_menu: bool = false
 var is_over: bool = false
@@ -600,7 +601,7 @@ func _handle_key(e: InputEventKey) -> void:
 	if k == KEY_ESCAPE:
 		if placing_starbase:
 			placing_starbase = false
-		elif is_instance_valid(focused_planet) or is_instance_valid(focused_asteroid):
+		elif is_instance_valid(focused_planet) or is_instance_valid(focused_asteroid) or is_instance_valid(focused_star):
 			clear_planet_focus()
 		elif hud.research_open():
 			hud.toggle_research()
@@ -759,6 +760,7 @@ func _set_selection(list: Array, additive: bool) -> void:
 		selection.clear()
 		_focus_planet(null)
 		_focus_asteroid(null)
+		_focus_star(null)
 	for e in list:
 		if e not in selection:
 			selection.append(e)
@@ -767,6 +769,19 @@ func _set_selection(list: Array, additive: bool) -> void:
 				e.died.connect(_on_selected_died)
 	placing_starbase = false
 	selection_changed.emit()
+
+func _focus_star(s: Star) -> void:
+	if is_instance_valid(focused_star):
+		focused_star.focused = false
+	focused_star = s
+	if s:
+		s.focused = true
+
+func star_at(world_pos: Vector2) -> Star:
+	for s in get_tree().get_nodes_in_group("stars"):
+		if s is Star and world_pos.distance_to(s.global_position) <= Star.CORE_RADIUS + 6.0:
+			return s
+	return null
 
 func _focus_asteroid(a: Asteroid) -> void:
 	if is_instance_valid(focused_asteroid):
@@ -788,6 +803,7 @@ func _focus_planet(p: Planet) -> void:
 ## Closes the planet view (and its selection-panel summary).
 func clear_planet_focus() -> void:
 	_focus_asteroid(null)
+	_focus_star(null)
 	_focus_planet(null)
 	selection_changed.emit()
 
@@ -809,6 +825,11 @@ func _click_select(world_pos: Vector2, additive: bool) -> void:
 			if rock:
 				_focus_asteroid(rock)
 				selection_changed.emit()
+			else:
+				var sun := star_at(world_pos)
+				if sun:
+					_focus_star(sun)
+					selection_changed.emit()
 		return
 	if e.owner_id != player_id:
 		_set_selection([e], false)
@@ -981,6 +1002,11 @@ func _enter_dev_capture() -> void:
 		var sb0 := nearest_starbase(player_id, Vector2.ZERO)
 		sb0.enqueue("corvette")
 		_set_selection([sb0], false)
+	if OS.get_environment("SL_SHOT_OPEN") == "sun":
+		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
+		c1.order_stop()
+		var c2 := spawn_ship("corvette", player_id, Vector2(-150, 0))
+		c2.order_stop()
 	if OS.get_environment("SL_SHOT_OPEN") == "gas":
 		researched[player_id]["gas_skimming"] = true
 		resources[player_id]["minerals"] = 2000.0
@@ -1014,6 +1040,11 @@ func _enter_dev_capture() -> void:
 			var r0 := nearest_asteroid(nearest_starbase(player_id, Vector2.ZERO).global_position, 2000.0)
 			_focus_asteroid(r0)
 			center_on(r0.global_position)
+			selection_changed.emit()
+		"sun":
+			var sun0: Star = get_tree().get_nodes_in_group("stars")[0]
+			_focus_star(sun0)
+			center_on(sun0.global_position)
 			selection_changed.emit()
 		"paused":
 			hud.toggle_play()

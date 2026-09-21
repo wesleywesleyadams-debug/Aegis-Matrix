@@ -13,6 +13,7 @@
 [ext_resource type="Texture2D" path="res://assets/pixel/star.png" id="11_star"]
 [ext_resource type="Shader" path="res://shaders/space_bg.gdshader" id="12_bg"]
 [ext_resource type="Script" path="res://scripts/game/Sfx.gd" id="13_sfx"]
+[ext_resource type="Script" path="res://scripts/game/Star.gd" id="14_star"]
 
 [sub_resource type="ShaderMaterial" id="bg_mat"]
 shader = ExtResource("12_bg")
@@ -36,6 +37,7 @@ mouse_filter = 2
 [node name="World" type="Node2D" parent="."]
 
 [node name="Star" type="Sprite2D" parent="World" groups=["stars"]]
+script = ExtResource("14_star")
 texture = ExtResource("11_star")
 
 [node name="Planets" type="Node2D" parent="World"]

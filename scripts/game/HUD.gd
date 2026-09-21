@@ -526,6 +526,9 @@ func _rebuild_selection() -> void:
 	if sel.is_empty() and is_instance_valid(game.focused_asteroid):
 		_build_asteroid_panel(game.focused_asteroid)
 		return
+	if sel.is_empty() and is_instance_valid(game.focused_star):
+		_build_star_panel(game.focused_star)
+		return
 	if sel.is_empty():
 		if is_instance_valid(game.focused_planet):
 			_build_planet_panel(game.focused_planet)
@@ -640,6 +643,23 @@ func _build_starbase_controls(sb: Starbase) -> void:
 	_sel_body.add_child(grid)
 	_queue_row.visible = true
 	_sel_body.add_child(_label("Right-click to set the rally point. Click a queued ship to cancel (paid share refunded).", DIM, 12))
+
+func _build_star_panel(s: Star) -> void:
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var ic := _icon("star", 1)
+	ic.custom_minimum_size = Vector2(64, 64)
+	head.add_child(ic)
+	var col := VBoxContainer.new()
+	col.add_child(_label("%s  ·  Star" % s.star_name, Color("ffd46b"), 20))
+	col.add_child(_label("Uninhabitable. Can't be mined.", TEXT, 14))
+	head.add_child(col)
+	_sel_body.add_child(head)
+	_sel_body.add_child(_label("Radiation: ships and stations within %d px take damage, rising sharply closer in, up to %d/s on contact with the surface (shields absorb it first)." % [int(Star.RADIATION_RADIUS), int(Star.MAX_DPS)], Color("ff8a6a"), 13))
+	_sel_body.add_child(_label("Future research may allow harvesting energy from stars.", DIM, 12))
+	for l in _sel_body.get_children():
+		if l is Label:
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 func _build_asteroid_panel(a: Asteroid) -> void:
 	var head := HBoxContainer.new()

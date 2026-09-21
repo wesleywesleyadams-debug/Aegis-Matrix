@@ -62,6 +62,20 @@ func _ready() -> void:
 	var row := back_button.get_parent()
 	row.remove_child(back_button)
 	row.get_parent().add_child(back_button)
+	# Pushed to the bottom of the panel, in red.
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	back_button.get_parent().add_child(spacer)
+	back_button.get_parent().move_child(back_button, -1)
+	for st in ["normal", "hover", "pressed"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = {"normal": Color("5a1a22"), "hover": Color("7a2430"), "pressed": Color("3a1016")}[st]
+		sb.border_color = Color("ff6a5a")
+		sb.set_border_width_all(2)
+		sb.set_content_margin_all(12)
+		back_button.add_theme_stylebox_override(st, sb)
+	back_button.add_theme_color_override("font_color", Color("ffd6d0"))
+	back_button.add_theme_color_override("font_hover_color", Color.WHITE)
 	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
