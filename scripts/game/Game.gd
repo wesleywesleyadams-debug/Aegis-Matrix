@@ -703,6 +703,8 @@ func _set_selection(list: Array, additive: bool) -> void:
 	selection_changed.emit()
 
 func _focus_planet(p: Planet) -> void:
+	if p and p != focused_planet:
+		center_on(p.global_position)
 	if is_instance_valid(focused_planet):
 		focused_planet.focused = false
 	focused_planet = p

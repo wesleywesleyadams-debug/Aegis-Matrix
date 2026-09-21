@@ -1,10 +1,11 @@
 class_name PlanetView
-extends PanelContainer
-## Pop-up close-up of a selected planet: a big pixel render of the world
-## with its building fields laid out in rows across the planet's face, plus
-## population/economy stats. On your own planets, click an empty field to
-## order a building, click a building to demolish it, or click one under
-## construction to cancel it. The game keeps running while it's open.
+extends Control
+## In-place planet close-up. Clicking a planet centers the camera on it,
+## the planet grows where it sits, and its building fields fade in across
+## its face. Bigger worlds (more fields) grow bigger. On your own planets,
+## click an empty field to order a building, click a building to demolish
+## it, or click one under construction to cancel it. Stats live in the
+## selection panel (see `stats`). The game keeps running.
 
 ## Field slots are a fixed size; the planet art is scaled up (whole-pixel
 ## steps) until every slot fits on its face.
@@ -14,6 +15,8 @@ const SLOT_GAP := 6
 const GLOBE_MIN := 320
 ## Ring of open planet surface kept around the slot block (px).
 const GLOBE_MARGIN := 64
+## Grow animation length in real seconds (independent of game speed).
+const GROW_TIME := 0.28
 
 var game: Game
 var planet: Planet
@@ -21,72 +24,48 @@ var planet: Planet
 var _globe: Control
 var _art: TextureRect
 var _title: Label
-var _stats: Label
-var _fields_title: Label
-var _status: Label
+var _close: Button
 var _picker: PopupPanel
 var _picker_list: VBoxContainer
 var _menu_field: int = -1
 var _field_buttons: Array[Button] = []
+var _slot_layer: Control
+var _target_d: float = 0.0
+var _grow: float = 1.0
+## Latest stats summary for the selection panel.
+var stats: String = ""
 
 func _ready() -> void:
 	visible = false
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(HUD.BG, 0.96)
-	sb.border_color = HUD.EDGE_LIT
-	sb.set_border_width_all(2)
-	sb.set_content_margin_all(14)
-	add_theme_stylebox_override("panel", sb)
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 10)
-	add_child(root)
-	var head := HBoxContainer.new()
-	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 24)
-	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(_title)
-	var close := Button.new()
-	close.text = " X "
-	close.focus_mode = Control.FOCUS_NONE
-	close.tooltip_text = "Close (Esc)"
-	close.pressed.connect(func(): game.clear_planet_focus())
-	head.add_child(close)
-	root.add_child(head)
-
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 18)
-	root.add_child(body)
-
-	# The planet itself, with field slots placed on top of it.
 	_globe = Control.new()
-	_globe.custom_minimum_size = Vector2(GLOBE_MIN, GLOBE_MIN)
-	body.add_child(_globe)
+	_globe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_globe)
 	_art = TextureRect.new()
 	_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_art.stretch_mode = TextureRect.STRETCH_SCALE
 	_art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_globe.add_child(_art)
+	_slot_layer = Control.new()
+	_slot_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_globe.add_child(_slot_layer)
 
-	var right := VBoxContainer.new()
-	right.add_theme_constant_override("separation", 10)
-	right.custom_minimum_size = Vector2(250, 0)
-	_fields_title = Label.new()
-	_fields_title.add_theme_font_size_override("font_size", 16)
-	right.add_child(_fields_title)
-	_stats = Label.new()
-	_stats.add_theme_font_size_override("font_size", 13)
-	_stats.custom_minimum_size = Vector2(250, 0)
-	_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	right.add_child(_stats)
-	_status = Label.new()
-	_status.add_theme_font_size_override("font_size", 13)
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(250, 0)
-	right.add_child(_status)
-	body.add_child(right)
+	_title = Label.new()
+	_title.add_theme_font_size_override("font_size", 20)
+	_title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_title.add_theme_constant_override("outline_size", 6)
+	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_title)
+	_close = Button.new()
+	_close.text = " X "
+	_close.focus_mode = Control.FOCUS_NONE
+	_close.tooltip_text = "Close (Esc)"
+	_close.pressed.connect(func(): game.clear_planet_focus())
+	add_child(_close)
 
 	_picker = PopupPanel.new()
 	_picker_list = VBoxContainer.new()
@@ -95,65 +74,99 @@ func _ready() -> void:
 	add_child(_picker)
 
 func show_planet(p: Planet) -> void:
+	var was := planet
 	planet = p
 	visible = p != null
+	if is_instance_valid(was) and was != p:
+		(was.get_node("Sprite") as Sprite2D).visible = true
 	if p == null:
 		_picker.hide()
 		return
-	# Big version of the planet: same pixel art at the largest whole-pixel
-	# scale that fits, centered in the globe area.
-	var tex_w := (p.get_node("Sprite") as Sprite2D).texture.get_width()
-	# Smallest circle that holds all fields, then the smallest whole-pixel
-	# planet scale whose disc (minus its outline) covers that circle.
-	var need_r := _radius_for(p.fields)
+	var sprite := p.get_node("Sprite") as Sprite2D
+	var tex_w := sprite.texture.get_width()
+	# Size comes from the fields: smallest circle holding them plus a ring
+	# of open surface, rounded up to a whole-pixel scale of the art.
 	var scale_px := maxi(1, int(ceil(float(GLOBE_MIN) / tex_w)))
-	while tex_w * scale_px / 2.0 - scale_px * 2.0 < need_r + GLOBE_MARGIN:
-		scale_px += 1
-	var d := tex_w * scale_px
-	_globe.custom_minimum_size = Vector2(d, d)
-	_art.texture = Defs.tex(p.kind)
-	_art.position = Vector2.ZERO
-	_art.size = Vector2(d, d)
+	if p.fields > 0:
+		var need_r := _radius_for(p.fields)
+		while tex_w * scale_px / 2.0 - scale_px * 2.0 < need_r + GLOBE_MARGIN:
+			scale_px += 1
+	_target_d = tex_w * scale_px
+	_art.texture = sprite.texture
+	sprite.visible = false # the close-up replaces it while open
 	for b in _field_buttons:
 		b.queue_free()
 	_field_buttons.clear()
-	var rects := _layout_slots(p.fields, need_r)
+	var rects: Array[Rect2] = []
+	if p.fields > 0:
+		rects = _layout_slots(p.fields, _radius_for(p.fields))
 	for i in p.fields:
 		var b := Button.new()
 		b.focus_mode = Control.FOCUS_NONE
-		b.position = rects[i].position + Vector2.ONE * d / 2.0
+		b.position = rects[i].position + Vector2.ONE * _target_d / 2.0
 		b.size = rects[i].size
-		b.custom_minimum_size = rects[i].size
 		b.add_theme_stylebox_override("normal", _slot_style(Color(0.05, 0.06, 0.14, 0.72), HUD.EDGE_LIT))
 		b.add_theme_stylebox_override("hover", _slot_style(Color(0.1, 0.14, 0.3, 0.85), Color.WHITE))
 		b.add_theme_stylebox_override("pressed", _slot_style(Color(0.02, 0.03, 0.08, 0.9), Color.WHITE))
 		b.add_theme_stylebox_override("disabled", _slot_style(Color(0.05, 0.06, 0.14, 0.55), HUD.EDGE))
-		# Building art as a crisp child image; the button text shows progress.
 		var art := TextureRect.new()
 		art.name = "Art"
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		var pad := rects[i].size.x * 0.14
-		art.offset_left = pad
-		art.offset_top = pad
-		art.offset_right = -pad
-		art.offset_bottom = -pad
+		art.offset_left = 9
+		art.offset_top = 9
+		art.offset_right = -9
+		art.offset_bottom = -9
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(art)
-		b.add_theme_font_size_override("font_size", 12 if rects[i].size.x >= 48 else 10)
+		b.add_theme_font_size_override("font_size", 12)
 		b.pressed.connect(_on_field_pressed.bind(i))
-		_globe.add_child(b)
+		_slot_layer.add_child(b)
 		_field_buttons.append(b)
+	# Grow from the planet's current on-screen size.
+	_grow = 0.0 if was != p else 1.0
 	refresh()
+	_place()
+
+func _process(delta: float) -> void:
+	if not visible or planet == null:
+		return
+	if not is_instance_valid(planet):
+		game.clear_planet_focus()
+		return
+	if _grow < 1.0:
+		_grow = minf(1.0, _grow + delta / maxf(Engine.time_scale, 0.001) / GROW_TIME)
+	_place()
+
+## Keeps the close-up centered on the planet's screen position and applies
+## the grow animation (slots fade in once it's nearly full size).
+func _place() -> void:
+	var xf := game.get_viewport().get_canvas_transform()
+	var center: Vector2 = xf * planet.global_position
+	var start_d := planet.radius * 2.0 * game.camera.zoom.x
+	var k := 1.0 - pow(1.0 - _grow, 3.0)
+	var d := lerpf(start_d, _target_d, k)
+	var s := d / _target_d
+	_globe.size = Vector2(_target_d, _target_d)
+	_globe.scale = Vector2(s, s)
+	_globe.position = center - Vector2.ONE * d / 2.0
+	_art.size = Vector2(_target_d, _target_d)
+	_slot_layer.modulate.a = clampf((_grow - 0.6) / 0.4, 0.0, 1.0)
+	_slot_layer.visible = _slot_layer.modulate.a > 0.0
+	_title.modulate.a = _slot_layer.modulate.a if planet.fields > 0 else k
+	_close.modulate.a = _title.modulate.a
+	_title.size = Vector2(_target_d, 28)
+	_title.position = center + Vector2(-_target_d / 2.0, -d / 2.0 - 34)
+	_close.position = center + Vector2(d / 2.0 + 8.0, -d / 2.0 - 40.0)
 
 func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = bg
-	s.border_color = border
-	s.set_border_width_all(2)
-	return s
+	var st := StyleBoxFlat.new()
+	st.bg_color = bg
+	st.border_color = border
+	st.set_border_width_all(2)
+	return st
 
 ## Smallest circle radius that fits n fixed-size slots.
 func _radius_for(n: int) -> float:
@@ -212,7 +225,8 @@ func refresh() -> void:
 		return
 	var t := planet.type_def()
 	var mine := planet.owner_id == game.player_id
-	_title.text = ("%s  ·  %s  ·  Size %d" % [planet.planet_name, t["label"], planet.fields]) if planet.fields > 0 else "%s  ·  %s" % [planet.planet_name, t["label"]]
+	var used0 := planet.fields - planet.buildings.count("")
+	_title.text = ("%s  ·  %s  ·  Size %d  ·  %d/%d built" % [planet.planet_name, t["label"], planet.fields, used0, planet.fields]) if planet.fields > 0 else "%s  ·  %s" % [planet.planet_name, t["label"]]
 	_title.add_theme_color_override("font_color", Defs.team_color(planet.owner_id))
 	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else "Enemy world")
 	var s := owner_text
@@ -242,9 +256,13 @@ func refresh() -> void:
 			s += "\nSTARVING: %d pops die in %ds unless fed" % [int(planet.hungry), int(Defs.STARVE_SECONDS - planet.starve_timer)]
 	else:
 		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
-	_stats.text = s
-	var used := planet.fields - planet.buildings.count("")
-	_fields_title.text = ("Fields: %d / %d built" % [used, planet.fields]) if planet.fields > 0 else "No habitable regions"
+	if mine and planet.fields > 0:
+		if planet.construction.is_empty():
+			s += "\nNo construction. Click an empty field to build." if planet.free_fields() > 0 else "\nAll fields in use."
+		else:
+			var cd: Dictionary = Defs.BUILDINGS[planet.construction["id"]]
+			s += "\nBuilding %s: %d%%%s. %d more queued." % [cd["name"], int(100.0 * planet.construction["progress"] / cd["time"]), " (STALLED)" if planet.construction_stalled else "", planet.construction_queue.size()]
+	stats = s
 	for i in _field_buttons.size():
 		var b := _field_buttons[i]
 		var built: String = planet.buildings[i]
@@ -271,13 +289,6 @@ func refresh() -> void:
 			b.modulate = Color.WHITE if mine else Color(1, 1, 1, 0.4)
 			b.tooltip_text = "Empty field. Click to build." if mine else "Empty field."
 		b.disabled = not mine
-	if not mine:
-		_status.text = ""
-	elif planet.construction.is_empty():
-		_status.text = "No construction. Click an empty field to build." if planet.free_fields() > 0 else "All fields in use."
-	else:
-		var d: Dictionary = Defs.BUILDINGS[planet.construction["id"]]
-		_status.text = "Building %s: %d%%%s. %d more queued." % [d["name"], int(100.0 * planet.construction["progress"] / d["time"]), " (STALLED: waiting for resources)" if planet.construction_stalled else "", planet.construction_queue.size()]
 
 func _on_field_pressed(i: int) -> void:
 	if planet == null or planet.owner_id != game.player_id:

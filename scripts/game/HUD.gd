@@ -66,13 +66,9 @@ func _ready() -> void:
 	_build_help(root)
 	planet_view = PlanetView.new()
 	planet_view.game = game
-	planet_view.anchor_left = 1.0
-	planet_view.anchor_right = 1.0
-	planet_view.offset_left = -12 - 780
-	planet_view.offset_right = -12
-	planet_view.offset_top = 90
-	planet_view.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	root.add_child(planet_view)
+	# Keep the planet close-up under the HUD panels.
+	root.move_child(planet_view, 1)
 	_build_research(root)
 	_build_pause(root)
 	_build_end(root)
@@ -582,7 +578,8 @@ func _update_selection_info() -> void:
 		return
 	var sel: Array = game.selection.filter(func(e): return is_instance_valid(e))
 	if sel.is_empty() and is_instance_valid(game.focused_planet):
-		_info_label.text = _planet_text(game.focused_planet)
+		planet_view.refresh()
+		_info_label.text = planet_view.stats
 		return
 	if sel.size() != 1:
 		return
