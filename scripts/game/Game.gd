@@ -42,6 +42,7 @@ var _last_group_time: float = 0.0
 @onready var camera: Camera2D = $Camera
 @onready var hud: HUD = $HUD
 @onready var ai: AIController = $AI
+@onready var sfx: Sfx = $Sfx
 
 static func now() -> float:
 	return _clock
@@ -206,6 +207,7 @@ func fire(from: SpaceEntity, to: SpaceEntity, weapon: String, damage: float) -> 
 	var p := Projectile.new()
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage)
+	sfx.play_at("laser" if weapon == "laser" else "torpedo", from.global_position, -8.0)
 
 func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	var e := Effect.new()
@@ -216,6 +218,7 @@ func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	e.rotation = randi_range(0, 3) * PI / 2.0
 	e.scale = Vector2.ONE * clampf(snappedf(scale_mult, 0.5), 0.5, 3.0)
 	fx_root.add_child(e)
+	sfx.play_at("boom_big" if scale_mult >= 1.0 else "boom", pos)
 
 func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
 	var e := Effect.new()
@@ -226,14 +229,17 @@ func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
 	e.rotation = (from_pos - pos).angle()
 	e.scale = Vector2.ONE * maxf(1.0, round(r / 8.0))
 	fx_root.add_child(e)
+	sfx.play_at("shield", pos, -12.0)
 
 # ---------------------------------------------------------------- events
 
 func planet_claimed(p: Planet, old_owner: int) -> void:
 	if p.owner_id == player_id:
 		message.emit("%s claimed." % p.planet_name, Defs.team_color(player_id))
+		sfx.play_ui("claim")
 	elif old_owner == player_id:
 		message.emit("%s lost to the enemy!" % p.planet_name, Color("ff6a5a"))
+		sfx.play_ui("alert")
 
 func _on_starbase_died(sb: SpaceEntity) -> void:
 	selection.erase(sb)
@@ -346,6 +352,9 @@ func request_build(sb: Starbase, ship_type: String) -> void:
 	var why := sb.enqueue(ship_type)
 	if why != "":
 		message.emit(why + ".", Color("ff8a5a"))
+		sfx.play_ui("deny")
+	else:
+		sfx.play_ui("click")
 
 func _process(delta: float) -> void:
 	_clock += delta

@@ -85,6 +85,8 @@ func _physics_process(delta: float) -> void:
 func _launch(ship_type: String) -> void:
 	var dir := (rally_point - global_position).normalized() if has_rally else Vector2.from_angle(randf() * TAU)
 	var ship := Game.instance.spawn_ship(ship_type, owner_id, global_position + dir * (radius + 6.0))
+	if owner_id == Game.instance.player_id:
+		Game.instance.sfx.play_ui("build")
 	ship.rotation = dir.angle()
 	if ship.is_miner():
 		var rock := Game.instance.nearest_asteroid(has_rally_or(global_position), 900.0)
@@ -104,3 +106,13 @@ func _draw() -> void:
 		var to := to_local(rally_point)
 		draw_dashed_line(Vector2.ZERO, to, Color(Defs.team_color(owner_id), 0.5), 1.0, 4.0)
 		draw_rect(Rect2(to - Vector2(2, 2), Vector2(4, 4)), Defs.team_color(owner_id))
+
+var _last_alert: float = -100.0
+
+func take_damage(amount: float, from: SpaceEntity = null) -> void:
+	super.take_damage(amount, from)
+	var g := Game.instance
+	if owner_id == g.player_id and hp > 0.0 and Game.now() - _last_alert > 15.0:
+		_last_alert = Game.now()
+		g.message.emit("Your starbase is under attack!", Color("ff6a5a"))
+		g.sfx.play_ui("alert")

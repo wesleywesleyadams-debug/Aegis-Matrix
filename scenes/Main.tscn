@@ -12,6 +12,7 @@
 [ext_resource type="Texture2D" path="res://assets/pixel/bg_dust.png" id="10_dust"]
 [ext_resource type="Texture2D" path="res://assets/pixel/star.png" id="11_star"]
 [ext_resource type="Shader" path="res://shaders/space_bg.gdshader" id="12_bg"]
+[ext_resource type="Script" path="res://scripts/game/Sfx.gd" id="13_sfx"]
 
 [sub_resource type="ShaderMaterial" id="bg_mat"]
 shader = ExtResource("12_bg")
@@ -418,6 +419,9 @@ owner_id = 2
 
 [node name="Camera" type="Camera2D" parent="."]
 zoom = Vector2(3, 3)
+
+[node name="Sfx" type="Node" parent="."]
+script = ExtResource("13_sfx")
 
 [node name="AI" type="Node" parent="."]
 script = ExtResource("3_ai")
