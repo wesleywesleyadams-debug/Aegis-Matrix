@@ -287,8 +287,9 @@ var _saved_offsets := []
 var _sub_saved := {}
 
 ## Shows the account options inline, top edge at `top_y` (screen px),
+## returning its bottom edge;
 ## horizontally centered. The title screen calls this on load.
-func dock(top_y: float) -> void:
+func dock(top_y: float) -> float:
 	_docked = true
 	background.color = Color(0, 0, 0, 0)
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -326,6 +327,7 @@ func dock(top_y: float) -> void:
 		sub.offset_bottom = top_y + sh
 	account_close_button.visible = false
 	open()
+	return account_panel.offset_bottom
 
 ## Back to the normal pop-up (used when leaving the title screen).
 func undock() -> void:

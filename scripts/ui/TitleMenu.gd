@@ -42,7 +42,13 @@ func _ready() -> void:
 	# Account options live right under the main menu (no pop-up). Wait a
 	# frame so the menu has its final size.
 	await get_tree().process_frame
-	AccountMenu.dock(vbox.get_global_rect().end.y + 24.0)
+	var account_bottom: float = AccountMenu.dock(vbox.get_global_rect().end.y + 24.0)
+	# Order: New Game, Load Game, Options, account section, Quit.
+	var quit_width := quit_button.size.x
+	vbox.remove_child(quit_button)
+	add_child(quit_button)
+	quit_button.size = Vector2(quit_width, quit_button.get_combined_minimum_size().y)
+	quit_button.position = Vector2((size.x - quit_width) / 2.0, account_bottom + 24.0)
 	tree_exiting.connect(AccountMenu.undock)
 	# The corner Sign In link would duplicate the options shown here.
 	SignedInLabel.visible = false
