@@ -1,8 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/TitleMenu.gd" id="1_title"]
-[ext_resource type="Texture2D" path="res://assets/backgrounds/title_bg.svg" id="2_bg"]
-[ext_resource type="FontFile" path="res://assets/fonts/MedievalSharp.ttf" id="3_title_font"]
+[ext_resource type="Texture2D" path="res://assets/pixel/title_bg.png" id="2_bg"]
 
 [node name="TitleMenu" type="Control"]
 layout_mode = 3
@@ -12,6 +11,7 @@ anchor_bottom = 1.0
 script = ExtResource("1_title")
 
 [node name="Background" type="TextureRect" parent="."]
+texture_filter = 1
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -27,13 +27,14 @@ anchor_left = 0.5
 anchor_right = 0.5
 anchor_top = 0.5
 anchor_bottom = 0.5
-offset_left = -250.0
-offset_top = -250.0
-offset_right = 250.0
-offset_bottom = -182.0
-theme_override_fonts/font = ExtResource("3_title_font")
-theme_override_font_sizes/font_size = 56
-theme_override_colors/font_color = Color(1, 1, 1, 1)
+offset_left = -400.0
+offset_top = -280.0
+offset_right = 400.0
+offset_bottom = -180.0
+theme_override_font_sizes/font_size = 72
+theme_override_colors/font_color = Color(0.85, 0.93, 1, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.08, 0.2, 1)
+theme_override_constants/outline_size = 12
 horizontal_alignment = 1
 text = "Star Lords"
 

@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/Lobby.gd" id="1_lobby"]
-[ext_resource type="Texture2D" path="res://assets/backgrounds/title_bg.svg" id="2_bg"]
+[ext_resource type="Texture2D" path="res://assets/pixel/title_bg.png" id="2_bg"]
 
 [node name="Lobby" type="Control"]
 layout_mode = 3
@@ -11,6 +11,7 @@ anchor_bottom = 1.0
 script = ExtResource("1_lobby")
 
 [node name="Background" type="TextureRect" parent="."]
+texture_filter = 1
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

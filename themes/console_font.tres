@@ -1,0 +1,6 @@
+[gd_resource type="SystemFont" format=3]
+
+[resource]
+font_names = PackedStringArray("Consolas", "Lucida Console", "Courier New", "Monospace")
+antialiasing = 0
+hinting = 0

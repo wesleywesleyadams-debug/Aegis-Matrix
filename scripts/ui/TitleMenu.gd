@@ -110,3 +110,11 @@ func _on_close_load_list_pressed() -> void:
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
+
+## Dev aid: SL_TITLE_SHOT=1 saves user://title.png after a moment and quits.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_READY and OS.get_environment("SL_TITLE_SHOT") != "":
+		await get_tree().create_timer(1.0).timeout
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("user://title.png")
+		get_tree().quit()

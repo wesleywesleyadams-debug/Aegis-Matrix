@@ -45,14 +45,14 @@ var _master_bus_index: int = 0
 ## GameState.ui_font) -> [display name, font resource]. null means "Default"
 ## (falls back to Godot's own built-in font instead of overriding it).
 const FONT_OPTIONS: Dictionary = {
-	"medieval": ["Medieval Sharp", preload("res://assets/fonts/MedievalSharp.ttf")],
+	"console": ["Console (pixel)", preload("res://themes/console_font.tres")],
 	"default": ["Default", null],
 }
 ## Insertion order of FONT_OPTIONS' keys -- Dictionary iteration order in
 ## GDScript matches insertion order, but this makes that assumption explicit
 ## and gives _populate_font_options/index<->key lookups something to zip
 ## against, rather than relying on it silently.
-const FONT_OPTION_KEYS: Array = ["medieval", "default"]
+const FONT_OPTION_KEYS: Array = ["console", "default"]
 
 func _ready() -> void:
 	layer = 10

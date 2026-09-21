@@ -39,6 +39,7 @@ func _init() -> void:
 	_gen_fx()
 	_gen_backgrounds()
 	_gen_icons()
+	_gen_title()
 	print("Star Lords art generated.")
 	quit()
 
@@ -523,3 +524,53 @@ func _gen_icons() -> void:
 				f.set_pixel(x, y, HULL[4] if y < 6 else HULL[3])
 	_outline(f)
 	_save(f, "icon_fleet")
+
+# ---------------------------------------------------------------- title
+
+## 480x270 menu backdrop (shown at 4x), composed from the sprites above.
+func _gen_title() -> void:
+	var w := 480
+	var h := 270
+	var img := _img(w, h)
+	img.fill(Color("07060f"))
+	var stars := Image.load_from_file(OUT + "bg_stars.png")
+	var neb := Image.load_from_file(OUT + "bg_nebula.png")
+	for y in h:
+		for x in w:
+			var c := img.get_pixel(x, y)
+			var n := neb.get_pixel(x % 512, y % 512)
+			c = c.lerp(Color(n.r, n.g, n.b), n.a * 0.45)
+			var s := stars.get_pixel((x + 100) % 512, (y + 60) % 512)
+			c = c.lerp(Color(s.r, s.g, s.b), s.a)
+			img.set_pixel(x, y, c)
+	_paste(img, "planet_gas", 330, 120)
+	_paste(img, "planet_moon", 300, 118)
+	_paste(img, "planet_terran", 40, 190)
+	_paste(img, "starbase", 96, 176, Color("4fb4ff"))
+	# Two fleets closing on each other.
+	var blue := Color("4fb4ff")
+	var red := Color("ff4f5e")
+	for p in [[150, 120, "cruiser"], [128, 100, "destroyer"], [132, 146, "destroyer"], [110, 88, "corvette"], [112, 160, "corvette"], [96, 124, "corvette"]]:
+		_paste(img, "ship_" + p[2], p[0], p[1], blue)
+	for p in [[300, 60, "destroyer"], [322, 44, "corvette"], [326, 78, "corvette"], [344, 58, "corvette"]]:
+		_paste(img, "ship_" + p[2], p[0], p[1], red, true)
+	# Crossfire and a kill.
+	for i in 3:
+		for t in 10:
+			img.set_pixel(190 + i * 30 + t, 104 - i * 12 - t / 3, Color("9fd8ff"))
+	var boom := Image.load_from_file(OUT + "explosion.png").get_region(Rect2i(96, 0, 32, 32))
+	img.blend_rect(boom, Rect2i(0, 0, 32, 32), Vector2i(272, 50))
+	img.save_png(OUT + "title_bg.png")
+
+func _paste(dst: Image, name: String, cx: int, cy: int, team: Color = Color.WHITE, flip: bool = false) -> void:
+	var src := Image.load_from_file(OUT + name + ".png")
+	if FileAccess.file_exists(OUT + name + "_team.png"):
+		var t := Image.load_from_file(OUT + name + "_team.png")
+		for y in t.get_height():
+			for x in t.get_width():
+				var c := t.get_pixel(x, y)
+				if c.a > 0.0:
+					src.set_pixel(x, y, team * c.r)
+	if flip:
+		src.flip_x()
+	dst.blend_rect(src, Rect2i(Vector2i.ZERO, src.get_size()), Vector2i(cx - src.get_width() / 2, cy - src.get_height() / 2))

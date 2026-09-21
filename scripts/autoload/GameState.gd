@@ -145,7 +145,7 @@ var show_grip_points: bool = false:
 
 ## Which UI font is applied to the shared theme (see OptionsMenu._apply_font)
 ## -- one of OptionsMenu.FONT_OPTIONS' keys.
-var ui_font: String = "medieval"
+var ui_font: String = "console"
 
 ## Audio settings -- authoritative values OptionsMenu's sliders and Music.gd
 ## read at startup and write back on every change (see save_settings()
@@ -306,6 +306,8 @@ func load_account_settings() -> void:
 	show_combat_hitboxes = config.get_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
 	show_grip_points = config.get_value("visuals", "show_grip_points", show_grip_points)
 	ui_font = config.get_value("visuals", "ui_font", ui_font)
+	if ui_font not in ["console", "default"]:
+		ui_font = "console"
 	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)
 	player_slots = config.get_value("lobby", "player_slots", player_slots)
 
@@ -317,7 +319,7 @@ func _reset_account_settings_to_defaults() -> void:
 	show_debug_grid = true
 	show_combat_hitboxes = false
 	show_grip_points = false
-	ui_font = "medieval"
+	ui_font = "console"
 	master_volume_db = 0.0
 	music_volume_db = -8.0
 	audio_enabled = true
