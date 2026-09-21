@@ -54,7 +54,7 @@ var human_player_id: int = 1
 ## over -- an autoload persists for the whole app session, unlike
 ## ResourceHUD's own per-match economy dict, which is scene-owned and
 ## naturally starts fresh each match.
-var human_path_state: PathState = PathState.new()
+
 
 ## Up to 8 pre-match player slots (see Lobby.gd's Players panel), one dict
 ## per slot: {"slot_type": "human"/"ai"/"open", "race": String, "team": int
@@ -71,7 +71,7 @@ static func _default_player_slots() -> Array:
 	var slots: Array = []
 	for i in MAX_PLAYER_SLOTS:
 		var slot_type := "human" if i == 0 else ("ai" if i == 1 else "open")
-		slots.append({"slot_type": slot_type, "race": "human", "team": 0})
+		slots.append({"slot_type": slot_type, "race": "terran", "team": 0})
 	return slots
 
 ## Local user accounts (see AccountMenu.gd) -- one dict per account:

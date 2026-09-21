@@ -1,7 +1,12 @@
 # Godot 4+ specific ignores
 .godot/
+.nomedia
+.import/
+export.cfg
+export_credentials.cfg
+*.translation
+.mono/
+data_*/
+mono_crash.*.json
+build/
 /android/
-
-# Exported standalone builds -- large binaries, regenerate with
-# `godot --headless --export-release "Windows Desktop" build/windows/DarKnight.exe`
-/build/

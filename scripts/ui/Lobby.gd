@@ -12,7 +12,7 @@ extends Control
 ## multi-opponent/team-combat system that doesn't exist yet, same as
 ## Starting Item/Map already were placeholders.
 
-const RACE_OPTIONS: Array = [["human", "Human"], ["elf", "Elf"], ["orc", "Orc"], ["undead", "Undead"]]
+const RACE_OPTIONS: Array = [["terran", "Terran Union"], ["vorr", "Vorr Hive"], ["aeth", "Aetheric Choir"], ["krell", "Krell Dominion"]]
 ## Index i's team value; "No Team" is stored as team 0.
 const TEAM_OPTIONS: Array = [["1", 1], ["2", 2], ["3", 3], ["4", 4], ["No Team", 0]]
 ## Purely a visual accent for each slot's player-number badge -- distinct

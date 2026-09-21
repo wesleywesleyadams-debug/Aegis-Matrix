@@ -1,1068 +1,426 @@
-[gd_scene format=4 uid="uid://i4ug87qf8cvw"]
-
-[ext_resource type="Script" uid="uid://cy3kdynjvu1ke" path="res://scripts/RTSController.gd" id="1_main"]
-[ext_resource type="Script" uid="uid://0s02vot3dw7u" path="res://scripts/RTSCamera.gd" id="2_cam"]
-[ext_resource type="Script" uid="uid://4v8e180nukfj" path="res://scripts/world/NavGroundSetup.gd" id="3_nav"]
-[ext_resource type="Script" uid="uid://b5nqblprguper" path="res://scripts/ui/SelectionBox.gd" id="4_box"]
-[ext_resource type="Shader" uid="uid://djxs8shg1fgkd" path="res://shaders/debug_grid.gdshader" id="6_grid_shader"]
-[ext_resource type="Script" uid="uid://blpfqchopcui2" path="res://scripts/ui/PortraitPanel.gd" id="8_portrait_panel"]
-[ext_resource type="PackedScene" uid="uid://wkq0srdroryf" path="res://scenes/ParentUnit.tscn" id="10_sprite_unit"]
-[ext_resource type="Script" uid="uid://dgxd4jwr6lapf" path="res://scripts/ui/MainMenu.gd" id="12_main_menu"]
-[ext_resource type="Script" uid="uid://cogbj46ed4tfv" path="res://scripts/ui/GameTimer.gd" id="13_game_timer"]
-[ext_resource type="Script" uid="uid://7o631n00jyul" path="res://scripts/ui/ResourceHUD.gd" id="14_resource_hud"]
-[ext_resource type="PackedScene" path="res://scenes/Hut.tscn" id="15_hut"]
-[ext_resource type="PackedScene" path="res://scenes/ParentBuilding.tscn" id="16_parent_building"]
-[ext_resource type="PackedScene" path="res://scenes/AppleTree.tscn" id="17_apple_tree"]
-[ext_resource type="PackedScene" path="res://scenes/CrystalCave.tscn" id="17_crystal_cave"]
-[ext_resource type="PackedScene" path="res://scenes/MistFissure.tscn" id="17_mist_fissure"]
-[ext_resource type="PackedScene" path="res://scenes/OakTree.tscn" id="17_oak_tree"]
-[ext_resource type="PackedScene" path="res://scenes/Tree.tscn" id="17_tree"]
-[ext_resource type="Script" uid="uid://jiile3pwc7h7" path="res://scripts/ui/ItemDropTarget.gd" id="22_item_drop_target"]
-[ext_resource type="Script" uid="uid://doq1l15mm6wyf" path="res://scripts/ui/ItemTooltipPanel.gd" id="25_item_tooltip_panel"]
-[ext_resource type="Script" uid="uid://dyaoeojv0xoaw" path="res://scripts/ui/GameCalendar.gd" id="26_game_calendar"]
-[ext_resource type="Script" path="res://scripts/ui/SeasonClock.gd" id="40_season_clock"]
-[ext_resource type="Script" path="res://scripts/ui/SeasonDial.gd" id="41_season_dial"]
-[ext_resource type="Script" uid="uid://cicgfqjtxo07o" path="res://scripts/ui/HitboxToggleButton.gd" id="27_hitbox_toggle"]
-[ext_resource type="Script" path="res://scripts/ui/PathsPanel.gd" id="46_paths_panel"]
-[ext_resource type="Script" path="res://scripts/ui/PathTreeModal.gd" id="47_path_tree_modal"]
-[ext_resource type="Script" path="res://scripts/ui/InsufficientFundsNotice.gd" id="48_insufficient_funds"]
-[ext_resource type="Script" uid="uid://m5tyshcpvoa6" path="res://scripts/ui/GripPointsToggleButton.gd" id="28_grip_points_toggle"]
-[ext_resource type="Script" uid="uid://bqdj6f57aj8n5" path="res://scripts/ui/Minimap.gd" id="31_minimap"]
-[ext_resource type="Script" path="res://scripts/ui/ControlGroupBar.gd" id="46_control_group_bar"]
-[ext_resource type="Shader" uid="uid://dqe85rbd6j4eh" path="res://shaders/void_sky.gdshader" id="32_void_sky"]
-[ext_resource type="PackedScene" path="res://scenes/Castle.tscn" id="36_castle"]
-[ext_resource type="Script" uid="uid://crcedo3hu8l0r" path="res://scripts/ui/UnitIconPlaceholder.gd" id="38_unit_icon_placeholder"]
-[ext_resource type="Script" uid="uid://bkkfxe35n6r21" path="res://scripts/ui/TaskPanel.gd" id="43_task_panel"]
-[ext_resource type="Script" uid="uid://oeax2yuej02s" path="res://scripts/ui/MultiSelectIcons.gd" id="44_multi_select_icons"]
-[ext_resource type="Script" uid="uid://k5dh6vccpuat" path="res://scripts/ui/PlayerListPanel.gd" id="45_player_list_panel"]
-
-[sub_resource type="ShaderMaterial" id="Sky_main"]
-shader = ExtResource("32_void_sky")
-shader_parameter/void_color = Color(0, 0, 0, 1)
-shader_parameter/star_density = 0.42
-shader_parameter/star_brightness = 1.8
-shader_parameter/star_radius = 0.12
-shader_parameter/twinkle_speed = 2.0
-shader_parameter/comet_period = 22.0
-shader_parameter/comet_duration = 3.5
-shader_parameter/nebula_intensity = 1.9
-shader_parameter/nebula_drift_speed = 0.012
-
-[sub_resource type="Sky" id="Sky_res"]
-sky_material = SubResource("Sky_main")
-
-[sub_resource type="Environment" id="Environment_main"]
-background_mode = 2
-sky = SubResource("Sky_res")
-ambient_light_source = 2
-ambient_light_color = Color(0.55, 0.62, 0.7, 1)
-ambient_light_energy = 1.1
-tonemap_mode = 2
-tonemap_exposure = 1.3
-tonemap_white = 6.0
-glow_enabled = true
-glow_intensity = 0.55
-glow_bloom = 0.12
-glow_hdr_threshold = 1.2
-adjustment_enabled = true
-adjustment_contrast = 1.12
-adjustment_saturation = 1.08
-
-[sub_resource type="BoxMesh" id="BoxMesh_ground"]
-size = Vector3(180, 0.2, 180)
-
-[sub_resource type="StandardMaterial3D" id="Mat_ground"]
-albedo_color = Color(0.24, 0.34, 0.2, 1)
-roughness = 0.9
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
-size = Vector3(180, 0.2, 180)
-
-[sub_resource type="ShaderMaterial" id="ShaderMat_grid"]
-render_priority = -10
-shader = ExtResource("6_grid_shader")
-shader_parameter/cell_size = 2.6
-shader_parameter/line_color = Color(1, 1, 1, 0.45)
-shader_parameter/major_line_color = Color(1, 0.85, 0.2, 0.6)
-shader_parameter/major_every = 5
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_grid"]
-size = Vector2(180, 180)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e2s0e"]
-render_priority = 10
-no_depth_test = true
-shading_mode = 0
-vertex_color_use_as_albedo = true
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_gsxep"]
-_surfaces = [{
-"aabb": AABB(-0.0216, 0, -0.12, 0.1416, 0.12, 0.1416),
-"attribute_data": PackedByteArray("/zMz//8zM///MzP//zMz//8zM///MzP/M/8z/zP/M/8z/zP/M/8z/zP/M/8z/zP/TH///0x///9Mf///TH///0x///9Mf///"),
-"format": 34359738377,
-"primitive": 1,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 18,
-"vertex_data": PackedByteArray("AAAAAAAAAAAAAAAAj8L1PQAAAAAAAAAAj8L1PQAAAAAAAAAAMQisPQAAAAB88rA8j8L1PQAAAAAAAAAAMQisPQAAAAB88rC8AAAAAAAAAAAAAAAAAAAAAI/C9T0AAAAAAAAAAI/C9T0AAAAAAAAAADEIrD188rC8AAAAAI/C9T0AAAAAAAAAADEIrD188rA8AAAAAAAAAAAAAAAAAAAAAAAAAACPwvW9AAAAAAAAAACPwvW9fPKwPAAAAAAxCKy9AAAAAAAAAACPwvW9fPKwvAAAAAAxCKy9")
-}]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_v0vrg"]
-render_priority = 10
-no_depth_test = true
-shading_mode = 0
-vertex_color_use_as_albedo = true
-
-[sub_resource type="ArrayMesh" id="ArrayMesh_dg70y"]
-_surfaces = [{
-"aabb": AABB(-0.0216, 0, -0.12, 0.1416, 0.12, 0.1416),
-"attribute_data": PackedByteArray("/zMz//8zM///MzP//zMz//8zM///MzP/M/8z/zP/M/8z/zP/M/8z/zP/M/8z/zP/TH///0x///9Mf///TH///0x///9Mf///"),
-"format": 34359738377,
-"primitive": 1,
-"uv_scale": Vector4(0, 0, 0, 0),
-"vertex_count": 18,
-"vertex_data": PackedByteArray("AAAAAAAAAAAAAAAAj8L1PQAAAAAAAAAAj8L1PQAAAAAAAAAAMQisPQAAAAB88rA8j8L1PQAAAAAAAAAAMQisPQAAAAB88rC8AAAAAAAAAAAAAAAAAAAAAI/C9T0AAAAAAAAAAI/C9T0AAAAAAAAAADEIrD188rC8AAAAAI/C9T0AAAAAAAAAADEIrD188rA8AAAAAAAAAAAAAAAAAAAAAAAAAACPwvW9AAAAAAAAAACPwvW9fPKwPAAAAAAxCKy9AAAAAAAAAACPwvW9fPKwvAAAAAAxCKy9")
-}]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_training_panel"]
-bg_color = Color(0.18, 0.11, 0.06, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.35, 0.22, 0.12, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_selected_panel"]
-bg_color = Color(0.62, 0.48, 0.32, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.35, 0.22, 0.12, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tooltip_panel"]
-bg_color = Color(0, 0, 0, 0.75)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[node name="Main" type="Node3D" unique_id=949283059]
-script = ExtResource("1_main")
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1661015930]
-environment = SubResource("Environment_main")
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1967142370]
-transform = Transform3D(0.7, -0.5, 0.5, 0, 0.7, 0.7, -0.7, -0.5, 0.5, 0, 12, 0)
-light_color = Color(1, 0.86, 0.65, 1)
-light_energy = 2.6
-light_angular_distance = 1.5
-shadow_enabled = true
-shadow_opacity = 0.75
-shadow_blur = 1.4
-
-[node name="CameraRig" type="Node3D" parent="." unique_id=1356726841]
-transform = Transform3D(0.7071068, 0, -0.7071068, 0, 1, 0, 0.7071068, 0, 0.7071068, 0, 0, 0)
-script = ExtResource("2_cam")
-
-[node name="Camera3D" type="Camera3D" parent="CameraRig" unique_id=743603544]
-transform = Transform3D(1, 0, 0, 0, 0.819, 0.574, 0, -0.574, 0.819, 0, 14, 10)
-projection = 1
-size = 16.0
-
-[node name="Ground" type="StaticBody3D" parent="." unique_id=245377642 groups=["nav_source"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
-collision_mask = 0
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=1766440297]
-mesh = SubResource("BoxMesh_ground")
-surface_material_override/0 = SubResource("Mat_ground")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground" unique_id=1656633571]
-shape = SubResource("BoxShape3D_ground")
-
-[node name="DebugGrid" type="MeshInstance3D" parent="." unique_id=271947448]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
-material_override = SubResource("ShaderMat_grid")
-mesh = SubResource("PlaneMesh_grid")
-
-[node name="NavigationRegion3D" type="NavigationRegion3D" parent="." unique_id=116380192]
-script = ExtResource("3_nav")
-
-[node name="Units" type="Node3D" parent="." unique_id=1094557130]
-
-[node name="Peasant9" parent="Units" unique_id=955629682 instance=ExtResource("10_sprite_unit")]
-
-[node name="Peasant" parent="Units" unique_id=1535405087 instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36.4, 0, -5.2)
-
-[node name="GripAxisGizmo" parent="Units/Peasant/ModelRoot/PeasantMale/Armature/Skeleton3D/WeaponSlot/GripOffset/GripMarker" parent_id_path=PackedInt32Array(1535405087, 2144767893) index="0" unique_id=1709504430]
-material_override = SubResource("StandardMaterial3D_e2s0e")
-mesh = SubResource("ArrayMesh_gsxep")
-
-[node name="GripAxisGizmo" parent="Units/Peasant/ModelRoot/PeasantMale/Armature/Skeleton3D/WeaponSlotLeft/GripOffset/GripMarker" parent_id_path=PackedInt32Array(1535405087, 2046760902) index="0" unique_id=1513022565]
-material_override = SubResource("StandardMaterial3D_v0vrg")
-mesh = SubResource("ArrayMesh_dg70y")
-
-[node name="Peasant2" parent="Units" unique_id=241913893 instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36.4, 0, -2.6)
-
-[node name="Peasant3" parent="Units" unique_id=1257150998 instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33.8, 0, -5.2)
-
-[node name="Peasant4" parent="Units" unique_id=267059874 instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -33.8, 0, -2.6)
-
-[node name="Peasant5" parent="Units" unique_id=324975812 instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.8, 0, -5.2)
-
-[node name="Peasant6" parent="Units" unique_id=520794108 instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36.4, 0, -5.2)
-
-[node name="Peasant7" parent="Units" unique_id=1255894224 instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.8, 0, -2.6)
-
-[node name="Peasant8" parent="Units" unique_id=2102087617 instance=ExtResource("10_sprite_unit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36.4, 0, -2.6)
-
-[node name="Buildings" type="Node3D" parent="." unique_id=1713325859]
-
-[node name="Wall" parent="Buildings" unique_id=926110587 instance=ExtResource("16_parent_building")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50.7, 0, -1.3)
-unit_type_id = "wall"
-
-[node name="Hut" parent="Buildings" unique_id=1073965233 instance=ExtResource("15_hut")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -66.3, 0, -11.7)
-
-[node name="Hut2" parent="Buildings" unique_id=1404155386 instance=ExtResource("15_hut")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -66.3, 0, 11.7)
-
-[node name="Castle" parent="Buildings" unique_id=2060057999 instance=ExtResource("36_castle")]
-transform = Transform3D(5, 0, 0, 0, 1, 0, 0, 0, 5, -79.3, 0, -1.3)
-
-[node name="Wall2" parent="Buildings" unique_id=1299578909 instance=ExtResource("16_parent_building")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50.7, 0, -1.3)
-unit_type_id = "wall"
-player_id = 2
-
-[node name="Hut3" parent="Buildings" unique_id=571874784 instance=ExtResource("15_hut")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.3, 0, -11.7)
-player_id = 2
-
-[node name="Hut4" parent="Buildings" unique_id=1279177803 instance=ExtResource("15_hut")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 66.3, 0, 11.7)
-player_id = 2
-
-[node name="Castle2" parent="Buildings" unique_id=1116932431 instance=ExtResource("36_castle")]
-transform = Transform3D(5, 0, 0, 0, 1, 0, 0, 0, 5, 79.3, 0, -1.3)
-player_id = 2
-
-[node name="World" type="Node3D" parent="." unique_id=1798959251]
-
-[node name="Tree" parent="World" unique_id=147173297 instance=ExtResource("17_tree")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, 6)
-
-[node name="OakTree1" parent="World" unique_id=1203958138 instance=ExtResource("17_oak_tree")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, 10)
-
-[node name="OakTree2" parent="World" unique_id=1108929612 instance=ExtResource("17_oak_tree")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, 13)
-
-[node name="AppleTree1" parent="World" unique_id=1792940345 instance=ExtResource("17_apple_tree")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 14)
-
-[node name="AppleTree2" parent="World" unique_id=853761684 instance=ExtResource("17_apple_tree")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, 9)
-
-[node name="Blue Crystal" parent="World" unique_id=1686113240 instance=ExtResource("17_crystal_cave")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -10)
-
-[node name="Red Fissure" parent="World" unique_id=1077221853 instance=ExtResource("17_mist_fissure")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, -6)
-
-[node name="UI" type="CanvasLayer" parent="." unique_id=554792902]
-
-[node name="HitboxToggleButton" type="Button" parent="UI" unique_id=1703806320]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -214.0
-offset_top = 118.0
-offset_right = -14.0
-offset_bottom = 158.0
-text = "Hitboxes: Off"
-clip_text = true
-script = ExtResource("27_hitbox_toggle")
-
-[node name="GripPointsToggleButton" type="Button" parent="UI" unique_id=1033437505]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -214.0
-offset_top = 180.0
-offset_right = -14.0
-offset_bottom = 232.0
-grow_horizontal = 0
-text = "Grip Points: Off"
-clip_text = true
-script = ExtResource("28_grip_points_toggle")
-
-[node name="ResourceHUD" type="PanelContainer" parent="UI" unique_id=2021783652]
-offset_right = 926.0
-offset_bottom = 48.0
-script = ExtResource("14_resource_hud")
-
-[node name="GameTimer" type="Label" parent="UI" unique_id=2004418966]
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -950.0
-offset_top = 56.0
-offset_right = -850.0
-offset_bottom = 88.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.2, 0.12, 0.06, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "0:00"
-horizontal_alignment = 0
-script = ExtResource("13_game_timer")
-
-[node name="GameCalendar" type="Label" parent="UI" unique_id=992705497]
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -950.0
-offset_top = 88.0
-offset_right = -630.0
-offset_bottom = 112.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
-theme_override_colors/font_outline_color = Color(0.2, 0.12, 0.06, 1)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 20
-text = "0 centuries, 0 years, and 0 days"
-horizontal_alignment = 0
-script = ExtResource("26_game_calendar")
-game_timer_path = NodePath("../GameTimer")
-
-[node name="SeasonClock" type="Node" parent="UI" unique_id=3004418967]
-script = ExtResource("40_season_clock")
-game_timer_path = NodePath("../GameTimer")
-
-[node name="SeasonDial" type="Control" parent="UI" unique_id=3004418968]
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -950.0
-offset_top = 118.0
-offset_right = -898.0
-offset_bottom = 166.0
-grow_horizontal = 2
-mouse_filter = 2
-script = ExtResource("41_season_dial")
-season_clock_path = NodePath("../SeasonClock")
-season_label_path = NodePath("../SeasonLabel")
-
-[node name="SeasonLabel" type="Label" parent="UI" unique_id=3004418969]
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -888.0
-offset_top = 130.0
-offset_right = -788.0
-offset_bottom = 154.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
-theme_override_colors/font_outline_color = Color(0.2, 0.12, 0.06, 1)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 18
-text = "Spring"
-horizontal_alignment = 0
-
-[node name="PathsPanel" type="Control" parent="UI"]
-anchors_preset = 0
-offset_left = 14.0
-offset_top = 120.0
-offset_right = 214.0
-offset_bottom = 340.0
-mouse_filter = 2
-script = ExtResource("46_paths_panel")
-
-[node name="Popout" type="Panel" parent="UI/PathsPanel"]
-visible = false
-offset_right = 220.0
-offset_bottom = 70.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_tooltip_panel")
-
-[node name="VBox" type="VBoxContainer" parent="UI/PathsPanel/Popout"]
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/game/Game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/game/HUD.gd" id="2_hud"]
+[ext_resource type="Script" path="res://scripts/game/AIController.gd" id="3_ai"]
+[ext_resource type="PackedScene" path="res://scenes/Ship.tscn" id="4_ship"]
+[ext_resource type="PackedScene" path="res://scenes/Starbase.tscn" id="5_starbase"]
+[ext_resource type="PackedScene" path="res://scenes/Planet.tscn" id="6_planet"]
+[ext_resource type="PackedScene" path="res://scenes/Asteroid.tscn" id="7_asteroid"]
+[ext_resource type="Texture2D" path="res://assets/pixel/bg_stars.png" id="8_stars"]
+[ext_resource type="Texture2D" path="res://assets/pixel/bg_nebula.png" id="9_nebula"]
+[ext_resource type="Texture2D" path="res://assets/pixel/bg_dust.png" id="10_dust"]
+[ext_resource type="Texture2D" path="res://assets/pixel/star.png" id="11_star"]
+[ext_resource type="Shader" path="res://shaders/space_bg.gdshader" id="12_bg"]
+
+[sub_resource type="ShaderMaterial" id="bg_mat"]
+shader = ExtResource("12_bg")
+shader_parameter/stars = ExtResource("8_stars")
+shader_parameter/nebula = ExtResource("9_nebula")
+shader_parameter/dust = ExtResource("10_dust")
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_game")
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Space" type="ColorRect" parent="Background"]
+material = SubResource("bg_mat")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 6.0
-offset_right = -8.0
-offset_bottom = -6.0
-theme_override_constants/separation = 4
-
-[node name="Title" type="Label" parent="UI/PathsPanel/Popout/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 16
-text = ""
-
-[node name="Body" type="Label" parent="UI/PathsPanel/Popout/VBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
-theme_override_font_sizes/font_size = 13
-autowrap_mode = 2
-text = ""
-
-[node name="PathTreeModal" type="Control" parent="UI"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("47_path_tree_modal")
-
-[node name="Background" type="ColorRect" parent="UI/PathTreeModal"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0, 0, 0, 0.6)
-
-[node name="Panel" type="Panel" parent="UI/PathTreeModal"]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -460.0
-offset_top = -340.0
-offset_right = 460.0
-offset_bottom = 340.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_training_panel")
-
-[node name="Title" type="Label" parent="UI/PathTreeModal/Panel"]
-layout_mode = 0
-offset_left = 20.0
-offset_top = 10.0
-offset_right = 900.0
-offset_bottom = 44.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 24
-text = "Paths"
-horizontal_alignment = 1
-
-[node name="CloseButton" type="Button" parent="UI/PathTreeModal/Panel"]
-layout_mode = 0
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -50.0
-offset_top = 8.0
-offset_right = -12.0
-offset_bottom = 40.0
-grow_horizontal = 0
-text = "X"
-
-[node name="GridRoot" type="Control" parent="UI/PathTreeModal/Panel"]
-layout_mode = 0
-offset_left = 30.0
-offset_top = 54.0
-offset_right = 890.0
-offset_bottom = 528.0
-
-[node name="InfoPanel" type="Control" parent="UI/PathTreeModal/Panel"]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -90.0
-offset_right = -20.0
-offset_bottom = -16.0
-grow_vertical = 0
-
-[node name="InfoTitle" type="Label" parent="UI/PathTreeModal/Panel/InfoPanel"]
-layout_mode = 0
-offset_right = 880.0
-offset_bottom = 22.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 16
-text = ""
-
-[node name="InfoBody" type="Label" parent="UI/PathTreeModal/Panel/InfoPanel"]
-layout_mode = 0
-offset_top = 24.0
-offset_right = 880.0
-offset_bottom = 60.0
-theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
-theme_override_font_sizes/font_size = 13
-autowrap_mode = 2
-text = ""
-
-[node name="SelectionBox" type="Control" parent="UI" unique_id=140356]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("4_box")
-
-[node name="PortraitPanel" type="Control" parent="UI" unique_id=1775940390]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("8_portrait_panel")
-
-[node name="TaskPanel" type="Panel" parent="UI/PortraitPanel" unique_id=1137363471]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -190.0
-offset_right = 300.0
-grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_training_panel")
-script = ExtResource("43_task_panel")
-
-[node name="UnitSection" type="Control" parent="UI/PortraitPanel/TaskPanel" unique_id=1156063709]
-anchors_preset = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 1
-
-[node name="CommandButtons" type="GridContainer" parent="UI/PortraitPanel/TaskPanel/UnitSection" unique_id=1559904628]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 224.0
-offset_bottom = 120.0
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
-columns = 4
-
-[node name="BuildMenu" type="Control" parent="UI/PortraitPanel/TaskPanel/UnitSection" unique_id=1314474254]
-anchors_preset = 0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 224.0
-offset_bottom = 168.0
-
-[node name="BuildTypeButtons" type="GridContainer" parent="UI/PortraitPanel/TaskPanel/UnitSection/BuildMenu" unique_id=986404109]
-layout_mode = 0
-offset_right = 216.0
-offset_bottom = 88.0
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
-columns = 3
-
-[node name="BuildingSection" type="Control" parent="UI/PortraitPanel/TaskPanel" unique_id=1802740202]
-anchors_preset = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 1
-
-[node name="TrainSection" type="VBoxContainer" parent="UI/PortraitPanel/TaskPanel/BuildingSection" unique_id=547705014]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 4.0
-offset_right = 292.0
-offset_bottom = 90.0
-theme_override_constants/separation = 4
-
-[node name="TrainLabel" type="Label" parent="UI/PortraitPanel/TaskPanel/BuildingSection/TrainSection" unique_id=707210588]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
-theme_override_font_sizes/font_size = 12
-text = "Train"
-
-[node name="TrainButtons" type="HBoxContainer" parent="UI/PortraitPanel/TaskPanel/BuildingSection/TrainSection" unique_id=1272081632]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="QueueRow" type="VBoxContainer" parent="UI/PortraitPanel/TaskPanel/BuildingSection/TrainSection" unique_id=71312600]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="QueueIcons" type="HBoxContainer" parent="UI/PortraitPanel/TaskPanel/BuildingSection/TrainSection/QueueRow" unique_id=714446124]
-layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="ProgressBar" type="ProgressBar" parent="UI/PortraitPanel/TaskPanel/BuildingSection/TrainSection/QueueRow" unique_id=2060061776]
-custom_minimum_size = Vector2(0, 12)
-layout_mode = 2
-
-[node name="UpgradeSection" type="VBoxContainer" parent="UI/PortraitPanel/TaskPanel/BuildingSection" unique_id=322508334]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 96.0
-offset_right = 292.0
-offset_bottom = 186.0
-theme_override_constants/separation = 4
-
-[node name="UpgradeLabel" type="Label" parent="UI/PortraitPanel/TaskPanel/BuildingSection/UpgradeSection" unique_id=582775126]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
-theme_override_font_sizes/font_size = 12
-text = "Upgrades"
-
-[node name="UpgradeButtons" type="HBoxContainer" parent="UI/PortraitPanel/TaskPanel/BuildingSection/UpgradeSection" unique_id=1877431414]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="ItemTooltipPanel" type="Panel" parent="UI/PortraitPanel" unique_id=1569938455]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -470.0
-offset_right = 440.0
-offset_bottom = -190.0
-grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_tooltip_panel")
-script = ExtResource("25_item_tooltip_panel")
-
-[node name="TitleLabel" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel" unique_id=1385541934]
-layout_mode = 0
-offset_left = 16.0
-offset_top = 10.0
-offset_right = 424.0
-offset_bottom = 40.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 26
-
-[node name="SubtitleLabel" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel" unique_id=354328128]
-layout_mode = 0
-offset_left = 16.0
-offset_top = 42.0
-offset_right = 424.0
-offset_bottom = 62.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 16
-
-[node name="StatsLabel" type="RichTextLabel" parent="UI/PortraitPanel/ItemTooltipPanel" unique_id=1506451263]
-layout_mode = 0
-offset_left = 16.0
-offset_top = 66.0
-offset_right = 212.0
-offset_bottom = 300.0
-theme_override_colors/default_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/normal_font_size = 22
-bbcode_enabled = true
-scroll_active = false
-autowrap_mode = 2
-
-[node name="StatsLabelRight" type="RichTextLabel" parent="UI/PortraitPanel/ItemTooltipPanel" unique_id=1523551952]
-layout_mode = 0
-offset_left = 228.0
-offset_top = 66.0
-offset_right = 424.0
-offset_bottom = 300.0
-theme_override_colors/default_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/normal_font_size = 22
-bbcode_enabled = true
-scroll_active = false
-autowrap_mode = 2
-
-[node name="FactionLabel" type="Label" parent="UI/PortraitPanel/ItemTooltipPanel" unique_id=2044110943]
-layout_mode = 0
-offset_left = 16.0
-offset_top = 258.0
-offset_right = 200.0
-offset_bottom = 278.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 12
-
-[node name="SelectedObjectsPanel" type="Panel" parent="UI/PortraitPanel" unique_id=310638718]
-layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 300.0
-offset_top = -190.0
-offset_right = 780.0
-grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_selected_panel")
-
-[node name="Background" type="Panel" parent="UI/PortraitPanel/SelectedObjectsPanel" unique_id=1945627626]
-layout_mode = 0
-offset_left = 12.0
-offset_top = 34.0
-offset_right = 132.0
-offset_bottom = 154.0
-
-[node name="IconDisplay" type="Control" parent="UI/PortraitPanel/SelectedObjectsPanel" unique_id=1242706741]
-anchors_preset = 0
-offset_left = 16.0
-offset_top = 38.0
-offset_right = 128.0
-offset_bottom = 150.0
-script = ExtResource("38_unit_icon_placeholder")
-
-[node name="NameLabel" type="Label" parent="UI/PortraitPanel/SelectedObjectsPanel" unique_id=746569540]
-layout_mode = 0
-offset_left = 12.0
-offset_top = 4.0
-offset_right = 132.0
-offset_bottom = 26.0
-theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
-theme_override_font_sizes/font_size = 14
-horizontal_alignment = 1
-autowrap_mode = 2
-
-[node name="TeamLabel" type="Label" parent="UI/PortraitPanel/SelectedObjectsPanel" unique_id=852120128]
-layout_mode = 0
-offset_left = 144.0
-offset_top = 40.0
-offset_right = 460.0
-offset_bottom = 62.0
-theme_override_font_sizes/font_size = 15
-
-[node name="LevelLabel" type="Label" parent="UI/PortraitPanel/SelectedObjectsPanel" unique_id=1290510316]
-layout_mode = 0
-offset_left = 144.0
-offset_top = 66.0
-offset_right = 460.0
-offset_bottom = 88.0
-theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
-theme_override_font_sizes/font_size = 15
-
-[node name="StatsRow" type="HBoxContainer" parent="UI/PortraitPanel/SelectedObjectsPanel" unique_id=1094742290]
-layout_mode = 0
-offset_left = 144.0
-offset_top = 92.0
-offset_right = 460.0
-offset_bottom = 112.0
-theme_override_constants/separation = 14
-
-[node name="MultiSelectIcons" type="Control" parent="UI/PortraitPanel/SelectedObjectsPanel" unique_id=1247217664]
-anchors_preset = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 1
-script = ExtResource("44_multi_select_icons")
-
-[node name="PlayerListPanel" type="Panel" parent="UI" unique_id=651370021]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -430.0
-offset_top = -320.0
-offset_right = -10.0
-offset_bottom = -260.0
-grow_horizontal = 0
-grow_vertical = 0
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_tooltip_panel")
-script = ExtResource("45_player_list_panel")
-
-[node name="Rows" type="VBoxContainer" parent="UI/PlayerListPanel" unique_id=1781461134]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 6.0
-offset_right = 412.0
-offset_bottom = 54.0
-theme_override_constants/separation = 4
-
-[node name="ControlGroupBar" type="Control" parent="UI" unique_id=3891027446]
-layout_mode = 3
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 788.0
-offset_top = -128.0
-offset_right = 1018.0
-offset_bottom = -80.0
-grow_vertical = 0
-mouse_filter = 2
-script = ExtResource("46_control_group_bar")
-
-[node name="MinimapPanel" type="Control" parent="UI" unique_id=1261103216]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 mouse_filter = 2
 
-[node name="Frame" type="Control" parent="UI/MinimapPanel" unique_id=2042734050]
-clip_contents = true
-anchors_preset = 0
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -430.0
-offset_top = -250.0
-offset_right = -10.0
-offset_bottom = -10.0
-mouse_filter = 2
+[node name="World" type="Node2D" parent="."]
 
-[node name="Border" type="Polygon2D" parent="UI/MinimapPanel/Frame" unique_id=777655560]
-position = Vector2(210, 120)
-color = Color(0.35, 0.22, 0.12, 1)
-polygon = PackedVector2Array(0, -120, 210, 0, 0, 120, -210, 0)
+[node name="Star" type="Sprite2D" parent="World" groups=["stars"]]
+texture = ExtResource("11_star")
 
-[node name="Fill" type="Polygon2D" parent="UI/MinimapPanel/Frame" unique_id=1074254517]
-position = Vector2(210, 120)
-color = Color(0.24, 0.34, 0.2, 1)
-polygon = PackedVector2Array(0, -109, 199, 0, 0, 109, -199, 0)
+[node name="Planets" type="Node2D" parent="World"]
 
-[node name="Icons" type="Control" parent="UI/MinimapPanel/Frame" unique_id=1784143823]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 1
-script = ExtResource("31_minimap")
+[node name="Terra Nova" parent="World/Planets" instance=ExtResource("6_planet")]
+position = Vector2(-1350, 560)
+kind = "planet_terran"
+planet_name = "Terra Nova"
+owner_id = 1
+yield_mult = 1.5
 
-[node name="MainMenu" type="Control" parent="UI" unique_id=110991848]
-process_mode = 3
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("12_main_menu")
+[node name="Glacius" parent="World/Planets" instance=ExtResource("6_planet")]
+position = Vector2(1350, -560)
+kind = "planet_ice"
+planet_name = "Glacius"
+owner_id = 2
+yield_mult = 1.5
 
-[node name="Dim" type="ColorRect" parent="UI/MainMenu" unique_id=826062831]
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0, 0, 0, 0.6)
+[node name="Jovara" parent="World/Planets" instance=ExtResource("6_planet")]
+position = Vector2(0, -760)
+kind = "planet_gas"
+planet_name = "Jovara"
+owner_id = 0
+yield_mult = 2.0
 
-[node name="MenuButton" type="Button" parent="UI/MainMenu" unique_id=1979542341]
-layout_mode = 0
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -214.0
-offset_top = 54.0
-offset_right = -14.0
-offset_bottom = 108.0
-text = "Menu"
-clip_text = true
+[node name="Kess" parent="World/Planets" instance=ExtResource("6_planet")]
+position = Vector2(150, -690)
+kind = "planet_moon"
+planet_name = "Kess"
+owner_id = 0
+yield_mult = 0.5
 
-[node name="MenuPanel" type="Panel" parent="UI/MainMenu" unique_id=1077431846]
-visible = false
-layout_mode = 0
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -234.0
-offset_top = 116.0
-offset_right = -14.0
-offset_bottom = 528.0
+[node name="Pyre" parent="World/Planets" instance=ExtResource("6_planet")]
+position = Vector2(0, 760)
+kind = "planet_lava"
+planet_name = "Pyre"
+owner_id = 0
+yield_mult = 1.0
 
-[node name="VBox" type="VBoxContainer" parent="UI/MainMenu/MenuPanel" unique_id=980893414]
-layout_mode = 0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 210.0
-offset_bottom = 402.0
-theme_override_constants/separation = 8
+[node name="Dunmar" parent="World/Planets" instance=ExtResource("6_planet")]
+position = Vector2(-720, -420)
+kind = "planet_desert"
+planet_name = "Dunmar"
+owner_id = 0
+yield_mult = 1.0
 
-[node name="PauseButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox" unique_id=177225237]
-layout_mode = 2
-text = "Pause"
+[node name="Sarn" parent="World/Planets" instance=ExtResource("6_planet")]
+position = Vector2(720, 420)
+kind = "planet_desert"
+planet_name = "Sarn"
+owner_id = 0
+yield_mult = 1.0
 
-[node name="SaveButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox" unique_id=366423535]
-layout_mode = 2
-text = "Save"
+[node name="Asteroids" type="Node2D" parent="World"]
 
-[node name="OptionsButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox" unique_id=185597859]
-layout_mode = 2
-text = "Options"
+[node name="Rock0" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1248, 871)
+variant = "asteroid_0"
+minerals = 350
 
-[node name="RestartButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox" unique_id=264253527]
-layout_mode = 2
-text = "Restart"
+[node name="Rock1" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1327, 764)
+variant = "asteroid_2"
+minerals = 350
 
-[node name="SurrenderButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox" unique_id=431708580]
-layout_mode = 2
-text = "Surrender"
+[node name="Rock2" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1192, 859)
+variant = "asteroid_big_0"
+minerals = 700
 
-[node name="QuitButton" type="Button" parent="UI/MainMenu/MenuPanel/VBox" unique_id=43561760]
-layout_mode = 2
-text = "Quit"
+[node name="Rock3" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1233, 805)
+variant = "asteroid_big_1"
+minerals = 700
 
-[node name="SaveConfirmLabel" type="Label" parent="UI/MainMenu" unique_id=204610901]
-visible = false
-layout_mode = 0
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -184.0
-offset_top = 116.0
-offset_right = -14.0
-offset_bottom = 140.0
-theme_override_colors/font_color = Color(0.4, 1, 0.5, 1)
-text = "Game saved"
-horizontal_alignment = 1
+[node name="Rock4" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1163, 846)
+variant = "asteroid_0"
+minerals = 350
 
-[node name="SaveNamePanel" type="Panel" parent="UI/MainMenu" unique_id=1847605569]
-visible = false
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -140.0
-offset_top = -95.0
-offset_right = 140.0
-offset_bottom = 95.0
+[node name="Rock5" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1328, 842)
+variant = "asteroid_1"
+minerals = 350
 
-[node name="VBox" type="VBoxContainer" parent="UI/MainMenu/SaveNamePanel" unique_id=704025136]
-layout_mode = 0
-offset_left = 16.0
-offset_top = 12.0
-offset_right = 264.0
-offset_bottom = 178.0
-theme_override_constants/separation = 10
+[node name="Rock6" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1250, 900)
+variant = "asteroid_0"
+minerals = 350
 
-[node name="PromptLabel" type="Label" parent="UI/MainMenu/SaveNamePanel/VBox" unique_id=450777667]
-layout_mode = 2
-text = "Save name:"
+[node name="Rock7" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1555, 358)
+variant = "asteroid_2"
+minerals = 350
 
-[node name="NameInput" type="LineEdit" parent="UI/MainMenu/SaveNamePanel/VBox" unique_id=1757521754]
-layout_mode = 2
-placeholder_text = "My Save"
-max_length = 40
+[node name="Rock8" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1490, 247)
+variant = "asteroid_2"
+minerals = 350
 
-[node name="ButtonRow" type="HBoxContainer" parent="UI/MainMenu/SaveNamePanel/VBox" unique_id=733138912]
-layout_mode = 2
-theme_override_constants/separation = 8
+[node name="Rock9" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1536, 308)
+variant = "asteroid_big_1"
+minerals = 700
 
-[node name="ConfirmSaveButton" type="Button" parent="UI/MainMenu/SaveNamePanel/VBox/ButtonRow" unique_id=1491072259]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Save"
+[node name="Rock10" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1490, 414)
+variant = "asteroid_big_0"
+minerals = 700
 
-[node name="CancelSaveButton" type="Button" parent="UI/MainMenu/SaveNamePanel/VBox/ButtonRow" unique_id=198156310]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Cancel"
+[node name="Rock11" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1469, 349)
+variant = "asteroid_big_1"
+minerals = 700
 
-[node name="PausedPanel" type="Panel" parent="UI/MainMenu" unique_id=1640526826]
-visible = false
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -110.0
-offset_top = -40.0
-offset_right = 110.0
-offset_bottom = 40.0
+[node name="Rock12" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-1551, 360)
+variant = "asteroid_2"
+minerals = 350
 
-[node name="PausedLabel" type="Label" parent="UI/MainMenu/PausedPanel" unique_id=219363663]
-layout_mode = 0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 210.0
-offset_bottom = 70.0
-theme_override_font_sizes/font_size = 26
-text = "PAUSED"
-horizontal_alignment = 1
-vertical_alignment = 1
+[node name="Rock13" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1295, -805)
+variant = "asteroid_big_1"
+minerals = 700
 
-[node name="EndStatePanel" type="Panel" parent="UI/MainMenu" unique_id=436208778]
-visible = false
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -140.0
-offset_top = -130.0
-offset_right = 140.0
-offset_bottom = 130.0
+[node name="Rock14" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1271, -757)
+variant = "asteroid_3"
+minerals = 350
 
-[node name="VBox" type="VBoxContainer" parent="UI/MainMenu/EndStatePanel" unique_id=1599813744]
-layout_mode = 0
-offset_left = 20.0
-offset_top = 16.0
-offset_right = 260.0
-offset_bottom = 244.0
-theme_override_constants/separation = 12
+[node name="Rock15" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1330, -778)
+variant = "asteroid_0"
+minerals = 350
 
-[node name="EndStateLabel" type="Label" parent="UI/MainMenu/EndStatePanel/VBox" unique_id=290209325]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "You Surrendered"
-horizontal_alignment = 1
+[node name="Rock16" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1171, -865)
+variant = "asteroid_1"
+minerals = 350
 
-[node name="RestartButton" type="Button" parent="UI/MainMenu/EndStatePanel/VBox" unique_id=1845887853]
-layout_mode = 2
-text = "Restart"
+[node name="Rock17" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1172, -796)
+variant = "asteroid_1"
+minerals = 350
 
-[node name="QuitButton" type="Button" parent="UI/MainMenu/EndStatePanel/VBox" unique_id=1837928186]
-layout_mode = 2
-text = "Quit"
+[node name="Rock18" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1209, -879)
+variant = "asteroid_3"
+minerals = 350
 
-[node name="ItemDropTarget" type="Control" parent="UI" unique_id=609898424]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("22_item_drop_target")
+[node name="Rock19" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1270, -834)
+variant = "asteroid_2"
+minerals = 350
 
-[node name="InsufficientFundsNotice" type="Label" parent="UI"]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -220.0
-offset_top = -160.0
-offset_right = 220.0
-offset_bottom = -110.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(1, 0.15, 0.15, 1)
-theme_override_colors/font_outline_color = Color(0.1, 0, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 34
-text = "Insufficient Funds"
-horizontal_alignment = 1
-vertical_alignment = 1
-script = ExtResource("48_insufficient_funds")
+[node name="Rock20" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1533, -298)
+variant = "asteroid_big_0"
+minerals = 700
 
-[editable path="Units/ParentUnit"]
-[editable path="Units/ParentUnit/ModelRoot/PeasantMale"]
+[node name="Rock21" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1499, -375)
+variant = "asteroid_big_0"
+minerals = 700
+
+[node name="Rock22" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1476, -312)
+variant = "asteroid_2"
+minerals = 350
+
+[node name="Rock23" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1536, -344)
+variant = "asteroid_0"
+minerals = 350
+
+[node name="Rock24" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1489, -356)
+variant = "asteroid_1"
+minerals = 350
+
+[node name="Rock25" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(1436, -281)
+variant = "asteroid_1"
+minerals = 350
+
+[node name="Rock26" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-332, 227)
+variant = "asteroid_3"
+minerals = 350
+
+[node name="Rock27" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-268, 323)
+variant = "asteroid_big_0"
+minerals = 700
+
+[node name="Rock28" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-308, 250)
+variant = "asteroid_3"
+minerals = 350
+
+[node name="Rock29" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-283, 253)
+variant = "asteroid_3"
+minerals = 350
+
+[node name="Rock30" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-292, 255)
+variant = "asteroid_0"
+minerals = 350
+
+[node name="Rock31" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-301, 326)
+variant = "asteroid_big_0"
+minerals = 700
+
+[node name="Rock32" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(357, -263)
+variant = "asteroid_1"
+minerals = 350
+
+[node name="Rock33" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(308, -301)
+variant = "asteroid_3"
+minerals = 350
+
+[node name="Rock34" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(302, -217)
+variant = "asteroid_0"
+minerals = 350
+
+[node name="Rock35" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(310, -268)
+variant = "asteroid_big_0"
+minerals = 700
+
+[node name="Rock36" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(294, -259)
+variant = "asteroid_0"
+minerals = 350
+
+[node name="Rock37" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(326, -236)
+variant = "asteroid_1"
+minerals = 350
+
+[node name="Rock38" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-792, -912)
+variant = "asteroid_2"
+minerals = 350
+
+[node name="Rock39" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-823, -872)
+variant = "asteroid_3"
+minerals = 350
+
+[node name="Rock40" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-885, -890)
+variant = "asteroid_big_1"
+minerals = 700
+
+[node name="Rock41" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-887, -892)
+variant = "asteroid_big_0"
+minerals = 700
+
+[node name="Rock42" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(-785, -901)
+variant = "asteroid_1"
+minerals = 350
+
+[node name="Rock43" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(820, 939)
+variant = "asteroid_3"
+minerals = 350
+
+[node name="Rock44" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(783, 920)
+variant = "asteroid_3"
+minerals = 350
+
+[node name="Rock45" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(846, 945)
+variant = "asteroid_big_0"
+minerals = 700
+
+[node name="Rock46" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(842, 913)
+variant = "asteroid_2"
+minerals = 350
+
+[node name="Rock47" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+position = Vector2(737, 881)
+variant = "asteroid_3"
+minerals = 350
+
+[node name="Starbases" type="Node2D" parent="World"]
+
+[node name="Starbase1" parent="World/Starbases" instance=ExtResource("5_starbase")]
+position = Vector2(-1200, 470)
+owner_id = 1
+
+[node name="Starbase2" parent="World/Starbases" instance=ExtResource("5_starbase")]
+position = Vector2(1200, -470)
+owner_id = 2
+
+[node name="Ships" type="Node2D" parent="World"]
+
+[node name="Miner10" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(-1150, 560)
+rotation = 0.0
+ship_type = "miner"
+owner_id = 1
+
+[node name="Miner11" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(-1150, 584)
+rotation = 0.0
+ship_type = "miner"
+owner_id = 1
+
+[node name="Miner12" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(-1150, 608)
+rotation = 0.0
+ship_type = "miner"
+owner_id = 1
+
+[node name="Corvette10" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(-1120, 380)
+rotation = 0.0
+ship_type = "corvette"
+owner_id = 1
+
+[node name="Corvette11" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(-1098, 380)
+rotation = 0.0
+ship_type = "corvette"
+owner_id = 1
+
+[node name="Corvette12" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(-1076, 380)
+rotation = 0.0
+ship_type = "corvette"
+owner_id = 1
+
+[node name="Miner20" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(1150, -560)
+rotation = 3.14159
+ship_type = "miner"
+owner_id = 2
+
+[node name="Miner21" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(1150, -584)
+rotation = 3.14159
+ship_type = "miner"
+owner_id = 2
+
+[node name="Miner22" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(1150, -608)
+rotation = 3.14159
+ship_type = "miner"
+owner_id = 2
+
+[node name="Corvette20" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(1120, -380)
+rotation = 3.14159
+ship_type = "corvette"
+owner_id = 2
+
+[node name="Corvette21" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(1098, -380)
+rotation = 3.14159
+ship_type = "corvette"
+owner_id = 2
+
+[node name="Corvette22" parent="World/Ships" instance=ExtResource("4_ship")]
+position = Vector2(1076, -380)
+rotation = 3.14159
+ship_type = "corvette"
+owner_id = 2
+
+[node name="FX" type="Node2D" parent="World"]
+
+[node name="Camera" type="Camera2D" parent="."]
+zoom = Vector2(3, 3)
+
+[node name="AI" type="Node" parent="."]
+script = ExtResource("3_ai")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("2_hud")

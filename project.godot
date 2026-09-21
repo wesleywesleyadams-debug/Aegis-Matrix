@@ -23,7 +23,6 @@ Music="*res://scenes/Music.tscn"
 OptionsMenu="*res://scenes/OptionsMenu.tscn"
 AccountMenu="*res://scenes/AccountMenu.tscn"
 SignedInLabel="*res://scenes/SignedInLabel.tscn"
-ItemIcons="*res://scenes/ItemIconCapture.tscn"
 
 [display]
 
@@ -37,7 +36,7 @@ window/stretch/aspect="expand"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/Tripo3d_Godot_Bridge/plugin.cfg")
+enabled=PackedStringArray()
 
 [filesystem]
 
@@ -97,13 +96,11 @@ toggle_grid={
 
 [physics]
 
-3d/physics_engine="Jolt Physics"
+2d/default_gravity=0.0
 
 [rendering]
+
 
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
 
-[tripo_bridge]
-
-last_cleanup="2026-09-21T12:20:09"

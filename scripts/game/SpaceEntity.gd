@@ -1,0 +1,80 @@
+class_name SpaceEntity
+extends Node2D
+## Anything with an owner, hull and shields that can be selected and shot:
+## ships and starbases. Hit detection is a plain circle (radius).
+
+signal died(entity: SpaceEntity)
+
+@export var owner_id: int = 1
+
+var display_name: String = ""
+var max_hp: float = 100.0
+var hp: float = 100.0
+var max_shield: float = 0.0
+var shield: float = 0.0
+var radius: float = 8.0
+var selected: bool = false:
+	set(v):
+		selected = v
+		queue_redraw()
+
+var _last_hit_time: float = -100.0
+var _dead: bool = false
+
+func _ready() -> void:
+	add_to_group("entities")
+
+func is_alive() -> bool:
+	return not _dead and is_inside_tree()
+
+func is_enemy_of(other_owner: int) -> bool:
+	return owner_id != 0 and other_owner != 0 and owner_id != other_owner
+
+func take_damage(amount: float, _from: SpaceEntity = null) -> void:
+	if _dead:
+		return
+	_last_hit_time = Game.now()
+	var absorbed := minf(shield, amount)
+	shield -= absorbed
+	hp -= amount - absorbed
+	if absorbed > 0.0:
+		Game.instance.spawn_shield_hit(global_position, radius, (_from.global_position if is_instance_valid(_from) else global_position + Vector2.RIGHT))
+	queue_redraw()
+	if hp <= 0.0:
+		_die()
+
+func _die() -> void:
+	_dead = true
+	Game.instance.spawn_explosion(global_position, radius / 10.0)
+	died.emit(self)
+	queue_free()
+
+func _regen_shields(delta: float) -> void:
+	if max_shield > 0.0 and shield < max_shield and Game.now() - _last_hit_time > Defs.SHIELD_REGEN_DELAY:
+		shield = minf(max_shield, shield + max_shield * Defs.SHIELD_REGEN_PER_SEC * delta)
+		queue_redraw()
+
+## Selection brackets plus hull/shield bars, drawn in world space so they
+## scale with the pixel zoom like everything else.
+func _draw() -> void:
+	var damaged := hp < max_hp or (max_shield > 0.0 and shield < max_shield)
+	if not selected and not damaged:
+		return
+	var r := radius + 3.0
+	var col := Defs.team_color(owner_id) if selected else Color(1, 1, 1, 0.0)
+	# Rotation-independent: undo the node's rotation for the overlay.
+	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
+	if selected:
+		var l := maxf(3.0, r * 0.45)
+		for c in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+			var corner: Vector2 = c * r
+			draw_line(corner, corner - Vector2(c.x * l, 0), col, 1.0)
+			draw_line(corner, corner - Vector2(0, c.y * l), col, 1.0)
+	var w := r * 2.0
+	var top := -r - 5.0
+	draw_rect(Rect2(-r, top, w, 2), Color(0, 0, 0, 0.7))
+	draw_rect(Rect2(-r, top, w * clampf(hp / max_hp, 0, 1), 2), Color("58e07a").lerp(Color("ff5040"), 1.0 - hp / max_hp))
+	if max_shield > 0.0:
+		draw_rect(Rect2(-r, top - 3, w, 2), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(-r, top - 3, w * clampf(shield / max_shield, 0, 1), 2), Color("7fd8ff"))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

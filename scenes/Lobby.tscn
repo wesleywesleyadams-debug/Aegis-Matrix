@@ -97,6 +97,7 @@ theme_override_font_sizes/font_size = 22
 text = "Match Settings"
 
 [node name="ItemRow" type="HBoxContainer" parent="MainHBox/SettingsPanel/SettingsVBox"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 10
 
@@ -126,7 +127,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 item_count = 1
 selected = 0
-popup/item_0/text = "Grasslands"
+popup/item_0/text = "Orion Reach"
 
 [node name="OptionsButton" type="Button" parent="MainHBox/SettingsPanel/SettingsVBox"]
 layout_mode = 2

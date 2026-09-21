@@ -35,7 +35,7 @@ theme_override_fonts/font = ExtResource("3_title_font")
 theme_override_font_sizes/font_size = 56
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 horizontal_alignment = 1
-text = "DarKnight"
+text = "Star Lords"
 
 [node name="VBox" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -67,6 +67,7 @@ layout_mode = 2
 text = "Options"
 
 [node name="EditorButton" type="Button" parent="VBox"]
+visible = false
 layout_mode = 2
 text = "Map Editor"
 
