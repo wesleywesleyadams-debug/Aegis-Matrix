@@ -80,6 +80,7 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	process_physics_priority = -10
+	Engine.time_scale = 1.0
 	RenderingServer.set_default_clear_color(Color("07060f"))
 	for sb in get_tree().get_nodes_in_group("starbases"):
 		(sb as Starbase).died.connect(_on_starbase_died)
@@ -536,6 +537,15 @@ func _handle_key(e: InputEventKey) -> void:
 	if k == KEY_F and _selected_role("constructor"):
 		start_starbase_placement()
 		return
+	if k == KEY_MINUS or k == KEY_KP_SUBTRACT:
+		hud.set_speed_index(hud.speed_index() - 1)
+		return
+	if k == KEY_EQUAL or k == KEY_KP_ADD:
+		hud.set_speed_index(hud.speed_index() + 1)
+		return
+	if k == KEY_BACKSPACE:
+		hud.set_speed_index(HUD.NORMAL_SPEED)
+		return
 	match k:
 		KEY_R:
 			hud.toggle_research()
@@ -808,7 +818,12 @@ func _enter_dev_capture() -> void:
 	var parts := spec.split(",")
 	var secs := float(parts[0])
 	if parts.size() > 1:
-		Engine.time_scale = float(parts[1])
+		var want := float(parts[1])
+		var idx := HUD.SPEEDS.find(want)
+		if idx >= 0:
+			hud.set_speed_index(idx)
+		else:
+			Engine.time_scale = want
 	if parts.size() > 2:
 		_zoom_index = int(parts[2])
 		camera.zoom = Vector2.ONE * ZOOM_LEVELS[_zoom_index]

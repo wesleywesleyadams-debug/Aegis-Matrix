@@ -36,6 +36,12 @@ var _build_buttons := {}
 var _queue_row: HBoxContainer
 var _info_label: Label
 var _refresh: float = 0.0
+var _speed_slider: HSlider
+var _speed_label: Label
+
+## Game speed steps; index NORMAL_SPEED is 1x.
+const SPEEDS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 4.0]
+const NORMAL_SPEED := 2
 
 func _ready() -> void:
 	game = get_parent()
@@ -52,6 +58,7 @@ func _ready() -> void:
 	root.add_child(_overlay)
 
 	_build_top_bar(root)
+	_build_speed(root)
 	_build_selection_panel(root)
 	_build_minimap(root)
 	_build_messages(root)
@@ -141,6 +148,51 @@ func _build_top_bar(root: Control) -> void:
 	_clock = _label("00:00", DIM)
 	h.add_child(_clock)
 
+## Game speed slider (top-left). The notch labelled NORMAL is 1x.
+func _build_speed(root: Control) -> void:
+	var panel := PanelContainer.new()
+	panel.offset_left = 12
+	panel.offset_top = 8
+	panel.add_theme_stylebox_override("panel", _panel_style(8))
+	root.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	panel.add_child(v)
+	_speed_label = _label("Speed 1x (normal)", TEXT, 14)
+	v.add_child(_speed_label)
+	_speed_slider = HSlider.new()
+	_speed_slider.min_value = 0
+	_speed_slider.max_value = SPEEDS.size() - 1
+	_speed_slider.step = 1
+	_speed_slider.tick_count = SPEEDS.size()
+	_speed_slider.ticks_on_borders = true
+	_speed_slider.custom_minimum_size = Vector2(220, 20)
+	_speed_slider.focus_mode = Control.FOCUS_NONE
+	_speed_slider.tooltip_text = "Game speed. Keys: - slower, = faster, Backspace normal."
+	_speed_slider.value = NORMAL_SPEED
+	_speed_slider.value_changed.connect(_on_speed_changed)
+	v.add_child(_speed_slider)
+	var marks := HBoxContainer.new()
+	for i in SPEEDS.size():
+		var m := _label(("NORMAL" if i == NORMAL_SPEED else "%sx" % str(SPEEDS[i])), GOOD if i == NORMAL_SPEED else DIM, 10)
+		m.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		m.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		marks.add_child(m)
+	v.add_child(marks)
+
+## Sets the speed by step index (clamped); used by the slider and hotkeys.
+func set_speed_index(i: int) -> void:
+	_speed_slider.value = clampi(i, 0, SPEEDS.size() - 1)
+
+func speed_index() -> int:
+	return int(_speed_slider.value)
+
+func _on_speed_changed(v: float) -> void:
+	var s: float = SPEEDS[int(v)]
+	Engine.time_scale = s
+	_speed_label.text = "Speed %sx%s" % [str(s), " (normal)" if int(v) == NORMAL_SPEED else ""]
+	_speed_label.add_theme_color_override("font_color", TEXT if int(v) == NORMAL_SPEED else Color("ffd46b"))
+
 func _build_selection_panel(root: Control) -> void:
 	var panel := PanelContainer.new()
 	panel.anchor_top = 1.0
@@ -186,7 +238,7 @@ func _build_messages(root: Control) -> void:
 	root.add_child(_messages)
 
 func _build_help(root: Control) -> void:
-	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Tab warships · H home · R research · F found starbase (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · Esc menu", DIM, 13)
+	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Tab warships · H home · R research · F found starbase (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · - / = game speed · Esc menu", DIM, 13)
 	l.anchor_top = 1.0
 	l.anchor_bottom = 1.0
 	l.anchor_right = 1.0
@@ -347,6 +399,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _quit_to_title() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/TitleMenu.tscn")
 
