@@ -51,8 +51,13 @@ func _die() -> void:
 
 func _regen_shields(delta: float) -> void:
 	if max_shield > 0.0 and shield < max_shield and Game.now() - _last_hit_time > Defs.SHIELD_REGEN_DELAY:
-		shield = minf(max_shield, shield + max_shield * Defs.SHIELD_REGEN_PER_SEC * delta)
-		queue_redraw()
+		var gain := minf(max_shield - shield, max_shield * Defs.SHIELD_REGEN_PER_SEC * delta)
+		# Regeneration costs a little energy (spice covers any shortfall);
+		# regen slows or stops only when both run out.
+		var f := Game.instance.pay_over_time(owner_id, {"energy": gain * Defs.SHIELD_ENERGY_PER_POINT}, 1.0)
+		if f > 0.0:
+			shield += gain * f
+			queue_redraw()
 
 ## Selection brackets plus hull/shield bars, drawn in world space so they
 ## scale with the pixel zoom like everything else.

@@ -156,6 +156,8 @@ const STAFFING_PRIORITY: Array[String] = ["food", "energy", "minerals", "spice"]
 
 const SHIELD_REGEN_DELAY := 4.0
 const SHIELD_REGEN_PER_SEC := 0.08 # fraction of max shield
+## Energy spent per shield point regenerated (spice covers shortfalls).
+const SHIELD_ENERGY_PER_POINT := 0.05
 
 ## Tech tree. tier sets the column in the tree view; requires lists
 ## prerequisite techs (all needed). effects are multiplier bonuses summed
