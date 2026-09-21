@@ -58,8 +58,6 @@ func can_queue(ship_type: String) -> String:
 	var d: Dictionary = Defs.SHIPS[ship_type]
 	if d.has("requires") and not Game.instance.has_tech(owner_id, d["requires"]):
 		return "Requires " + Defs.TECHS[d["requires"]]["name"]
-	if Game.instance.supply_used(owner_id) + d["supply"] > Defs.FLEET_CAP:
-		return "Fleet capacity reached"
 	return ""
 
 func enqueue(ship_type: String) -> String:

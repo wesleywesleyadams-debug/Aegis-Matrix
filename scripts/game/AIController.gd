@@ -108,10 +108,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		return
 
 	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
-	var idle_supply := 0
-	for s in idle:
-		idle_supply += s.def["supply"]
-	if idle_supply >= st["wave"]:
+	if idle.size() >= st["wave"]:
 		var goal := _attack_goal(pid, base.global_position, game)
 		for s in idle:
 			s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
@@ -122,6 +119,9 @@ func _pick_warship(pid: int, game: Game) -> String:
 	options.shuffle()
 	var sb := game.nearest_starbase(pid, Vector2.ZERO)
 	for t in options:
+		# Stop growing the fleet once upkeep would outrun income.
+		if game.rates[pid].get("energy", 0.0) < 0.5 and game.resources[pid]["energy"] < 100.0:
+			return ""
 		if sb.can_queue(t) == "":
 			return t
 	return ""

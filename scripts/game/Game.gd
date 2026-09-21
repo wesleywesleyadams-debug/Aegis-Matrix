@@ -153,16 +153,17 @@ func _spice_needed(r: Dictionary, need: Dictionary, f: float) -> float:
 			s += maxf(0.0, need[k] * f - maxf(r[k], 0.0))
 	return s
 
-func supply_used(pid: int) -> int:
+func ship_count(pid: int) -> int:
 	var n := 0
 	for s in get_tree().get_nodes_in_group("ships"):
 		if s.owner_id == pid:
-			n += s.def["supply"]
-	for sb in get_tree().get_nodes_in_group("starbases"):
-		if sb.owner_id == pid:
-			for t in sb.queue:
-				n += Defs.SHIPS[t]["supply"]
+			n += 1
 	return n
+
+## Multiplier on every ship's upkeep, growing with fleet size.
+func upkeep_multiplier(pid: int) -> float:
+	var k := ship_count(pid) / Defs.UPKEEP_SCALE_SHIPS
+	return 1.0 + k * k
 
 ## Summed research bonus for `key` (e.g. "damage") as a multiplier.
 func mod(pid: int, key: String) -> float:
@@ -186,6 +187,7 @@ func upkeep(pid: int) -> float:
 	for s in get_tree().get_nodes_in_group("ships"):
 		if s.owner_id == pid:
 			u += s.def["upkeep"]
+	u *= upkeep_multiplier(pid)
 	for sb in get_tree().get_nodes_in_group("starbases"):
 		if sb.owner_id == pid:
 			u += Defs.STARBASE["upkeep"]
@@ -660,6 +662,7 @@ func center_on(pos: Vector2) -> void:
 # ---------------------------------------------------------------- selection
 
 func _set_selection(list: Array, additive: bool) -> void:
+	list = list.filter(func(e): return is_instance_valid(e))
 	if not additive:
 		for e in selection:
 			if is_instance_valid(e):

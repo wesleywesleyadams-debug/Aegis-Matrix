@@ -30,45 +30,45 @@ static func team_color(owner_id: int) -> Color:
 const SHIPS := {
 	"miner": {
 		"name": "Mining Barge", "role": "miner", "hotkey": KEY_Z,
-		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0, "supply": 1,
+		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0,
 		"cost": {"minerals": 50}, "build_time": 6.0, "upkeep": 0.05,
 		"cargo": 10, "mine_time": 2.5,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"skimmer": {
 		"name": "Gas Skimmer", "role": "skimmer", "hotkey": KEY_M, "requires": "gas_skimming",
-		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0, "supply": 1,
+		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
 		"cost": {"minerals": 90, "spice": 10}, "build_time": 12.0, "upkeep": 0.1,
 		"cargo": 5, "mine_time": 4.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"colony": {
 		"name": "Colony Ship", "role": "colony", "hotkey": KEY_X,
-		"hp": 120.0, "shield": 20.0, "speed": 60.0, "radius": 9.0, "supply": 2,
+		"hp": 120.0, "shield": 20.0, "speed": 60.0, "radius": 9.0,
 		"cost": {"minerals": 80, "spice": 20}, "build_time": 15.0, "upkeep": 0.1,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"constructor": {
 		"name": "Constructor", "role": "constructor", "hotkey": KEY_C,
-		"hp": 150.0, "shield": 20.0, "speed": 65.0, "radius": 9.0, "supply": 2,
+		"hp": 150.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
 		"cost": {"minerals": 120, "spice": 5}, "build_time": 12.0, "upkeep": 0.1,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship", "hotkey": KEY_V,
-		"hp": 90.0, "shield": 30.0, "speed": 125.0, "radius": 8.0, "supply": 1,
+		"hp": 90.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 60}, "build_time": 8.0, "upkeep": 0.1,
 		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0,
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "hotkey": KEY_B,
-		"hp": 220.0, "shield": 80.0, "speed": 85.0, "radius": 11.0, "supply": 2,
+		"hp": 220.0, "shield": 80.0, "speed": 85.0, "radius": 11.0,
 		"cost": {"minerals": 140, "spice": 5}, "build_time": 14.0, "upkeep": 0.25,
 		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0,
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "hotkey": KEY_N, "requires": "cruiser_doctrine",
-		"hp": 560.0, "shield": 200.0, "speed": 55.0, "radius": 16.0, "supply": 4,
+		"hp": 560.0, "shield": 200.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 300, "spice": 25}, "build_time": 24.0, "upkeep": 0.6,
 		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0,
 	},
@@ -87,7 +87,10 @@ const STARBASE := {
 	"min_spacing": 500.0,
 }
 
-const FLEET_CAP := 40
+## No hard fleet cap: each ship's energy upkeep is multiplied by
+## 1 + (ship_count / UPKEEP_SCALE_SHIPS)^2, so total upkeep climbs steeply and
+## fleets plateau (around 200 ships on a strong late-game economy).
+const UPKEEP_SCALE_SHIPS := 100.0
 
 ## Planet types. A planet's size = its number of fields, and its base
 ## population cap is size * POP_PER_SIZE (a size 19 world: 19 fields, 19k pops).

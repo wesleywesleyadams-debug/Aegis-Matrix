@@ -509,7 +509,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(198, 62)
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s\nHull %d  Shield %d  Speed %d\nFleet %d  Upkeep %.2f energy/s\nCost %s, paid over %ds" % [d["name"], d["hp"], d["shield"], d["speed"], d["supply"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		b.tooltip_text = "%s\nHull %d  Shield %d  Speed %d\nFleet %d  Upkeep %.2f energy/s\nCost %s, paid over %ds" % [d["name"], d["hp"], d["shield"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
 		var h := HBoxContainer.new()
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -572,7 +572,7 @@ func _update_selection_info() -> void:
 			txt += "   Cargo %d/%d %s" % [s.cargo, s.cargo_cap(), s.cargo_type]
 		elif s.def["weapon"] != "":
 			txt += "   %s %.0f dmg / %.1fs" % [s.def["weapon"].capitalize(), s.def["damage"] * game.mod(e.owner_id, "damage"), s.def["cooldown"]]
-		txt += "   Upkeep %.2f/s" % s.def["upkeep"]
+		txt += "   Upkeep %.2f/s" % (s.def["upkeep"] * game.upkeep_multiplier(s.owner_id))
 	elif e is Starbase:
 		var sb := e as Starbase
 		if sb.under_construction:
@@ -648,7 +648,9 @@ func _update_top_bar() -> void:
 	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/s for ships and starbases%s" % [game.upkeep(pid), "" if game.upkeep_paid[pid] else " (UNPAID: shields won't regenerate)"]
 	_pop_label.text = "Pop %s" % _fmt(game.total_pop(pid))
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats 1 food per minute."
-	_fleet_label.text = "%d/%d" % [game.supply_used(pid), Defs.FLEET_CAP]
+	_fleet_label.text = "%d ships · upkeep x%.2f" % [game.ship_count(pid), game.upkeep_multiplier(pid)]
+	_fleet_label.tooltip_text = "Each ship's energy upkeep is multiplied by 1 + (ships / %d)^2. Total ship+starbase upkeep: %.1f energy/s." % [int(Defs.UPKEEP_SCALE_SHIPS), game.upkeep(pid)]
+	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	var cur: Dictionary = game.research[pid]
 	if cur.is_empty():
 		_research_button.text = "No research [R]"
