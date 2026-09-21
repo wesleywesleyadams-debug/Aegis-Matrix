@@ -11,6 +11,13 @@ extends Node2D
 ## pop every building is destroyed and the planet turns neutral, ready for
 ## anyone to colonize.
 
+## Planetary shields: bombardment must knock these down before pops die.
+## Recharge after SHIELD_REGEN_DELAY seconds without hits (costs a little
+## energy, like ship shields). Boosted by shield research.
+const PLANET_SHIELD := 1000.0
+const PLANET_SHIELD_REGEN := 20.0
+const SHIELD_REGEN_DELAY := 5.0
+
 ## Pops killed per point of damage, pegged so one base corvette shot = 1 pop.
 static var POP_PER_DAMAGE: float = 1.0 / float(Defs.SHIPS["corvette"]["damage"])
 const COLONIZE_TIME := 60.0
@@ -40,6 +47,7 @@ var pop: float = 0.0
 var starving: bool = false
 ## Bombardment: pop at the start of the current siege and time of last hit.
 var siege_start_pop: float = 0.0
+var shield: float = 0.0
 var last_hit_time: float = -1000.0
 ## Colonization in progress: whose, how far, and the ship doing it.
 var colonizing_owner: int = 0
@@ -105,6 +113,7 @@ func _ready() -> void:
 					buildings[slot] = must
 	if owner_id != 0:
 		pop = start_pop if start_pop > 0.0 else Defs.HOME_START_POP
+		shield = PLANET_SHIELD
 	_econ_timer = randf() * ECON_TICK
 
 func type_def() -> Dictionary:
@@ -145,6 +154,7 @@ func colonize(pid: int) -> void:
 	construction_queue.clear()
 	pop = Defs.START_POP
 	colonizing_owner = 0
+	shield = max_shield()
 	colonize_progress = 0.0
 	colonizer = null
 	Game.instance.planet_claimed(self, old)
@@ -170,6 +180,13 @@ func _process(delta: float) -> void:
 		colonize_progress = 0.0
 		queue_redraw()
 	if owner_id != 0 and Game.now() - last_hit_time < SIEGE_MEMORY:
+		queue_redraw()
+	# Shield recharge once the bombardment has paused.
+	var ms := max_shield() if owner_id != 0 else 0.0
+	if shield < ms and Game.now() - last_hit_time > SHIELD_REGEN_DELAY:
+		var gain := minf(ms - shield, PLANET_SHIELD_REGEN * delta)
+		var paid := Game.instance.pay_over_time(owner_id, {"energy": gain * Defs.SHIELD_ENERGY_PER_POINT}, 1.0)
+		shield += gain * paid
 		queue_redraw()
 
 func _economy(dt: float) -> void:
@@ -219,6 +236,11 @@ func _economy(dt: float) -> void:
 
 # ---------------------------------------------------------------- siege & colonization
 
+func max_shield() -> float:
+	if owner_id == 0:
+		return 0.0
+	return PLANET_SHIELD * Game.instance.mod(owner_id, "shield")
+
 func is_alive() -> bool:
 	return owner_id != 0 and pop > 0.0 and is_inside_tree()
 
@@ -228,7 +250,8 @@ func is_enemy_of(pid: int) -> bool:
 func under_siege() -> bool:
 	return owner_id != 0 and Game.now() - last_hit_time < SIEGE_TIME
 
-## Weapon fire from bombarding ships: kills pops (shields don't apply).
+## Weapon fire from bombarding ships: the planetary shield absorbs it first,
+## then each point kills POP_PER_DAMAGE pops.
 func take_damage(amount: float, from: Node2D = null) -> void:
 	if owner_id == 0:
 		return
@@ -236,6 +259,12 @@ func take_damage(amount: float, from: Node2D = null) -> void:
 	if g.now() - last_hit_time > SIEGE_MEMORY or siege_start_pop <= 0.0:
 		siege_start_pop = maxf(pop, 1.0)
 	last_hit_time = g.now()
+	# The planetary shield soaks damage first.
+	var absorbed := minf(shield, amount)
+	shield -= absorbed
+	amount -= absorbed
+	if absorbed > 0.0:
+		g.spawn_shield_hit(global_position, radius * 0.6, from.global_position if is_instance_valid(from) else global_position + Vector2.RIGHT)
 	pop -= amount * POP_PER_DAMAGE
 	if owner_id == g.player_id:
 		g.alert("%s is being bombarded!" % planet_name, "alert_planet")
@@ -255,6 +284,7 @@ func _depopulate(attacker: int) -> void:
 	construction_queue.clear()
 	hungry = 0.0
 	starve_timer = 0.0
+	shield = 0.0
 	siege_start_pop = 0.0
 	owner_id = 0
 	Game.instance.planet_depopulated(self, old, attacker)
@@ -295,6 +325,13 @@ func _draw() -> void:
 				var a := TAU * i / n
 				draw_rect(Rect2(Vector2.from_angle(a) * r - Vector2(0.5, 0.5), Vector2(1, 1)), col)
 	var f2 := ThemeDB.fallback_font
+	# Planetary shield: light-blue ring just outside the others while it's
+	# not full (or under fire).
+	if owner_id != 0:
+		var ms2 := max_shield()
+		if ms2 > 0.0 and (shield < ms2 - 0.5 or Game.now() - last_hit_time < SIEGE_MEMORY):
+			draw_arc(Vector2.ZERO, r + 9.0, 0.0, TAU, 64, Color(0.5, 0.85, 1.0, 0.15), 2.0)
+			draw_arc(Vector2.ZERO, r + 9.0, -PI / 2.0, -PI / 2.0 + TAU * shield / ms2, 64, Color("7fd8ff"), 2.0)
 	# Siege: ring showing the share of pops left since bombardment began.
 	if owner_id != 0 and Game.now() - last_hit_time < SIEGE_MEMORY and siege_start_pop > 0.0:
 		var frac := clampf(pop / siege_start_pop, 0.0, 1.0)

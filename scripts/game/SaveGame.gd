@@ -48,7 +48,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			"construction": p.construction, "construction_queue": p.construction_queue,
 			"amount": p.amount, "depleted_timer": p.depleted_timer,
 			"hungry": p.hungry, "starve_timer": p.starve_timer,
-			"siege_start_pop": p.siege_start_pop, "since_hit": Game.now() - p.last_hit_time,
+			"siege_start_pop": p.siege_start_pop, "since_hit": Game.now() - p.last_hit_time, "shield": p.shield,
 		}
 	for a in tree.get_nodes_in_group("asteroids"):
 		if not a.is_queued_for_deletion():
@@ -165,6 +165,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		p.hungry = float(d.get("hungry", 0.0))
 		p.starve_timer = float(d.get("starve_timer", 0.0))
 		p.siege_start_pop = float(d.get("siege_start_pop", 0.0))
+		p.shield = float(d.get("shield", p.max_shield()))
 		p.last_hit_time = Game.now() - float(d.get("since_hit", 1000.0))
 		p.queue_redraw()
 	var rocks := {}

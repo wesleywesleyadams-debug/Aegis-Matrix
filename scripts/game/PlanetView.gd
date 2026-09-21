@@ -294,6 +294,9 @@ func refresh() -> void:
 		s += "\nSkimmers haul what they mine back to a starbase."
 	elif planet.owner_id != 0:
 		s += "\nPopulation %d / %d  (+%d/min)" % [int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min)]
+		s += "\nPlanetary shield %d / %d" % [int(planet.shield), int(planet.max_shield())]
+		if planet.under_siege():
+			s += "\nUNDER BOMBARDMENT: growth halted, %d%% of pops left" % int(ceil(100.0 * planet.pop / maxf(planet.siege_start_pop, 1.0)))
 		s += "\nBuildings need %d pop (%d unassigned)" % [planet.pop_required(), int(planet.idle_pop)]
 		var idle := 0
 		for k in planet.fields:
@@ -309,6 +312,8 @@ func refresh() -> void:
 			s += "\nSTARVING: %d pops die in %ds unless fed" % [int(planet.hungry), int(Defs.STARVE_SECONDS - planet.starve_timer)]
 	else:
 		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
+		if planet.colonizing_owner != 0:
+			s += "\nBeing colonized: %d%%" % int(100.0 * planet.colonize_progress / Planet.COLONIZE_TIME)
 	if mine and planet.fields > 0:
 		if planet.construction.is_empty():
 			s += "\nNo construction. Click an empty field to build." if planet.free_fields() > 0 else "\nAll fields in use."
