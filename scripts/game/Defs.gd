@@ -91,6 +91,10 @@ const STARBASE := {
 ## 1 + (ship_count / UPKEEP_SCALE_SHIPS)^2, so total upkeep climbs steeply and
 ## fleets plateau (around 200 ships on a strong late-game economy).
 const UPKEEP_SCALE_SHIPS := 100.0
+## Starbases scale separately and more steeply: each one's upkeep is
+## multiplied by 1 + (starbases / STARBASE_UPKEEP_SCALE)^3, so ~10 is
+## sustainable and going past it gets very expensive fast (x9 at 10, x28 at 15).
+const STARBASE_UPKEEP_SCALE := 5.0
 
 ## Planet types. A planet's size = its number of fields, and its base
 ## population cap is size * POP_PER_SIZE (a size 19 world: 19 fields, 19k pops).

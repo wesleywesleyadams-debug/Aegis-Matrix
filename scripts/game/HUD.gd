@@ -495,6 +495,12 @@ func _build_ship_controls(s: Ship) -> void:
 func _add_found_button() -> void:
 	var b := Button.new()
 	b.text = "Found Starbase [F]  (%s over %ds)" % [Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"]]
+	var pid := game.player_id
+	var n := game.starbase_count(pid)
+	var now_u: float = n * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n)
+	var next_u: float = (n + 1) * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n + 1)
+	b.tooltip_text = "You have %d starbase%s. Starbase #%d raises total starbase upkeep from %.1f to %.1f energy/s (x%.1f each).
+Upkeep climbs steeply past 10 starbases." % [n, "" if n == 1 else "s", n + 1, now_u, next_u, game.starbase_upkeep_multiplier(pid, n + 1)]
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(game.start_starbase_placement)
 	_sel_body.add_child(b)
@@ -509,7 +515,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(198, 62)
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s\nHull %d  Shield %d  Speed %d\nFleet %d  Upkeep %.2f energy/s\nCost %s, paid over %ds" % [d["name"], d["hp"], d["shield"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		b.tooltip_text = "%s\nHull %d  Shield %d  Speed %d\nUpkeep %.2f energy/s base (scales with fleet size)\nCost %s, paid over %ds" % [d["name"], d["hp"], d["shield"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
 		var h := HBoxContainer.new()
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -575,6 +581,8 @@ func _update_selection_info() -> void:
 		txt += "   Upkeep %.2f/s" % (s.def["upkeep"] * game.upkeep_multiplier(s.owner_id))
 	elif e is Starbase:
 		var sb := e as Starbase
+		txt += "
+Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id), Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(sb.owner_id), game.starbase_upkeep_multiplier(sb.owner_id)]
 		if sb.under_construction:
 			txt += "\nConstruction %d%%%s" % [int(100.0 * sb.construct_progress / Defs.STARBASE["build_time"]), "  STALLED: waiting for resources" if sb.build_stalled else ""]
 		elif not sb.queue.is_empty():
@@ -649,7 +657,8 @@ func _update_top_bar() -> void:
 	_pop_label.text = "Pop %s" % _fmt(game.total_pop(pid))
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats 1 food per minute."
 	_fleet_label.text = "%d ships · upkeep x%.2f" % [game.ship_count(pid), game.upkeep_multiplier(pid)]
-	_fleet_label.tooltip_text = "Each ship's energy upkeep is multiplied by 1 + (ships / %d)^2. Total ship+starbase upkeep: %.1f energy/s." % [int(Defs.UPKEEP_SCALE_SHIPS), game.upkeep(pid)]
+	_fleet_label.tooltip_text = "Each ship's energy upkeep is multiplied by 1 + (ships / %d)^2. Starbases scale separately: x%.1f with %d starbases.
+Total ship+starbase upkeep: %.1f energy/s." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]
 	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	var cur: Dictionary = game.research[pid]
 	if cur.is_empty():

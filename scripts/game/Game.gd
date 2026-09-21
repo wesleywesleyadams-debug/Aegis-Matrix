@@ -160,6 +160,18 @@ func ship_count(pid: int) -> int:
 			n += 1
 	return n
 
+func starbase_count(pid: int) -> int:
+	var n := 0
+	for sb in get_tree().get_nodes_in_group("starbases"):
+		if sb.owner_id == pid:
+			n += 1
+	return n
+
+## Multiplier on every starbase's upkeep (sites under construction count).
+func starbase_upkeep_multiplier(pid: int, count: int = -1) -> float:
+	var k := (starbase_count(pid) if count < 0 else count) / Defs.STARBASE_UPKEEP_SCALE
+	return 1.0 + k * k * k
+
 ## Multiplier on every ship's upkeep, growing with fleet size.
 func upkeep_multiplier(pid: int) -> float:
 	var k := ship_count(pid) / Defs.UPKEEP_SCALE_SHIPS
@@ -188,9 +200,7 @@ func upkeep(pid: int) -> float:
 		if s.owner_id == pid:
 			u += s.def["upkeep"]
 	u *= upkeep_multiplier(pid)
-	for sb in get_tree().get_nodes_in_group("starbases"):
-		if sb.owner_id == pid:
-			u += Defs.STARBASE["upkeep"]
+	u += starbase_count(pid) * Defs.STARBASE["upkeep"] * starbase_upkeep_multiplier(pid)
 	return u
 
 # ---------------------------------------------------------------- research
@@ -605,7 +615,8 @@ func request_research(tech_id: String) -> void:
 
 func start_starbase_placement() -> void:
 	placing_starbase = true
-	message.emit("Left-click open space to found a starbase (%s over %ds). Right-click to cancel." % [Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"]], Color("c3cde4"))
+	var n := starbase_count(player_id)
+	message.emit("Left-click open space to found starbase #%d (%s over %ds; each starbase's upkeep becomes x%.1f). Right-click to cancel." % [n + 1, Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"], starbase_upkeep_multiplier(player_id, n + 1)], Color("c3cde4"))
 
 func _place_starbase(pos: Vector2) -> void:
 	var why := starbase_site_problem(pos)
