@@ -46,12 +46,19 @@ var _slot_rows: Array = []
 
 func _ready() -> void:
 	Music.play_track(Music.LOBBY_TRACK)
+	# Dev aid: SL_LOBBY_SHOT=single|multi opens that lobby, saves
+	# user://lobby.png and quits.
+	var shot := OS.get_environment("SL_LOBBY_SHOT")
+	if shot != "":
+		GameState.game_mode = shot
+		_capture.call_deferred()
 	_username = _resolve_username()
 
 	options_button.pressed.connect(OptionsMenu.open)
 	start_button.pressed.connect(_on_start_pressed)
 	back_button.pressed.connect(_on_back_pressed)
 
+	_add_mode_title()
 	_populate_players_grid()
 	_claim_slot_for_self()
 
@@ -112,7 +119,9 @@ func _populate_players_grid() -> void:
 		slot_option.custom_minimum_size = Vector2(210, 0)
 		slot_option.add_item(_username)
 		slot_option.add_item("AI")
-		slot_option.add_item("Open")
+		# Single-player has no Open slots (nobody else can join): unused slots
+		# are simply Closed, so every opponent is AI.
+		slot_option.add_item("Closed" if _single() else "Open")
 		slot_option.selected = _slot_type_index(slot["slot_type"])
 		players_grid.add_child(slot_option)
 
@@ -137,6 +146,29 @@ func _populate_players_grid() -> void:
 		slot_option.item_selected.connect(_on_slot_selected.bind(i))
 		race_option.item_selected.connect(_on_race_selected.bind(i))
 		team_option.item_selected.connect(_on_team_selected.bind(i))
+
+func _capture() -> void:
+	await get_tree().create_timer(1.0).timeout
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("user://lobby.png")
+	get_tree().quit()
+
+func _single() -> bool:
+	return GameState.game_mode == "single"
+
+## Big mode heading at the top of the screen.
+func _add_mode_title() -> void:
+	var title := Label.new()
+	title.text = "Single-Player" if _single() else "Multi-Player"
+	title.add_theme_font_size_override("font_size", 56)
+	title.add_theme_color_override("font_color", Color(0.85, 0.93, 1, 1))
+	title.add_theme_color_override("font_outline_color", Color(0.05, 0.08, 0.2, 1))
+	title.add_theme_constant_override("outline_size", 12)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	title.offset_top = 40
+	title.offset_bottom = 120
+	add_child(title)
 
 func _slot_type_index(slot_type: String) -> int:
 	match slot_type:
