@@ -100,7 +100,7 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 
 ## Weapons Depot: built by a Constructor like a starbase (paid over
 ## build_time). Each depot is built for ONE variant (Defs.VARIANTS) and refits
-## generalists into it: an Ion Depot makes Ion ships, a Slip Depot Slip ships.
+## generalists into it: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships.
 ## Ships fly in, dock (CAPACITY at a time, hidden and safe inside) and are
 ## refitted automatically as minerals allow; each hull has its own refit cost
 ## and time (see SHIPS "refit"). A specialist can never be refitted again.
@@ -295,7 +295,7 @@ static var SHIPS: Dictionary = _with_variants()
 ## targets 7-18% faster and the others 5-46% slower (see tools notes).
 ## color: the variant's markings and shot color.
 const VARIANTS := {
-	"ion": {"label": "Ion", "vs": {"shield": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
+	"plasma": {"label": "Plasma", "vs": {"shield": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
 		"desc": "80% base damage, x2.2 against shields."},
 	"breacher": {"label": "Breacher", "vs": {"armor": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff4a4a"),
 		"desc": "80% base damage, x2.2 against armor."},
@@ -308,9 +308,9 @@ const VARIANTS := {
 }
 ## Which variants each generalist has so far.
 const VARIANTS_OF := {
-	"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"],
-	"destroyer": ["ion", "breacher", "reaver", "slip", "disruptor"],
-	"cruiser": ["ion", "breacher", "reaver", "slip", "disruptor"],
+	"corvette": ["plasma", "breacher", "reaver", "slip", "disruptor"],
+	"destroyer": ["plasma", "breacher", "reaver", "slip", "disruptor"],
+	"cruiser": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 }
 
 static func _with_variants() -> Dictionary:

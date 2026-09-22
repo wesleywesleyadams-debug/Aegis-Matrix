@@ -226,7 +226,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		var dp := WeaponsDepot.new()
 		dp.owner_id = int(d["owner"])
 		dp.under_construction = bool(d.get("under_construction", false))
-		dp.variant = str(d.get("variant", "ion"))
+		dp.variant = str(d.get("variant", "plasma"))
 		dp.construct_progress = float(d.get("construct_progress", 0.0))
 		dp.position = _p(d["pos"])
 		game.starbases_root.add_child(dp)

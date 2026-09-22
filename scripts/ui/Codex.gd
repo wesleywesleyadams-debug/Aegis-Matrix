@@ -238,9 +238,9 @@ func _page_combat() -> void:
 	_heading("Specialist variants")
 	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist; hull markings are in your player color, so the pattern names the variant and the shot color names the layer it hits.")
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], "none"]]
-	var marks := {"ion": "one line down the spine", "breacher": "two ribs across the hull", "reaver": "saw teeth along both edges",
+	var marks := {"plasma": "one line down the spine", "breacher": "two ribs across the hull", "reaver": "saw teeth along both edges",
 		"slip": "two stripes either side of the spine", "disruptor": "a row of V chevrons"}
-	var shots := {"ion": "light blue laser", "breacher": "red laser", "reaver": "green laser",
+	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
 		"slip": "orange V-shot", "disruptor": "purple V-shot"}
 	for v in Defs.VARIANTS:
 		var vd: Dictionary = Defs.VARIANTS[v]
@@ -276,7 +276,7 @@ func _page_combat() -> void:
 	_rule()
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
-	_para("Starbases build generalists only. A Constructor builds a depot (E) for %s over %ds, and every depot is built for ONE variant: an Ion Depot makes Ion ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
+	_para("Starbases build generalists only. A Constructor builds a depot (E) for %s over %ds, and every depot is built for ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
 		Defs.cost_text(wd["cost"]), int(wd["build_time"])])
 	_para("Send generalists in by right-clicking the depot (or with the refit buttons in their panel). They fly in and dock — %d at a time, hidden and safe inside — and are refitted automatically as minerals allow. Each hull has its own cost and time:" % int(wd["capacity"]))
 	var rrows: Array = []
@@ -407,7 +407,7 @@ func _page_terms() -> void:
 		["Starbase", "Your production station. It builds ships, takes in cargo, defends itself, and losing them all loses the match."],
 		["Weapons Depot", "Constructor-built station where a generalist warship is refitted into a specialist variant, permanently."],
 		["Generalist", "Corvette, Destroyer or Cruiser as built: full damage to every defense layer."],
-		["Specialist / variant", "A refitted warship: Ion, Breacher, Reaver, Slip or Disruptor."],
+		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
 		["Job", "What a ship is for beyond shooting: Swarm, Escort, Barrage, Deep Sensors, Heat Screen, Field Repair."],

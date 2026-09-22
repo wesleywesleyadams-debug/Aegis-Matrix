@@ -2,7 +2,7 @@ class_name WeaponsDepot
 extends SpaceEntity
 ## Weapons Depot (Defs.WEAPONS_DEPOT): a Constructor builds it as a site paid
 ## over time, like a starbase. Every depot is built for one variant
-## (Defs.VARIANTS): an Ion Depot refits generalists into Ion ships, a Slip
+## (Defs.VARIANTS): a Plasma Depot refits generalists into Plasma ships, a Slip
 ## Depot into Slip ships, and so on.
 ##
 ## Ships tasked to a depot fly in and dock (Defs.WEAPONS_DEPOT.capacity at a
@@ -12,7 +12,7 @@ extends SpaceEntity
 ## starbase for winning or losing.
 
 ## Which variant this depot fits (a key of Defs.VARIANTS).
-var variant: String = "ion"
+var variant: String = "plasma"
 var under_construction: bool = true
 var construct_progress: float = 0.0
 var build_stalled: bool = false

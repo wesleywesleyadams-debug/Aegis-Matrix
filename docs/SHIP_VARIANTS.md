@@ -37,7 +37,7 @@ its generalist.**
 | Variant | Effect | Base damage | Shots | Markings |
 |---|---|---|---|---|
 | Generalist | full damage to all layers | 100% | yellow lasers | none |
-| **Ion** | x2.2 vs **shields** | 80% | light blue | one solid line down the spine |
+| **Plasma** | x2.2 vs **shields** | 80% | light blue | one solid line down the spine |
 | **Breacher** | x2.2 vs **armor** | 80% | red | two ribs across the hull |
 | **Reaver** | x1.9 vs **hull** | 80% | green | saw teeth along both edges |
 | **Slip** | **ignores shields** (armor + hull) | 65% | orange V-shots | two stripes either side of the spine |
@@ -47,7 +47,7 @@ Hull markings are always drawn in the owner's player color, so the pattern alone
 names the variant (one line, two ribs, saw teeth, two stripes, chevrons); the
 shot color names the layer it hits. Cruisers fire
 torpedoes in the same colors (only lasers get the V shape). Against planets,
-piercing shots skip the planetary shield, Ion hits it harder, and Reaver kills
+piercing shots skip the planetary shield, Plasma hits it harder, and Reaver kills
 population faster.
 
 ## Which variant against what
@@ -55,7 +55,7 @@ population faster.
 Base damage needed to destroy a target, relative to a generalist
 (1.00 = the same, lower = kills faster):
 
-| Target | Ion | Breacher | Reaver | Slip | Disruptor |
+| Target | Plasma | Breacher | Reaver | Slip | Disruptor |
 |---|---|---|---|---|---|
 | Corvette (hull-heavy) | 1.08 | 1.14 | **0.91** | 1.16 | 1.47 |
 | Destroyer (shield-heavy) | **0.93** | 1.16 | 1.01 | **0.82** | 1.00 |
@@ -63,7 +63,7 @@ Base damage needed to destroy a target, relative to a generalist
 | Starbase | 1.06 | 1.10 | **0.95** | 1.12 | 1.27 |
 
 - Reaver: corvette swarms, starbases.
-- Ion / Slip: shield-heavy fleets. Slip also ignores shield regeneration.
+- Plasma / Slip: shield-heavy fleets. Slip also ignores shield regeneration.
 - Breacher / Disruptor: armor-heavy fleets (Cruisers).
 - Wrong target: 5-46% worse than a plain generalist, so scouting decides.
 
@@ -73,8 +73,8 @@ Starbases build generalists only; every specialist is refitted at a depot.
 
 - Built by a **Constructor** (its panel buttons, or their grid keys): 250 minerals + 20
   spice over 30 s. No weapons, and losing one doesn't lose the match.
-- **There are five depot types, one per variant**: an Ion Depot refits
-  generalists into Ion ships, a Slip Depot into Slip ships, and so on. A depot
+- **There are five depot types, one per variant**: a Plasma Depot refits
+  generalists into Plasma ships, a Slip Depot into Slip ships, and so on. A depot
   wears its owner's color and carries its variant's marking pattern.
 - Send ships in by right-clicking the depot (or with the refit buttons in the
   ship panel). They fly in and **dock — 10 at a time, hidden and safe inside**

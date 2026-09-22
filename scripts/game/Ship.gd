@@ -47,7 +47,7 @@ var build_site: Vector2
 ## What a Constructor is building at build_site: "starbase" or "depot".
 var build_kind: String = "starbase"
 ## Which variant a depot being built will fit.
-var build_variant: String = "ion"
+var build_variant: String = "plasma"
 ## Refit (see order_refit): the variant being fitted, the depot, and the
 ## refit time still to go.
 var refit_variant: String = ""
@@ -670,7 +670,7 @@ func _become(new_type: String) -> void:
 		g.selection_changed.emit()
 	queue_redraw()
 
-func order_build_depot(pos: Vector2, v: String = "ion") -> void:
+func order_build_depot(pos: Vector2, v: String = "plasma") -> void:
 	if def["role"] != "constructor":
 		return
 	build_site = pos

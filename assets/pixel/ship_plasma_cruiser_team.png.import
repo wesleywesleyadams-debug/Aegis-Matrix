@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cw2q20i6uu62k"
-path="res://.godot/imported/ship_ion_corvette.png-2910918fd940035e780e92e30c78eb49.ctex"
+uid="uid://bwhyi62na63kf"
+path="res://.godot/imported/ship_plasma_cruiser_team.png-8278ec2a8874885feb169be672dbc141.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/pixel/ship_ion_corvette.png"
-dest_files=["res://.godot/imported/ship_ion_corvette.png-2910918fd940035e780e92e30c78eb49.ctex"]
+source_file="res://assets/pixel/ship_plasma_cruiser_team.png"
+dest_files=["res://.godot/imported/ship_plasma_cruiser_team.png-8278ec2a8874885feb169be672dbc141.ctex"]
 
 [params]
 

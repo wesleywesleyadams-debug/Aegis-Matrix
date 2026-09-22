@@ -896,19 +896,19 @@ func _gen_job_ships() -> void:
 
 ## Specialist variants (Defs.VARIANTS) of the generalist warships: the base
 ## sprite with markings in the variant's color: a glowing emitter at the
-## nose, a stripe down the spine and lit wingtips, so an Ion Corvette reads
+## nose, a stripe down the spine and lit wingtips, so a Plasma Corvette reads
 ## differently from a Slip or Disruptor Corvette at a glance.
 const VARIANT_COLORS := {
-	"ion": [Color("1d5f8a"), Color("7fd8ff"), Color("e6fbff")],
+	"plasma": [Color("1d5f8a"), Color("7fd8ff"), Color("e6fbff")],
 	"breacher": [Color("7a1414"), Color("ff4a4a"), Color("ffc8c8")],
 	"reaver": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
 	"slip": [Color("8a4a10"), Color("ffa43a"), Color("ffe0b0")],
 	"disruptor": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
 }
 const VARIANT_BASES := {
-	"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"],
-	"destroyer": ["ion", "breacher", "reaver", "slip", "disruptor"],
-	"cruiser": ["ion", "breacher", "reaver", "slip", "disruptor"],
+	"corvette": ["plasma", "breacher", "reaver", "slip", "disruptor"],
+	"destroyer": ["plasma", "breacher", "reaver", "slip", "disruptor"],
+	"cruiser": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 }
 
 func _gen_variants() -> void:
@@ -923,7 +923,7 @@ func _gen_variants() -> void:
 
 ## Variant markings go on the TEAM layer, so they always show the owner's
 ## color. That means the pattern alone has to say which variant it is:
-##   ion       - one solid line down the spine
+##   plasma     - one solid line down the spine
 ##   breacher  - two ribs across the hull
 ##   reaver    - saw teeth along both edges
 ##   slip      - two long stripes either side of the spine
@@ -941,7 +941,7 @@ func _mark_variant(hull: Image, tim: Image, v: String) -> void:
 			tim.set_pixel(x, y, c)
 	var tail := int(w * 0.66)
 	match v:
-		"ion":
+		"plasma":
 			for x in range(2, tail):
 				mark.call(x, cy, lit)
 		"breacher":
@@ -1003,7 +1003,7 @@ func _gen_depot() -> void:
 			mark.call(x + 1, cy - 9, mid)
 			mark.call(x + 1, cy + 9, mid)
 		# The variant's marking, across the hub.
-		if v == "ion":
+		if v == "plasma":
 			for x in range(12, 24):
 				mark.call(x, cy, lit)
 		elif v == "breacher":

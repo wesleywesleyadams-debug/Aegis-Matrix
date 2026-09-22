@@ -1699,7 +1699,7 @@ func _enter_dev_capture() -> void:
 		# Dev: shot colors. Rows of generalist, Ion, Breacher and Reaver corvettes
 		# fire at enemy destroyers.
 		var foe := 3 - player_id
-		var kinds := ["corvette", "ion_corvette", "breacher_corvette", "reaver_corvette", "slip_corvette", "disruptor_corvette"] if OS.get_environment("SL_SHOTS_ALL") != "" else ["corvette", "ion_corvette", "breacher_corvette", "reaver_corvette"]
+		var kinds := ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette", "slip_corvette", "disruptor_corvette"] if OS.get_environment("SL_SHOTS_ALL") != "" else ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette"]
 		for i in kinds.size():
 			var y := (420.0 if kinds.size() > 4 else 560.0) + i * 70.0
 			for j in 8:
@@ -1778,18 +1778,18 @@ func _enter_dev_capture() -> void:
 		resources[player_id]["spice"] = 200.0
 		var site: Vector2 = ai._depot_site(home.global_position, self)
 		var con := spawn_ship("constructor", player_id, home.global_position + Vector2(50, 0))
-		con.order_build_depot(site, "ion")
+		con.order_build_depot(site, "plasma")
 		var cvs: Array = []
 		for i in 3:
 			cvs.append(spawn_ship("corvette", player_id, home.global_position + Vector2(-40, 30 * i)))
 		get_tree().create_timer(45.0).timeout.connect(func():
-			var dep := nearest_depot(player_id, site, "ion")
+			var dep := nearest_depot(player_id, site, "plasma")
 			print("DEPOT finished: ", dep != null, " type ", dep.label() if dep else "-")
 			for c in cvs:
-				c.order_refit("ion", dep)
+				c.order_refit("plasma", dep)
 			_set_selection([dep], false))
 		get_tree().create_timer(58.0).timeout.connect(func():
-			var dep2 := nearest_depot(player_id, site, "ion")
+			var dep2 := nearest_depot(player_id, site, "plasma")
 			print("DEPOT docked: ", dep2.bays.size(), " ships hidden: ", cvs.map(func(c): return not c.visible))
 			dep2.cancel(cvs[2])
 			print("DEPOT after cancel: bays ", dep2.bays.size(), " ejected type ", cvs[2].ship_type, " docked ", cvs[2].docked))
@@ -2059,7 +2059,7 @@ func nearest_depot(pid: int, pos: Vector2, v: String = "") -> WeaponsDepot:
 	return best
 
 ## Which variant the depot being placed will fit (see start_depot_placement).
-var placing_depot_variant := "ion"
+var placing_depot_variant := "plasma"
 
 func start_depot_placement(v: String = "") -> void:
 	if v != "":
