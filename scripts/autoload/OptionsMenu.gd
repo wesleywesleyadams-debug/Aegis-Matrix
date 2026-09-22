@@ -206,50 +206,69 @@ func _add_hotkey_row(label_text: String, key_text: String) -> void:
 
 # ---------------------------------------------------------------- music tracks
 
-var _track_list: VBoxContainer
+const ENABLED_COLOR := Color("3fd6b0")   # teal
+const DISABLED_COLOR := Color("ff9a2e")  # orange
+
+var _enabled_list: VBoxContainer
+var _disabled_list: VBoxContainer
+var _enabled_title: Label
+var _disabled_title: Label
 var _track_status: Label
 var _file_dialog: FileDialog
 
-## Audio tab: the in-game Playlist and a Disabled list (songs move between
-## them with Disable / Enable), Preview on every song, and "Add Song..." to
-## import one from disk (see Music). Songs are never deleted here.
+## Audio tab as three panels side by side:
+##   1. Audio: the volume sliders and Audio / Music toggles (moved in from the
+##      scene as they are);
+##   2. Playlist: enabled songs (teal) with Preview / Disable, and Add Song...;
+##   3. Disabled: disabled songs (orange) with Preview / Enable.
+## Songs are never deleted here, only moved between the two lists.
 func _build_music_section() -> void:
 	var audio: Control = $Background/Panel/VBox/TabContainer/Audio
-	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_FULL_RECT)
-	box.offset_left = 12
-	box.offset_top = 132
-	box.offset_right = -12
-	box.offset_bottom = -64
-	box.add_theme_constant_override("separation", 6)
-	audio.add_child(box)
-	var title := Label.new()
-	title.text = "In-Game Music Tracks"
-	box.add_child(title)
+	var cols := HBoxContainer.new()
+	cols.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cols.offset_left = 10
+	cols.offset_top = 10
+	cols.offset_right = -10
+	cols.offset_bottom = -10
+	cols.add_theme_constant_override("separation", 10)
+	audio.add_child(cols)
+
+	# 1. Audio settings.
+	var settings := _column(cols, "Audio", Color.WHITE, 0.8)
+	for path in ["MasterVolumeRow", "MusicVolumeRow", "ToggleRow"]:
+		var n: Control = audio.get_node(path)
+		audio.remove_child(n)
+		settings.add_child(n)
+	var toggles: HBoxContainer = settings.get_node("ToggleRow")
+	toggles.alignment = BoxContainer.ALIGNMENT_BEGIN
+	toggles.add_theme_constant_override("separation", 16)
+	for c in [audio_enabled_checkbox, music_enabled_checkbox]:
+		c.custom_minimum_size = Vector2(0, 40)
+
+	# 2. Playlist.
+	var pl := _column(cols, "Playlist", ENABLED_COLOR, 1.1)
+	_enabled_title = pl.get_child(0)
+	_enabled_list = _scroll_list(pl)
 	var hint := Label.new()
-	hint.text = "Playlist songs play during matches, one after another."
+	hint.text = "These play during matches, one after another."
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
-	box.add_child(hint)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	box.add_child(scroll)
-	_track_list = VBoxContainer.new()
-	_track_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_track_list.add_theme_constant_override("separation", 4)
-	scroll.add_child(_track_list)
-	var row := HBoxContainer.new()
-	box.add_child(row)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pl.add_child(hint)
 	var add := Button.new()
 	add.text = "Add Song..."
 	add.pressed.connect(func(): _file_dialog.popup_centered_ratio(0.7))
-	row.add_child(add)
+	pl.add_child(add)
 	_track_status = Label.new()
 	_track_status.add_theme_font_size_override("font_size", 13)
-	_track_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_track_status.clip_text = true
-	row.add_child(_track_status)
+	pl.add_child(_track_status)
+
+	# 3. Disabled.
+	var dis := _column(cols, "Disabled", DISABLED_COLOR, 1.1)
+	_disabled_title = dis.get_child(0)
+	_disabled_list = _scroll_list(dis)
+
 	_file_dialog = FileDialog.new()
 	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILES
 	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
@@ -261,58 +280,88 @@ func _build_music_section() -> void:
 	Music.tracks_changed.connect(_refresh_tracks)
 	_refresh_tracks()
 
-## Two lists: the Playlist (enabled songs, each with Disable) and Disabled
-## (each with Enable to put it back). Nothing is ever deleted here.
+## A bordered panel column with a colored heading; returns its content box.
+func _column(parent: Control, heading: String, color: Color, stretch: float) -> VBoxContainer:
+	var panel_box := PanelContainer.new()
+	panel_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel_box.size_flags_stretch_ratio = stretch
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.05, 0.06, 0.12, 0.9)
+	st.border_color = Color(color, 0.55)
+	st.set_border_width_all(2)
+	st.set_content_margin_all(12)
+	panel_box.add_theme_stylebox_override("panel", st)
+	parent.add_child(panel_box)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	panel_box.add_child(v)
+	var title := Label.new()
+	title.text = heading
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", color)
+	v.add_child(title)
+	return v
+
+func _scroll_list(parent: VBoxContainer) -> VBoxContainer:
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	parent.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+	return list
+
+## Fills the Playlist (teal) and Disabled (orange) panels.
 func _refresh_tracks() -> void:
-	if _track_list == null:
+	if _enabled_list == null:
 		return
-	for c in _track_list.get_children():
-		c.queue_free()
+	for list in [_enabled_list, _disabled_list]:
+		for c in list.get_children():
+			c.queue_free()
 	var tracks := Music.available_tracks()
 	var enabled := tracks.filter(func(t): return GameState.music_playlist.has(t["id"]))
 	var disabled := tracks.filter(func(t): return not GameState.music_playlist.has(t["id"]))
-	_track_list.add_child(_list_heading("Playlist (%d)" % enabled.size(), Color(0.55, 1.0, 0.65)))
+	_enabled_title.text = "Playlist (%d)" % enabled.size()
+	_disabled_title.text = "Disabled (%d)" % disabled.size()
 	if enabled.is_empty():
-		_track_list.add_child(_list_note("Empty: matches will play Through Space."))
+		_enabled_list.add_child(_list_note("Empty: matches will play Through Space."))
 	for t in enabled:
-		_track_list.add_child(_track_row(t, true))
-	_track_list.add_child(_list_heading("Disabled (%d)" % disabled.size(), Color(0.75, 0.78, 0.9)))
+		_enabled_list.add_child(_track_row(t, true))
 	if disabled.is_empty():
-		_track_list.add_child(_list_note("No disabled songs."))
+		_disabled_list.add_child(_list_note("No disabled songs."))
 	for t in disabled:
-		_track_list.add_child(_track_row(t, false))
-
-func _list_heading(text: String, color: Color) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", 15)
-	l.add_theme_color_override("font_color", color)
-	return l
+		_disabled_list.add_child(_track_row(t, false))
 
 func _list_note(text: String) -> Label:
 	var l := Label.new()
-	l.text = "   " + text
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.add_theme_font_size_override("font_size", 13)
 	l.add_theme_color_override("font_color", Color(0.6, 0.63, 0.75))
 	return l
 
-## One song: its name, Preview/Stop, and Disable (playlist) or Enable (disabled).
-func _track_row(t: Dictionary, enabled: bool) -> HBoxContainer:
+## One song: its name (teal if enabled, orange if disabled) with Preview/Stop
+## and Disable or Enable underneath.
+func _track_row(t: Dictionary, enabled: bool) -> VBoxContainer:
 	var id: String = t["id"]
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
 	var name := Label.new()
 	name.text = t["name"]
 	name.tooltip_text = t["name"]
 	name.mouse_filter = Control.MOUSE_FILTER_PASS
-	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name.clip_text = true
-	if not enabled:
-		name.modulate = Color(1, 1, 1, 0.6)
-	row.add_child(name)
+	name.add_theme_color_override("font_color", ENABLED_COLOR if enabled else DISABLED_COLOR)
+	box.add_child(name)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	box.add_child(row)
 	var play := Button.new()
 	play.text = "Stop" if Music.previewing == id else "Preview"
-	play.custom_minimum_size = Vector2(128, 0)
+	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	play.pressed.connect(func():
 		if Music.previewing == id:
 			Music.stop_preview()
@@ -322,13 +371,13 @@ func _track_row(t: Dictionary, enabled: bool) -> HBoxContainer:
 	row.add_child(play)
 	var toggle := Button.new()
 	toggle.text = "Disable" if enabled else "Enable"
-	toggle.custom_minimum_size = Vector2(128, 0)
+	toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	toggle.pressed.connect(func():
 		Music.set_in_playlist(id, not enabled)
 		_track_status.text = ("Disabled %s." if enabled else "Enabled %s.") % t["name"]
 		_refresh_tracks())
 	row.add_child(toggle)
-	return row
+	return box
 
 func _on_songs_selected(paths: PackedStringArray) -> void:
 	var added := 0
