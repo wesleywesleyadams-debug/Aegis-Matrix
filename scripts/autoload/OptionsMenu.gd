@@ -206,7 +206,7 @@ func _build_music_section() -> void:
 	_enabled_title = pl.get_child(0)
 	_enabled_list = _scroll_list(pl)
 	var hint := Label.new()
-	hint.text = "These play during matches, one after another. The Title and Lobby synths also play on their own screens while enabled."
+	hint.text = "These play during matches, one after another. Title and Lobby synths (green) only play on their own screens."
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -156,6 +156,11 @@ func play_screen(track: String) -> void:
 	elif not _in_game:
 		_start_playlist()
 
+## The Title and Lobby songs only ever play on their own screens (see
+## play_screen), never in the match / fallback playlist.
+func _in_rotation(id: String) -> bool:
+	return id != TITLE_TRACK and id != LOBBY_TRACK
+
 ## Switches to a track, looping. A no-op if it's already playing, so a
 ## scene reload doesn't restart it.
 func play_track(name: String) -> void:
@@ -178,7 +183,7 @@ func play_game_playlist() -> void:
 
 func _start_playlist() -> void:
 	_in_game = true
-	var pl: Array = GameState.music_playlist.filter(func(id): return _stream(id) != null)
+	var pl: Array = GameState.music_playlist.filter(func(id): return _in_rotation(id) and _stream(id) != null)
 	if pl.is_empty():
 		_playlist = []
 		player.stop()
@@ -244,7 +249,7 @@ func stop_preview() -> void:
 		var was := _current
 		_playlist = _playlist.filter(func(t): return GameState.music_playlist.has(t))
 		for t in GameState.music_playlist:
-			if not _playlist.has(t) and _stream(t) != null:
+			if not _playlist.has(t) and _in_rotation(t) and _stream(t) != null:
 				_playlist.append(t)
 		if _playlist.is_empty():
 			player.stop()
@@ -293,6 +298,8 @@ func _self_test(src: String) -> void:
 ## running playlist; if the song playing now was disabled, move on to the
 ## next one, or go silent if none are left.
 func _playlist_changed(id: String, on: bool) -> void:
+	if not _in_rotation(id):
+		return
 	if on:
 		if not _playlist.has(id) and _stream(id) != null:
 			_playlist.append(id)
@@ -356,6 +363,18 @@ func _live_test() -> void:
 	set_in_playlist("lobby", false)
 	stop_preview()
 	print("LIVE lobby disabled during preview -> '", _current, "' playing=", player.playing)
+	GameState.music_playlist = ["title", "lobby", "spacelife"]
+	play_game_playlist()
+	print("LIVE match with title+lobby+spacelife -> ", _playlist)
+	set_in_playlist("title", false)
+	set_in_playlist("title", true)
+	print("LIVE match after toggling title -> ", _playlist, " ", _current)
+	play_screen(TITLE_TRACK)
+	print("LIVE title screen -> ", _current)
+	set_in_playlist("title", false)
+	print("LIVE title screen, title off -> ", _current)
+	play_screen(LOBBY_TRACK)
+	print("LIVE lobby screen -> ", _current)
 	GameState.music_playlist = saved
 	GameState.save_settings()
 	get_tree().quit()
