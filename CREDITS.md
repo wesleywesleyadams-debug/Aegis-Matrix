@@ -14,3 +14,4 @@ The title and lobby music and all sound effects are generated procedurally by
 - "Space Life No. 14" by yd - https://opengameart.org/content/spacelife-14 - CC0 - assets/audio/music_spacelife.ogg
 - "Magic Space" by CodeManu - https://opengameart.org/content/magic-space - CC0 - assets/audio/music_magic_space.ogg (converted from mp3)
 - "Deus Ex Tempus" by Trevor Lentz - https://opengameart.org/content/deus-ex-tempus - CC-BY-SA 3.0 - assets/audio/music_deus_ex_tempus.mp3
+- "Hero Immortal" by Trevor Lentz - https://opengameart.org/content/hero-immortal - CC-BY-SA 3.0 - assets/audio/music_hero_immortal.mp3
