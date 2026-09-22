@@ -50,6 +50,8 @@ func _ready() -> void:
 	# user://lobby.png and quits.
 	var shot := OS.get_environment("SL_LOBBY_SHOT")
 	if shot != "":
+		if OS.get_environment("SL_SYSTEM") != "":
+			GameState.system_id = OS.get_environment("SL_SYSTEM")
 		GameState.game_mode = shot
 		_capture.call_deferred()
 	_username = _resolve_username()
@@ -298,7 +300,31 @@ func _on_back_pressed() -> void:
 ## System dropdown (Match Settings): the five named systems plus Random, with
 ## a one-line description under it.
 func _setup_system_picker() -> void:
-	var opt: OptionButton = $MainHBox/SettingsPanel/SettingsVBox/MapRow/OptionButton
+	# Its own panel, right of Match Settings: picker, description, preview,
+	# facts.
+	var panel := Panel.new()
+	panel.custom_minimum_size = Vector2(440, 0)
+	$MainHBox.add_child(panel)
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = 16
+	box.offset_top = 16
+	box.offset_right = -16
+	box.offset_bottom = -16
+	box.add_theme_constant_override("separation", 14)
+	panel.add_child(box)
+	var title := Label.new()
+	title.text = "System"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 22)
+	box.add_child(title)
+	var map_row: Control = $MainHBox/SettingsPanel/SettingsVBox/MapRow
+	map_row.get_parent().remove_child(map_row)
+	box.add_child(map_row)
+	(map_row.get_node("Label") as Label).visible = false
+	var opt: OptionButton = map_row.get_node("OptionButton")
+	opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	MenuStyle.button(opt)
 	opt.clear()
 	var pick := 0
 	for i in SystemGen.SYSTEMS.size():
@@ -308,15 +334,29 @@ func _setup_system_picker() -> void:
 			pick = i
 	opt.selected = pick
 	var desc := Label.new()
-	desc.add_theme_font_size_override("font_size", 14)
+	desc.add_theme_font_size_override("font_size", 16)
 	desc.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var row := opt.get_parent()
 	row.get_parent().add_child(desc)
 	row.get_parent().move_child(desc, row.get_index() + 1)
+	# Map preview and a facts line (star type, worlds, asteroids).
+	var preview := SystemPreview.new()
+	preview.custom_minimum_size = Vector2(0, 262)
+	row.get_parent().add_child(preview)
+	row.get_parent().move_child(preview, desc.get_index() + 1)
+	var facts := Label.new()
+	facts.add_theme_font_size_override("font_size", 15)
+	facts.add_theme_color_override("font_color", Color(0.85, 0.88, 1.0))
+	facts.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	facts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.get_parent().add_child(facts)
+	row.get_parent().move_child(facts, preview.get_index() + 1)
 	var apply := func(i: int) -> void:
 		GameState.system_id = SystemGen.SYSTEMS[i]["id"]
 		desc.text = SystemGen.SYSTEMS[i]["desc"]
+		preview.show_system(GameState.system_id)
+		facts.text = preview.facts
 	opt.item_selected.connect(apply)
 	apply.call(pick)

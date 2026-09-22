@@ -384,7 +384,7 @@ func _avoid_sun(desired: Vector2) -> Vector2:
 	var goal := _nav_goal if desired != Vector2.ZERO else global_position
 	for star in get_tree().get_nodes_in_group("stars"):
 		var c: Vector2 = star.global_position
-		var r: float = Star.RADIATION_RADIUS + radius + 12.0
+		var r: float = star.radiation_radius + radius + 12.0
 		var goal_inside := goal.distance_to(c) < r and desired != Vector2.ZERO
 		if goal_inside and hp >= max_hp * SUN_RISK_HP:
 			continue

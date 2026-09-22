@@ -39,7 +39,7 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("05050c"))
 	var tree := game.get_tree()
 	for star in tree.get_nodes_in_group("stars"):
-		draw_circle(_map_to_ui(star.global_position), 5.0, Color("ffb347"))
+		draw_circle(_map_to_ui(star.global_position), 3.0 + star.core_radius / 10.0, star.tint)
 	# Asteroids as small blips in their resource's color (minerals teal,
 	# spice orange).
 	for a in tree.get_nodes_in_group("asteroids"):

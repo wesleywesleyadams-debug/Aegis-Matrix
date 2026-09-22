@@ -653,15 +653,15 @@ func _build_starbase_controls(sb: Starbase) -> void:
 func _build_star_panel(s: Star) -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
-	var ic := _icon("star", 1)
+	var ic := _icon(Defs.STAR_TYPES[s.star_type]["tex"], 1)
 	ic.custom_minimum_size = Vector2(64, 64)
 	head.add_child(ic)
 	var col := VBoxContainer.new()
-	col.add_child(_label("%s  ·  Star" % s.star_name, Color("ffd46b"), 20))
+	col.add_child(_label("%s  ·  %s" % [s.star_name, s.type_label()], s.tint, 20))
 	col.add_child(_label("Uninhabitable. Can't be mined.", TEXT, 14))
 	head.add_child(col)
 	_sel_body.add_child(head)
-	_sel_body.add_child(_label("Radiation: ships and stations within %d px take damage, rising sharply closer in, up to %d/s on contact with the surface (shields absorb it first)." % [int(Star.RADIATION_RADIUS), int(Star.MAX_DPS)], Color("ff8a6a"), 13))
+	_sel_body.add_child(_label("Radiation: ships and stations within %d px take damage, rising sharply closer in, up to %d/s on contact with the surface (shields absorb it first)." % [int(s.radiation_radius), int(s.max_dps)], Color("ff8a6a"), 13))
 	_sel_body.add_child(_label("Future research may allow harvesting energy from stars.", DIM, 12))
 	for l in _sel_body.get_children():
 		if l is Label:

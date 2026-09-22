@@ -210,3 +210,14 @@ static func cost_text(cost: Dictionary) -> String:
 		if cost.has(r):
 			parts.append("%d %s" % [cost[r], RESOURCE_NAMES[r]])
 	return ", ".join(parts)
+
+## Star types (set per system; see Star.set_type and SystemGen). core: glowing
+## surface radius (px); zone: outer edge of the radiation zone; dps: damage per
+## second on contact with the surface; tint: minimap / UI color.
+const STAR_TYPES := {
+	"red_dwarf": {"label": "Red Dwarf", "tex": "star_red", "core": 24.0, "zone": 130.0, "dps": 40.0, "tint": Color("ff6a4a")},
+	"white": {"label": "White Star", "tex": "star_white", "core": 30.0, "zone": 165.0, "dps": 55.0, "tint": Color("e8eef8")},
+	"yellow": {"label": "Yellow Star", "tex": "star", "core": 34.0, "zone": 180.0, "dps": 60.0, "tint": Color("ffb347")},
+	"orange": {"label": "Orange Star", "tex": "star_orange", "core": 36.0, "zone": 195.0, "dps": 65.0, "tint": Color("ff8a2a")},
+	"blue_giant": {"label": "Blue Giant", "tex": "star_blue", "core": 46.0, "zone": 260.0, "dps": 95.0, "tint": Color("7ab0ff")},
+}

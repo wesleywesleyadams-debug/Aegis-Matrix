@@ -326,11 +326,15 @@ func _gen_planets() -> void:
 	), "planet_moon")
 
 func _gen_star() -> void:
-	var s := 160
+	_star_art("star", 160, 34.0, [Color("ff5a1f"), Color("ff9a2e"), Color("ffd35a"), Color("fff3b8"), Color("ffffff")], [Color("5a1a2e"), Color("8a2a2a"), Color("c8522a")])
+	# Other star types (see Star.STAR_TYPES).
+	_star_art("star_red", 120, 24.0, [Color("5a0f12"), Color("a3261f"), Color("e0502a"), Color("ff8a5a"), Color("ffc8a0")], [Color("3a0f1a"), Color("6a1a22"), Color("a3301f")])
+	_star_art("star_white", 150, 30.0, [Color("8a9ab8"), Color("c9d4e6"), Color("e8eef8"), Color("ffffff"), Color("ffffff")], [Color("1a2a4a"), Color("2e4a7a"), Color("6a8ab8")])
+	_star_art("star_orange", 164, 36.0, [Color("c8401a"), Color("ff7a2a"), Color("ffae4a"), Color("ffe0a0"), Color("fff8e0")], [Color("4a1a1a"), Color("7a2e1f"), Color("b8521f")])
+	_star_art("star_blue", 208, 46.0, [Color("1f3a9a"), Color("3a6ad8"), Color("7ab0ff"), Color("c8e0ff"), Color("ffffff")], [Color("101a4a"), Color("1f3a8a"), Color("3a6ad8")])
+
+func _star_art(name: String, s: int, core: float, ramp: Array, halo: Array) -> void:
 	var img := _img(s, s)
-	var core := 34.0
-	var ramp := [Color("ff5a1f"), Color("ff9a2e"), Color("ffd35a"), Color("fff3b8"), Color("ffffff")]
-	var halo := [Color("5a1a2e"), Color("8a2a2a"), Color("c8522a")]
 	var noise := FastNoiseLite.new()
 	noise.seed = 3
 	noise.frequency = 0.08
@@ -353,7 +357,7 @@ func _gen_star() -> void:
 					var c: Color = halo[idx]
 					c.a = 1.0
 					img.set_pixel(x, y, c)
-	_save(img, "star")
+	_save(img, name)
 
 # ---------------------------------------------------------------- asteroids
 

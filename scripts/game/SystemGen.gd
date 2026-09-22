@@ -13,23 +13,50 @@ class_name SystemGen
 ## Picked systems. "orion_reach" is the hand-made classic in Main.tscn; the
 ## rest are generated from a fixed seed and their own flavor of params.
 const SYSTEMS := [
-	{"id": "orion_reach", "name": "Orion Reach", "desc": "The classic hand-built system."},
-	{"id": "vega_drift", "name": "Vega Drift", "seed": 1101, "desc": "Balanced: a few worlds, two belts.",
+	{"id": "orion_reach", "name": "Orion Reach", "desc": "The classic hand-built system.", "star": "yellow", "star_name": "Orion",
+		"bg": "violet", "arrival": "You arrive in Orion Reach. Twin deserts flank a quiet yellow sun."},
+	{"id": "vega_drift", "name": "Vega Drift", "seed": 1101, "desc": "Balanced: a few worlds, two belts.", "star": "white", "star_name": "Vega",
+		"bg": "teal", "names": "cold", "arrival": "You arrive in Vega Drift. A hard white sun lights a calm, even field.",
 		"params": {"planets": 4, "belts": 2, "spice": 0.12}},
-	{"id": "kharon_expanse", "name": "Kharon Expanse", "seed": 2207, "desc": "Sparse and spice-rich.",
+	{"id": "kharon_expanse", "name": "Kharon Expanse", "seed": 2207, "desc": "Sparse and spice-rich.", "star": "red_dwarf", "star_name": "Kharon",
+		"bg": "rust", "names": "dust", "arrival": "You arrive in the Kharon Expanse. Spice lies thick in the dim red dust.",
 		"params": {"planets": 3, "belts": 1, "spice": 0.28}},
-	{"id": "tethys_cluster", "name": "Tethys Cluster", "seed": 3313, "desc": "Crowded: many worlds, many rocks.",
+	{"id": "tethys_cluster", "name": "Tethys Cluster", "seed": 3313, "desc": "Crowded: many worlds, many rocks.", "star": "orange", "star_name": "Tethys",
+		"bg": "verdant", "names": "myth", "arrival": "You arrive in the Tethys Cluster. Worlds crowd close around a warm orange sun.",
 		"params": {"planets": 5, "belts": 3, "spice": 0.1}},
-	{"id": "sable_verge", "name": "Sable Verge", "seed": 4419, "desc": "Few worlds, heavy mineral belts.",
+	{"id": "sable_verge", "name": "Sable Verge", "seed": 4419, "desc": "Few worlds, heavy mineral belts.", "star": "blue_giant", "star_name": "Sable",
+		"bg": "ash", "names": "stone", "arrival": "You arrive at the Sable Verge. A blue giant scorches a wide, deadly core.",
 		"params": {"planets": 3, "belts": 3, "spice": 0.05}},
-	{"id": "random", "name": "Random", "desc": "A new system every match."},
+	{"id": "random", "name": "Random", "desc": "A new system every match.", "arrival": "You arrive in uncharted space."},
 ]
+
+## Background palettes: base color and a tint for the nebula layer.
+const BACKGROUNDS := {
+	"violet": {"base": Color(0.027, 0.024, 0.059), "nebula": Vector3(1.0, 1.0, 1.0)},
+	"teal": {"base": Color(0.018, 0.03, 0.055), "nebula": Vector3(0.55, 0.95, 1.25)},
+	"rust": {"base": Color(0.05, 0.022, 0.028), "nebula": Vector3(1.35, 0.7, 0.5)},
+	"verdant": {"base": Color(0.022, 0.04, 0.034), "nebula": Vector3(0.8, 1.25, 0.8)},
+	"ash": {"base": Color(0.03, 0.03, 0.038), "nebula": Vector3(0.75, 0.8, 0.95)},
+}
+
+## Themed planet names per system (each list is long enough for any layout).
+const NAME_SETS := {
+	"cold": ["Rime", "Hoarfrost", "Selene", "Kaldr", "Isen", "Brumal", "Glace", "Nivel", "Frore", "Hiems", "Borea", "Skadi",
+		"Tundris", "Pallor", "Frostmere", "Algor", "Vinter", "Crysta", "Norrin", "Coldharbor", "Sleet", "Ymir", "Halo", "Albedo"],
+	"dust": ["Ashkar", "Qarsa", "Zahir", "Sirocco", "Harmat", "Duneholm", "Khamsin", "Oasra", "Tamrit", "Saffra", "Marrakai", "Emberlee",
+		"Ghibli", "Rukh", "Sabakh", "Ochre", "Cinnabar", "Scorch", "Kiln", "Mirage", "Haboob", "Dustwane", "Tarim", "Qadir"],
+	"myth": ["Nerites", "Phorcys", "Thaum", "Doris", "Eurybia", "Pontus", "Ceto", "Galene", "Metis", "Styx", "Clymene", "Perseis",
+		"Oceanus", "Proteus", "Amphis", "Triton", "Nereid", "Thalassa", "Psamathe", "Halimede", "Sao", "Laomedeia", "Neso", "Glauce"],
+	"stone": ["Basalt", "Obsidian", "Slate", "Gneiss", "Tuff", "Scoria", "Flint", "Chert", "Jasper", "Marl", "Gabbro", "Pumice",
+		"Cairn", "Tor", "Scree", "Shale", "Granitor", "Umbra", "Anvil", "Crag", "Monolith", "Ferrox", "Cobble", "Quarry"],
+}
 
 ## Layout lives on an ellipse fitted to the map (it's wider than tall).
 const RX := 1640.0
 const RY := 1010.0
-## Keep-outs: radiation zone plus room to fly around it; the map edge.
-const STAR_CLEAR := 330.0
+## Keep-out around the star: its radiation zone plus room to fly around it
+## (set per system from its star type).
+static var star_clear: float = 330.0
 const EDGE_MARGIN := 90.0
 const HOME_T := 0.9
 
@@ -38,6 +65,23 @@ const NAMES := ["Aster", "Belen", "Calyx", "Draxis", "Eryth", "Fenra", "Galen", 
 	"Vesk", "Wynd", "Xantha", "Yarrow", "Zephon", "Ashfall", "Brine", "Cinder", "Dusk", "Ember", "Fallow",
 	"Gloam", "Hollow", "Ironveil", "Juno", "Kestrel", "Lode", "Mire", "Nadir", "Onyx", "Pale", "Rime", "Scour",
 	"Talus", "Umber", "Vantor", "Welk"]
+
+## Everything that defines a system's build and look: layout params, star
+## type, background, name set, star name and arrival line. Random draws its
+## params from the seed.
+static func settings(id: String, seed: int) -> Dictionary:
+	var sys := find(id)
+	var out: Dictionary = sys.get("params", {}).duplicate()
+	if id == "random" or out.is_empty():
+		out = random_params(seed)
+	for k in ["star", "bg", "names", "star_name", "arrival"]:
+		if sys.has(k):
+			out[k] = sys[k]
+	if not out.has("star_name"):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed ^ 0x57a2
+		out["star_name"] = NAMES[rng.randi() % NAMES.size()]
+	return out
 
 static func find(id: String) -> Dictionary:
 	for s in SYSTEMS:
@@ -49,12 +93,17 @@ static func find(id: String) -> Dictionary:
 static func random_params(seed: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed ^ 0x5eed
-	return {"planets": rng.randi_range(3, 5), "belts": rng.randi_range(1, 3), "spice": rng.randf_range(0.06, 0.25)}
+	var stars: Array = Defs.STAR_TYPES.keys()
+	var bgs: Array = BACKGROUNDS.keys()
+	var sets: Array = NAME_SETS.keys()
+	return {"planets": rng.randi_range(3, 5), "belts": rng.randi_range(1, 3), "spice": rng.randf_range(0.06, 0.25),
+		"star": stars[rng.randi() % stars.size()], "bg": bgs[rng.randi() % bgs.size()], "names": sets[rng.randi() % sets.size()]}
 
 static func generate(seed: int, params: Dictionary) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
-	var names: Array = NAMES.duplicate()
+	star_clear = float(Defs.STAR_TYPES.get(params.get("star", "yellow"), Defs.STAR_TYPES["yellow"])["zone"]) + 150.0
+	var names: Array = NAME_SETS.get(params.get("names", ""), NAMES).duplicate()
 	for i in range(names.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
 		var tmp = names[i]
@@ -158,7 +207,7 @@ static func _inside(p: Vector2) -> bool:
 ## Room for something of `clearance` at p: off the star, inside the map,
 ## and clear of everything placed so far and its mirror image.
 static func _fits(placed: Array, p: Vector2, clearance: float) -> bool:
-	if p.length() < STAR_CLEAR or not _inside(p):
+	if p.length() < star_clear or not _inside(p):
 		return false
 	if p.length() < clearance:
 		return false  # too close to its own mirror image

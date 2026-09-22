@@ -11,6 +11,8 @@ uniform float zoom = 3.0;
 uniform vec2 screen_size = vec2(1920.0, 1080.0);
 uniform vec4 base_color : source_color = vec4(0.027, 0.024, 0.059, 1.0);
 uniform float nebula_alpha = 0.35;
+// Per-system look: multiplies the nebula layer's color (1,1,1 = as painted).
+uniform vec3 nebula_tint = vec3(1.0);
 
 vec4 layer(sampler2D tex, vec2 px, float factor) {
 	vec2 p = floor(px + cam * factor);
@@ -23,7 +25,7 @@ void fragment() {
 	vec4 s = layer(stars, px, 0.05);
 	c = mix(c, s.rgb, s.a);
 	vec4 n = layer(nebula, px, 0.15);
-	c = mix(c, n.rgb, n.a * nebula_alpha);
+	c = mix(c, clamp(n.rgb * nebula_tint, 0.0, 1.0), n.a * nebula_alpha);
 	vec4 d = layer(dust, px, 0.4);
 	c = mix(c, d.rgb, d.a);
 	COLOR = vec4(c, 1.0);

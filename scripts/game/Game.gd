@@ -128,21 +128,34 @@ func _ready() -> void:
 	if loaded:
 		notify("Saved game loaded.", "note_save")
 	else:
+		message.emit(system_settings.get("arrival", "You arrive in uncharted space."), Color("e8d6a8"))
 		message.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"))
 	_enter_dev_capture()
 
 # ---------------------------------------------------------------- system
 
+## The current system's settings (star, background, arrival line...).
+var system_settings: Dictionary = {}
+
+## Star type and name, and the background palette, for this system.
+func _apply_system_look(st: Dictionary) -> void:
+	var star: Star = $World/Star
+	star.set_type(st.get("star", "yellow"))
+	star.star_name = st.get("star_name", "Orion")
+	var bg: Dictionary = SystemGen.BACKGROUNDS.get(st.get("bg", "violet"), SystemGen.BACKGROUNDS["violet"])
+	var mat := $Background/Space.material as ShaderMaterial
+	mat.set_shader_parameter("base_color", bg["base"])
+	mat.set_shader_parameter("nebula_tint", bg["nebula"])
+	RenderingServer.set_default_clear_color(bg["base"])
+
 ## Swaps Main.tscn's hand-made Orion Reach for a generated system when a
 ## different one is picked (see SystemGen). Orion Reach keeps the scene as-is.
 func _build_system() -> void:
+	system_settings = SystemGen.settings(GameState.system_id, GameState.system_seed)
+	_apply_system_look(system_settings)
 	if GameState.system_id == "orion_reach":
 		return
-	var sys := SystemGen.find(GameState.system_id)
-	var params: Dictionary = sys.get("params", {})
-	if GameState.system_id == "random" or params.is_empty():
-		params = SystemGen.random_params(GameState.system_seed)
-	var layout := SystemGen.generate(GameState.system_seed, params)
+	var layout := SystemGen.generate(GameState.system_seed, system_settings)
 	for root in [$World/Planets, $World/Asteroids, starbases_root, ships_root]:
 		for n in root.get_children():
 			root.remove_child(n)
@@ -484,7 +497,7 @@ func starbase_site_problem(pos: Vector2) -> String:
 		if p.global_position.distance_to(pos) < p.radius + 40.0:
 			return "Too close to a planet"
 	for s in get_tree().get_nodes_in_group("stars"):
-		if s.global_position.distance_to(pos) < Star.RADIATION_RADIUS + 40.0:
+		if s.global_position.distance_to(pos) < s.radiation_radius + 40.0:
 			return "Too close to the star"
 	return ""
 
@@ -871,7 +884,7 @@ func _focus_star(s: Star) -> void:
 
 func star_at(world_pos: Vector2) -> Star:
 	for s in get_tree().get_nodes_in_group("stars"):
-		if s is Star and world_pos.distance_to(s.global_position) <= Star.CORE_RADIUS + 6.0:
+		if s is Star and world_pos.distance_to(s.global_position) <= s.core_radius + 6.0:
 			return s
 	return null
 
@@ -1220,7 +1233,7 @@ func _enter_dev_capture() -> void:
 		tk.start()
 		get_tree().create_timer(25.0).timeout.connect(func():
 			for i in 3:
-				print("CROSSER %d closest %.0f (zone %.0f)" % [i, closest.get(i, -1.0), Star.RADIATION_RADIUS])
+				print("CROSSER %d closest %.0f (zone %.0f)" % [i, closest.get(i, -1.0), get_tree().get_nodes_in_group("stars")[0].radiation_radius])
 			print("HEALTHY closest %.0f hp %.0f%%   HURT closest %.0f hp %.0f%%" % [closest.get(3, -1.0), 100 * closest.get("hp3", 0.0), closest.get(4, -1.0), 100 * closest.get("hp4", 0.0)]))
 		center_on(Vector2.ZERO)
 	if OS.get_environment("SL_SYSTEM_TEST") != "":

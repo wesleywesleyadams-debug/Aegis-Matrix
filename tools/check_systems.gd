@@ -9,9 +9,9 @@ func _init() -> void:
 	var cases: Array = []
 	for s in SystemGen.SYSTEMS:
 		if s.has("seed"):
-			cases.append([s["seed"], s["params"], s["name"]])
+			cases.append([s["seed"], SystemGen.settings(s["id"], s["seed"]), s["name"]])
 	for seed in range(1, 401):
-		cases.append([seed, SystemGen.random_params(seed), "random %d" % seed])
+		cases.append([seed, SystemGen.settings("random", seed), "random %d" % seed])
 	var tot_p := 0
 	var tot_r := 0
 	var min_p := 999
@@ -23,7 +23,7 @@ func _init() -> void:
 			if names.has(p["name"]):
 				errs.append("dup name " + p["name"])
 			names[p["name"]] = true
-			if p["pos"].length() < SystemGen.STAR_CLEAR:
+			if p["pos"].length() < SystemGen.star_clear:
 				errs.append("planet near star")
 			if not SystemGen._inside(p["pos"]):
 				errs.append("planet outside")
