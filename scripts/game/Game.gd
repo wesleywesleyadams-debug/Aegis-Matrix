@@ -1890,7 +1890,7 @@ func _enter_dev_capture() -> void:
 		center_on(gas_p.global_position)
 	if OS.get_environment("SL_SHOT_OPEN") == "research":
 		queue_research(player_id, "ion_cannons")
-		queue_research(player_id, "plasma_lances")
+		queue_research(player_id, "particle_lances")
 	await get_tree().create_timer(secs).timeout
 	match OS.get_environment("SL_SHOT_OPEN"):
 		"pause":

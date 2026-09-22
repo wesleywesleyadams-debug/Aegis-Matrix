@@ -19,7 +19,7 @@ const DECIDE := 2.0
 
 ## Research grouped the way a commander thinks about it.
 const TECH_GROUPS := {
-	"research_offense": ["ion_cannons", "plasma_lances", "cruiser_doctrine", "dark_matter"],
+	"research_offense": ["ion_cannons", "particle_lances", "cruiser_doctrine", "dark_matter"],
 	"research_defense": ["deflectors", "phase_shields", "aegis_matrix", "composite_plating", "reactive_armor",
 		"neutronium_armor", "reinforced_frames", "nanite_plating", "adaptive_hulls"],
 	"research_economy": ["hydroponics", "deep_drills", "gas_skimming", "gene_clinics", "arcologies",
