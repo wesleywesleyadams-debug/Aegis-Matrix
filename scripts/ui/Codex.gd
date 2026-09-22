@@ -333,11 +333,8 @@ func _page_ships() -> void:
 		col.add_child(_label("%s over %ds  ·  upkeep %.2f energy/s" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 14))
 		if d.has("job"):
 			col.add_child(_wrap("Job — %s: %s" % [Defs.JOBS[d["job"]]["name"], Defs.JOBS[d["job"]]["desc"]], Defs.JOBS[d["job"]]["color"], 14))
-		if Defs.VARIANTS_OF.has(t):
-			var vs: Array = []
-			for v in Defs.VARIANTS_OF[t]:
-				vs.append(Defs.VARIANTS[v]["label"])
-			col.add_child(_label("Refits at a Weapons Depot into: " + ", ".join(vs), EDGE_LIT, 14))
+		if SHIP_NOTES.has(t):
+			col.add_child(_wrap(SHIP_NOTES[t], DIM, 14))
 		_body.add_child(card)
 
 func _page_economy() -> void:
@@ -474,3 +471,15 @@ func _page_controls() -> void:
 		["Game speed", ["-  /  =  (Backspace resets)", EDGE_LIT]],
 		["Clear the selection; with nothing selected, the menu", ["Esc", EDGE_LIT]],
 	])
+
+## What each ship is for, beyond its stats. Warship variants and the depot
+## are covered in Combat, so they aren't repeated here.
+const SHIP_NOTES := {
+	"miner": "Hauls ore. Right-click an asteroid to mine it and it shuttles loads back to a starbase on its own; orange-flecked rocks carry spice. Asteroids run dry, so miners keep moving outward as a belt empties.",
+	"skimmer": "Mines minerals from gas giants, which never run out but refill slowly after being drained, and harvests spice gas inside a spice nebula: right-click a spot in the cloud and it works there, slowly and indefinitely.",
+	"colony": "Settles a free world, and is used up doing it. Colonizing takes a minute in orbit and the new colony starts small, so send it early and guard it: an unescorted colony ship is the cheapest kill on the map.",
+	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
+	"scout": "Cheap, fast and unarmed: its only job is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
+	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
+	"heatshield": "Lets a fleet fight where others can't: inside a star's radiation and inside a spice nebula, where shields normally drain away.",
+}

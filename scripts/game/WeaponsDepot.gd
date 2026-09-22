@@ -93,10 +93,12 @@ func _refit(delta: float) -> void:
 	var g := Game.instance
 	for i in range(bays.size() - 1, -1, -1):
 		var bay: Dictionary = bays[i]
-		var s: Ship = bay["ship"]
-		if not is_instance_valid(s) or not s.is_alive():
+		# Untyped until checked: a docked ship can be freed by a save load.
+		var ship = bay["ship"]
+		if not is_instance_valid(ship) or not ship.is_alive():
 			bays.remove_at(i)
 			continue
+		var s: Ship = ship
 		var r: Dictionary = s.def["refit"]
 		var per_sec := {}
 		for k in r:
@@ -169,8 +171,9 @@ func cancel_all() -> void:
 ## 60% of its shields, armor and hull in the blast. Some won't survive it.
 func _die() -> void:
 	for bay in bays.duplicate():
-		var s: Ship = bay["ship"]
-		if is_instance_valid(s) and s.is_alive():
+		var ship = bay["ship"]
+		if is_instance_valid(ship) and ship.is_alive():
+			var s: Ship = ship
 			s.leave_depot(self)
 			s.shield = maxf(0.0, s.shield - s.max_shield * 0.6)
 			s.armor = maxf(0.0, s.armor - s.max_armor * 0.6)

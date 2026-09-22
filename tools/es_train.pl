@@ -26,9 +26,10 @@ my $LR = $ENV{LR} // 0.03;
 my $EVAL_EVERY = $ENV{EVAL_EVERY} // 5;
 my $SEEDS = $ENV{SEEDS} // 2;
 my $EVAL_GAMES = $ENV{EVAL_GAMES} // 10;
-# Self-play: SELFPLAY=1 makes every other pair play a snapshot of the best
-# network (ai/train/opp.json, refreshed on each new best) instead of the
-# scripted AI. Evaluations always use the scripted AI (comparable scores).
+# Self-play: SELFPLAY=1 pits every candidate against a snapshot of the best
+# network so far (ai/train/opp.json, refreshed on each new best) instead of
+# the scripted AI, so the AI improves by fighting itself. Evaluations still
+# use the scripted AI as a fixed yardstick (comparable scores across runs).
 my $SELFPLAY = $ENV{SELFPLAY} // 0;
 my $GODOT = $ENV{GODOT} // "/c/Users/whole/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe";
 my ($N_IN, $N_H, $N_OUT) = (40, 28, 19);
@@ -46,7 +47,12 @@ my $TAG = $ENV{TAG} // "";
 sub res_path { my $name = "$TAG" . shift; return ("ai/train/$name", "res://ai/train/$name") }
 my $json = JSON::PP->new->canonical;
 my ($OPP_FILE, $OPP_RES) = res_path("opp.json");
-if ($SELFPLAY and -e "ai/commander.json") { copy("ai/commander.json", $OPP_FILE) or die "opp snapshot: $!" }
+if ($SELFPLAY) {
+	# Start self-play against a fresh random network when there is no shipped
+	# one to copy (a new network shape, or a fresh run).
+	if (-e "ai/commander.json") { copy("ai/commander.json", $OPP_FILE) or die "opp snapshot: $!" }
+	else { weights_file($OPP_FILE, [map { gauss() * 0.1 } 1 .. $NP]) }
+}
 
 sub gauss { my $u1 = rand() || 1e-12; my $u2 = rand(); return sqrt(-2 * log($u1)) * cos(6.283185307 * $u2) }
 sub slurp { my $f = shift; open my $h, "<", $f or return undef; local $/; my $d = <$h>; close $h; return $d }
@@ -107,7 +113,7 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 			# same seeds, so their difference reflects the weights, not luck.
 			for my $m (1 .. $SEEDS) {
 				my $sys = $SYSTEMS[($g * $PAIRS + $k * $SEEDS + $m) % @SYSTEMS];
-				my $opp = ($SELFPLAY and $k % 2 == 1) ? $OPP_RES : "-";
+				my $opp = $SELFPLAY ? $OPP_RES : "-";
 				push @jobs, ["rl${c}m${m}s$_", $cres, $_, "g${g}k${k}m${m}s$_", $sys, $opp] for (1, 2);
 			}
 		}

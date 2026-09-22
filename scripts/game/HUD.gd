@@ -1283,9 +1283,10 @@ func _build_depot_panel(d: WeaponsDepot) -> void:
 		_sel_body.add_child(_label("No ships docked.", DIM, 13))
 		return
 	for bay in d.bays:
-		var s: Ship = bay["ship"]
-		if not is_instance_valid(s):
+		var ship = bay["ship"]
+		if not is_instance_valid(ship):
 			continue
+		var s: Ship = ship
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		var lab := _label("%s  ->  %s %s   (%ds left)" % [s.def["name"], vd["label"], s.def["name"], int(ceil(bay["left"]))], vd["color"], 14)

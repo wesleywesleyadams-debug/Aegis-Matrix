@@ -6,8 +6,6 @@ extends Node
 ## starbase, and launches growing attack waves.
 
 const TARGET_MINERS := 6
-## Earliest game time for an attack wave (seconds).
-const FIRST_WAVE_TIME := 420.0
 
 var players: Array[int] = []
 var _state := {}
@@ -190,10 +188,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		if ep and ep.pop < 4000.0 and s.global_position.distance_to(ep.global_position) < 350.0:
 			s.order_bombard(ep)
 			idle.erase(s)
-	# No attack waves in the opening minutes: build up first.
 	# Attack mode (clearly stronger): go now with a smaller wave.
 	var need: int = 6 if mode == "attack" else st["wave"]
-	if mode != "build_up" and idle.size() >= need and Game.now() >= FIRST_WAVE_TIME:
+	if mode != "build_up" and idle.size() >= need:
 		var goal := _attack_goal(pid, base.global_position, game)
 		for s in idle:
 			s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
