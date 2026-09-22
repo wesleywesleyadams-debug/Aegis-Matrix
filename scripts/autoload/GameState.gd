@@ -49,6 +49,8 @@ var human_player_id: int = 1
 ## Which New Game option started this match setup: "single" or "multi"
 ## (both use the same lobby for now; networking isn't implemented yet).
 var game_mode: String = "single"
+## AI opponents use the trained neural commander (res://ai/commander.json).
+var neural_ai: bool = false
 ## Which star system the next match uses (SystemGen.SYSTEMS id) and, for
 ## generated ones, the seed it was built from (set when the match starts).
 var system_id: String = "orion_reach"

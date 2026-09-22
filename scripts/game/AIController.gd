@@ -18,6 +18,18 @@ func setup(ai_players: Array) -> void:
 	for pid in ai_players:
 		players.append(pid)
 		_state[pid] = saved_state.get(pid, {"wave": 10, "timer": randf(), "claimers": []})
+		# Learned commander (NeuralCommander): for training, SL_NN_WEIGHTS +
+		# SL_NN_SIDE pick the side; in normal play GameState.neural_ai puts
+		# the trained res://ai/commander.json in charge of every AI side.
+		var path := ""
+		if OS.get_environment("SL_NN_WEIGHTS") != "" and int(OS.get_environment("SL_NN_SIDE")) == pid:
+			path = OS.get_environment("SL_NN_WEIGHTS")
+		elif GameState.neural_ai and OS.get_environment("SL_SIM") == "":
+			path = "res://ai/commander.json"
+		if path != "":
+			var net := NeuralNet.load_json(path)
+			if net:
+				_state[pid]["nn"] = NeuralCommander.new(net, pid)
 
 func _process(delta: float) -> void:
 	var game := Game.instance
@@ -44,7 +56,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	var colonists := ships.filter(func(s): return s.def["role"] == "colony")
 	if OS.get_environment("SL_AI_DEBUG") != "" and int(Game.now()) % 20 == 0:
 		print("AIDBG t=%d pid=%d mode=%s queue=%s stalled=%s stall=%s blocked=%s prog=%.1f" % [Game.now(), pid, st.get("mode", ""), str(base.queue), str(base.build_stalled), str(st.get("stall", 0)), str(st.get("blocked", {})), base.build_progress])
-	_rethink(pid, st, game, base, war)
+	var nn: NeuralCommander = st.get("nn")
+	if nn == null:
+		_rethink(pid, st, game, base, war)
 	_manage_queues(pid, st, game, base)
 	var mode: String = st.get("mode", "expand")
 
@@ -57,7 +71,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			game.queue_research(pid, options.pick_random())
 
 	# Builds: only queue when stockpiles can roughly cover the next item.
-	if base.queue.size() < 2:
+	if nn == null and base.queue.size() < 2:
 		var free_planet := _nearest_planet(base.global_position, game, func(p): return p.owner_id == 0)
 		if miners.size() + base.queue.count("miner") < TARGET_MINERS:
 			base.enqueue("miner")
@@ -114,6 +128,11 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		for i in p.fields:
 			if p.order_build(i, pick) == "":
 				break
+
+	# The learned commander decides builds and fleet moves itself.
+	if nn != null:
+		nn.tick(game, base, self)
+		return
 
 	# Defend: enemies near the starbase pull every warship home.
 	var threat := game.nearest_enemy(base, 450.0)

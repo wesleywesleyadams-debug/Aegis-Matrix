@@ -44,6 +44,8 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 	# AI claimer lists hold node refs; they're rebuilt as the AI thinks.
 	for pid in data["ai"]:
 		data["ai"][pid].erase("claimers")
+		# The network isn't saved; it's reloaded from its weights file.
+		data["ai"][pid].erase("nn")
 	for p in tree.get_nodes_in_group("planets"):
 		data["planets"][p.name] = {
 			"owner": p.owner_id, "pop": p.pop, "buildings": Array(p.buildings),

@@ -67,6 +67,15 @@ func _sample(t: float) -> Dictionary:
 			"techs": g.researched[pid].size(), "mode": str(g.ai._state.get(pid, {}).get("mode", ""))}
 	return out
 
+## How often each side's neural commander picked each action (if any).
+func _nn_actions() -> Dictionary:
+	var out := {}
+	for pid in Game.instance.ai._state:
+		var nn = Game.instance.ai._state[pid].get("nn")
+		if nn:
+			out[str(pid)] = nn.counts
+	return out
+
 func _finish(reason: String, winner: int) -> void:
 	if _done:
 		return
@@ -74,7 +83,7 @@ func _finish(reason: String, winner: int) -> void:
 	samples.append(_sample(Game.now()))
 	var result := {"system": GameState.system_id, "seed": GameState.system_seed, "run": run_id, "winner": winner,
 		"reason": reason, "minutes": snappedf(Game.now() / 60.0, 0.1), "real_seconds": snappedf((Time.get_ticks_msec() - _t0_ms) / 1000.0, 0.1),
-		"samples": samples}
+		"samples": samples, "nn_actions": _nn_actions()}
 	DirAccess.make_dir_recursive_absolute("user://sims")
 	var f := FileAccess.open("user://sims/%s_%s.json" % [GameState.system_id, run_id], FileAccess.WRITE)
 	if f:
