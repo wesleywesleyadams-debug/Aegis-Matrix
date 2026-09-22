@@ -1,6 +1,8 @@
 # Star Lords — Defense layers, ship variants and the Weapons Depot
 
-Reference for the combat design. A color-coded version with the ship sprites is
+Reference for the combat design. In game it is the Codex screen
+(title menu > Codex > Combat), which builds these tables from the same data at
+runtime. A color-coded version with the ship sprites is
 `docs/ship-variants.html` (open it in a browser). Numbers live in `scripts/game/Defs.gd`
 (`SHIPS`, `VARIANTS`, `VARIANTS_OF`, `WEAPONS_DEPOT`, `LAYER_COLORS`); the damage
 maths is in `SpaceEntity.take_damage`.
@@ -39,7 +41,7 @@ its generalist.**
 | **Breacher** | x2.2 vs **armor** | 80% | red | two ribs across the hull |
 | **Reaver** | x1.9 vs **hull** | 80% | green | saw teeth along both edges |
 | **Slip** | **ignores shields** (armor + hull) | 65% | orange V-shots | two stripes either side of the spine |
-| **Disruptor** | **ignores shields and armor** (hull only) | 40% | green V-shots | a row of V chevrons |
+| **Disruptor** | **ignores shields and armor** (hull only) | 40% | purple V-shots | a row of V chevrons |
 
 Hull markings are always drawn in the owner's player color, so the pattern alone
 names the variant (one line, two ribs, saw teeth, two stripes, chevrons); the

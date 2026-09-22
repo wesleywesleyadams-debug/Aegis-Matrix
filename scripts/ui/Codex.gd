@@ -1,0 +1,424 @@
+extends Control
+## In-game Codex: the manual, built from the game's own data (Defs.SHIPS,
+## VARIANTS, JOBS, TECHS, BUILDINGS, PLANET_TYPES, SystemGen.SYSTEMS), so it
+## always matches the current balance instead of repeating it in prose.
+## Reached from the title menu's Codex button; docs/SHIP_VARIANTS.md is the
+## same material outside the game.
+
+const BG := Color("0a0c1a")
+const PANEL := Color("141833")
+const EDGE := Color("2b3a6b")
+const EDGE_LIT := Color("4fb4ff")
+const TEXT := Color("c9d3e8")
+const DIM := Color("7c88ab")
+
+const SECTIONS := [
+	["overview", "Overview"],
+	["combat", "Combat"],
+	["ships", "Ships"],
+	["economy", "Economy"],
+	["systems", "Systems"],
+	["terms", "Terminology"],
+]
+
+var _body: VBoxContainer
+var _nav_buttons := {}
+var _current := "overview"
+
+func _ready() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	var bg := ColorRect.new()
+	bg.color = BG
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+
+	var root := VBoxContainer.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.offset_left = 40
+	root.offset_top = 28
+	root.offset_right = -40
+	root.offset_bottom = -28
+	root.add_theme_constant_override("separation", 14)
+	add_child(root)
+
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 16)
+	root.add_child(head)
+	var title := _label("CODEX", TEXT, 34)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var back := Button.new()
+	back.text = "Back to Title"
+	back.focus_mode = Control.FOCUS_NONE
+	back.pressed.connect(_back)
+	MenuStyle.button(back)
+	head.add_child(back)
+
+	var cols := HBoxContainer.new()
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cols.add_theme_constant_override("separation", 16)
+	root.add_child(cols)
+
+	var nav := VBoxContainer.new()
+	nav.custom_minimum_size = Vector2(260, 0)
+	nav.add_theme_constant_override("separation", 8)
+	cols.add_child(nav)
+	for s in SECTIONS:
+		var b := Button.new()
+		b.text = s[1]
+		b.custom_minimum_size = Vector2(0, 52)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 20)
+		b.pressed.connect(func(): _show(s[0]))
+		nav.add_child(b)
+		_nav_buttons[s[0]] = b
+
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", _panel_style())
+	cols.add_child(panel)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	_body = VBoxContainer.new()
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.add_theme_constant_override("separation", 12)
+	scroll.add_child(_body)
+
+	_show("overview")
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		_back()
+		get_viewport().set_input_as_handled()
+
+func _back() -> void:
+	get_tree().change_scene_to_file("res://scenes/TitleMenu.tscn")
+
+# ---------------------------------------------------------------- widgets
+
+func _label(text: String, color: Color = TEXT, size: int = 16) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_color_override("font_color", color)
+	l.add_theme_font_size_override("font_size", size)
+	return l
+
+func _wrap(text: String, color: Color = TEXT, size: int = 15) -> Label:
+	var l := _label(text, color, size)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(760, 0)
+	return l
+
+func _panel_style(border: Color = EDGE) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = PANEL
+	sb.border_color = border
+	sb.set_border_width_all(2)
+	sb.set_content_margin_all(16)
+	return sb
+
+func _heading(text: String, color: Color = TEXT) -> void:
+	var l := _label(text, color, 24)
+	_body.add_child(l)
+
+func _para(text: String) -> void:
+	_body.add_child(_wrap(text, DIM))
+
+## A table: `cols` are header strings, `rows` are arrays of [text, color]
+## pairs or plain strings.
+func _table(cols: Array, rows: Array) -> void:
+	var grid := GridContainer.new()
+	grid.columns = cols.size()
+	grid.add_theme_constant_override("h_separation", 22)
+	grid.add_theme_constant_override("v_separation", 4)
+	for c in cols:
+		grid.add_child(_label(str(c), EDGE_LIT, 14))
+	for row in rows:
+		for cell in row:
+			if cell is Array:
+				grid.add_child(_label(str(cell[0]), cell[1], 15))
+			else:
+				grid.add_child(_label(str(cell), TEXT, 15))
+	_body.add_child(grid)
+
+## A small pixel sprite (ships, icons) at `scale_px`.
+func _sprite(name: String, scale_px: int, team: bool = false) -> Control:
+	var stack := Control.new()
+	var base := TextureRect.new()
+	base.texture = Defs.tex(name)
+	base.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	base.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	base.custom_minimum_size = base.texture.get_size() * scale_px
+	stack.custom_minimum_size = base.custom_minimum_size
+	stack.add_child(base)
+	if team:
+		var tm := TextureRect.new()
+		tm.texture = Defs.tex(name + "_team")
+		tm.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tm.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tm.custom_minimum_size = base.custom_minimum_size
+		tm.modulate = Defs.team_color(1)
+		stack.add_child(tm)
+	return stack
+
+func _rule() -> void:
+	var r := ColorRect.new()
+	r.color = EDGE
+	r.custom_minimum_size = Vector2(0, 2)
+	_body.add_child(r)
+
+# ---------------------------------------------------------------- sections
+
+func _show(id: String) -> void:
+	_current = id
+	for k in _nav_buttons:
+		_nav_buttons[k].add_theme_color_override("font_color", EDGE_LIT if k == id else TEXT)
+	for c in _body.get_children():
+		c.queue_free()
+	match id:
+		"overview": _page_overview()
+		"combat": _page_combat()
+		"ships": _page_ships()
+		"economy": _page_economy()
+		"systems": _page_systems()
+		"terms": _page_terms()
+
+func _page_overview() -> void:
+	_heading("Star Lords")
+	_para("A match is won by destroying every enemy starbase. Starbases build ships and receive the cargo your miners haul in; lose your last one and the match is over.")
+	_heading("The loop", EDGE_LIT)
+	_para("Mine the belts and gas giants, settle free worlds, build farms and power plants so your population and fleet can grow, research what your strategy needs, and take the fight to the enemy before their economy outgrows yours.")
+	_heading("What you can see", EDGE_LIT)
+	_para("Sensors give fog of war. Unexplored space is black; explored space you can't currently see is dimmed and shows only terrain and the last owner you saw on a planet. Enemy ships and shots appear only inside your sensor range, and an enemy starbase stays on your map once you have seen it. Ships in a spice nebula are hidden unless something of yours is close, a Scout is close, or one of its beacons is watching; ion storms halve sensor range. The AI plays under exactly the same rules.")
+	_heading("Resources", EDGE_LIT)
+	_table(["Resource", "Comes from", "Pays for"], [
+		[["Food", Color("8fe060")], "Farms only", "1 per pop per minute; starving pops die"],
+		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes, starbase refineries", "Ships, buildings, starbases"],
+		[["Energy", Color("ffd84a")], "Power plants, starbase reactors", "Research, fleet and starbase upkeep, shield regeneration"],
+		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1"],
+	])
+
+func _page_combat() -> void:
+	_heading("Defense layers")
+	_para("Damage drains shields, then armor, then hull. A ship dies when its hull reaches 0.")
+	_table(["Layer", "Regenerates", "Notes"], [
+		[["Shields", Defs.LAYER_COLORS["shield"]], "Yes, for a little energy", "Drained inside spice nebulae"],
+		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender restores it"],
+		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
+	])
+	_rule()
+	_heading("Generalists")
+	_para("Each generalist carries the same total toughness split differently, which is what gives specialists something to specialize against.")
+	var rows: Array = []
+	for t in ["corvette", "destroyer", "cruiser"]:
+		var d: Dictionary = Defs.SHIPS[t]
+		var lean := "hull"
+		if d["shield"] >= d["armor"] and d["shield"] >= d["hp"]:
+			lean = "shields"
+		elif d["armor"] >= d["shield"] and d["armor"] >= d["hp"]:
+			lean = "armor"
+		rows.append([d["name"], [str(int(d["shield"])), Defs.LAYER_COLORS["shield"]], [str(int(d.get("armor", 0))), Defs.LAYER_COLORS["armor"]],
+			[str(int(d["hp"])), Defs.LAYER_COLORS["hull"]], [lean, Defs.LAYER_COLORS[lean.trim_suffix("s")]]])
+	var sb: Dictionary = Defs.STARBASE
+	rows.append(["Starbase", [str(int(sb["shield"])), Defs.LAYER_COLORS["shield"]], [str(int(sb.get("armor", 0))), Defs.LAYER_COLORS["armor"]],
+		[str(int(sb["hp"])), Defs.LAYER_COLORS["hull"]], "hull"])
+	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
+	_rule()
+	_heading("Specialist variants")
+	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist; hull markings are in your player color, so the pattern names the variant and the shot color names the layer it hits.")
+	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], "none"]]
+	var marks := {"ion": "one line down the spine", "breacher": "two ribs across the hull", "reaver": "saw teeth along both edges",
+		"slip": "two stripes either side of the spine", "disruptor": "a row of V chevrons"}
+	var shots := {"ion": "light blue laser", "breacher": "red laser", "reaver": "green laser",
+		"slip": "orange V-shot", "disruptor": "purple V-shot"}
+	for v in Defs.VARIANTS:
+		var vd: Dictionary = Defs.VARIANTS[v]
+		var effect := ""
+		if vd["pierce"] >= 2:
+			effect = "ignores shields and armor"
+		elif vd["pierce"] == 1:
+			effect = "ignores shields"
+		else:
+			for layer in vd["vs"]:
+				effect = "x%.1f vs %s" % [vd["vs"][layer], layer]
+		vrows.append([[vd["label"], vd["color"]], effect, "%d%%" % int(vd["damage"] * 100.0), [shots[v], vd["color"]], marks[v]])
+	_table(["Variant", "Effect", "Base damage", "Shots", "Markings"], vrows)
+	_rule()
+	_heading("Which variant against what")
+	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is the same, lower kills faster. Figures come straight from the ships' current stats.")
+	var head: Array = ["Target"]
+	for v in Defs.VARIANTS:
+		head.append(Defs.VARIANTS[v]["label"])
+	var mrows: Array = []
+	for t in ["corvette", "destroyer", "cruiser"]:
+		var row: Array = [Defs.SHIPS[t]["name"]]
+		for v in Defs.VARIANTS:
+			var r := Defs.kill_ratio(Defs.SHIPS[t], v)
+			row.append(["%.2f" % r, Defs.LAYER_COLORS["hull"] if r < 0.98 else (Defs.LAYER_COLORS["armor"] if r > 1.05 else TEXT)])
+		mrows.append(row)
+	var sbrow: Array = ["Starbase"]
+	for v in Defs.VARIANTS:
+		var r2 := Defs.kill_ratio(Defs.STARBASE, v)
+		sbrow.append(["%.2f" % r2, Defs.LAYER_COLORS["hull"] if r2 < 0.98 else (Defs.LAYER_COLORS["armor"] if r2 > 1.05 else TEXT)])
+	mrows.append(sbrow)
+	_table(head, mrows)
+	_rule()
+	_heading("Weapons Depot")
+	var wd: Dictionary = Defs.WEAPONS_DEPOT
+	_para("A Constructor builds a Weapons Depot (E) for %s over %ds. Select generalist warships and pick a refit: they fly to the nearest depot, dock, and convert for %s over %ds. A specialist can never be refitted again, and starbases build generalists only, so every specialist passes through a depot." % [
+		Defs.cost_text(wd["cost"]), int(wd["build_time"]), Defs.cost_text(wd["refit_cost"]), int(wd["refit_time"])])
+	_rule()
+	_heading("Defense research")
+	_para("Three lines on the research screen's Defenses tab, expensive on purpose: committing to a layer is a strategic choice.")
+	var lines := {"shields": "shield", "armor": "armor", "hull": "hull"}
+	for line in lines:
+		var lrows: Array = []
+		for id in Defs.TECHS:
+			var t: Dictionary = Defs.TECHS[id]
+			if t.get("line", "") == line:
+				lrows.append([[t["name"], Defs.LAYER_COLORS[lines[line]]], "Tier %d" % t["tier"], Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t["desc"]])
+		_table([line.to_upper(), "", "Cost", "Time", "Effect"], lrows)
+	_rule()
+	_heading("Ship jobs")
+	_para("Jobs are what a ship is for beyond its guns. Passive jobs always work; an active one is used with Q or its button in the ship panel.")
+	var jrows: Array = []
+	for j in Defs.JOBS:
+		var jd: Dictionary = Defs.JOBS[j]
+		var owners: Array = []
+		for s in Defs.SHIPS:
+			if Defs.SHIPS[s].get("job", "") == j and not Defs.SHIPS[s].has("variant"):
+				owners.append(Defs.SHIPS[s]["name"])
+		jrows.append([[jd["name"], jd["color"]], ", ".join(owners), "Q, %ds" % int(jd.get("cooldown", 0)) if jd.get("active", false) else "passive"])
+	_table(["Job", "Ships", "Use"], jrows)
+	for j in Defs.JOBS:
+		_body.add_child(_wrap("%s: %s" % [Defs.JOBS[j]["name"], Defs.JOBS[j]["desc"]], DIM, 14))
+
+func _page_ships() -> void:
+	_heading("Every ship")
+	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat).")
+	for t in Defs.BUILD_ORDER:
+		var d: Dictionary = Defs.SHIPS[t]
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _panel_style())
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		card.add_child(row)
+		row.add_child(_sprite("ship_" + t, 3, true))
+		var col := VBoxContainer.new()
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(col)
+		var name_row := HBoxContainer.new()
+		name_row.add_theme_constant_override("separation", 12)
+		name_row.add_child(_label(d["name"], TEXT, 20))
+		if d.has("hotkey"):
+			name_row.add_child(_label("[%s]" % OS.get_keycode_string(d["hotkey"]), DIM, 16))
+		if d.has("requires"):
+			name_row.add_child(_label("needs %s" % Defs.TECHS[d["requires"]]["name"], Color("ffd84a"), 14))
+		col.add_child(name_row)
+		var stats := "%s  ·  %s shield / %s armor / %s hull  ·  speed %d  ·  sensors %d" % [
+			d["role"].capitalize(), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), int(d["speed"]), int(d.get("sensor", 260))]
+		if d["weapon"] != "":
+			stats += "  ·  %s %d dmg / %.1fs, range %d" % [d["weapon"], int(d["damage"]), d["cooldown"], int(d["range"])]
+		col.add_child(_label(stats, DIM, 14))
+		col.add_child(_label("%s over %ds  ·  upkeep %.2f energy/s" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 14))
+		if d.has("job"):
+			col.add_child(_wrap("Job — %s: %s" % [Defs.JOBS[d["job"]]["name"], Defs.JOBS[d["job"]]["desc"]], Defs.JOBS[d["job"]]["color"], 14))
+		if Defs.VARIANTS_OF.has(t):
+			var vs: Array = []
+			for v in Defs.VARIANTS_OF[t]:
+				vs.append(Defs.VARIANTS[v]["label"])
+			col.add_child(_label("Refits at a Weapons Depot into: " + ", ".join(vs), EDGE_LIT, 14))
+		_body.add_child(card)
+
+func _page_economy() -> void:
+	_heading("Planets")
+	_para("A planet's size is its number of fields, one building each, and its population cap is size x %d. Colonies start at %d pops. Pops eat 1 food per minute; unfed pops starve. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP)])
+	var prows: Array = []
+	for p in Defs.PLANET_TYPES:
+		var pd: Dictionary = Defs.PLANET_TYPES[p]
+		prows.append([pd["label"], "yes" if pd.get("habitable", true) else "no (gas giant)",
+			"%.2f" % pd["fertility"], str(pd.get("spice_reserve", pd.get("gas_reserve", 0)))])
+	_table(["Type", "Habitable", "Fertility", "Spice / gas reserve"], prows)
+	_rule()
+	_heading("Buildings")
+	var brows: Array = []
+	for b in Defs.BUILDINGS:
+		var bd: Dictionary = Defs.BUILDINGS[b]
+		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), str(bd["pop"]) + " pop", bd["desc"]])
+	_table(["Building", "Cost", "Time", "Staff", "Effect"], brows)
+	_rule()
+	_heading("Upkeep")
+	_para("Every ship costs energy per second, and the total is multiplied as the fleet grows (1 + (ships/%d)^2), so fleets plateau instead of growing forever. Starbases have their own steeper curve, which makes more than a handful expensive. With no energy in the stockpile, starbases stop producing and your ships move and fire at %d%% speed." % [int(Defs.UPKEEP_SCALE_SHIPS), int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
+
+func _page_systems() -> void:
+	_heading("Systems")
+	_para("Every system is point-symmetric, so both players start with the same terrain. Each has its own star, look and signature feature.")
+	for s in SystemGen.SYSTEMS:
+		if s["id"] == "random":
+			continue
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _panel_style())
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 4)
+		card.add_child(col)
+		var star: Dictionary = Defs.STAR_TYPES.get(s.get("star", "yellow"), {})
+		col.add_child(_label(s["name"], star.get("tint", TEXT), 20))
+		col.add_child(_label("%s  ·  %s" % [s["desc"], star.get("label", "")], DIM, 14))
+		col.add_child(_wrap(s.get("arrival", ""), TEXT, 15))
+		var feature: String = s.get("feature", "")
+		if feature != "":
+			var ftext: String = {
+				"binary": "Twin suns: two radiation zones circle the center, and the safe lane between them keeps moving.",
+				"spice_nebula": "Spice nebula: shields drain inside it and won't recharge, ships hide in it, and Gas Skimmers can harvest spice there.",
+				"rings": "Debris ring: an impassable wall of rubble with a few gaps, which makes those gaps chokepoints.",
+				"storms": "Ion storms: sweeping arms slow ships to 40% and halve sensors while they pass.",
+			}.get(feature, feature)
+			col.add_child(_wrap(ftext, EDGE_LIT, 14))
+		_body.add_child(card)
+	_rule()
+	_heading("The star")
+	var srows: Array = []
+	for st in Defs.STAR_TYPES:
+		var sd: Dictionary = Defs.STAR_TYPES[st]
+		srows.append([[sd["label"], sd["tint"]], "%d px" % int(sd["zone"]), "%d dps" % int(sd["dps"])])
+	_table(["Star", "Radiation zone", "Damage at the surface"], srows)
+	_para("Radiation damages anything inside the zone, worst at the surface. A Heat Shield Frigate protects ships around it, and its Surge blocks radiation completely for a few seconds.")
+
+func _page_terms() -> void:
+	_heading("Terminology")
+	var terms := [
+		["System", "The map: one star (or two), its planets, belts and features. Called a system, not a map."],
+		["Starbase", "Your production station. It builds ships, takes in cargo, defends itself, and losing them all loses the match."],
+		["Weapons Depot", "Constructor-built station where a generalist warship is refitted into a specialist variant, permanently."],
+		["Generalist", "Corvette, Destroyer or Cruiser as built: full damage to every defense layer."],
+		["Specialist / variant", "A refitted warship: Ion, Breacher, Reaver, Slip or Disruptor."],
+		["Layers", "Shields, armor and hull, in the order damage takes them."],
+		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
+		["Job", "What a ship is for beyond shooting: Swarm, Escort, Barrage, Deep Sensors, Heat Screen, Field Repair."],
+		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
+		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
+		["Upkeep", "Energy per second for ships and starbases, rising as your fleet grows."],
+		["Spice", "The rare resource. Buys advanced hulls and techs, and automatically covers a shortfall in anything else."],
+		["Bombard", "Firing on an enemy planet to kill its population; at zero pops its buildings are destroyed and it goes neutral."],
+		["Colonize", "Settling a free world with a Colony Ship, which is used up in the process."],
+	]
+	for t in terms:
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 0)
+		row.add_child(_label(t[0], EDGE_LIT, 17))
+		row.add_child(_wrap(t[1], DIM, 15))
+		_body.add_child(row)
+
+## Dev aid: SL_CODEX_SHOT=<section> opens that page, saves
+## user://codex.png and quits.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_READY and OS.get_environment("SL_CODEX_SHOT") != "":
+		await get_tree().create_timer(0.6).timeout
+		_show(OS.get_environment("SL_CODEX_SHOT"))
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("user://codex.png")
+		get_tree().quit()

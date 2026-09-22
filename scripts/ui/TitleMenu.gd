@@ -302,6 +302,13 @@ var _credits: Control
 ## panel per area (Music, Art, Sound & AI, Engine & Development), laid out
 ## like the Options menu (same panel columns: OptionsMenu._column).
 func _build_credits() -> void:
+	var codex := Button.new()
+	codex.text = "Codex"
+	codex.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/Codex.tscn"))
+	vbox.add_child(codex)
+	vbox.move_child(codex, options_button.get_index() + 1)
+	MenuStyle.button(codex)
+
 	var btn := Button.new()
 	btn.text = "Credits"
 	vbox.add_child(btn)

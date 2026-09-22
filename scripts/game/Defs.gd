@@ -295,7 +295,7 @@ const VARIANTS := {
 		"desc": "80% base damage, x1.9 against hull."},
 	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("ffa43a"),
 		"desc": "Shots slip past shields straight to armor and hull, at 65% base damage."},
-	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.4, "cost": 1.0, "color": Color("58e07a"),
+	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.4, "cost": 1.0, "color": Color("b06cff"),
 		"desc": "Shots pass through shields and armor straight to the hull, at 40% base damage."},
 }
 ## Which variants each generalist has so far.
@@ -352,3 +352,25 @@ const JOBS := {
 const LAYER_COLORS := {"shield": Color("7fd8ff"), "armor": Color("ff4a4a"), "hull": Color("58e07a")}
 ## Generalists (and starbases) fire yellow lasers.
 const GENERALIST_SHOT := Color("ffd84a")
+
+## Base damage a ship with `variant` ("" = generalist) needs to destroy a
+## target with these defenses — the same layer maths as
+## SpaceEntity.take_damage. The Codex uses it for its matchup table, so the
+## numbers always follow the current stats.
+static func kill_cost(shield: float, armor_v: float, hull: float, variant: String) -> float:
+	var vd: Dictionary = VARIANTS.get(variant, {"vs": {}, "pierce": 0, "damage": 1.0})
+	var vs: Dictionary = vd["vs"]
+	var need := hull / float(vs.get("hull", 1.0))
+	if int(vd["pierce"]) < 2:
+		need += armor_v / float(vs.get("armor", 1.0))
+	if int(vd["pierce"]) < 1:
+		need += shield / float(vs.get("shield", 1.0))
+	return need / float(vd["damage"])
+
+## kill_cost relative to a generalist attacking the same target (1.0 = the
+## same, below 1.0 = kills faster).
+static func kill_ratio(target: Dictionary, variant: String) -> float:
+	var s: float = target.get("shield", 0.0)
+	var a: float = target.get("armor", 0.0)
+	var h: float = target.get("hp", 1.0)
+	return kill_cost(s, a, h, variant) / maxf(kill_cost(s, a, h, ""), 0.001)

@@ -34,13 +34,13 @@ func setup(from: SpaceEntity, to: Node2D, weapon: String, dmg: float) -> void:
 		if from.def.has("variant"):
 			modulate = Defs.VARIANTS[from.def["variant"]]["color"].lightened(0.15)
 			# Shots that bypass layers are colored by the layers they do hit:
-			# Slip (armor + hull) is orange (red + green), Disruptor (hull
-			# only) is green. Their lasers are V-shaped; torpedoes stay round.
+			# Slip (armor + hull) is orange, Disruptor (hull only) is purple. Their lasers are V-shaped; torpedoes stay round.
 			if profile["pierce"] > 0:
 				if weapon == "laser":
 					texture = Defs.tex("bolt_v")
 				if profile["pierce"] >= 2:
-					modulate = Defs.LAYER_COLORS["hull"].lightened(0.15)
+					# Purple, so it is never mistaken for a Reaver's green.
+					modulate = Defs.VARIANTS["disruptor"]["color"].lightened(0.1)
 				else:
 					modulate = SLIP_SHOT
 	global_position = from.global_position
