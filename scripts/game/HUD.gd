@@ -456,6 +456,9 @@ func _build_research(root: Control) -> void:
 	v.add_child(close)
 
 func show_planet(p: Planet) -> void:
+	# No close-up of the buildings on a planet out of sensor range.
+	if p and not p.in_sight:
+		p = null
 	planet_view.show_planet(p)
 
 func research_open() -> bool:
@@ -692,8 +695,12 @@ func _build_planet_panel(p: Planet) -> void:
 	ic.custom_minimum_size = Vector2(56, 56)
 	head.add_child(ic)
 	var col := VBoxContainer.new()
-	var owner_text := "Unclaimed" if p.owner_id == 0 else ("Yours" if p.owner_id == game.player_id else "Enemy")
-	col.add_child(_label(("%s  ·  %s  ·  Size %d" % [p.planet_name, t["label"], p.fields]) if p.fields > 0 else "%s  ·  %s" % [p.planet_name, t["label"]], Defs.team_color(p.owner_id), 20))
+	# Out of sensor range the owner is only the last one seen (fog of war).
+	var so := p.shown_owner()
+	var owner_text := "Unclaimed" if so == 0 else ("Yours" if so == game.player_id else "Enemy")
+	if not p.in_sight:
+		owner_text += "  (last seen: out of sensor range)"
+	col.add_child(_label(("%s  ·  %s  ·  Size %d" % [p.planet_name, t["label"], p.fields]) if p.fields > 0 else "%s  ·  %s" % [p.planet_name, t["label"]], Defs.team_color(so), 20))
 	col.add_child(_label(owner_text, DIM, 14))
 	head.add_child(col)
 	_sel_body.add_child(head)
@@ -710,6 +717,9 @@ func _update_selection_info() -> void:
 Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_amount, int(100.0 * a.amount / maxf(a.max_amount, 1)), a.miners_on(game.player_id)]
 		return
 	if sel.is_empty() and is_instance_valid(game.focused_planet):
+		if not game.focused_planet.in_sight:
+			_info_label.text = "Out of sensor range: population, buildings and defenses unknown."
+			return
 		planet_view.refresh()
 		_info_label.text = planet_view.stats
 		return

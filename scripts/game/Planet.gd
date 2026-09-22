@@ -60,6 +60,15 @@ var last_hit_time: float = -1000.0
 var colonizing_owner: int = 0
 var colonize_progress: float = 0.0
 var colonizer: Node2D
+## Fog of war (see Vision): the owner the human player last saw here (-1 =
+## no fog, show the real owner), and whether it's in sensor range now.
+var seen_owner: int = -1
+var in_sight: bool = true
+
+## The owner to show the player (last known when out of sight).
+func shown_owner() -> int:
+	return owner_id if seen_owner < 0 else seen_owner
+
 var focused: bool = false:
 	set(v):
 		focused = v
@@ -336,9 +345,10 @@ func _draw() -> void:
 		var f := ThemeDB.fallback_font
 		draw_string(f, Vector2(-radius, radius + 12.0), "DEPLETED", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, 8, Color(1, 0.55, 0.45))
 	var r := radius + 5.0
-	if owner_id != 0 or focused:
+	var so := shown_owner()
+	if so != 0 or focused:
 		# Owner ring: dotted pixel circle (white while focused).
-		var col := Defs.team_color(owner_id) if owner_id != 0 else Color("9aa0b0")
+		var col := Defs.team_color(so) if so != 0 else Color("9aa0b0")
 		if focused:
 			col = col.lightened(0.5)
 		var n := int(r * 1.2)
@@ -349,13 +359,13 @@ func _draw() -> void:
 	var f2 := ThemeDB.fallback_font
 	# Planetary shield: light-blue ring just outside the others while it's
 	# not full (or under fire).
-	if owner_id != 0:
+	if owner_id != 0 and in_sight:
 		var ms2 := max_shield()
 		if ms2 > 0.0 and (shield < ms2 - 0.5 or Game.now() - last_hit_time < SIEGE_MEMORY):
 			draw_arc(Vector2.ZERO, r + 9.0, 0.0, TAU, 64, Color(0.5, 0.85, 1.0, 0.15), 2.0)
 			draw_arc(Vector2.ZERO, r + 9.0, -PI / 2.0, -PI / 2.0 + TAU * shield / ms2, 64, Color("7fd8ff"), 2.0)
 	# Siege: ring showing the share of pops left since bombardment began.
-	if owner_id != 0 and Game.now() - last_hit_time < SIEGE_MEMORY and siege_start_pop > 0.0:
+	if owner_id != 0 and in_sight and Game.now() - last_hit_time < SIEGE_MEMORY and siege_start_pop > 0.0:
 		var frac := clampf(pop / siege_start_pop, 0.0, 1.0)
 		# In the owning player's color, draining as pops die.
 		var oc := Defs.team_color(owner_id)
@@ -363,7 +373,7 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, r + 4.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 64, oc, 3.0)
 		draw_string(f2, Vector2(-100.0, -r - 10.0), "%d%% pops left" % int(ceil(frac * 100.0)), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 8, oc)
 	# Colonization: ring filling up in the colonizer's color.
-	if colonizing_owner != 0 and colonize_progress > 0.0:
+	if colonizing_owner != 0 and in_sight and colonize_progress > 0.0:
 		var col3 := Defs.team_color(colonizing_owner)
 		draw_arc(Vector2.ZERO, r + 4.0, 0.0, TAU, 64, Color(col3, 0.2), 3.0)
 		draw_arc(Vector2.ZERO, r + 4.0, -PI / 2.0, -PI / 2.0 + TAU * colonize_progress / COLONIZE_TIME, 64, col3, 3.0)

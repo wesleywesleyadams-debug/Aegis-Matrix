@@ -69,7 +69,7 @@ func _draw() -> void:
 	for a in tree.get_nodes_in_group("asteroids"):
 		draw_rect(Rect2(_map_to_ui(a.global_position) - Vector2(1, 1), Vector2(2, 2)), Defs.RESOURCE_COLORS[a.resource])
 	for p in tree.get_nodes_in_group("planets"):
-		var c := Defs.team_color(p.owner_id) if p.owner_id != 0 else Color("7a809a")
+		var c := Defs.team_color(p.shown_owner()) if p.shown_owner() != 0 else Color("7a809a")
 		# Gas giants are mineral sources, so they get the minerals color.
 		if not p.is_habitable():
 			c = Defs.RESOURCE_COLORS["minerals"]

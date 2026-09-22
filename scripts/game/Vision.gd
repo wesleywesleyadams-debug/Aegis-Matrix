@@ -53,6 +53,10 @@ func setup(g: Game, player: int) -> void:
 	_dark = Image.create(cols, rows, false, Image.FORMAT_LA8)
 	_dark.fill(FOG_COLOR)
 	_sight = Image.create(cols, rows, false, Image.FORMAT_LA8)
+	# Nothing is known about other planets yet.
+	for pl in get_tree().get_nodes_in_group("planets"):
+		pl.seen_owner = 0
+		pl.in_sight = false
 	# Stars shine across the system: their surroundings start explored.
 	for star in get_tree().get_nodes_in_group("stars"):
 		_stamp(_dark, star.global_position, star.radiation_radius + 60.0)
@@ -80,6 +84,10 @@ func reveal_all() -> void:
 		sb.visible = true
 	for p in game.fx_root.get_children():
 		p.visible = true
+	for pl in get_tree().get_nodes_in_group("planets"):
+		pl.seen_owner = -1
+		pl.in_sight = true
+		pl.queue_redraw()
 
 func _cell(p: Vector2) -> Vector2i:
 	var q := (p - Game.MAP_RECT.position) / CELL
@@ -185,6 +193,14 @@ func _hide_unseen() -> void:
 	for p in game.fx_root.get_children():
 		if p is Projectile:
 			p.visible = is_visible_at(p.global_position)
+	# Planets: remember the owner last seen; hide sieges / colonizing out of sight.
+	for pl in tree.get_nodes_in_group("planets"):
+		var sight: bool = pl.owner_id == pid or is_visible_at(pl.global_position)
+		var so: int = pl.owner_id if sight else pl.seen_owner
+		if sight != pl.in_sight or so != pl.seen_owner:
+			pl.in_sight = sight
+			pl.seen_owner = so
+			pl.queue_redraw()
 
 func _draw() -> void:
 	if enabled:
@@ -229,5 +245,11 @@ func _fog_test() -> void:
 		if p.owner_id == 0:
 			near_planet = minf(near_planet, p.global_position.distance_to(home.global_position))
 	print("FOG TEST %s home rocks seen %d / %d, nearest free planet %.0f px" % [GameState.system_id, rocks_seen, rocks, near_planet])
+	var leaks := 0
+	for pl in get_tree().get_nodes_in_group("planets"):
+		if pl.owner_id != 0 and pl.owner_id != pid and pl.shown_owner() == pl.owner_id and not pl.in_sight:
+			leaks += 1
+	var enemy_planets := get_tree().get_nodes_in_group("planets").filter(func(pl): return pl.owner_id != 0 and pl.owner_id != pid)
+	print("FOG TEST enemy planets %d, shown as enemy %d, out-of-sight leaks %d" % [enemy_planets.size(), enemy_planets.filter(func(pl): return pl.shown_owner() == pl.owner_id).size(), leaks])
 	print("FOG TEST enemy ships shown %d / %d, enemy starbases shown %d, explored %.0f%%" % [shown, total, sb_shown, 100.0 * ex / (cols * rows)])
 	get_tree().quit()
