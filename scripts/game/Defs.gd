@@ -295,7 +295,7 @@ const VARIANTS := {
 		"desc": "80% base damage, x1.9 against hull."},
 	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("ffa43a"),
 		"desc": "Shots slip past shields straight to armor and hull, at 65% base damage."},
-	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.4, "cost": 1.0, "color": Color("ff5ad2"),
+	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.4, "cost": 1.0, "color": Color("58e07a"),
 		"desc": "Shots pass through shields and armor straight to the hull, at 40% base damage."},
 }
 ## Which variants each generalist has so far.

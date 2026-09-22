@@ -903,7 +903,7 @@ const VARIANT_COLORS := {
 	"breacher": [Color("7a1414"), Color("ff4a4a"), Color("ffc8c8")],
 	"reaver": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
 	"slip": [Color("8a4a10"), Color("ffa43a"), Color("ffe0b0")],
-	"disruptor": [Color("7a1a66"), Color("ff5ad2"), Color("ffd6f4")],
+	"disruptor": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
 }
 const VARIANT_BASES := {
 	"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"],
