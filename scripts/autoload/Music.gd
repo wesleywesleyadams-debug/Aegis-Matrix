@@ -39,6 +39,9 @@ var _current: String = ""
 ## Playlist mode: the ids being played in order and where we are.
 var _playlist: Array = []
 var _playlist_index: int = 0
+## True while the in-game playlist is in charge (a match), so enabling or
+## disabling songs takes effect straight away.
+var _in_game := false
 ## Preview (Options menu): the id being previewed and what to return to.
 var previewing: String = ""
 var _before_preview := {}
@@ -47,6 +50,8 @@ func _ready() -> void:
 	player.volume_db = GameState.music_volume_db
 	player.finished.connect(_on_finished)
 	play_track(TITLE_TRACK)
+	if OS.get_environment("SL_MUSIC_LIVE_TEST") != "":
+		_live_test.call_deferred()
 	if OS.get_environment("SL_MUSIC_TEST") != "":
 		_self_test.call_deferred(OS.get_environment("SL_MUSIC_TEST"))
 
@@ -129,6 +134,8 @@ func set_in_playlist(id: String, on: bool) -> void:
 	elif not on:
 		pl.erase(id)
 	GameState.save_settings()
+	if _in_game:
+		_playlist_changed(id, on)
 
 # ---------------------------------------------------------------- playback
 
@@ -138,6 +145,7 @@ func play_track(name: String) -> void:
 	if name == _current and player.playing and _playlist.is_empty():
 		return
 	_playlist = []
+	_in_game = false
 	var stream := _stream(name)
 	if stream == null:
 		return
@@ -148,6 +156,7 @@ func play_track(name: String) -> void:
 ## moving on when each ends. Every song, Through Space included, can be
 ## disabled: an empty playlist means no in-game music.
 func play_game_playlist() -> void:
+	_in_game = true
 	var pl: Array = GameState.music_playlist.filter(func(id): return _stream(id) != null)
 	if pl.is_empty():
 		_playlist = []
@@ -206,6 +215,22 @@ func stop_preview() -> void:
 	apply_volume()
 	player.play(_before_preview["pos"])
 	_before_preview = {}
+	# Songs may have been enabled/disabled while previewing.
+	if _in_game:
+		var was := _current
+		_playlist = _playlist.filter(func(t): return GameState.music_playlist.has(t))
+		for t in GameState.music_playlist:
+			if not _playlist.has(t) and _stream(t) != null:
+				_playlist.append(t)
+		if _playlist.is_empty():
+			player.stop()
+			_current = ""
+		elif not _playlist.has(was):
+			_playlist_index = _playlist_index % _playlist.size()
+			_play_playlist_item()
+		else:
+			_playlist_index = _playlist.find(was)
+			_set_loop(player.stream, _playlist.size() == 1)
 
 ## Player volume = the Options music volume plus this track's trim.
 func apply_volume() -> void:
@@ -236,6 +261,58 @@ func _self_test(src: String) -> void:
 	print("TEST re-enabled: in playlist %s" % str(GameState.music_playlist.has(id)))
 	# Test clean-up only: delete the imported copy.
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_DIR + "/" + id.substr(5)))
+	GameState.music_playlist = saved
+	GameState.save_settings()
+	get_tree().quit()
+
+## A song was enabled/disabled mid-match: drop it from (or add it to) the
+## running playlist; if the song playing now was disabled, move on to the
+## next one, or go silent if none are left.
+func _playlist_changed(id: String, on: bool) -> void:
+	if on:
+		if not _playlist.has(id) and _stream(id) != null:
+			_playlist.append(id)
+			if _playlist.size() == 1 and previewing == "":
+				_playlist_index = 0
+				_play_playlist_item()
+			elif _playlist.size() == 2 and previewing == "":
+				_set_loop(player.stream, false)   # no longer the only song
+		return
+	var i := _playlist.find(id)
+	if i == -1:
+		return
+	_playlist.remove_at(i)
+	if i < _playlist_index:
+		_playlist_index -= 1
+	var was_playing := _current == id and previewing == ""
+	if _playlist.is_empty():
+		if was_playing:
+			player.stop()
+			_current = ""
+		return
+	_playlist_index %= _playlist.size()
+	if was_playing:
+		_play_playlist_item()
+	elif _playlist.size() == 1:
+		_set_loop(player.stream, true)
+
+## Dev aid: SL_MUSIC_LIVE_TEST=1 plays a two-song match playlist, then
+## disables songs one at a time (and re-enables one), printing what plays.
+func _live_test() -> void:
+	var saved: Array = GameState.music_playlist.duplicate()
+	GameState.music_playlist = ["through_space", "spacelife"]
+	play_game_playlist()
+	print("LIVE start: ", _current, " playing=", player.playing)
+	set_in_playlist(_current, false)
+	print("LIVE disabled current -> ", _current, " playing=", player.playing, " list=", _playlist)
+	set_in_playlist(_current, false)
+	print("LIVE disabled last -> '", _current, "' playing=", player.playing)
+	set_in_playlist("through_space", true)
+	print("LIVE re-enabled through_space -> ", _current, " playing=", player.playing)
+	preview("magic_space")
+	set_in_playlist("through_space", false)
+	stop_preview()
+	print("LIVE disabled during preview -> '", _current, "' playing=", player.playing)
 	GameState.music_playlist = saved
 	GameState.save_settings()
 	get_tree().quit()
