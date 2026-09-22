@@ -38,6 +38,14 @@ func _gui_input(event: InputEvent) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("05050c"))
 	var tree := game.get_tree()
+	# Debris rings: solid grey-brown band, gaps left open.
+	for ring in tree.get_nodes_in_group("debris_rings"):
+		var rc := _map_to_ui(ring.global_position)
+		var rw: float = maxf(2.0, ring.width * size.x / Game.MAP_RECT.size.x)
+		for i in 96:
+			var a0 := TAU * i / 96.0
+			if not ring.in_gap(a0 + TAU / 192.0):
+				draw_arc(rc, ring.radius * size.x / Game.MAP_RECT.size.x, a0, a0 + TAU / 96.0, 3, Color("6e5c4a"), rw)
 	# Spice nebulae as a faint amber ring.
 	var msc := size.x / Game.MAP_RECT.size.x
 	for neb in tree.get_nodes_in_group("nebulae"):

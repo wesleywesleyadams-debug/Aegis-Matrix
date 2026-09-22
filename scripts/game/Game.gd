@@ -184,6 +184,15 @@ func _build_system() -> void:
 		var ship := spawn_ship(s["type"], s["owner"], s["pos"])
 		ship.rotation = s["rot"]
 	for ft in layout.get("features", []):
+		if ft["type"] == "rings":
+			var ring := DebrisRing.new()
+			ring.radius = ft["radius"]
+			ring.width = ft["width"]
+			ring.gap_half = ft["gap_half"]
+			ring.gaps = ft["gaps"]
+			world.add_child(ring)
+			world.move_child(ring, 0)
+			_build_nav()
 		if ft["type"] == "binary":
 			var a: Star = $World/Star
 			var b := Star.new()
@@ -218,6 +227,77 @@ func warn_nebula(at: Vector2) -> void:
 	_nebula_warn_ms = t
 	add_flare(at, Color("ffae4a"))
 	message.emit("Your ships are in the Spice Nebula: shields drain and won't recharge inside.", Color("ffae4a"))
+
+# ---------------------------------------------------------------- navigation
+
+## Only systems with debris rings need routing; elsewhere nav stays null and
+## ships fly straight as before.
+const NAV_CELL := 40.0
+var nav: AStarGrid2D = null
+
+## Solid debris at p (grown by margin).
+func is_blocked(p: Vector2, margin: float = 0.0) -> bool:
+	for r in get_tree().get_nodes_in_group("debris_rings"):
+		if r.blocks(p, margin):
+			return true
+	return false
+
+## No debris along the straight line a -> b (sampled every 16 px).
+func line_clear(a: Vector2, b: Vector2, margin: float = 12.0) -> bool:
+	var steps := int(a.distance_to(b) / 16.0) + 1
+	for i in steps + 1:
+		if is_blocked(a.lerp(b, float(i) / steps), margin):
+			return false
+	return true
+
+func _build_nav() -> void:
+	nav = AStarGrid2D.new()
+	nav.region = Rect2i(0, 0, int(ceil(MAP_RECT.size.x / NAV_CELL)), int(ceil(MAP_RECT.size.y / NAV_CELL)))
+	nav.cell_size = Vector2(NAV_CELL, NAV_CELL)
+	nav.offset = MAP_RECT.position + Vector2.ONE * NAV_CELL / 2.0
+	nav.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	nav.update()
+	for x in nav.region.size.x:
+		for y in nav.region.size.y:
+			if is_blocked(nav.offset + Vector2(x, y) * NAV_CELL, NAV_CELL * 0.45):
+				nav.set_point_solid(Vector2i(x, y), true)
+
+func _nav_cell(p: Vector2) -> Vector2i:
+	var c := ((p - MAP_RECT.position) / NAV_CELL).floor()
+	return Vector2i(clampi(int(c.x), 0, nav.region.size.x - 1), clampi(int(c.y), 0, nav.region.size.y - 1))
+
+## Nearest open cell to `c` (for starts / goals that sit on debris).
+func _open_cell(c: Vector2i) -> Vector2i:
+	if not nav.is_point_solid(c):
+		return c
+	for r in range(1, 6):
+		for dx in range(-r, r + 1):
+			for dy in range(-r, r + 1):
+				var q := c + Vector2i(dx, dy)
+				if nav.is_in_boundsv(q) and not nav.is_point_solid(q):
+					return q
+	return c
+
+## Waypoints from a to b around debris (b last), string-pulled so ships cut
+## straight across open space instead of hugging grid cells.
+func find_path(a: Vector2, b: Vector2) -> PackedVector2Array:
+	if nav == null or line_clear(a, b):
+		return PackedVector2Array([b])
+	var raw := nav.get_point_path(_open_cell(_nav_cell(a)), _open_cell(_nav_cell(b)))
+	if raw.is_empty():
+		return PackedVector2Array([b])
+	raw.append(b)
+	var out := PackedVector2Array()
+	var anchor := a
+	var i := 0
+	while i < raw.size():
+		var j := raw.size() - 1
+		while j > i and not line_clear(anchor, raw[j]):
+			j -= 1
+		out.append(raw[j])
+		anchor = raw[j]
+		i = j + 1
+	return out
 
 ## Whether `p` is inside a spice nebula (shields drain there).
 func in_nebula(p: Vector2) -> bool:
@@ -541,6 +621,8 @@ func starbase_site_problem(pos: Vector2) -> String:
 	for s in get_tree().get_nodes_in_group("stars"):
 		if s.global_position.distance_to(pos) < s.radiation_radius + 40.0:
 			return "Too close to the star"
+	if is_blocked(pos, 50.0):
+		return "Blocked by the debris ring"
 	return ""
 
 # ---------------------------------------------------------------- spawning
@@ -1308,6 +1390,46 @@ func _enter_dev_capture() -> void:
 		get_tree().create_timer(12.0).timeout.connect(func():
 			print("NEB 12s: in %.0f/%.0f  out %.0f/%.0f  ai dist %.0f  ai in nebula %s" % [c_in.shield, c_in.max_shield, c_out.shield, c_out.max_shield, ai_s.global_position.length(), str(in_nebula(ai_s.global_position))]))
 		center_on(Vector2(0, mid - 200))
+	if OS.get_environment("SL_SHOT_OPEN") == "rings":
+		# Dev: ships inside the ring ordered straight out through solid debris.
+		var ring = get_tree().get_nodes_in_group("debris_rings")[0]
+		var ang := 0.0
+		var best := -1.0
+		for k in 64:
+			var a := TAU * k / 64.0
+			var clear := 9.0
+			for gp in ring.gaps:
+				clear = minf(clear, absf(angle_difference(a, gp)))
+			if clear > best:
+				best = clear
+				ang = a
+		var foe: int = 2 if player_id == 1 else 1
+		var testers: Array = []
+		for i in 4:
+			var dir := Vector2.from_angle(ang + (PI if i >= 2 else 0.0) + (i % 2 - 0.5) * 0.04)
+			var s := spawn_ship("corvette", player_id if i < 2 else foe, dir * (ring.radius - 150.0))
+			s.max_hp = 1e6
+			s.hp = 1e6
+			s.order_move(dir * (ring.radius + 250.0))
+			testers.append(s)
+		var stats := {"in_debris": 0}
+		var tk := Timer.new()
+		tk.wait_time = 0.1
+		add_child(tk)
+		tk.timeout.connect(func():
+			for s in testers:
+				if is_instance_valid(s) and is_blocked(s.global_position):
+					stats["in_debris"] += 1)
+		tk.start()
+		get_tree().create_timer(40.0).timeout.connect(func():
+			for i in testers.size():
+				var s = testers[i]
+				if not is_instance_valid(s):
+					print("RING ship %d destroyed" % i)
+					continue
+				print("RING ship %d (%s): dist to goal %.0f, state %s" % [i, "player" if i < 2 else "ai", s.global_position.distance_to(s.move_goal), Ship.State.keys()[s.state]])
+			print("RING samples inside debris: %d" % stats["in_debris"]))
+		center_on(Vector2.from_angle(ang) * ring.radius)
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()

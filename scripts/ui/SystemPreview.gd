@@ -37,6 +37,8 @@ func show_system(id: String) -> void:
 		if _settings.get("feature", "") == "binary":
 			facts = facts.replace(Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"], "Binary " + Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"] + "s")
 			facts += "\nTwin suns orbit the center; the lane between them moves."
+		if _settings.get("feature", "") == "rings":
+			facts += "\nDebris ring: four narrow gaps funnel every fleet."
 		if _settings.get("feature", "") == "spice_nebula":
 			facts += "\nSpice Nebula: rich spice, but shields drain inside."
 	queue_redraw()
@@ -69,6 +71,17 @@ func _draw() -> void:
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(0, center.y + 10), "?", HORIZONTAL_ALIGNMENT_CENTER, size.x, 36, Color(0.7, 0.75, 0.9, 0.8))
 		return
+	for ft in _layout.get("features", []):
+		if ft["type"] == "rings":
+			for i in 96:
+				var a0 := TAU * i / 96.0
+				var mid := a0 + TAU / 192.0
+				var open := false
+				for gp in ft["gaps"]:
+					if absf(angle_difference(mid, gp)) < ft["gap_half"]:
+						open = true
+				if not open:
+					draw_arc(center, ft["radius"] * sc, a0, a0 + TAU / 96.0, 3, Color("6e5c4a"), maxf(2.0, ft["width"] * sc))
 	for ft in _layout.get("features", []):
 		if ft["type"] == "spice_nebula":
 			draw_arc(center, (ft["inner"] + ft["outer"]) / 2.0 * sc, 0.0, TAU, 64, Color(1.0, 0.6, 0.2, 0.16), (ft["outer"] - ft["inner"]) * sc)

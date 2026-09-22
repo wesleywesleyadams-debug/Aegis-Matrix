@@ -19,6 +19,13 @@ var move_goal: Vector2
 var attack_move_goal: Vector2
 ## Where _arrive was last steering to (for AI sun avoidance).
 var _nav_goal: Vector2
+## Route around debris rings: remaining waypoints, the goal they lead to,
+## and when it was planned / last checked for a straight shot.
+var _path := PackedVector2Array()
+var _path_final := Vector2.INF
+var _path_time: float = -100.0
+var _direct_time: float = -100.0
+var _direct := false
 ## AI ships only enter a star's radiation zone when their destination is
 ## inside it (an enemy parked there) and they have at least this much hull.
 const SUN_RISK_HP := 0.6
@@ -317,6 +324,13 @@ func _physics_process(delta: float) -> void:
 ## Desired velocity toward `goal`, slowing inside the braking radius.
 ## `stop_at` leaves a gap (e.g. to hover beside an asteroid).
 func _arrive(goal: Vector2, urgency: float, stop_at: float = 0.0) -> Vector2:
+	# Ringed systems: head for the next waypoint around the debris, at full
+	# speed, until the final approach.
+	if Game.instance.nav != null:
+		var wp := _route(goal)
+		if wp.distance_to(goal) > 1.0:
+			_nav_goal = wp
+			return (wp - global_position).normalized() * max_speed()
 	_nav_goal = goal
 	var to := goal - global_position
 	var dist := to.length() - stop_at
@@ -346,7 +360,19 @@ func _steer(desired: Vector2, delta: float, face: SpaceEntity) -> void:
 	var speed: float = max_speed()
 	var accel := speed * 2.2
 	velocity = velocity.move_toward(desired.limit_length(speed), accel * delta)
-	global_position += velocity * delta
+	var step := velocity * delta
+	# Debris is solid: slide along it (try each axis), else stop.
+	if Game.instance.nav != null and Game.instance.is_blocked(global_position + step, radius * 0.5):
+		if not Game.instance.is_blocked(global_position + Vector2(step.x, 0), radius * 0.5):
+			step = Vector2(step.x, 0)
+			velocity.y = 0.0
+		elif not Game.instance.is_blocked(global_position + Vector2(0, step.y), radius * 0.5):
+			step = Vector2(0, step.y)
+			velocity.x = 0.0
+		else:
+			step = Vector2.ZERO
+			velocity = Vector2.ZERO
+	global_position += step
 
 	var face_dir := Vector2.ZERO
 	if face:
@@ -440,3 +466,24 @@ func _leave_nebula() -> void:
 			var edge: float = n.inner - 40.0 if d - n.inner < n.outer - d else n.outer + 40.0
 			order_move(n.global_position + out.normalized() * edge)
 			return
+
+## Next point to fly at on the way to `final`, planning a path around debris
+## when the straight line is blocked. Straight-line checks run every 0.3 s,
+## re-plans at most every 0.5 s (chasing a moving target).
+func _route(final: Vector2) -> Vector2:
+	var g := Game.instance
+	var t := Game.now()
+	if t - _direct_time > 0.3 or final.distance_to(_path_final) > 60.0:
+		_direct_time = t
+		_direct = g.line_clear(global_position, final)
+	if _direct:
+		_path = PackedVector2Array()
+		_path_final = final
+		return final
+	if _path.is_empty() or (final.distance_to(_path_final) > 60.0 and t - _path_time > 0.5):
+		_path = g.find_path(global_position, final)
+		_path_final = final
+		_path_time = t
+	while _path.size() > 1 and global_position.distance_to(_path[0]) < 30.0:
+		_path.remove_at(0)
+	return _path[0] if not _path.is_empty() else final

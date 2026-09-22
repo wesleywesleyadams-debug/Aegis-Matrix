@@ -21,8 +21,8 @@ const SYSTEMS := [
 	{"id": "kharon_expanse", "name": "Kharon Expanse", "seed": 2207, "desc": "Sparse and spice-rich.", "star": "red_dwarf", "star_name": "Kharon",
 		"bg": "rust", "names": "dust", "feature": "spice_nebula", "arrival": "You arrive in the Kharon Expanse. Spice lies thick in the dim red dust.",
 		"params": {"planets": 3, "belts": 1, "spice": 0.28}},
-	{"id": "tethys_cluster", "name": "Tethys Cluster", "seed": 3313, "desc": "Crowded: many worlds, many rocks.", "star": "orange", "star_name": "Tethys",
-		"bg": "verdant", "names": "myth", "arrival": "You arrive in the Tethys Cluster. Worlds crowd close around a warm orange sun.",
+	{"id": "tethys_cluster", "name": "Tethys Cluster", "seed": 3313, "desc": "Crowded worlds behind a debris ring.", "star": "orange", "star_name": "Tethys",
+		"bg": "verdant", "names": "myth", "feature": "rings", "arrival": "You arrive in the Tethys Cluster. A wall of rubble rings the inner worlds; find the gaps.",
 		"params": {"planets": 5, "belts": 3, "spice": 0.1}},
 	{"id": "sable_verge", "name": "Sable Verge", "seed": 4419, "desc": "Few worlds, heavy mineral belts.", "star": "blue_giant", "star_name": "Sable",
 		"bg": "ash", "names": "stone", "arrival": "You arrive at the Sable Verge. A blue giant scorches a wide, deadly core.",
@@ -63,6 +63,13 @@ const HOME_T := 0.9
 ## length in game seconds.
 const BINARY_ORBIT := 260.0
 const BINARY_PERIOD := 480.0
+## Ringed systems: the debris ring's radius and thickness, and each gap's
+## angular half-width (about 150 px wide at the ring).
+const RING_RADIUS := 640.0
+const RING_WIDTH := 70.0
+const RING_GAP_HALF := 0.12
+## Set while generating a ringed system (0 = no ring).
+static var ring_radius: float = 0.0
 
 const NAMES := ["Aster", "Belen", "Calyx", "Draxis", "Eryth", "Fenra", "Galen", "Hesper", "Ilion", "Jarro",
 	"Kalthe", "Lumen", "Marrow", "Nyx", "Ossary", "Pellan", "Quorra", "Rhaen", "Sorrel", "Tamber", "Ulthar",
@@ -109,6 +116,7 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	star_clear = float(Defs.STAR_TYPES.get(params.get("star", "yellow"), Defs.STAR_TYPES["yellow"])["zone"]) + 150.0
 	if params.get("feature", "") == "binary":
 		star_clear += BINARY_ORBIT
+	ring_radius = RING_RADIUS if params.get("feature", "") == "rings" else 0.0
 	var names: Array = NAME_SETS.get(params.get("names", ""), NAMES).duplicate()
 	for i in range(names.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
@@ -186,6 +194,12 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	# Signature feature: a spice nebula ring around the star, seeded with
 	# extra spice rocks (the ring itself is symmetric; the rocks are mirrored).
 	var features: Array = []
+	if ring_radius > 0.0:
+		# Two gaps per half, mirrored through the star.
+		var g1 := rng.randf_range(0.3, 1.1)
+		var g2 := g1 + PI / 2.0 + rng.randf_range(-0.35, 0.35)
+		features.append({"type": "rings", "radius": RING_RADIUS, "width": RING_WIDTH, "gap_half": RING_GAP_HALF,
+			"gaps": [g1, g2, g1 + PI, g2 + PI]})
 	if params.get("feature", "") == "binary":
 		features.append({"type": "binary", "orbit": BINARY_ORBIT, "period": BINARY_PERIOD})
 	if params.get("feature", "") == "spice_nebula":
@@ -233,6 +247,8 @@ static func _inside(p: Vector2) -> bool:
 ## and clear of everything placed so far and its mirror image.
 static func _fits(placed: Array, p: Vector2, clearance: float) -> bool:
 	if p.length() < star_clear or not _inside(p):
+		return false
+	if ring_radius > 0.0 and absf(p.length() - ring_radius) < RING_WIDTH / 2.0 + minf(clearance, 60.0) + 30.0:
 		return false
 	if p.length() < clearance:
 		return false  # too close to its own mirror image
