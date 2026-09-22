@@ -46,6 +46,9 @@ func _ready() -> void:
 	for b in vbox.get_children():
 		if b is Button:
 			MenuStyle.button(b)
+	# New Game green (like the lobby's Start Match), Quit red.
+	_tint(play_button, [Color("1a5a2a"), Color("247a38"), Color("103a1a")], Color("6aff8a"), Color("d6ffe0"))
+	_tint(quit_button, [Color("5a1a1a"), Color("7a2424"), Color("3a1010")], Color("ff6a6a"), Color("ffd6d6"))
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and _credits.visible:
@@ -397,3 +400,15 @@ func _credit_entry(list: VBoxContainer, what: String, who: String, details: Stri
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(0, 6)
 	list.add_child(gap)
+
+## Colors a menu button: backgrounds for normal/hover/pressed, border, text.
+func _tint(b: Button, bg: Array, border: Color, font: Color) -> void:
+	for i in 3:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = bg[i]
+		sb.border_color = border
+		sb.set_border_width_all(2)
+		sb.set_content_margin_all(12)
+		b.add_theme_stylebox_override(["normal", "hover", "pressed"][i], sb)
+	b.add_theme_color_override("font_color", font)
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
