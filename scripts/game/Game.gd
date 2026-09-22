@@ -1756,6 +1756,10 @@ func _enter_dev_capture() -> void:
 			hud.show_pause(true)
 		"research":
 			hud.toggle_research()
+		"research_def":
+			queue_research(player_id, "composite_plating")
+			hud.toggle_research()
+			hud._defs_tab.pressed.emit()
 		"picker":
 			var hp2: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0]
 			_focus_planet(hp2)

@@ -36,6 +36,8 @@ var _end: Control
 var _end_label: Label
 var _research_modal: ColorRect
 var _tech_buttons := {}
+## The research screen's Defenses tab button (dev captures press it).
+var _defs_tab: Button
 var _build_buttons := {}
 var _queue_row: HBoxContainer
 var _info_label: Label
@@ -403,6 +405,10 @@ func _build_research(root: Control) -> void:
 		legend.add_child(chip)
 		legend.add_child(_label(STATE_LABELS[s].capitalize() + "   ", TEXT, 13))
 	v.add_child(legend)
+	# Two tabs: general technologies by tier, and the three defense lines.
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 8)
+	v.add_child(tabs)
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 18)
 	v.add_child(cols)
@@ -411,44 +417,40 @@ func _build_research(root: Control) -> void:
 		col.add_theme_constant_override("separation", 10)
 		col.add_child(_label("TIER %d" % tier, DIM, 14))
 		for id in Defs.TECHS:
-			if Defs.TECHS[id]["tier"] != tier:
-				continue
-			var b := Button.new()
-			b.custom_minimum_size = Vector2(340, 100)
-			b.clip_contents = true
-			b.focus_mode = Control.FOCUS_NONE
-			b.pressed.connect(func(): game.request_research(id); _refresh_research())
-			# Title line, then the cost with resource icons, then the effect.
-			var box := VBoxContainer.new()
-			box.set_anchors_preset(Control.PRESET_FULL_RECT)
-			box.offset_left = 10
-			box.offset_top = 5
-			box.offset_right = -10
-			box.add_theme_constant_override("separation", 2)
-			box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var lab := Label.new()
-			lab.add_theme_font_size_override("font_size", 13)
-			lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			box.add_child(lab)
-			box.add_child(CostRow.make(Defs.TECHS[id]["cost"], 13, Defs.TECHS[id]["time"]))
-			var desc := Label.new()
-			desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			desc.custom_minimum_size = Vector2(318, 0)
-			desc.add_theme_font_size_override("font_size", 12)
-			desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			box.add_child(desc)
-			b.add_child(box)
-			var bar := ColorRect.new()
-			bar.anchor_top = 1.0
-			bar.anchor_bottom = 1.0
-			bar.offset_top = -6
-			bar.offset_left = 2
-			bar.offset_bottom = -2
-			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			b.add_child(bar)
-			col.add_child(b)
-			_tech_buttons[id] = {"button": b, "label": lab, "desc": desc, "bar": bar}
+			if Defs.TECHS[id]["tier"] == tier and not Defs.TECHS[id].has("line"):
+				col.add_child(_tech_button(id))
 		cols.add_child(col)
+	var defs := GridContainer.new()
+	defs.columns = 4
+	defs.add_theme_constant_override("h_separation", 18)
+	defs.add_theme_constant_override("v_separation", 10)
+	defs.visible = false
+	v.add_child(defs)
+	defs.add_child(_label("", DIM, 14))
+	for tier in [1, 2, 3]:
+		defs.add_child(_label("TIER %d" % tier, DIM, 14))
+	for line in [["shields", "SHIELDS", Color("7fd8ff")], ["armor", "ARMOR", SpaceEntity.ARMOR_COLOR], ["hull", "HULL", Color("58e07a")]]:
+		var head := _label(line[1], line[2], 18)
+		head.custom_minimum_size = Vector2(90, 0)
+		defs.add_child(head)
+		for tier in [1, 2, 3]:
+			for id in Defs.TECHS:
+				if Defs.TECHS[id].get("line", "") == line[0] and Defs.TECHS[id]["tier"] == tier:
+					defs.add_child(_tech_button(id, 300.0))
+	for pair in [["Technologies", cols], ["Defenses", defs]]:
+		var tb := Button.new()
+		tb.text = pair[0]
+		tb.toggle_mode = true
+		tb.button_pressed = pair[1] == cols
+		tb.focus_mode = Control.FOCUS_NONE
+		tb.custom_minimum_size = Vector2(160, 32)
+		tabs.add_child(tb)
+	tabs.add_child(_label("   Defense lines are expensive: pick the layer your fleet will lean on.", DIM, 13))
+	var tb0: Button = tabs.get_child(0)
+	var tb1: Button = tabs.get_child(1)
+	_defs_tab = tb1
+	tb0.pressed.connect(func(): cols.visible = true; defs.visible = false; tb0.button_pressed = true; tb1.button_pressed = false)
+	tb1.pressed.connect(func(): cols.visible = false; defs.visible = true; tb1.button_pressed = true; tb0.button_pressed = false)
 	var close := Button.new()
 	close.text = "Close [R]"
 	close.focus_mode = Control.FOCUS_NONE
@@ -500,7 +502,7 @@ func _refresh_research() -> void:
 		elif st == "done":
 			frac = 1.0
 		w["bar"].color = BAD if st == "active" and cur.get("stalled", false) else (GOOD if st == "done" else EDGE_LIT)
-		w["bar"].offset_right = -2 - (1.0 - frac) * 336.0
+		w["bar"].offset_right = -2 - (1.0 - frac) * (w["button"].custom_minimum_size.x - 4.0)
 		w["bar"].visible = frac > 0.0
 
 func show_pause(on: bool) -> void:
@@ -1119,3 +1121,41 @@ func _refresh_ability_button() -> void:
 	var name: String = {"barrage": "Barrage", "beacon": "Drop Beacon", "heat_screen": "Heat Surge", "field_repair": "Emergency Repair"}.get(_ability_ship.def["job"], j["name"])
 	_ability_button.text = ("%s [Q]" % name) if wait <= 0.0 else ("%s: recharging %ds" % [name, int(ceil(wait))])
 	_ability_button.disabled = wait > 0.0
+
+## One research button: name/status line, cost with resource icons, effect,
+## and a progress bar along the bottom (see _refresh_research).
+func _tech_button(id: String, width: float = 340.0) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(width, 100)
+	b.clip_contents = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(func(): game.request_research(id); _refresh_research())
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = 10
+	box.offset_top = 5
+	box.offset_right = -10
+	box.add_theme_constant_override("separation", 2)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var lab := Label.new()
+	lab.add_theme_font_size_override("font_size", 13)
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(lab)
+	box.add_child(CostRow.make(Defs.TECHS[id]["cost"], 13, Defs.TECHS[id]["time"]))
+	var desc := Label.new()
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(width - 22.0, 0)
+	desc.add_theme_font_size_override("font_size", 12)
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(desc)
+	b.add_child(box)
+	var bar := ColorRect.new()
+	bar.anchor_top = 1.0
+	bar.anchor_bottom = 1.0
+	bar.offset_top = -6
+	bar.offset_left = 2
+	bar.offset_bottom = -2
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(bar)
+	_tech_buttons[id] = {"button": b, "label": lab, "desc": desc, "bar": bar}
+	return b
