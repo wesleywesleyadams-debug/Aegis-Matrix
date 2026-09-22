@@ -15,7 +15,7 @@ const IN_GAME_TRACK: String = "through_space"
 const BUILTIN_TRACKS := [
 	["through_space", "Through Space (Maxstack)"],
 	["spacelife", "Space Life No. 14 (YD)"],
-	["magic_space", "Magic Space"],
+	["magic_space", "Magic Space (CodeManu)"],
 	["deus_ex_tempus", "Deus Ex Tempus (Trevor Lentz)"],
 	["game", "Star Lords Synth: In-Game"],
 	["title", "Star Lords Synth: Title"],
