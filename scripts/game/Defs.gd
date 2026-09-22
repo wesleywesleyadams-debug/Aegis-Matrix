@@ -78,7 +78,7 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 
 const STARBASE := {
 	"name": "Starbase", "hp": 2400.0, "shield": 800.0, "radius": 26.0,
-	"weapon": "laser", "damage": 10.0, "cooldown": 0.7, "range": 220.0,
+	"weapon": "laser", "damage": 22.0, "cooldown": 0.7, "range": 220.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 400, "spice": 20}, "build_time": 40.0,
 	"upkeep": 0.5,

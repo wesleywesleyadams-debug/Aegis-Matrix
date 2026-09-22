@@ -64,7 +64,7 @@ func _sample(t: float) -> Dictionary:
 		var r: Dictionary = g.resources[pid]
 		out[str(pid)] = {"food": int(r["food"]), "minerals": int(r["minerals"]), "energy": int(r["energy"]), "spice": int(r["spice"]),
 			"pop": int(pop), "worlds": worlds, "warships": war, "power": int(power), "miners": miners, "starbases": bases,
-			"techs": g.researched[pid].size()}
+			"techs": g.researched[pid].size(), "mode": str(g.ai._state.get(pid, {}).get("mode", ""))}
 	return out
 
 func _finish(reason: String, winner: int) -> void:
