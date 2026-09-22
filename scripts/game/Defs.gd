@@ -299,7 +299,11 @@ const VARIANTS := {
 		"desc": "Shots pass through shields and armor straight to the hull, at 40% base damage."},
 }
 ## Which variants each generalist has so far.
-const VARIANTS_OF := {"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"]}
+const VARIANTS_OF := {
+	"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"],
+	"destroyer": ["ion", "breacher", "reaver", "slip", "disruptor"],
+	"cruiser": ["ion", "breacher", "reaver", "slip", "disruptor"],
+}
 
 static func _with_variants() -> Dictionary:
 	var out := BASE_SHIPS.duplicate(true)

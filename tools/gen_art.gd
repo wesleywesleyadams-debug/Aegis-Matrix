@@ -905,7 +905,11 @@ const VARIANT_COLORS := {
 	"slip": [Color("4a2a8a"), Color("b48cff"), Color("f0e6ff")],
 	"disruptor": [Color("7a1a66"), Color("ff5ad2"), Color("ffd6f4")],
 }
-const VARIANT_BASES := {"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"]}
+const VARIANT_BASES := {
+	"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"],
+	"destroyer": ["ion", "breacher", "reaver", "slip", "disruptor"],
+	"cruiser": ["ion", "breacher", "reaver", "slip", "disruptor"],
+}
 
 func _gen_variants() -> void:
 	for base in VARIANT_BASES:
