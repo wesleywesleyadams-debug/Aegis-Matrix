@@ -167,7 +167,7 @@ var ui_font: String = "console"
 var master_volume_db: float = 0.0
 var music_volume_db: float = -8.0
 ## In-game music playlist: track ids (see Music.available_tracks()).
-var music_playlist: Array = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal"]
+var music_playlist: Array = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "title", "lobby"]
 ## Independent on/off switches, separate from the volume sliders above --
 ## OptionsMenu's Audio tab checkboxes (see _apply_audio_enabled/
 ## _apply_music_enabled) mute the Master bus / pause Music.player rather
@@ -340,6 +340,6 @@ func _reset_account_settings_to_defaults() -> void:
 	music_volume_db = -8.0
 	audio_enabled = true
 	music_enabled = true
-	music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal"]
+	music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "title", "lobby"]
 	human_player_id = 1
 	player_slots = _default_player_slots()

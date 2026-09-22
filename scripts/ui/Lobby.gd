@@ -45,7 +45,7 @@ var _username: String = ""
 var _slot_rows: Array = []
 
 func _ready() -> void:
-	Music.play_track(Music.LOBBY_TRACK)
+	Music.play_screen(Music.LOBBY_TRACK)
 	# Dev aid: SL_LOBBY_SHOT=single|multi opens that lobby, saves
 	# user://lobby.png and quits.
 	var shot := OS.get_environment("SL_LOBBY_SHOT")

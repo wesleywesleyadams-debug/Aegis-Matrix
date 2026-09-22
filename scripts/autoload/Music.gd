@@ -42,6 +42,9 @@ var _playlist_index: int = 0
 ## True while the in-game playlist is in charge (a match), so enabling or
 ## disabling songs takes effect straight away.
 var _in_game := false
+## The title or lobby screen's own song (TITLE_TRACK / LOBBY_TRACK) while on
+## that screen, else "". See play_screen().
+var _screen_track := ""
 ## Preview (Options menu): the id being previewed and what to return to.
 var previewing: String = ""
 var _before_preview := {}
@@ -49,7 +52,7 @@ var _before_preview := {}
 func _ready() -> void:
 	player.volume_db = GameState.music_volume_db
 	player.finished.connect(_on_finished)
-	play_track(TITLE_TRACK)
+	play_screen(TITLE_TRACK)
 	if OS.get_environment("SL_MUSIC_LIVE_TEST") != "":
 		_live_test.call_deferred()
 	if OS.get_environment("SL_MUSIC_TEST") != "":
@@ -134,10 +137,24 @@ func set_in_playlist(id: String, on: bool) -> void:
 	elif not on:
 		pl.erase(id)
 	GameState.save_settings()
-	if _in_game:
+	if previewing != "":
+		return   # stop_preview() catches up
+	if _screen_track != "" and id == _screen_track:
+		play_screen(_screen_track)
+	elif _in_game:
 		_playlist_changed(id, on)
 
 # ---------------------------------------------------------------- playback
+
+## Title and lobby music: the screen's own synth song if it's enabled in the
+## song list, otherwise the enabled songs (silence if none). Enabling or
+## disabling songs switches straight away.
+func play_screen(track: String) -> void:
+	_screen_track = track
+	if GameState.music_playlist.has(track) and _stream(track) != null:
+		play_track(track)
+	elif not _in_game:
+		_start_playlist()
 
 ## Switches to a track, looping. A no-op if it's already playing, so a
 ## scene reload doesn't restart it.
@@ -156,6 +173,10 @@ func play_track(name: String) -> void:
 ## moving on when each ends. Every song, Through Space included, can be
 ## disabled: an empty playlist means no in-game music.
 func play_game_playlist() -> void:
+	_screen_track = ""
+	_start_playlist()
+
+func _start_playlist() -> void:
 	_in_game = true
 	var pl: Array = GameState.music_playlist.filter(func(id): return _stream(id) != null)
 	if pl.is_empty():
@@ -215,6 +236,9 @@ func stop_preview() -> void:
 	apply_volume()
 	player.play(_before_preview["pos"])
 	_before_preview = {}
+	if _screen_track != "" and GameState.music_playlist.has(_screen_track) != (_current == _screen_track and not _in_game):
+		play_screen(_screen_track)
+		return
 	# Songs may have been enabled/disabled while previewing.
 	if _in_game:
 		var was := _current
@@ -313,6 +337,25 @@ func _live_test() -> void:
 	set_in_playlist("through_space", false)
 	stop_preview()
 	print("LIVE disabled during preview -> '", _current, "' playing=", player.playing)
+	# Title screen.
+	GameState.music_playlist = ["title", "spacelife"]
+	play_screen(TITLE_TRACK)
+	print("LIVE title screen, title enabled -> ", _current)
+	set_in_playlist("title", false)
+	print("LIVE title disabled -> ", _current, " playing=", player.playing)
+	set_in_playlist("title", true)
+	print("LIVE title re-enabled -> ", _current)
+	set_in_playlist("title", false)
+	set_in_playlist("spacelife", false)
+	print("LIVE all disabled -> '", _current, "' playing=", player.playing)
+	play_screen(LOBBY_TRACK)
+	print("LIVE lobby, nothing enabled -> '", _current, "' playing=", player.playing)
+	set_in_playlist("lobby", true)
+	print("LIVE lobby enabled -> ", _current, " playing=", player.playing)
+	preview("hero_immortal")
+	set_in_playlist("lobby", false)
+	stop_preview()
+	print("LIVE lobby disabled during preview -> '", _current, "' playing=", player.playing)
 	GameState.music_playlist = saved
 	GameState.save_settings()
 	get_tree().quit()

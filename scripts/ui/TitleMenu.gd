@@ -14,7 +14,7 @@ var load_list_panel: Control
 @onready var close_button: Button = $LoadListPanel/OuterVBox/CloseButton
 
 func _ready() -> void:
-	Music.play_track(Music.TITLE_TRACK)
+	Music.play_screen(Music.TITLE_TRACK)
 	_build_credits()
 	_build_new_game_page()
 	$LoadListPanel.visible = false
