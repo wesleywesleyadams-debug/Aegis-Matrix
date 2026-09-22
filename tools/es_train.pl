@@ -147,7 +147,7 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 		my $prev = -e "$RL/best.json" ? decode_json(slurp("$RL/best.json")) : {eval => -1};
 		if ($w / @ej >= $prev->{eval}) {
 			spit("$RL/best.json", $json->encode({gen => $g, eval => $w / @ej}));
-			weights_file("ai/commander.json", \@theta);
+			weights_file("ai/commander.json", \@theta) if $TAG eq "";   # test runs never touch the game's files
 		}
 	}
 	my $mf = 0; $mf += $mean{$_} for keys %mean; $mf /= scalar keys %mean;
@@ -156,6 +156,6 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 	printf $LOG "%d,%.4f,%.3f,%.4f,%s,%d\n", $g, $mf, $wins / $games, $best, $eval, time - $t0;
 	$LOG->flush;
 	spit("$RL/theta.json", $json->encode({gen => $g, weights => \@theta, m => \@m, v => \@v}));
-	weights_file("ai/commander_latest.json", \@theta);
+	weights_file("ai/commander_latest.json", \@theta) if $TAG eq "";
 }
 close $LOG;
