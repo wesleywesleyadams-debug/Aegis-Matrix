@@ -80,6 +80,7 @@ func apply_current_settings() -> void:
 
 	if _shuffle_checkbox:
 		_shuffle_checkbox.set_pressed_no_signal(GameState.music_shuffle)
+		_shuffle_checkbox.get_child(0).queue_redraw()
 	font_option.selected = maxi(FONT_OPTION_KEYS.find(GameState.ui_font), 0)
 	_apply_font(GameState.ui_font)
 
@@ -173,7 +174,7 @@ var _enabled_title: Label
 var _disabled_title: Label
 var _track_status: Label
 var _file_dialog: FileDialog
-var _shuffle_checkbox: CheckBox
+var _shuffle_checkbox: Button
 
 ## Audio tab as three panels side by side:
 ##   1. Audio: the volume sliders and Audio / Music toggles (moved in from the
@@ -214,14 +215,16 @@ func _build_music_section() -> void:
 	hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pl.add_child(hint)
-	var shuffle := CheckBox.new()
-	shuffle.text = "Shuffle (random order)"
-	shuffle.button_pressed = GameState.music_shuffle
-	shuffle.toggled.connect(func(on):
-		GameState.music_shuffle = on
-		GameState.save_settings())
-	pl.add_child(shuffle)
-	_shuffle_checkbox = shuffle
+	# Shuffle toggle: an icon button to the right of the "Playlist" heading.
+	var head := HBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", 12)
+	pl.add_child(head)
+	pl.move_child(head, 0)
+	pl.remove_child(_enabled_title)
+	head.add_child(_enabled_title)
+	_shuffle_checkbox = _shuffle_button()
+	head.add_child(_shuffle_checkbox)
 	var add := Button.new()
 	add.text = "Add Song..."
 	add.pressed.connect(func(): _file_dialog.popup_centered_ratio(0.7))
@@ -436,3 +439,34 @@ func _build_visuals_tab() -> void:
 		var n: Control = tab.get_node(pair[1])
 		tab.remove_child(n)
 		col.add_child(n)
+
+## A toggle button showing the shuffle icon (two crossing arrows), lit teal
+## when shuffle is on.
+func _shuffle_button() -> Button:
+	var b := Button.new()
+	b.toggle_mode = true
+	b.button_pressed = GameState.music_shuffle
+	b.tooltip_text = "Shuffle: play songs in random order"
+	b.custom_minimum_size = Vector2(38, 30)
+	var icon := Control.new()
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(icon)
+	icon.draw.connect(func():
+		var c := ENABLED_COLOR if b.button_pressed else Color(0.55, 0.58, 0.7)
+		var o := (icon.size - Vector2(24, 16)) / 2.0
+		var w := 2.0
+		# Two paths that cross in the middle, each ending in an arrowhead.
+		for pts in [[Vector2(0, 2), Vector2(7, 2), Vector2(15, 14), Vector2(22, 14)],
+				[Vector2(0, 14), Vector2(7, 14), Vector2(15, 2), Vector2(22, 2)]]:
+			var p := PackedVector2Array()
+			for v in pts:
+				p.append(o + v)
+			icon.draw_polyline(p, c, w)
+			var tip: Vector2 = o + pts[3] + Vector2(2, 0)
+			icon.draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(-6, -4), tip + Vector2(-6, 4)]), c))
+	b.toggled.connect(func(on):
+		GameState.music_shuffle = on
+		GameState.save_settings()
+		icon.queue_redraw())
+	return b
