@@ -295,7 +295,9 @@ const MUSIC_CREDITS := [
 
 var _credits: Control
 
-## A Credits button under Quit, opening a pop-up with the credits.
+## A Credits button under Quit, opening a full-screen Credits window with a
+## panel per area (Music, Art, Sound & AI, Engine & Development), laid out
+## like the Options menu (same panel columns: OptionsMenu._column).
 func _build_credits() -> void:
 	var btn := Button.new()
 	btn.text = "Credits"
@@ -308,17 +310,17 @@ func _build_credits() -> void:
 	_credits.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_credits.visible = false
 	add_child(_credits)
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_credits.add_child(center)
 	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		panel.set("offset_" + ["left", "top", "right", "bottom"][side], 60 if side in [SIDE_LEFT, SIDE_TOP] else -60)
 	var st := StyleBoxFlat.new()
-	st.bg_color = Color(0.05, 0.06, 0.12, 0.95)
+	st.bg_color = Color(0.05, 0.06, 0.12, 0.96)
 	st.border_color = Color(0.4, 0.5, 0.8, 0.7)
 	st.set_border_width_all(2)
-	st.set_content_margin_all(28)
+	st.set_content_margin_all(20)
 	panel.add_theme_stylebox_override("panel", st)
-	center.add_child(panel)
+	_credits.add_child(panel)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 14)
 	panel.add_child(v)
@@ -327,37 +329,71 @@ func _build_credits() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 32)
 	v.add_child(title)
-	var head := Label.new()
-	head.text = "Music"
-	head.add_theme_font_size_override("font_size", 22)
-	head.add_theme_color_override("font_color", Color("3fd6b0"))
-	v.add_child(head)
-	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 28)
-	grid.add_theme_constant_override("v_separation", 8)
-	v.add_child(grid)
+	var cols := HBoxContainer.new()
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cols.add_theme_constant_override("separation", 10)
+	v.add_child(cols)
+
+	# Music.
+	var music := _credit_list(cols, "Music", Color("3fd6b0"))
 	for c in MUSIC_CREDITS:
-		var name := Label.new()
-		name.text = "\"%s\"" % c[0]
-		grid.add_child(name)
-		var by := Label.new()
-		by.text = "by %s" % c[1]
-		by.add_theme_color_override("font_color", Color("ffd166"))
-		grid.add_child(by)
-		var lic := Label.new()
-		lic.text = "%s  ·  %s" % [c[2], c[3]]
-		lic.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
-		grid.add_child(lic)
-	var note := Label.new()
-	note.text = "CC BY-SA 3.0: creativecommons.org/licenses/by-sa/3.0\nSound effects and synth music generated procedurally for Star Lords."
-	note.add_theme_font_size_override("font_size", 14)
-	note.add_theme_color_override("font_color", Color(0.6, 0.63, 0.75))
-	v.add_child(note)
+		_credit_entry(music, "\"%s\"" % c[0], "by " + c[1], "%s\n%s" % [c[2], c[3]])
+	_credit_entry(music, "Star Lords Synth (Title, Lobby, In-Game)", "Original", "Generated for Star Lords")
+	_credit_entry(music, "", "", "CC BY-SA 3.0: creativecommons.org/licenses/by-sa/3.0")
+
+	# Art.
+	var art := _credit_list(cols, "Art", Color("ffd166"))
+	_credit_entry(art, "Ships, starbases & planets", "Original pixel art", "Generated procedurally for Star Lords (tools/gen_art.gd)")
+	_credit_entry(art, "Stars, nebulae, debris rings & ion storms", "Original", "Drawn procedurally in-game")
+	_credit_entry(art, "Space backgrounds", "Original", "Generated procedurally per star system")
+	_credit_entry(art, "Interface", "Original", "Built for Star Lords")
+	_credit_entry(art, "Font", "Consolas / system monospace", "Supplied by your operating system")
+
+	# Sound & AI.
+	var sai := _credit_list(cols, "Sound & AI", Color("ff9a2e"))
+	_credit_entry(sai, "Sound effects", "Original", "Synthesised for Star Lords (tools/gen_audio.gd): lasers, explosions, alerts, notifications")
+	_credit_entry(sai, "Scripted AI opponent", "Original", "Expand / build up / attack / recover strategy")
+	_credit_entry(sai, "Neural AI opponent", "Original", "A small neural network trained by evolution strategies over thousands of AI-vs-AI matches, including self-play")
+
+	# Engine & Development.
+	var dev := _credit_list(cols, "Engine & Development", Color("7fb2ff"))
+	_credit_entry(dev, "Game design & direction", "Wesley Adams", "")
+	_credit_entry(dev, "Programming", "Wesley Adams with Claude (Anthropic)", "")
+	_credit_entry(dev, "Godot Engine", "godotengine.org", "MIT License. Portions of this software are copyright (c) the Godot Engine contributors.")
+	var lic := Label.new()
+	# Reflow the hard-wrapped license text (keep paragraph breaks).
+	lic.text = RegEx.create_from_string("(?<!\n)\n(?!\n)").sub(Engine.get_license_text(), " ", true)
+	lic.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lic.add_theme_font_size_override("font_size", 12)
+	lic.add_theme_color_override("font_color", Color(0.55, 0.58, 0.7))
+	dev.add_child(lic)
+
 	var close := Button.new()
 	close.text = "Close"
 	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	close.custom_minimum_size = Vector2(240, 0)
+	close.custom_minimum_size = Vector2(320, 0)
 	MenuStyle.button(close)
 	close.pressed.connect(func(): _credits.visible = false)
 	v.add_child(close)
+
+## A credits panel column with a scrolling list inside; returns the list.
+func _credit_list(cols: Control, heading: String, color: Color) -> VBoxContainer:
+	return OptionsMenu._scroll_list(OptionsMenu._column(cols, heading, color, 1.0))
+
+## One credit: what (white), who (gold), details (dim, wrapped).
+func _credit_entry(list: VBoxContainer, what: String, who: String, details: String) -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	for part in [[what, Color.WHITE, 16], [who, Color("ffd166"), 15], [details, Color(0.65, 0.7, 0.85), 13]]:
+		if part[0] == "":
+			continue
+		var l := Label.new()
+		l.text = part[0]
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.add_theme_color_override("font_color", part[1])
+		l.add_theme_font_size_override("font_size", part[2])
+		box.add_child(l)
+	list.add_child(box)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 6)
+	list.add_child(gap)
