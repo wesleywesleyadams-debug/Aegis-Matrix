@@ -390,9 +390,9 @@ const HOTKEYS := [
 	["panel1", "Panel button 1", KEY_Q], ["panel2", "Panel button 2", KEY_W], ["panel3", "Panel button 3", KEY_E],
 	["panel4", "Panel button 4", KEY_A], ["panel5", "Panel button 5", KEY_S], ["panel6", "Panel button 6", KEY_D],
 	["panel7", "Panel button 7", KEY_Z], ["panel8", "Panel button 8", KEY_X], ["panel9", "Panel button 9", KEY_C],
-	["panel10", "Panel button 10", KEY_V], ["panel11", "Panel button 11", KEY_B], ["panel12", "Panel button 12", KEY_N],
-	["stop", "Stop", KEY_T], ["warships", "Select all warships", KEY_TAB], ["home", "Go to starbase", KEY_SPACE],
-	["next_world", "Next world", KEY_P], ["build_here", "Build on this world", KEY_F], ["research", "Research", KEY_R],
+	["panel10", "Panel button 10", KEY_V], ["panel11", "Panel button 11", KEY_G], ["panel12", "Panel button 12", KEY_H],
+	["stop", "Stop", KEY_T], ["warships", "Select all warships", KEY_TAB], ["home", "Go to starbase", KEY_B],
+	["next_world", "Next world", KEY_SPACE], ["build_here", "Build on this world", KEY_F], ["research", "Research", KEY_R],
 	["pause", "Pause / play", KEY_PAUSE], ["speed_down", "Slower", KEY_MINUS], ["speed_up", "Faster", KEY_EQUAL],
 	["speed_normal", "Normal speed", KEY_BACKSPACE],
 ]
