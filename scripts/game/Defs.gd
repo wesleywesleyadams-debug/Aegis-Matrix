@@ -58,19 +58,19 @@ const SHIPS := {
 		"name": "Corvette", "role": "warship", "hotkey": KEY_V,
 		"hp": 90.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 60}, "build_time": 8.0, "upkeep": 0.1,
-		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0,
+		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0,
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "hotkey": KEY_B,
 		"hp": 220.0, "shield": 80.0, "speed": 85.0, "radius": 11.0,
 		"cost": {"minerals": 140, "spice": 5}, "build_time": 14.0, "upkeep": 0.25,
-		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0,
+		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0,
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "hotkey": KEY_N, "requires": "cruiser_doctrine",
 		"hp": 560.0, "shield": 200.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 300, "spice": 25}, "build_time": 24.0, "upkeep": 0.6,
-		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0,
+		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0,
 	},
 }
 

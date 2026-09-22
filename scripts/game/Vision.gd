@@ -18,10 +18,11 @@ extends Node2D
 const CELL := 32.0
 const UPDATE := 0.12
 ## Default sensor ranges (px) by ship role; a ship def can set "sensor".
-const ROLE_SENSOR := {"miner": 240.0, "skimmer": 240.0, "colony": 240.0, "constructor": 260.0, "warship": 300.0}
-const STARBASE_SENSOR := 520.0
+## Civilian ships see less than warships (room for a dedicated scout).
+const ROLE_SENSOR := {"miner": 220.0, "skimmer": 220.0, "colony": 240.0, "constructor": 260.0, "warship": 300.0}
+const STARBASE_SENSOR := 640.0
 const STARBASE_BUILDING_SENSOR := 260.0
-const PLANET_SENSOR := 260.0
+const PLANET_SENSOR := 280.0
 ## An enemy inside a spice nebula is only visible within this distance.
 const NEBULA_SPOT := 160.0
 const STORM_SENSOR_MULT := 0.5
@@ -216,5 +217,17 @@ func _fog_test() -> void:
 	for y in rows:
 		for x in cols:
 			ex += int(_dark.get_pixel(x, y).a == 0.0)
+	var home: Node2D = game.nearest_starbase(pid, Vector2.ZERO)
+	var rocks := 0
+	var rocks_seen := 0
+	for a in get_tree().get_nodes_in_group("asteroids"):
+		if a.global_position.distance_to(home.global_position) < 900.0 and game.nearest_starbase(3 - pid, a.global_position).global_position.distance_to(a.global_position) > a.global_position.distance_to(home.global_position):
+			rocks += 1
+			rocks_seen += int(is_explored_at(a.global_position))
+	var near_planet := 1e9
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == 0:
+			near_planet = minf(near_planet, p.global_position.distance_to(home.global_position))
+	print("FOG TEST %s home rocks seen %d / %d, nearest free planet %.0f px" % [GameState.system_id, rocks_seen, rocks, near_planet])
 	print("FOG TEST enemy ships shown %d / %d, enemy starbases shown %d, explored %.0f%%" % [shown, total, sb_shown, 100.0 * ex / (cols * rows)])
 	get_tree().quit()
