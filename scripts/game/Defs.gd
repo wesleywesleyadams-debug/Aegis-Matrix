@@ -386,9 +386,9 @@ const HOTKEYS := [
 	["panel4", "Panel button 4", KEY_A], ["panel5", "Panel button 5", KEY_S], ["panel6", "Panel button 6", KEY_D],
 	["panel7", "Panel button 7", KEY_Z], ["panel8", "Panel button 8", KEY_X], ["panel9", "Panel button 9", KEY_C],
 	["panel10", "Panel button 10", KEY_V], ["panel11", "Panel button 11", KEY_B], ["panel12", "Panel button 12", KEY_N],
-	["stop", "Stop", KEY_T], ["warships", "Select all warships", KEY_TAB], ["home", "Camera to starbase", KEY_H],
+	["stop", "Stop", KEY_T], ["warships", "Select all warships", KEY_TAB], ["home", "Go to starbase", KEY_SPACE],
 	["next_world", "Next world", KEY_P], ["build_here", "Build on this world", KEY_F], ["research", "Research", KEY_R],
-	["pause", "Pause / play", KEY_SPACE], ["speed_down", "Slower", KEY_MINUS], ["speed_up", "Faster", KEY_EQUAL],
+	["pause", "Pause / play", KEY_PAUSE], ["speed_down", "Slower", KEY_MINUS], ["speed_up", "Faster", KEY_EQUAL],
 	["speed_normal", "Normal speed", KEY_BACKSPACE],
 ]
 
