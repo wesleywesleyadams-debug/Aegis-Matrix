@@ -145,12 +145,14 @@ func play_track(name: String) -> void:
 	_start(name, stream)
 
 ## In-game music: the player's playlist in order (starting at a random song),
-## moving on when each ends. Falls back to IN_GAME_TRACK if the playlist is
-## empty or none of its songs can be loaded.
+## moving on when each ends. Every song, Through Space included, can be
+## disabled: an empty playlist means no in-game music.
 func play_game_playlist() -> void:
 	var pl: Array = GameState.music_playlist.filter(func(id): return _stream(id) != null)
 	if pl.is_empty():
-		play_track(IN_GAME_TRACK)
+		_playlist = []
+		player.stop()
+		_current = ""
 		return
 	_playlist = pl
 	_playlist_index = randi() % pl.size()

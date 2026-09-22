@@ -340,6 +340,6 @@ func _reset_account_settings_to_defaults() -> void:
 	music_volume_db = -8.0
 	audio_enabled = true
 	music_enabled = true
-	music_playlist = ["through_space"]
+	music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal"]
 	human_player_id = 1
 	player_slots = _default_player_slots()

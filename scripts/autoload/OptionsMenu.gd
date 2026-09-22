@@ -281,7 +281,7 @@ func _refresh_tracks() -> void:
 	_enabled_title.text = "Playlist (%d)" % enabled.size()
 	_disabled_title.text = "Disabled (%d)" % disabled.size()
 	if enabled.is_empty():
-		_enabled_list.add_child(_list_note("Empty: matches will play Through Space."))
+		_enabled_list.add_child(_list_note("Empty: matches will have no music."))
 	for t in enabled:
 		_enabled_list.add_child(_track_row(t, true))
 	if disabled.is_empty():
