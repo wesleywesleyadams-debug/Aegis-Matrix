@@ -8,7 +8,8 @@
 # copied to res://ai/commander.json for the game to use.
 #
 # perl tools/es_train.pl [generations] [system] [minutes cap]
-#   env: PAIRS (6), JOBS (5), SIGMA (0.1), LR (0.03), EVAL_EVERY (5)
+#   env: PAIRS (6), SEEDS per side (2), JOBS (5), SIGMA (0.1), LR (0.03),
+#        EVAL_EVERY (5), EVAL_GAMES (10)
 use strict; use warnings; use JSON::PP; use File::Copy;
 
 my $GENS = shift // 20;
@@ -19,6 +20,8 @@ my $JOBS = $ENV{JOBS} // 5;
 my $SIGMA = $ENV{SIGMA} // 0.1;
 my $LR = $ENV{LR} // 0.03;
 my $EVAL_EVERY = $ENV{EVAL_EVERY} // 5;
+my $SEEDS = $ENV{SEEDS} // 2;
+my $EVAL_GAMES = $ENV{EVAL_GAMES} // 10;
 my $GODOT = $ENV{GODOT} // "/c/Users/whole/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe";
 my ($N_IN, $N_H, $N_OUT) = (21, 16, 9);
 my $NP = $N_H * $N_IN + $N_H + $N_OUT * $N_H + $N_OUT;
@@ -45,12 +48,12 @@ print $LOG "gen,mean_fitness,win_rate,best_fitness,eval_win_rate,seconds\n" if $
 
 # Plays the given weight files as the NN side; returns {tag => fitness, ...}.
 sub play {
-	my ($explore, @jobs) = @_;   # jobs: [tag, weights path, side]
-	my $list = join("", map { "$_->[0] $_->[1] $_->[2]\n" } @jobs);
+	my ($explore, @jobs) = @_;   # jobs: [tag, weights path, side, seed]
+	my $list = join("", map { "$_->[0] $_->[1] $_->[2] $_->[3]\n" } @jobs);
 	spit("$RL/jobs.txt", $list);
 	# Training matches sample actions (exploration); evaluations play greedily.
 	my $ex = $explore ? "SL_NN_EXPLORE=1 " : "";
-	my $cmd = "cat \"$RL/jobs.txt\" | xargs -P $JOBS -L 1 sh -c '${ex}SL_SIM=\"\$0\" SL_NN_WEIGHTS=\"\$1\" SL_NN_SIDE=\"\$2\" SL_SIM_MINUTES=$CAP SL_SYSTEM=$SYSTEM timeout 2400 \"$GODOT\" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'";
+	my $cmd = "cat \"$RL/jobs.txt\" | xargs -P $JOBS -L 1 sh -c '${ex}SL_SIM=\"\$0\" SL_NN_WEIGHTS=\"\$1\" SL_NN_SIDE=\"\$2\" SL_SEED=\"\$3\" SL_SIM_MINUTES=$CAP SL_SYSTEM=$SYSTEM timeout 2400 \"$GODOT\" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'";
 	system($cmd);
 	my %fit;
 	for my $j (@jobs) {
@@ -80,14 +83,18 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 		for my $sgn (1, -1) {
 			my $c = "g${g}k${k}" . ($sgn > 0 ? "p" : "n");
 			weights_file("$RL/$c.json", [map { $theta[$_] + $sgn * $SIGMA * $e[$_] } 0 .. $NP - 1]);
-			push @jobs, ["rl${c}s$_", "$RL/$c.json", $_] for (1, 2);
+			# Common random numbers: the + and - variants of pair k play the
+			# same seeds, so their difference reflects the weights, not luck.
+			for my $m (1 .. $SEEDS) {
+				push @jobs, ["rl${c}m${m}s$_", "$RL/$c.json", $_, "g${g}k${k}m${m}s$_"] for (1, 2);
+			}
 		}
 	}
 	my $fit = play(1, @jobs);
 	# Candidate fitness = mean over its matches; then centered ranks.
 	my (%cf, $wins, $games);
 	for my $j (@jobs) {
-		(my $c = $j->[0]) =~ s/^rl(.*)s\d$/$1/;
+		(my $c = $j->[0]) =~ s/^rl(.*)m\d+s\d$/$1/;
 		push @{$cf{$c}}, $fit->{$j->[0]};
 		$wins += $fit->{"win_$j->[0]"} // 0; $games++;
 	}
@@ -115,7 +122,8 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 	my $eval = "";
 	if ($g % $EVAL_EVERY == 0) {
 		weights_file("$RL/eval.json", \@theta);
-		my @ej = map { ["rle${g}_$_", "$RL/eval.json", ($_ % 2) + 1] } 1 .. 6;
+		# Same EVAL_GAMES seeds every time, so evaluations are comparable.
+		my @ej = map { ["rle${g}_$_", "$RL/eval.json", ($_ % 2) + 1, "eval$_"] } 1 .. $EVAL_GAMES;
 		my $ef = play(0, @ej);
 		my $w = 0; $w += $ef->{"win_$_->[0]"} // 0 for @ej;
 		$eval = sprintf "%.2f", $w / @ej;

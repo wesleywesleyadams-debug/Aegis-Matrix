@@ -92,6 +92,11 @@ func _enter_tree() -> void:
 	instance = self
 	_clock = 0.0
 	sim_mode = OS.get_environment("SL_SIM") != ""
+	# Seed sims here, before any child's _ready draws a random number.
+	# SL_SEED (if set) fixes the match randomness independently of the run
+	# name, so trainers can replay the same game with different players.
+	if sim_mode:
+		seed(hash(OS.get_environment("SL_SEED") if OS.get_environment("SL_SEED") != "" else OS.get_environment("SL_SIM")))
 	player_id = clampi(GameState.human_player_id, 1, 2)
 	for pid in players:
 		resources[pid] = Defs.START.duplicate()
@@ -128,7 +133,6 @@ func _ready() -> void:
 		(sb as Starbase).died.connect(_on_starbase_died)
 	# Balance harness (SL_SIM): the AI plays both sides.
 	if OS.get_environment("SL_SIM") != "":
-		seed(hash(OS.get_environment("SL_SIM")))
 		ai.setup([1, 2])
 		add_child(SimRunner.new())
 		hud.visible = false
