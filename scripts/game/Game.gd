@@ -1672,9 +1672,9 @@ func _enter_dev_capture() -> void:
 		# Dev: shot colors. Rows of generalist, Ion, Breacher and Reaver corvettes
 		# fire at enemy destroyers.
 		var foe := 3 - player_id
-		var kinds := ["corvette", "ion_corvette", "breacher_corvette", "reaver_corvette"]
+		var kinds := ["corvette", "ion_corvette", "breacher_corvette", "reaver_corvette", "slip_corvette", "disruptor_corvette"] if OS.get_environment("SL_SHOTS_ALL") != "" else ["corvette", "ion_corvette", "breacher_corvette", "reaver_corvette"]
 		for i in kinds.size():
-			var y := 560.0 + i * 70.0
+			var y := (420.0 if kinds.size() > 4 else 560.0) + i * 70.0
 			for j in 8:
 				spawn_ship(kinds[i], player_id, Vector2(-150 + (j % 4) * 18, y - 12 + (j / 4) * 24)).order_stop()
 			var t := spawn_ship("destroyer", foe, Vector2(-20, y))

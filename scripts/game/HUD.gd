@@ -38,6 +38,8 @@ var _research_modal: ColorRect
 var _tech_buttons := {}
 ## The research screen's Defenses tab button (dev captures press it).
 var _defs_tab: Button
+## Layer icon per defense line (Defs.LAYER_COLORS).
+const LINE_ICONS := {"shields": "icon_layer_shield", "armor": "icon_layer_armor", "hull": "icon_layer_hull"}
 var _build_buttons := {}
 var _queue_row: HBoxContainer
 var _info_label: Label
@@ -430,8 +432,11 @@ func _build_research(root: Control) -> void:
 	for tier in [1, 2, 3]:
 		defs.add_child(_label("TIER %d" % tier, DIM, 14))
 	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]]]:
-		var head := _label(line[1], line[2], 18)
+		var head := VBoxContainer.new()
+		head.alignment = BoxContainer.ALIGNMENT_CENTER
 		head.custom_minimum_size = Vector2(90, 0)
+		head.add_child(_icon(LINE_ICONS[line[0]], 3))
+		head.add_child(_label(line[1], line[2], 18))
 		defs.add_child(head)
 		for tier in [1, 2, 3]:
 			for id in Defs.TECHS:
@@ -1150,7 +1155,17 @@ func _tech_button(id: String, width: float = 340.0) -> Button:
 	var lab := Label.new()
 	lab.add_theme_font_size_override("font_size", 13)
 	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(lab)
+	# Defense-line techs lead with their layer's icon, in the layer color.
+	var line: String = Defs.TECHS[id].get("line", "")
+	if line != "":
+		var title := HBoxContainer.new()
+		title.add_theme_constant_override("separation", 6)
+		title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		title.add_child(_icon(LINE_ICONS[line], 1))
+		title.add_child(lab)
+		box.add_child(title)
+	else:
+		box.add_child(lab)
 	box.add_child(CostRow.make(Defs.TECHS[id]["cost"], 13, Defs.TECHS[id]["time"]))
 	var desc := Label.new()
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

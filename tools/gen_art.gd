@@ -38,12 +38,14 @@ func _init() -> void:
 		_gen_job_ships()
 		_gen_variants()
 		_gen_depot()
+		_gen_layer_art()
 		quit()
 		return
 	_gen_ships()
 	_gen_job_ships()
 	_gen_variants()
 	_gen_depot()
+	_gen_layer_art()
 	_gen_starbase()
 	_gen_planets()
 	_gen_star()
@@ -956,3 +958,51 @@ func _gen_depot() -> void:
 				_px(img, x, cy + 4, c[1])
 				_px(img, x + 1, cy - 4, c[2])
 				_px(img, x + 1, cy + 4, c[0]))
+
+# ---------------------------------------------------------------- layer art
+
+## "bolt_v": a V-shaped laser (a chevron pointing the way it flies) for
+## shots that bypass defense layers (Slip, Disruptor); white, tinted in game.
+## Layer icons (12x12, in Defs.LAYER_COLORS): shields = a bubble dome,
+## armor = a riveted plate, hull = a ship's frame.
+func _gen_layer_art() -> void:
+	var v := _img(9, 9)
+	for i in 5:
+		for t in 2:
+			var a := Color(1, 1, 1, 1.0 if t == 0 else 0.45)
+			v.set_pixel(3 + i - t, 4 - i, a)
+			v.set_pixel(3 + i - t, 4 + i, a)
+	v.set_pixel(8, 0, Color(1, 1, 1, 0.8))
+	v.set_pixel(8, 8, Color(1, 1, 1, 0.8))
+	# Tip at the front (right side, like the other bolts).
+	v.flip_x()
+	_save(v, "bolt_v")
+	var sh := _img(12, 12)
+	for y in 12:
+		for x in 12:
+			var d := Vector2(x + 0.5 - 6.0, y + 0.5 - 8.0).length()
+			if y <= 8 and d <= 5.6 and d >= 3.8:
+				sh.set_pixel(x, y, Color("7fd8ff") if d < 4.8 else Color("c8f0ff"))
+	for x in range(1, 11):
+		sh.set_pixel(x, 9, Color("3fa7d6"))
+	_outline(sh)
+	_save(sh, "icon_layer_shield")
+	var ar := _img(12, 12)
+	for y in range(1, 11):
+		for x in range(1, 11):
+			if not ((x == 1 or x == 10) and (y == 1 or y == 10)):
+				ar.set_pixel(x, y, Color("ff4a4a") if (x + y) % 2 == 0 or y < 4 else Color("c83232"))
+	for p in [Vector2i(3, 3), Vector2i(8, 3), Vector2i(3, 8), Vector2i(8, 8)]:
+		ar.set_pixel(p.x, p.y, Color("ffc8c8"))
+	_outline(ar)
+	_save(ar, "icon_layer_armor")
+	var hu := _img(12, 12)
+	var frame := _pts([[1, 6], [5, 2], [11, 6], [5, 10]])
+	for y in 12:
+		for x in 12:
+			if _inside(frame, x, y):
+				hu.set_pixel(x, y, Color("58e07a") if y < 6 else Color("38a85a"))
+	for x in range(3, 9):
+		hu.set_pixel(x, 6, Color("d8ffd8"))
+	_outline(hu)
+	_save(hu, "icon_layer_hull")
