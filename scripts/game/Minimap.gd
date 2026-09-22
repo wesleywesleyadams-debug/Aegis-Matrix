@@ -76,11 +76,18 @@ func _draw() -> void:
 		var pos := _map_to_ui(p.global_position)
 		draw_circle(pos, 4.0, Color("2a2e44"))
 		draw_arc(pos, 5.0, 0, TAU, 16, c, 1.5)
+	# Fog of war over the terrain (see Vision).
+	if game.vision and game.vision.enabled:
+		game.vision.draw_fog(self, Rect2(Vector2.ZERO, size))
 	for sb in tree.get_nodes_in_group("starbases"):
+		if not sb.visible:
+			continue
 		var pos := _map_to_ui(sb.global_position)
 		draw_rect(Rect2(pos - Vector2(4, 4), Vector2(8, 8)), Defs.team_color(sb.owner_id))
 		draw_rect(Rect2(pos - Vector2(4, 4), Vector2(8, 8)), Color.WHITE, false, 1.0)
 	for s in tree.get_nodes_in_group("ships"):
+		if not s.visible:
+			continue
 		var c := Defs.team_color(s.owner_id)
 		if s.selected:
 			c = Color.WHITE

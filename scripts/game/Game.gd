@@ -52,6 +52,8 @@ var is_over: bool = false
 var map_view: bool = false
 ## Post-game stats (see MatchStats).
 var stats: MatchStats = MatchStats.new()
+## Fog of war for the human player (null in sims / with SL_NOFOG).
+var vision: Vision
 ## Starbase placement mode for a selected Constructor.
 var placing_starbase: bool = false
 
@@ -149,6 +151,11 @@ func _ready() -> void:
 		sfx.process_mode = Node.PROCESS_MODE_DISABLED
 	else:
 		ai.setup([3 - player_id])
+		# Fog of war for the human player (SL_NOFOG=1 turns it off for dev shots).
+		if OS.get_environment("SL_NOFOG") == "":
+			vision = Vision.new()
+			$World.add_child(vision)
+			vision.setup(self, player_id)
 	if not loaded:
 		# Starting barges go straight to work.
 		for s in get_tree().get_nodes_in_group("ships"):
@@ -870,6 +877,8 @@ func _end_match(won: bool) -> void:
 	# the camera, HUD and View Map selection keep working.
 	$World.process_mode = Node.PROCESS_MODE_DISABLED
 	ai.process_mode = Node.PROCESS_MODE_DISABLED
+	if vision:
+		vision.reveal_all()
 	sfx.play_ui("victory" if won else "defeat")
 	match_over.emit(won)
 
@@ -1143,6 +1152,8 @@ func _on_selected_died(e: SpaceEntity) -> void:
 
 func _click_select(world_pos: Vector2, additive: bool) -> void:
 	var e := entity_at(world_pos)
+	if e and vision and not vision.can_see(e):
+		e = null
 	if e == null:
 		var p := planet_at(world_pos)
 		if not additive:

@@ -32,7 +32,14 @@ var rng := RandomNumberGenerator.new()
 func _init() -> void:
 	rng.seed = 7331
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
+	# ART_ONLY=ships regenerates just the ship sprites.
+	if OS.get_environment("ART_ONLY") == "ships":
+		_gen_ships()
+		_gen_job_ships()
+		quit()
+		return
 	_gen_ships()
+	_gen_job_ships()
 	_gen_starbase()
 	_gen_planets()
 	_gen_star()
@@ -95,7 +102,7 @@ func _pts(arr: Array) -> PackedVector2Array:
 ## places the part twice (above and below the keel), for claws/pylons.
 ## team_fn(x, dy) says which hull pixels get the owner's color.
 ## glass: [x, w]; engines: stern pixel rows (dy values).
-func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass: Array, engines: Array, panels: Array) -> void:
+func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass: Array, engines: Array, panels: Array, extras: Callable = Callable()) -> void:
 	var img := _img(w + 2, h + 2)
 	var tim := _img(w + 2, h + 2)
 	var cy := h / 2.0
@@ -138,6 +145,9 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 		img.set_pixel(glass[0] + gx + 1, int(cy) + 1, GLASS[0] if gx == 0 else GLASS[1])
 	for e in engines:
 		img.set_pixel(1, int(cy + e) + 1, ENGINE[1])
+	# Job details (sensor dishes, shield plates, glow strips...) drawn on top.
+	if extras.is_valid():
+		extras.call(img, cy + 1.0)
 	_outline(img)
 	_save(img, "ship_" + name)
 	_save(tim, "ship_" + name + "_team")
@@ -682,3 +692,163 @@ func _gen_buildings() -> void:
 					img.set_pixel(x, y, c)
 		_outline(img)
 		_save(img, "bld_" + name)
+
+# ---------------------------------------------------------------- job ships
+
+## Each job ship has its own silhouette plus a glowing accent color that
+## matches its ability's in-game effect, so it reads at a glance.
+const ACCENT := {
+	"scout": [Color("1d6f8a"), Color("7fe8ff"), Color("e6fbff")],
+	"heatshield": [Color("8a5a12"), Color("ffc24a"), Color("fff0b8")],
+	"tender": [Color("1f6a2a"), Color("6fe07a"), Color("d8ffd8")],
+	"pathfinder": [Color("7a3a10"), Color("ff8a2a"), Color("ffd6a0")],
+	"stormrider": [Color("4a2a8a"), Color("b48cff"), Color("f0e6ff")],
+	"harvester": [Color("a3461f"), Color("ff9a2e"), Color("ffe08a")],
+	"interdictor": [Color("7a1a66"), Color("ff5ad2"), Color("ffd6f4")],
+	"monitor": [Color("7a1a14"), Color("ff4a3a"), Color("ffc8b8")],
+	"carrier": [Color("7a5a10"), Color("ffb347"), Color("fff0c8")],
+	"battleship": [Color("7a6a30"), Color("ffe08a"), Color("ffffff")],
+}
+
+static func _px(img: Image, x: float, y: float, c: Color) -> void:
+	var xi := int(round(x))
+	var yi := int(round(y))
+	if xi >= 0 and yi >= 0 and xi < img.get_width() and yi < img.get_height():
+		img.set_pixel(xi, yi, c)
+
+## Straight line of pixels from a to b.
+static func _line(img: Image, a: Vector2, b: Vector2, c: Color) -> void:
+	var steps := int(maxf(absf(b.x - a.x), absf(b.y - a.y))) + 1
+	for i in steps + 1:
+		var p := a.lerp(b, float(i) / steps)
+		_px(img, p.x, p.y, c)
+
+func _gen_job_ships() -> void:
+	var A := ACCENT
+	# Scout: a thin needle with a big sensor dish arc.
+	_ship("scout", 20, 11,
+		[[2, 20, 1.6, 0.3], [4, 10, 3.5, 1.0], [0, 4, 1.5, 1.5]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 2.2,
+		[12, 2], [0.0], [],
+		func(img: Image, cy: float) -> void:
+			for dy in range(-4, 5):
+				_px(img, 15 - absf(dy) * 0.5, cy + dy, A["scout"][1 if absf(dy) < 4 else 0])
+			_px(img, 16, cy, A["scout"][2])
+			_line(img, Vector2(15, cy), Vector2(19, cy - 3), A["scout"][0])
+			_px(img, 19, cy - 3, A["scout"][2]))
+	# Heat Shield Frigate: compact hull behind a huge curved gold plate.
+	_ship("heatshield", 26, 21,
+		[[2, 19, 3.5, 2.5], [6, 14, 5.0, 3.0], [0, 4, 2.5, 2.5]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 3.2,
+		[14, 2], [-1.0, 0.0], [9],
+		func(img: Image, cy: float) -> void:
+			for dy in range(-9, 10):
+				var x := 24.0 - dy * dy / 14.0
+				_px(img, x, cy + dy, A["heatshield"][1])
+				_px(img, x - 1, cy + dy, A["heatshield"][0])
+				if absf(dy) < 7:
+					_px(img, x + 1, cy + dy, A["heatshield"][2])
+			_line(img, Vector2(19, cy - 2), Vector2(22, cy - 5), A["heatshield"][0])
+			_line(img, Vector2(19, cy + 2), Vector2(22, cy + 5), A["heatshield"][0]))
+	# Repair Tender: boxy workshop with side pods, green cross and two
+	# forward repair arms.
+	_ship("tender", 24, 19,
+		[[2, 16, 4.5, 4.5], [15, 21, 3.0, 1.0], [0, 3, 2.5, 2.5], [5, 12, 1.8, 1.8, 6.5]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 5.0,
+		[17, 2], [-1.0, 0.0], [8],
+		func(img: Image, cy: float) -> void:
+			for d in range(-2, 3):
+				_px(img, 9 + d, cy, A["tender"][1])
+				_px(img, 9, cy + d, A["tender"][1])
+			_px(img, 9, cy, A["tender"][2])
+			for s in [-1, 1]:
+				_line(img, Vector2(12, cy + s * 6), Vector2(21, cy + s * 7), Color("8490b3"))
+				_px(img, 22, cy + s * 7, A["tender"][2])
+				_px(img, 21, cy + s * 8, A["tender"][1]))
+	# Pathfinder: armored wedge ram with hazard stripes.
+	_ship("pathfinder", 24, 13,
+		[[2, 17, 4.5, 4.5], [16, 24, 5.5, 0.5], [0, 3, 2.5, 2.5]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 3.5 and x < 16,
+		[12, 2], [-1.0, 0.0], [7],
+		func(img: Image, cy: float) -> void:
+			for k in 3:
+				var x0 := 18 + k * 2
+				for dy in range(-4, 5):
+					if (dy + k) % 2 == 0 and absf(dy) <= 5.0 - k * 1.6:
+						_px(img, x0 + 1, cy + dy, A["pathfinder"][1]))
+	# Storm Rider: slim hull, swept fins, violet lightning rods.
+	_ship("stormrider", 24, 15,
+		[[2, 22, 2.5, 0.5], [3, 12, 6.5, 1.5], [0, 3, 2.0, 2.0]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 3.0,
+		[15, 2], [0.0], [],
+		func(img: Image, cy: float) -> void:
+			for s in [-1, 1]:
+				var pts := [Vector2(5, cy + s * 6), Vector2(9, cy + s * 5), Vector2(11, cy + s * 6), Vector2(15, cy + s * 4)]
+				for i in 3:
+					_line(img, pts[i], pts[i + 1], A["stormrider"][1])
+				_px(img, 16, cy + s * 4, A["stormrider"][2])
+			_px(img, 20, cy, A["stormrider"][2]))
+	# Nebula Harvester: tanker with a wide collector fan up front.
+	_ship("harvester", 24, 23,
+		[[3, 16, 4.5, 4.5], [14, 19, 3.0, 2.0], [0, 4, 2.5, 2.5]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 3.0 and x < 14,
+		[16, 2], [-1.0, 0.0], [7, 11],
+		func(img: Image, cy: float) -> void:
+			for dy in [-10, -7, -4, 4, 7, 10]:
+				_line(img, Vector2(18, cy + dy * 0.2), Vector2(23, cy + dy), A["harvester"][0])
+				_px(img, 23, cy + dy, A["harvester"][2])
+			for dy in range(-10, 11):
+				_px(img, 24, cy + dy, A["harvester"][1] if dy % 3 != 0 else A["harvester"][2])
+			for x in [6, 9, 12]:
+				_px(img, x, cy - 3, A["harvester"][1])
+				_px(img, x, cy + 3, A["harvester"][1]))
+	# Interdictor: core hull threaded through a gravity-well ring.
+	_ship("interdictor", 26, 23,
+		[[2, 23, 3.5, 1.0], [0, 3, 2.5, 2.5]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 2.0 and x < 8,
+		[18, 2], [-1.0, 0.0], [],
+		func(img: Image, cy: float) -> void:
+			for i in 48:
+				var a := TAU * i / 48.0
+				var p := Vector2(12 + cos(a) * 4.0, cy + sin(a) * 10.0)
+				if i % 12 != 0:
+					_px(img, p.x, p.y, A["interdictor"][1] if cos(a) > -0.3 else A["interdictor"][0])
+			_px(img, 12, cy - 10, A["interdictor"][2])
+			_px(img, 12, cy + 10, A["interdictor"][2]))
+	# Siege Monitor: stubby armored body carrying one huge spinal cannon.
+	_ship("monitor", 36, 17,
+		[[2, 16, 7.0, 6.0], [0, 4, 4.0, 4.0], [14, 36, 1.6, 1.2]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 4.0 and x < 16,
+		[10, 2], [-3.0, -2.0, 1.0, 2.0], [6, 12],
+		func(img: Image, cy: float) -> void:
+			for x in range(18, 34, 4):
+				_px(img, x, cy - 1, A["monitor"][1])
+				_px(img, x, cy + 1, A["monitor"][0])
+			_px(img, 36, cy, A["monitor"][2])
+			_px(img, 36, cy + 1, A["monitor"][1]))
+	# Carrier: long flat deck with lit hangar bays down both sides.
+	_ship("carrier", 42, 27,
+		[[3, 38, 10.0, 7.0], [36, 42, 4.0, 1.0], [0, 5, 6.0, 6.0]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 8.0,
+		[34, 3], [-4.0, -2.0, 0.0, 2.0, 4.0], [12, 20, 28],
+		func(img: Image, cy: float) -> void:
+			for x in range(8, 34, 5):
+				for s in [-1, 1]:
+					_px(img, x, cy + s * 5, Color("0e0d1c"))
+					_px(img, x + 1, cy + s * 5, Color("0e0d1c"))
+					_px(img, x, cy + s * 6, A["carrier"][1])
+			for x in range(6, 36, 2):
+				_px(img, x, cy + 1, A["carrier"][0]))
+	# Battleship: the biggest hull, stepped decks, gold command lights.
+	_ship("battleship", 52, 31,
+		[[3, 44, 9.0, 6.0], [42, 52, 4.5, 0.8], [8, 24, 14.0, 8.0], [0, 6, 7.0, 7.0], [26, 40, 2.0, 1.5, 8.0], [30, 46, 1.2, 0.8, 4.0]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 10.0 or (x >= 30 and x <= 32),
+		[40, 4], [-5.0, -3.0, -1.0, 0.0, 2.0, 4.0, 5.0], [14, 22, 36],
+		func(img: Image, cy: float) -> void:
+			for x in [18, 26, 34]:
+				_px(img, x, cy - 2, A["battleship"][1])
+				_px(img, x, cy + 2, A["battleship"][1])
+			_px(img, 38, cy, A["battleship"][2])
+			for s in [-1, 1]:
+				for x in range(12, 22, 3):
+					_px(img, x, cy + s * 11, A["battleship"][0]))
