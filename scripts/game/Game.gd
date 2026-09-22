@@ -112,7 +112,13 @@ func _ready() -> void:
 		loaded = SaveGame.apply(self, save_data)
 	for sb in get_tree().get_nodes_in_group("starbases"):
 		(sb as Starbase).died.connect(_on_starbase_died)
-	ai.setup([3 - player_id])
+	# Balance harness (SL_SIM): the AI plays both sides.
+	if OS.get_environment("SL_SIM") != "":
+		seed(hash(OS.get_environment("SL_SIM")))
+		ai.setup([1, 2])
+		add_child(SimRunner.new())
+	else:
+		ai.setup([3 - player_id])
 	if not loaded:
 		# Starting barges go straight to work.
 		for s in get_tree().get_nodes_in_group("ships"):
