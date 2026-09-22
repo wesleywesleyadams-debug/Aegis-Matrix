@@ -915,39 +915,77 @@ func _gen_variants() -> void:
 	for base in VARIANT_BASES:
 		var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s.png" % base))
 		var team := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s_team.png" % base))
-		var w := hull.get_width()
-		var h := hull.get_height()
-		var cy := h / 2
 		for v in VARIANT_BASES[base]:
-			var c: Array = VARIANT_COLORS[v]
 			var img := hull.duplicate() as Image
-			# Spine stripe: the middle row of hull pixels over the rear 2/3.
-			for x in range(2, int(w * 0.62)):
-				if img.get_pixel(x, cy).a > 0.0 and img.get_pixel(x, cy) != OUTLINE:
-					img.set_pixel(x, cy, c[0] if x % 2 == 0 else c[1])
-			# Nose emitter: the frontmost hull pixel on the centerline and the
-			# one behind it.
-			for x in range(w - 1, 0, -1):
-				if img.get_pixel(x, cy).a > 0.0 and img.get_pixel(x, cy) != OUTLINE:
-					img.set_pixel(x, cy, c[2])
-					img.set_pixel(x - 1, cy, c[1])
-					break
-			# Wingtips: the top- and bottom-most hull pixels of each column.
+			_mark_variant(img, v, VARIANT_COLORS[v])
+			_save(img, "ship_%s_%s" % [v, base])
+			_save(team.duplicate() as Image, "ship_%s_%s_team" % [v, base])
+
+## Each variant has its own marking pattern (the color says which layer it
+## hits, the pattern says which variant it is):
+##   ion       - dotted spine stripe + nose emitter
+##   breacher  - solid spine stripe + two ram prongs past the nose
+##   reaver    - solid spine stripe + saw-tooth wing edges
+##   slip      - twin dashed side stripes (no center line)
+##   disruptor - V chevrons down the spine (like its V-shots) + nose emitter
+func _mark_variant(img: Image, v: String, c: Array) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	var cy := h / 2
+	var is_hull := func(x: int, y: int) -> bool:
+		return x >= 0 and y >= 0 and x < w and y < h and img.get_pixel(x, y).a > 0.0 and img.get_pixel(x, y) != OUTLINE
+	var nose := 0
+	for x in range(w - 1, 0, -1):
+		if is_hull.call(x, cy):
+			nose = x
+			break
+	var tail := int(w * 0.62)
+	match v:
+		"ion":
+			for x in range(2, tail):
+				if x % 2 == 0 and is_hull.call(x, cy):
+					img.set_pixel(x, cy, c[1])
+			img.set_pixel(nose, cy, c[2])
+			img.set_pixel(nose - 1, cy, c[1])
+		"breacher":
+			for x in range(2, tail):
+				if is_hull.call(x, cy):
+					img.set_pixel(x, cy, c[1])
+			for s in [-2, 2]:
+				for k in 3:
+					var px := nose - 3 + k
+					if px >= 0 and px < w and cy + s >= 0 and cy + s < h:
+						img.set_pixel(px, cy + s, c[1] if k < 2 else c[2])
+		"reaver":
+			for x in range(2, tail):
+				if is_hull.call(x, cy):
+					img.set_pixel(x, cy, c[1])
+			# Saw teeth: every other pixel just inside the top and bottom edge.
 			for x in w:
+				if x % 2 == 1:
+					continue
 				for dir in [1, -1]:
 					var y := 0 if dir == 1 else h - 1
 					while y >= 0 and y < h and img.get_pixel(x, y).a == 0.0:
 						y += dir
-					# y is the outline; the pixel just inside it gets the color.
 					var inner: int = y + dir
-					if inner >= 0 and inner < h and absi(inner - cy) >= 3:
-						if img.get_pixel(x, inner).a > 0.0 and img.get_pixel(x, inner) != OUTLINE:
-							img.set_pixel(x, inner, c[1])
-			_save(img, "ship_%s_%s" % [v, base])
-			_save(team.duplicate() as Image, "ship_%s_%s_team" % [v, base])
+					if absi(inner - cy) >= 2 and is_hull.call(x, inner):
+						img.set_pixel(x, inner, c[1])
+		"slip":
+			for s in [-2, 2]:
+				for x in range(2, tail):
+					if x % 3 != 2 and is_hull.call(x, cy + s):
+						img.set_pixel(x, cy + s, c[1])
+		"disruptor":
+			for x0 in range(3, tail - 2, 5):
+				for k in 3:
+					for s in [-1, 1]:
+						if is_hull.call(x0 + k, cy + s * (2 - k)):
+							img.set_pixel(x0 + k, cy + s * (2 - k), c[1])
+				if is_hull.call(x0 + 2, cy):
+					img.set_pixel(x0 + 2, cy, c[2])
+			img.set_pixel(nose, cy, c[2])
 
-## Weapons Depot: a hub with a cross of docking arms and five weapon racks
-## lit in the variant colors (Ion, Breacher, Reaver, Slip, Disruptor).
 func _gen_depot() -> void:
 	_ship("depot", 34, 34,
 		[[10, 24, 7.0, 7.0], [2, 32, 2.2, 2.2], [14, 20, 2.0, 2.0, 11.0], [6, 10, 3.0, 3.0, 8.0], [24, 28, 3.0, 3.0, 8.0]],
