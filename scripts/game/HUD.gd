@@ -51,7 +51,12 @@ var _sel_panel: PanelContainer
 ## Grid hotkeys for the selection panel's buttons, assigned by position as
 ## the panel is rebuilt: Q W E / A S D / Z X C, then V B N if a panel needs
 ## more. Each button shows its letter in the corner (see _register_action).
-const PANEL_KEYS: Array[Key] = [KEY_Q, KEY_W, KEY_E, KEY_A, KEY_S, KEY_D, KEY_Z, KEY_X, KEY_C, KEY_V, KEY_B, KEY_N]
+## The player can rebind them (Options > Hotkeys, ids panel1..panel12).
+static func panel_keys() -> Array:
+	var out: Array = []
+	for i in 12:
+		out.append(Defs.key_for("panel%d" % (i + 1)))
+	return out
 var _panel_keys := {}
 
 ## Game speed steps; index NORMAL_SPEED is 1x.
@@ -1308,10 +1313,11 @@ func _build_depot_panel(d: WeaponsDepot) -> void:
 ## / V B N) and stamps that letter in its bottom-right corner, so the keys
 ## always match what is on screen.
 func _register_action(b: Button) -> void:
+	var keys := panel_keys()
 	var i := _panel_keys.size()
-	if i >= PANEL_KEYS.size():
+	if i >= keys.size():
 		return
-	var k: Key = PANEL_KEYS[i]
+	var k: Key = keys[i]
 	_panel_keys[k] = b
 	var tag := _label(OS.get_keycode_string(k), Color(TEXT, 0.75), 12)
 	tag.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -1335,7 +1341,7 @@ func press_panel_key(k: Key) -> bool:
 ## type" when no starbase is selected, so one key means one ship class
 ## wherever you are.
 func build_type_for_key(k: Key) -> String:
-	var i := PANEL_KEYS.find(k)
+	var i := panel_keys().find(k)
 	if i < 0 or i >= Defs.BUILD_ORDER.size():
 		return ""
 	return Defs.BUILD_ORDER[i]

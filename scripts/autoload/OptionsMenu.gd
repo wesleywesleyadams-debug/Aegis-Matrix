@@ -399,52 +399,128 @@ func _tab_columns(tab: Control) -> HBoxContainer:
 	tab.add_child(cols)
 	return cols
 
-## Hotkeys tab: Star Lords' controls in three panels (action -> key).
+## Hotkeys tab: the fixed mouse controls, and every rebindable key (see
+## Defs.HOTKEYS) as a button — click it, press the new key. Esc cancels,
+## Backspace-on-a-row is just another key, and taking a key from another
+## action clears that one. "Reset to defaults" puts them all back.
+var _rebinding: String = ""
+var _rebind_button: Button
+var _hotkey_buttons := {}
+
 func _build_hotkeys_tab() -> void:
 	var cols := _tab_columns($Background/Panel/VBox/TabContainer/Hotkeys)
-	var groups := [
-		["Mouse", Color("7fb2ff"), [
-			["Select", "Left click"], ["Box select", "Left drag"],
-			["Select all of a class on screen", "Double-click"],
-			["Move / attack / mine / colonize", "Right click"],
-			["Attack-move", "Ctrl + Right click"],
-			["Pan camera", "Middle drag / arrows / edges"], ["Zoom", "Mouse wheel"]]],
-		["Panel grid (bottom-left)", ENABLED_COLOR, [
-			["First row of buttons", "Q  W  E"],
-			["Second row", "A  S  D"],
-			["Third row", "Z  X  C"],
-			["Overflow", "V  B  N"],
-			["", ""],
-			["The keys follow the buttons on screen: whatever the", ""],
-			["selected ship, starbase or depot offers, in that order.", ""],
-			["Each button shows its letter in the corner.", ""],
-			["Build picker on a planet uses the same letters.", ""]]],
-		["Orders & Game", DISABLED_COLOR, [
-			["Stop", "T"], ["Select warships", "Tab"], ["Camera to home", "H"],
-			["Research", "R"], ["Next world", "P"], ["Build on this world", "F"],
-			["Set control group", "Ctrl + 1-9"], ["Select control group", "1-9"],
-			["Centre on group", "1-9 twice"],
-			["Pause / play", "Space"], ["Slower / faster", "- / ="],
-			["Normal speed", "Backspace"], ["Menu", "Esc"]]],
-	]
-	for g in groups:
-		var col := _column(cols, g[0], g[1], 1.0)
-		var list := _scroll_list(col)
-		for row in g[2]:
-			var h := HBoxContainer.new()
-			var action := Label.new()
-			action.text = row[0]
-			action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			action.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			var key := Label.new()
-			key.text = row[1]
-			key.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-			key.add_theme_color_override("font_color", KEY_COLOR)
-			h.add_child(action)
-			h.add_child(key)
-			list.add_child(h)
+	_hotkey_buttons.clear()
 
-## Visuals tab: the scene's controls moved into Display / Interface panels.
+	var mouse := _column(cols, "Mouse & camera", Color("7fb2ff"), 1.0)
+	var mlist := _scroll_list(mouse)
+	for row in [["Select", "Left click"], ["Box select", "Left drag"],
+			["Select all of a class on screen", "Double-click"],
+			["Move / attack / mine / colonize / refit", "Right click"],
+			["Attack-move", "Ctrl + Right click"],
+			["Pan camera", "Arrows / screen edge / middle drag"],
+			["Zoom", "Mouse wheel"],
+			["Set control group", "Ctrl + 1-9"],
+			["Select control group", "1-9"],
+			["Centre on group", "1-9 twice"],
+			["Menu / cancel", "Esc"]]:
+		var h := HBoxContainer.new()
+		var a := Label.new()
+		a.text = row[0]
+		a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		a.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var kk := Label.new()
+		kk.text = row[1]
+		kk.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		kk.add_theme_color_override("font_color", KEY_COLOR)
+		h.add_child(a)
+		h.add_child(kk)
+		mlist.add_child(h)
+
+	var panel := _column(cols, "Panel grid", ENABLED_COLOR, 1.0)
+	var plist := _scroll_list(panel)
+	plist.add_child(_hint("The bottom-left panel's buttons, in order: the letter is drawn on each button. With no starbase selected, these same keys select every ship of that class."))
+	for i in 12:
+		plist.add_child(_hotkey_row("panel%d" % (i + 1), "Panel button %d" % (i + 1)))
+
+	var game_col := _column(cols, "Orders & game", DISABLED_COLOR, 1.0)
+	var glist := _scroll_list(game_col)
+	for h in Defs.HOTKEYS:
+		if not String(h[0]).begins_with("panel"):
+			glist.add_child(_hotkey_row(h[0], h[1]))
+	var reset := Button.new()
+	reset.text = "Reset to defaults"
+	reset.pressed.connect(func():
+		GameState.hotkeys = {}
+		GameState.save_settings()
+		_refresh_hotkey_buttons())
+	glist.add_child(reset)
+
+func _hint(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", Color(0.6, 0.63, 0.75))
+	return l
+
+## One rebindable row: action name, and a button showing its key.
+func _hotkey_row(id: String, label: String) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	var a := Label.new()
+	a.text = label
+	a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	a.add_theme_font_size_override("font_size", 14)
+	h.add_child(a)
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(104, 28)
+	b.add_theme_font_size_override("font_size", 13)
+	b.add_theme_color_override("font_color", KEY_COLOR)
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(func(): _start_rebind(id, b))
+	h.add_child(b)
+	_hotkey_buttons[id] = b
+	_set_hotkey_button(id)
+	return h
+
+func _set_hotkey_button(id: String) -> void:
+	var b: Button = _hotkey_buttons.get(id)
+	if b:
+		b.text = OS.get_keycode_string(Defs.key_for(id))
+
+func _refresh_hotkey_buttons() -> void:
+	for id in _hotkey_buttons:
+		_set_hotkey_button(id)
+
+func _start_rebind(id: String, b: Button) -> void:
+	if _rebinding != "":
+		_set_hotkey_button(_rebinding)
+	_rebinding = id
+	_rebind_button = b
+	b.text = "press a key"
+
+## While waiting for a new binding, the next key press takes it (Esc cancels).
+func _input(event: InputEvent) -> void:
+	if _rebinding == "" or not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	get_viewport().set_input_as_handled()
+	var id := _rebinding
+	_rebinding = ""
+	if event.keycode == KEY_ESCAPE:
+		_set_hotkey_button(id)
+		return
+	var keys: Dictionary = GameState.hotkeys.duplicate()
+	if keys.is_empty():
+		keys = Defs.default_hotkeys()
+	# One key, one action: whoever had it loses it.
+	for other in keys.keys():
+		if other != id and int(keys[other]) == int(event.keycode):
+			keys[other] = KEY_NONE
+	keys[id] = event.keycode
+	GameState.hotkeys = keys
+	GameState.save_settings()
+	_refresh_hotkey_buttons()
+
 func _build_visuals_tab() -> void:
 	var tab: Control = $Background/Panel/VBox/TabContainer/Visuals
 	var cols := _tab_columns(tab)

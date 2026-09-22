@@ -405,8 +405,9 @@ func _on_field_pressed(i: int) -> void:
 func _add_pick(title: String, art: String, cost: Dictionary, seconds: float, action: int, why: String, desc: String = "") -> void:
 	var b := Button.new()
 	var key_i := _picker_keys.size()
-	if key_i < HUD.PANEL_KEYS.size():
-		var k: Key = HUD.PANEL_KEYS[key_i]
+	var pkeys := HUD.panel_keys()
+	if key_i < pkeys.size():
+		var k: Key = pkeys[key_i]
 		_picker_keys[k] = b
 		var tag := Label.new()
 		tag.text = OS.get_keycode_string(k)

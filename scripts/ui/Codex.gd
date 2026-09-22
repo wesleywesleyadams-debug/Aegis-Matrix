@@ -433,22 +433,25 @@ func _notification(what: int) -> void:
 func _page_controls() -> void:
 	_heading("Panel grid")
 	_para("The buttons in the bottom-left panel are wired to a grid of keys, in the order they appear, and each button shows its letter in the corner. The letters never move: whatever the selected ship, starbase or depot offers, the first button is Q, the fourth A, the seventh Z.")
-	_table(["Row", "Keys"], [
-		["First row", [" Q   W   E", EDGE_LIT]],
-		["Second row", [" A   S   D", EDGE_LIT]],
-		["Third row", [" Z   X   C", EDGE_LIT]],
-		["Overflow", [" V   B   N", EDGE_LIT]],
-	])
+	var pk := HUD.panel_keys()
+	var krows: Array = []
+	for r in 4:
+		var ks: Array = []
+		for c in 3:
+			ks.append(OS.get_keycode_string(pk[r * 3 + c]))
+		krows.append([["First row", "Second row", "Third row", "Overflow"][r], ["   ".join(ks), EDGE_LIT]])
+	_table(["Row", "Keys"], krows)
 	_para("The build picker on one of your worlds uses the same letters.")
+	_para("Every key here can be rebound in Options > Hotkeys, with a Reset to defaults button; the letters drawn on the buttons follow your bindings.")
 	_rule()
 	_heading("Build grid")
 	_para("With a starbase selected these letters build ships. With no starbase selected, the same letter selects every ship of that class you own, wherever it is.")
 	var rows: Array = []
 	for i in Defs.BUILD_ORDER.size():
-		if i >= HUD.PANEL_KEYS.size():
+		if i >= HUD.panel_keys().size():
 			break
 		var t: String = Defs.BUILD_ORDER[i]
-		rows.append([[OS.get_keycode_string(HUD.PANEL_KEYS[i]), EDGE_LIT], Defs.SHIPS[t]["name"], Defs.cost_text(Defs.SHIPS[t]["cost"])])
+		rows.append([[OS.get_keycode_string(HUD.panel_keys()[i]), EDGE_LIT], Defs.SHIPS[t]["name"], Defs.cost_text(Defs.SHIPS[t]["cost"])])
 	_table(["Key", "Builds / selects", "Cost"], rows)
 	_rule()
 	_heading("Everything else")

@@ -377,3 +377,40 @@ static func kill_ratio(target: Dictionary, variant: String) -> float:
 	var a: float = target.get("armor", 0.0)
 	var h: float = target.get("hp", 1.0)
 	return kill_cost(s, a, h, variant) / maxf(kill_cost(s, a, h, ""), 0.001)
+
+## Rebindable controls (Options > Hotkeys). Panel keys 1-12 are the grid the
+## selection panel's buttons use, in order: Q W E / A S D / Z X C / V B N.
+## The player's own bindings live in GameState.hotkeys; key_for() reads them.
+const HOTKEYS := [
+	["panel1", "Panel button 1", KEY_Q], ["panel2", "Panel button 2", KEY_W], ["panel3", "Panel button 3", KEY_E],
+	["panel4", "Panel button 4", KEY_A], ["panel5", "Panel button 5", KEY_S], ["panel6", "Panel button 6", KEY_D],
+	["panel7", "Panel button 7", KEY_Z], ["panel8", "Panel button 8", KEY_X], ["panel9", "Panel button 9", KEY_C],
+	["panel10", "Panel button 10", KEY_V], ["panel11", "Panel button 11", KEY_B], ["panel12", "Panel button 12", KEY_N],
+	["stop", "Stop", KEY_T], ["warships", "Select all warships", KEY_TAB], ["home", "Camera to starbase", KEY_H],
+	["next_world", "Next world", KEY_P], ["build_here", "Build on this world", KEY_F], ["research", "Research", KEY_R],
+	["pause", "Pause / play", KEY_SPACE], ["speed_down", "Slower", KEY_MINUS], ["speed_up", "Faster", KEY_EQUAL],
+	["speed_normal", "Normal speed", KEY_BACKSPACE],
+]
+
+static func default_hotkeys() -> Dictionary:
+	var out := {}
+	for h in HOTKEYS:
+		out[h[0]] = h[2]
+	return out
+
+## The key bound to an action id, falling back to its default.
+static func key_for(id: String) -> Key:
+	var v = GameState.hotkeys.get(id, null)
+	if v == null:
+		for h in HOTKEYS:
+			if h[0] == id:
+				return h[2]
+		return KEY_NONE
+	return v as Key
+
+## Which action a pressed key runs ("" if none).
+static func action_for_key(k: Key) -> String:
+	for h in HOTKEYS:
+		if key_for(h[0]) == k:
+			return h[0]
+	return ""

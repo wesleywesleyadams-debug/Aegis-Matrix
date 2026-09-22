@@ -1014,36 +1014,37 @@ func _handle_key(e: InputEventKey) -> void:
 	if bt != "":
 		select_all_of_type(bt)
 		return
-	if k == KEY_P:
-		cycle_planet()
-		return
-	if k == KEY_F:
-		if not hud.planet_view.open_build_picker():
-			sfx.play_ui("deny")
-		return
-	if k == KEY_MINUS or k == KEY_KP_SUBTRACT:
+	# The rest are rebindable (Options > Hotkeys; see Defs.HOTKEYS).
+	if k == KEY_KP_SUBTRACT:
 		hud.set_speed_index(hud.speed_index() - 1)
 		return
-	if k == KEY_EQUAL or k == KEY_KP_ADD:
+	if k == KEY_KP_ADD:
 		hud.set_speed_index(hud.speed_index() + 1)
 		return
-	if k == KEY_BACKSPACE:
-		hud.set_speed_index(HUD.NORMAL_SPEED)
-		return
-	if k == KEY_SPACE:
-		hud.toggle_play()
-		return
-	match k:
-		KEY_R:
+	match Defs.action_for_key(k):
+		"next_world":
+			cycle_planet()
+		"build_here":
+			if not hud.planet_view.open_build_picker():
+				sfx.play_ui("deny")
+		"speed_down":
+			hud.set_speed_index(hud.speed_index() - 1)
+		"speed_up":
+			hud.set_speed_index(hud.speed_index() + 1)
+		"speed_normal":
+			hud.set_speed_index(HUD.NORMAL_SPEED)
+		"pause":
+			hud.toggle_play()
+		"research":
 			hud.toggle_research()
-		KEY_H:
+		"home":
 			var sb := nearest_starbase(player_id, camera.global_position)
 			if sb:
 				center_on(sb.global_position)
-		KEY_T:
+		"stop":
 			for s in _own_ships_selected():
 				s.order_stop()
-		KEY_TAB:
+		"warships":
 			# Select every combat ship you own.
 			var all: Array = get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == player_id and s.def["role"] == "warship")
 			_set_selection(all, false)
@@ -1728,6 +1729,18 @@ func _enter_dev_capture() -> void:
 		_handle_key(InputEventKey.new())
 		select_all_of_type("miner")
 		print("KEYS select-all miners: %d selected, key maps to %s" % [selection.size(), hud.build_type_for_key(KEY_Q)])
+		# Rebinding: panel button 1 moved to key 1, then reset to defaults.
+		GameState.hotkeys = Defs.default_hotkeys()
+		GameState.hotkeys["panel1"] = KEY_J
+		_set_selection([sb0], false)
+		await get_tree().process_frame
+		var q_after := hud.press_panel_key(KEY_Q)
+		var j_after := hud.press_panel_key(KEY_J)
+		print("KEYS rebound panel1 to J: Q=%s J=%s queue=%s" % [str(q_after), str(j_after), str(sb0.queue)])
+		GameState.hotkeys = {}
+		_set_selection([sb0], false)
+		await get_tree().process_frame
+		print("KEYS after reset: Q=%s first key=%s" % [str(hud.press_panel_key(KEY_Q)), OS.get_keycode_string(HUD.panel_keys()[0])])
 	if OS.get_environment("SL_SHOT_OPEN") == "depot":
 		# Dev: a Constructor builds a Weapons Depot, two corvettes refit to Slip,
 		# then a refit of a specialist is refused.

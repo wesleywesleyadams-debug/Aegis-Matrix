@@ -170,6 +170,10 @@ var music_volume_db: float = -8.0
 var music_playlist: Array = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "title", "lobby"]
 ## Shuffle: play the in-game songs in random order instead of list order.
 var music_shuffle: bool = false
+
+## Rebindable controls: action id -> keycode (see Defs.HOTKEYS). Empty means
+## "all defaults".
+var hotkeys: Dictionary = {}
 ## Independent on/off switches, separate from the volume sliders above --
 ## OptionsMenu's Audio tab checkboxes (see _apply_audio_enabled/
 ## _apply_music_enabled) mute the Master bus / pause Music.player rather
@@ -270,6 +274,7 @@ func save_account_settings() -> void:
 	config.set_value("audio", "music_enabled", music_enabled)
 	config.set_value("audio", "music_playlist", music_playlist)
 	config.set_value("audio", "music_shuffle", music_shuffle)
+	config.set_value("controls", "hotkeys", hotkeys)
 	config.set_value("visuals", "show_debug_grid", show_debug_grid)
 	config.set_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
 	config.set_value("visuals", "show_grip_points", show_grip_points)
@@ -322,6 +327,7 @@ func load_account_settings() -> void:
 	music_enabled = config.get_value("audio", "music_enabled", music_enabled)
 	music_playlist = config.get_value("audio", "music_playlist", music_playlist)
 	music_shuffle = config.get_value("audio", "music_shuffle", music_shuffle)
+	hotkeys = config.get_value("controls", "hotkeys", {})
 	show_debug_grid = config.get_value("visuals", "show_debug_grid", show_debug_grid)
 	show_combat_hitboxes = config.get_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
 	show_grip_points = config.get_value("visuals", "show_grip_points", show_grip_points)
@@ -346,5 +352,6 @@ func _reset_account_settings_to_defaults() -> void:
 	music_enabled = true
 	music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "title", "lobby"]
 	music_shuffle = false
+	hotkeys = {}
 	human_player_id = 1
 	player_slots = _default_player_slots()
