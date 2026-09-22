@@ -453,7 +453,7 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 	starbases_root.add_child(sb)
 	sb.died.connect(_on_starbase_died)
 	if pid == player_id:
-		notify("Starbase construction started.", "note_starbase")
+		notify("Starbase construction started.", "note_starbase", pos)
 	return sb
 
 func fire(from: SpaceEntity, to: Node2D, weapon: String, damage: float) -> void:
@@ -488,23 +488,23 @@ func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
 
 func planet_claimed(p: Planet, old_owner: int) -> void:
 	if p.owner_id == player_id:
-		notify(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name, "note_colony")
+		notify(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name, "note_colony", p.global_position)
 	elif old_owner == player_id:
-		alert("%s lost to the enemy!" % p.planet_name, "alert_planet_lost", true)
+		alert("%s lost to the enemy!" % p.planet_name, "alert_planet_lost", true, p.global_position)
 	selection_changed.emit()
 
 ## A bombarded planet ran out of pops and went neutral.
 func planet_depopulated(p: Planet, old_owner: int, attacker: int) -> void:
 	if old_owner == player_id:
-		alert("%s has been depopulated and lost!" % p.planet_name, "alert_planet_lost", true)
+		alert("%s has been depopulated and lost!" % p.planet_name, "alert_planet_lost", true, p.global_position)
 	elif attacker == player_id:
-		notify("%s depopulated. It can now be colonized." % p.planet_name, "note_colony")
+		notify("%s depopulated. It can now be colonized." % p.planet_name, "note_colony", p.global_position)
 	selection_changed.emit()
 
 func _on_starbase_died(sb: SpaceEntity) -> void:
 	selection.erase(sb)
 	if sb.owner_id == player_id and not (sb as Starbase).under_construction:
-		alert("A starbase has been destroyed!", "alert_starbase_lost", true)
+		alert("A starbase has been destroyed!", "alert_starbase_lost", true, sb.global_position)
 	await get_tree().process_frame
 	var mine := false
 	var theirs := false
@@ -524,7 +524,9 @@ func _on_starbase_died(sb: SpaceEntity) -> void:
 ## colonized, research done...). Not rate limited.
 const NOTIFY_COLOR := Color("7fd8ff")
 
-func notify(text: String, sound: String = "") -> void:
+func notify(text: String, sound: String = "", at: Variant = null) -> void:
+	if at is Vector2:
+		add_flare(at, NOTIFY_COLOR)
 	message.emit(text, NOTIFY_COLOR)
 	if sound != "":
 		sfx.play_ui(sound)
@@ -533,6 +535,25 @@ func notify(text: String, sound: String = "") -> void:
 ## resource. At most one every ALERT_COOLDOWN seconds of REAL time (so game
 ## speed and pause don't change how often you hear them), whatever raised it.
 const ALERT_COOLDOWN := 15.0
+const ALERT_COLOR := Color("ff6a5a")
+
+## Minimap flares: where an alert or notification happened. Each is
+## {pos, color, ms} and lives FLARE_MS of real time. A new flare within
+## FLARE_MERGE_PX of a live one of the same color just refreshes it, so a
+## ship sitting in radiation doesn't stack dozens of rings.
+const FLARE_MS := 6000
+const FLARE_MERGE_PX := 250.0
+var flares: Array = []
+
+func add_flare(pos: Vector2, color: Color) -> void:
+	var t := Time.get_ticks_msec()
+	flares = flares.filter(func(f): return t - f["ms"] < FLARE_MS)
+	for f in flares:
+		if f["color"] == color and f["pos"].distance_to(pos) < FLARE_MERGE_PX:
+			if t - f["ms"] > FLARE_MS / 2:
+				f["ms"] = t
+			return
+	flares.append({"pos": pos, "color": color, "ms": t})
 var _last_alert_ms: int = -1000000
 ## Alarm sounds played this match (dev check for the cooldown).
 var alert_sounds: int = 0
@@ -542,12 +563,15 @@ var alert_sounds: int = 0
 ## `critical` alerts (a planet lost, a starbase destroyed) always show their
 ## message, but inside the cooldown they stay silent: never more than one
 ## alarm sound per ALERT_COOLDOWN.
-func alert(text: String, sound: String = "alert", critical: bool = false) -> void:
+func alert(text: String, sound: String = "alert", critical: bool = false, at: Variant = null) -> void:
+	# The minimap flare shows even when the cooldown silences the alarm.
+	if at is Vector2:
+		add_flare(at, ALERT_COLOR)
 	var t := Time.get_ticks_msec()
 	var ready := t - _last_alert_ms >= int(ALERT_COOLDOWN * 1000.0)
 	if not ready and not critical:
 		return
-	message.emit(text, Color("ff6a5a"))
+	message.emit(text, ALERT_COLOR)
 	if ready:
 		_last_alert_ms = t
 		sfx.play_ui(sound)
@@ -680,7 +704,7 @@ func save_game() -> void:
 	var t := int(now())
 	var path := SaveGame.write(self, "%s · %02d:%02d match time" % [label, t / 60, t % 60])
 	if path == "":
-		message.emit("Couldn't write the save file.", Color("ff6a5a"))
+		message.emit("Couldn't write the save file.", ALERT_COLOR)
 	else:
 		notify("Game saved.", "note_save")
 
@@ -1103,6 +1127,12 @@ func _enter_dev_capture() -> void:
 			spawn_ship(k, player_id, c + Vector2(-260, -40) + off).order_attack_move(c + Vector2(200, 0))
 			spawn_ship(k, foe, c + Vector2(160, -40) + off).order_attack_move(c - Vector2(200, 0))
 		center_on(c)
+		if OS.get_environment("SL_FLARE_TEST") != "":
+			spawn_ship("corvette", player_id, Vector2(60, 0)).order_stop()
+			resources[player_id]["minerals"] = 2000.0
+			resources[player_id]["spice"] = 500.0
+			nearest_starbase(player_id, Vector2.ZERO).enqueue("corvette")
+			get_tree().create_timer(1.0, true, false, true).timeout.connect(func(): nearest_starbase(player_id, Vector2.ZERO)._launch("corvette"))
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()

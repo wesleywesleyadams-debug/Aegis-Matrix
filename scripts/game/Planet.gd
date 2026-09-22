@@ -226,7 +226,7 @@ func _economy(dt: float) -> void:
 			hungry = 0.0
 			starve_timer = 0.0
 			if owner_id == g.player_id and died >= 1.0:
-				g.alert("%d pops starved on %s." % [int(died), planet_name], "alert_starved")
+				g.alert("%d pops starved on %s." % [int(died), planet_name], "alert_starved", false, global_position)
 	else:
 		# Fed again within the window: nobody dies.
 		hungry = 0.0
@@ -273,7 +273,7 @@ func take_damage(amount: float, from: Node2D = null) -> void:
 		g.spawn_shield_hit(global_position, radius * 0.6, from.global_position if is_instance_valid(from) else global_position + Vector2.RIGHT)
 	pop -= amount * POP_PER_DAMAGE
 	if owner_id == g.player_id:
-		g.alert("%s is being bombarded!" % planet_name, "alert_planet")
+		g.alert("%s is being bombarded!" % planet_name, "alert_planet", false, global_position)
 	if pop <= 0.0:
 		var attacker: int = from.owner_id if is_instance_valid(from) and from.get("owner_id") != null else 0
 		_depopulate(attacker)
@@ -458,7 +458,7 @@ func _run_buildings(dt: float) -> void:
 	if construction["progress"] >= d["time"]:
 		buildings[construction["field"]] = construction["id"]
 		if owner_id == g.player_id:
-			g.notify("%s completed on %s." % [d["name"], planet_name], "note_building")
+			g.notify("%s completed on %s." % [d["name"], planet_name], "note_building", global_position)
 		construction = {}
 
 ## Assigns pop to buildings: food first, then energy, minerals, spice.

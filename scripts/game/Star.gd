@@ -49,7 +49,7 @@ func _process(delta: float) -> void:
 		if dps > 0.0:
 			e.take_damage(dps * dt, null)
 			if e.owner_id == Game.instance.player_id:
-				Game.instance.alert("Your ships are taking radiation damage from %s!" % star_name, "alert_ships")
+				Game.instance.alert("Your ships are taking radiation damage from %s!" % star_name, "alert_ships", false, e.global_position)
 
 func _draw() -> void:
 	# Radiation zone, always shown: a red haze that thickens toward the core

@@ -148,7 +148,7 @@ func _construct(delta: float) -> void:
 		refresh_stats()
 		_update_site_look()
 		if owner_id == g.player_id:
-			g.notify("Starbase complete.", "note_starbase")
+			g.notify("Starbase complete.", "note_starbase", global_position)
 		g.selection_changed.emit()
 
 func _launch(ship_type: String) -> void:
@@ -156,7 +156,7 @@ func _launch(ship_type: String) -> void:
 	var dir := (rally_point - global_position).normalized() if has_rally else Vector2.from_angle(randf() * TAU)
 	var ship := g.spawn_ship(ship_type, owner_id, global_position + dir * (radius + 6.0))
 	if owner_id == g.player_id:
-		g.notify("%s ready." % Defs.SHIPS[ship_type]["name"], "note_ship")
+		g.notify("%s ready." % Defs.SHIPS[ship_type]["name"], "note_ship", ship.global_position)
 	ship.rotation = dir.angle()
 	if is_instance_valid(rally_target):
 		var rt := rally_target
@@ -194,7 +194,7 @@ func take_damage(amount: float, from: SpaceEntity = null) -> void:
 	super.take_damage(amount, from)
 	var g := Game.instance
 	if owner_id == g.player_id and hp > 0.0:
-		g.alert("Your starbase is under attack!", "alert_starbase")
+		g.alert("Your starbase is under attack!", "alert_starbase", false, global_position)
 
 func _draw() -> void:
 	if Engine.is_editor_hint():

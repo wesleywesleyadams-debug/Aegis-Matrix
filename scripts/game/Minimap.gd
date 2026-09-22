@@ -61,6 +61,26 @@ func _draw() -> void:
 		if s.selected:
 			c = Color.WHITE
 		draw_rect(Rect2(_map_to_ui(s.global_position) - Vector2(1, 1), Vector2(2, 2) if s.radius < 12 else Vector2(3, 3)), c)
+	# Event flares (see Game.add_flare): red for alerts, light blue for
+	# notifications. A bright dot plus rings pulsing outward, fading over
+	# the flare's life. Real time, so they fade even while paused.
+	var now_ms := Time.get_ticks_msec()
+	for f in game.flares:
+		var age := float(now_ms - f["ms"]) / Game.FLARE_MS
+		if age >= 1.0:
+			continue
+		var p := _map_to_ui(f["pos"])
+		var col: Color = f["color"]
+		var fade := clampf(1.0 - age, 0.0, 1.0)
+		fade = 0.45 + 0.55 * fade
+		for k in 2:
+			var ph := fmod(age * 4.0 + k * 0.5, 1.0)
+			var c := col.lightened(0.15)
+			c.a = fade * (1.0 - ph * 0.8)
+			draw_arc(p, 4.0 + ph * 16.0, 0.0, TAU, 28, c, 2.5)
+		var dot := col.lightened(0.3)
+		dot.a = fade
+		draw_circle(p, 3.5, dot)
 	# Camera view rectangle.
 	var cam := game.camera
 	var view_size := game.get_viewport().get_visible_rect().size / cam.zoom

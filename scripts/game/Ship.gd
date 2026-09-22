@@ -100,7 +100,7 @@ func cargo_cap() -> int:
 func take_damage(amount: float, from: SpaceEntity = null) -> void:
 	super.take_damage(amount, from)
 	if owner_id == Game.instance.player_id and hp > 0.0 and from != null:
-		Game.instance.alert("Your ships are under attack!", "alert_ships")
+		Game.instance.alert("Your ships are under attack!", "alert_ships", false, global_position)
 
 func order_move(pos: Vector2) -> void:
 	state = State.MOVE
