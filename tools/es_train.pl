@@ -30,6 +30,10 @@ my $USER = "$ENV{APPDATA}/Godot/app_userdata/Star Lords";
 my $RL = "$USER/rl";
 my $SIMS = "$USER/sims";
 mkdir $RL; mkdir $SIMS; mkdir "ai";
+# Weight files the sims load: inside the project (res://ai/train/...) because
+# the user-data path contains a space, which would split the job lines.
+mkdir "ai/train";
+sub res_path { my $name = shift; return ("ai/train/$name", "res://ai/train/$name") }
 my $json = JSON::PP->new->canonical;
 
 sub gauss { my $u1 = rand() || 1e-12; my $u2 = rand(); return sqrt(-2 * log($u1)) * cos(6.283185307 * $u2) }
@@ -63,6 +67,8 @@ sub play {
 		unlink $f;
 		my $r = decode_json($d);
 		my $me = $j->[2]; my $foe = 3 - $me;
+		# Sanity check: the network must actually have played this side.
+		die "NN did not play side $me in $j->[0] (weights $j->[1] not loaded?)\n" unless $r->{nn_actions} && $r->{nn_actions}{$me};
 		my $last = $r->{samples}[-1];
 		my $score = $r->{winner} == $me ? 1 + 0.5 * ($CAP - $r->{minutes}) / $CAP : ($r->{winner} == 0 ? 0 : -1);
 		$score += 0.3 * tanh_(($last->{$me}{worlds} - $last->{$foe}{worlds}) / 3);
@@ -82,11 +88,12 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 		push @eps, \@e;
 		for my $sgn (1, -1) {
 			my $c = "g${g}k${k}" . ($sgn > 0 ? "p" : "n");
-			weights_file("$RL/$c.json", [map { $theta[$_] + $sgn * $SIGMA * $e[$_] } 0 .. $NP - 1]);
+			my ($cfile, $cres) = res_path("$c.json");
+			weights_file($cfile, [map { $theta[$_] + $sgn * $SIGMA * $e[$_] } 0 .. $NP - 1]);
 			# Common random numbers: the + and - variants of pair k play the
 			# same seeds, so their difference reflects the weights, not luck.
 			for my $m (1 .. $SEEDS) {
-				push @jobs, ["rl${c}m${m}s$_", "$RL/$c.json", $_, "g${g}k${k}m${m}s$_"] for (1, 2);
+				push @jobs, ["rl${c}m${m}s$_", $cres, $_, "g${g}k${k}m${m}s$_"] for (1, 2);
 			}
 		}
 	}
@@ -116,14 +123,14 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 		$theta[$i] += $LR * $mh / (sqrt($vh) + 1e-8);
 		$theta[$i] -= 0.005 * $LR * $theta[$i];   # light weight decay
 	}
-	# (Listed, not globbed: the folder path contains a space.)
-	opendir(my $dh, $RL); unlink map { "$RL/$_" } grep { /^g${g}k\d+[pn]\.json$/ } readdir($dh); closedir $dh;
+	opendir(my $dh, "ai/train"); unlink map { "ai/train/$_" } grep { /^g${g}k\d+[pn]\.json$/ } readdir($dh); closedir $dh;
 	# Periodic clean evaluation of the unperturbed weights.
 	my $eval = "";
 	if ($g % $EVAL_EVERY == 0) {
-		weights_file("$RL/eval.json", \@theta);
+		my ($efile, $eres) = res_path("eval.json");
+		weights_file($efile, \@theta);
 		# Same EVAL_GAMES seeds every time, so evaluations are comparable.
-		my @ej = map { ["rle${g}_$_", "$RL/eval.json", ($_ % 2) + 1, "eval$_"] } 1 .. $EVAL_GAMES;
+		my @ej = map { ["rle${g}_$_", $eres, ($_ % 2) + 1, "eval$_"] } 1 .. $EVAL_GAMES;
 		my $ef = play(0, @ej);
 		my $w = 0; $w += $ef->{"win_$_->[0]"} // 0 for @ej;
 		$eval = sprintf "%.2f", $w / @ej;

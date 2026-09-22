@@ -10,3 +10,4 @@ data_*/
 mono_crash.*.json
 build/
 /android/
+ai/train/
