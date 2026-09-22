@@ -67,14 +67,33 @@ Base damage needed to destroy a target, relative to a generalist
 - Breacher / Disruptor: armor-heavy fleets (Cruisers).
 - Wrong target: 5-46% worse than a plain generalist, so scouting decides.
 
-## Weapons Depot
+## Weapons Depots
 
-- Built by a **Constructor** (**E**, or its panel button): 250 minerals + 20
-  spice over 30 s. It has no weapons and doesn't count for victory.
-- Select generalist warships, pick a refit in their panel: they fly to the
-  nearest depot, dock, and convert after **12 s for 25 minerals** each.
+Starbases build generalists only; every specialist is refitted at a depot.
+
+- Built by a **Constructor** (**E**, or its panel buttons): 250 minerals + 20
+  spice over 30 s. No weapons, and losing one doesn't lose the match.
+- **There are five depot types, one per variant**: an Ion Depot refits
+  generalists into Ion ships, a Slip Depot into Slip ships, and so on. A depot
+  wears its owner's color and carries its variant's marking pattern.
+- Send ships in by right-clicking the depot (or with the refit buttons in the
+  ship panel). They fly in and **dock — 10 at a time, hidden and safe inside**
+  — and are refitted automatically as minerals allow.
+- Cost and time are per hull:
+
+| Hull | Refit cost | Refit time |
+|---|---|---|
+| Corvette | 5 minerals | 15 s |
+| Destroyer | 10 minerals | 25 s |
+| Cruiser | 15 minerals | 35 s |
+
+- A refit with no minerals to pay for it **waits**, and the ship stays inside
+  until you cancel it; **cancelling ejects the ship unchanged**, still a
+  generalist (minerals already spent are lost).
 - **A specialist can never be refitted again** — the choice is permanent.
-- The AI builds a depot once its fleet grows, then refits by kill-cost maths
+- **A depot destroyed with ships inside** throws them clear, each losing 60% of
+  its shields, armor and hull.
+- The AI builds the depot its intel calls for, then refits by kill-cost maths
   against the enemy warships its sensors have actually seen.
 
 ## Defense research

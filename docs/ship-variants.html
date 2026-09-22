@@ -393,23 +393,34 @@
   </section>
 
   <section>
-    <div class="eyebrow">Weapons Depot</div>
-    <h2>Where a generalist becomes a specialist</h2>
+    <div class="eyebrow">Weapons Depots</div>
+    <h2>Five depots, one per variant</h2>
+    <p class="sub">Starbases build generalists only. Every specialist is refitted at a depot built for that variant: an Ion Depot makes Ion ships, a Slip Depot Slip ships. A depot wears its owner's color and carries its variant's marking pattern.</p>
     <div class="cards">
       <div class="card" style="--c: var(--edge-lit)">
-        <header><h3>Building it</h3><span class="dmg">250 minerals · 20 spice</span></header>
-        <p>A Constructor builds it (<code>E</code> or its panel button) over 30 s. No weapons, and losing it doesn't lose the match.</p>
+        <header><h3>Building one</h3><span class="dmg">250 minerals · 20 spice</span></header>
+        <p>A Constructor builds it (<code>E</code>, or the depot buttons in its panel) over 30 s. No weapons, and losing one doesn't lose the match.</p>
       </div>
       <div class="card" style="--c: var(--edge-lit)">
-        <header><h3>Refitting</h3><span class="dmg">25 minerals · 12 s</span></header>
-        <p>Select generalist warships, pick a refit: they fly to the nearest depot, dock, and convert.</p>
+        <header><h3>Docking</h3><span class="dmg">10 bays</span></header>
+        <p>Right-click a depot with generalists selected and they fly in and dock — hidden and safe inside — then refit automatically as minerals allow.</p>
       </div>
       <div class="card" style="--c: var(--armor)">
         <header><h3>Permanent</h3><span class="dmg">one way only</span></header>
-        <p>A specialist can never be refitted again. Starbases build generalists only, so every specialist passes through a depot.</p>
+        <p>A refitted specialist can never be refitted again, so each ship is committed the moment its refit finishes.</p>
       </div>
     </div>
-    <p class="note">The AI plays by the same rules: it builds a depot once its fleet grows, then picks refits by working out which variant kills the enemy warships its sensors have actually seen, for the least damage.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Hull</th><th>Refit cost</th><th>Refit time</th></tr></thead>
+        <tbody>
+          <tr><td class="lead">Corvette</td><td>5 minerals</td><td>15 s</td></tr>
+          <tr><td class="lead">Destroyer</td><td>10 minerals</td><td>25 s</td></tr>
+          <tr><td class="lead">Cruiser</td><td>15 minerals</td><td>35 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">A refit with no minerals to pay for it waits, and the ship stays inside until you cancel it — cancelling ejects it unchanged, still a generalist. A depot destroyed with ships inside throws them clear, each losing 60% of its shields, armor and hull. The AI builds the depot its intel calls for, then refits by the same kill-cost maths.</p>
   </section>
 
   <section>
