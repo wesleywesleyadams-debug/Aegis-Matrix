@@ -8,13 +8,16 @@
 # copied to res://ai/commander_latest.json; the best-evaluated network so far
 # is kept as res://ai/commander.json (what the game uses).
 #
-# perl tools/es_train.pl [generations] [system] [minutes cap]
+# perl tools/es_train.pl [generations] [system | a,b,c | all] [minutes cap]
 #   env: PAIRS (6), SEEDS per side (2), JOBS (5), SIGMA (0.1), LR (0.03),
 #        EVAL_EVERY (5), EVAL_GAMES (10)
 use strict; use warnings; use JSON::PP; use File::Copy;
 
 my $GENS = shift // 20;
 my $SYSTEM = shift // "orion_reach";
+# "all" (or a comma list) trains across systems: each pair+seed gets one
+# system (shared by both variants), evaluations cycle through them.
+my @SYSTEMS = split /,/, ($SYSTEM eq "all" ? "orion_reach,vega_drift,kharon_expanse,tethys_cluster,sable_verge" : $SYSTEM);
 my $CAP = shift // 20;
 my $PAIRS = $ENV{PAIRS} // 6;
 my $JOBS = $ENV{JOBS} // 5;
@@ -28,13 +31,15 @@ my ($N_IN, $N_H, $N_OUT) = (21, 16, 9);
 my $NP = $N_H * $N_IN + $N_H + $N_OUT * $N_H + $N_OUT;
 
 my $USER = "$ENV{APPDATA}/Godot/app_userdata/Star Lords";
-my $RL = "$USER/rl";
+my $RL = $ENV{RL_DIR} // "$USER/rl";
 my $SIMS = "$USER/sims";
 mkdir $RL; mkdir $SIMS; mkdir "ai";
 # Weight files the sims load: inside the project (res://ai/train/...) because
 # the user-data path contains a space, which would split the job lines.
 mkdir "ai/train";
-sub res_path { my $name = shift; return ("ai/train/$name", "res://ai/train/$name") }
+# TAG prefixes the files so a test run (RL_DIR + TAG) can't clash with a live one.
+my $TAG = $ENV{TAG} // "";
+sub res_path { my $name = "$TAG" . shift; return ("ai/train/$name", "res://ai/train/$name") }
 my $json = JSON::PP->new->canonical;
 
 sub gauss { my $u1 = rand() || 1e-12; my $u2 = rand(); return sqrt(-2 * log($u1)) * cos(6.283185307 * $u2) }
@@ -53,17 +58,17 @@ print $LOG "gen,mean_fitness,win_rate,best_fitness,eval_win_rate,seconds\n" if $
 
 # Plays the given weight files as the NN side; returns {tag => fitness, ...}.
 sub play {
-	my ($explore, @jobs) = @_;   # jobs: [tag, weights path, side, seed]
-	my $list = join("", map { "$_->[0] $_->[1] $_->[2] $_->[3]\n" } @jobs);
+	my ($explore, @jobs) = @_;   # jobs: [tag, weights path, side, seed, system]
+	my $list = join("", map { "$_->[0] $_->[1] $_->[2] $_->[3] $_->[4]\n" } @jobs);
 	spit("$RL/jobs.txt", $list);
 	# The policy samples its actions by default (see NeuralCommander.explore);
 	# SL_NN_EXPLORE is kept for older builds.
 	my $ex = $explore ? "SL_NN_EXPLORE=1 " : "";
-	my $cmd = "cat \"$RL/jobs.txt\" | xargs -P $JOBS -L 1 sh -c '${ex}SL_SIM=\"\$0\" SL_NN_WEIGHTS=\"\$1\" SL_NN_SIDE=\"\$2\" SL_SEED=\"\$3\" SL_SIM_MINUTES=$CAP SL_SYSTEM=$SYSTEM timeout 2400 \"$GODOT\" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'";
+	my $cmd = "cat \"$RL/jobs.txt\" | xargs -P $JOBS -L 1 sh -c '${ex}SL_SIM=\"\$0\" SL_NN_WEIGHTS=\"\$1\" SL_NN_SIDE=\"\$2\" SL_SEED=\"\$3\" SL_SIM_MINUTES=$CAP SL_SYSTEM=\"\$4\" timeout 2400 \"$GODOT\" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'";
 	system($cmd);
 	my %fit;
 	for my $j (@jobs) {
-		my $f = "$SIMS/${SYSTEM}_$j->[0].json";
+		my $f = "$SIMS/$j->[4]_$j->[0].json";
 		my $d = slurp($f);
 		if (!defined $d) { $fit{$j->[0]} = -1.5; next }   # crashed / timed out
 		unlink $f;
@@ -95,7 +100,8 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 			# Common random numbers: the + and - variants of pair k play the
 			# same seeds, so their difference reflects the weights, not luck.
 			for my $m (1 .. $SEEDS) {
-				push @jobs, ["rl${c}m${m}s$_", $cres, $_, "g${g}k${k}m${m}s$_"] for (1, 2);
+				my $sys = $SYSTEMS[($g * $PAIRS + $k * $SEEDS + $m) % @SYSTEMS];
+				push @jobs, ["rl${c}m${m}s$_", $cres, $_, "g${g}k${k}m${m}s$_", $sys] for (1, 2);
 			}
 		}
 	}
@@ -125,14 +131,14 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 		$theta[$i] += $LR * $mh / (sqrt($vh) + 1e-8);
 		$theta[$i] -= 0.005 * $LR * $theta[$i];   # light weight decay
 	}
-	opendir(my $dh, "ai/train"); unlink map { "ai/train/$_" } grep { /^g${g}k\d+[pn]\.json$/ } readdir($dh); closedir $dh;
+	opendir(my $dh, "ai/train"); unlink map { "ai/train/$_" } grep { /^\Q$TAG\Eg${g}k\d+[pn]\.json$/ } readdir($dh); closedir $dh;
 	# Periodic clean evaluation of the unperturbed weights.
 	my $eval = "";
 	if ($g % $EVAL_EVERY == 0) {
 		my ($efile, $eres) = res_path("eval.json");
 		weights_file($efile, \@theta);
 		# Same EVAL_GAMES seeds every time, so evaluations are comparable.
-		my @ej = map { ["rle${g}_$_", $eres, ($_ % 2) + 1, "eval$_"] } 1 .. $EVAL_GAMES;
+		my @ej = map { ["rle${g}_$_", $eres, ($_ % 2) + 1, "eval$_", $SYSTEMS[$_ % @SYSTEMS]] } 1 .. $EVAL_GAMES;
 		my $ef = play(0, @ej);
 		my $w = 0; $w += $ef->{"win_$_->[0]"} // 0 for @ej;
 		$eval = sprintf "%.2f", $w / @ej;
