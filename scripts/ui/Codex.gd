@@ -14,6 +14,7 @@ const DIM := Color("7c88ab")
 
 const SECTIONS := [
 	["overview", "Overview"],
+	["controls", "Controls"],
 	["combat", "Combat"],
 	["ships", "Ships"],
 	["economy", "Economy"],
@@ -180,6 +181,7 @@ func _show(id: String) -> void:
 		c.queue_free()
 	match id:
 		"overview": _page_overview()
+		"controls": _page_controls()
 		"combat": _page_combat()
 		"ships": _page_ships()
 		"economy": _page_economy()
@@ -320,8 +322,6 @@ func _page_ships() -> void:
 		var name_row := HBoxContainer.new()
 		name_row.add_theme_constant_override("separation", 12)
 		name_row.add_child(_label(d["name"], TEXT, 20))
-		if d.has("hotkey"):
-			name_row.add_child(_label("[%s]" % OS.get_keycode_string(d["hotkey"]), DIM, 16))
 		if d.has("requires"):
 			name_row.add_child(_label("needs %s" % Defs.TECHS[d["requires"]]["name"], Color("ffd84a"), 14))
 		col.add_child(name_row)
@@ -429,3 +429,45 @@ func _notification(what: int) -> void:
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("user://codex.png")
 		get_tree().quit()
+
+func _page_controls() -> void:
+	_heading("Panel grid")
+	_para("The buttons in the bottom-left panel are wired to a grid of keys, in the order they appear, and each button shows its letter in the corner. The letters never move: whatever the selected ship, starbase or depot offers, the first button is Q, the fourth A, the seventh Z.")
+	_table(["Row", "Keys"], [
+		["First row", [" Q   W   E", EDGE_LIT]],
+		["Second row", [" A   S   D", EDGE_LIT]],
+		["Third row", [" Z   X   C", EDGE_LIT]],
+		["Overflow", [" V   B   N", EDGE_LIT]],
+	])
+	_para("The build picker on one of your worlds uses the same letters.")
+	_rule()
+	_heading("Build grid")
+	_para("With a starbase selected these letters build ships. With no starbase selected, the same letter selects every ship of that class you own, wherever it is.")
+	var rows: Array = []
+	for i in Defs.BUILD_ORDER.size():
+		if i >= HUD.PANEL_KEYS.size():
+			break
+		var t: String = Defs.BUILD_ORDER[i]
+		rows.append([[OS.get_keycode_string(HUD.PANEL_KEYS[i]), EDGE_LIT], Defs.SHIPS[t]["name"], Defs.cost_text(Defs.SHIPS[t]["cost"])])
+	_table(["Key", "Builds / selects", "Cost"], rows)
+	_rule()
+	_heading("Everything else")
+	_table(["Action", "Key"], [
+		["Select / box select", "Left click / drag"],
+		["Select every ship of a class on screen", "Double-click"],
+		["Move, attack, mine, colonize, refit", "Right click"],
+		["Attack-move", "Ctrl + right click"],
+		["Pan the camera", "Arrow keys, screen edge, middle-drag"],
+		["Zoom", "Mouse wheel"],
+		["Stop", ["T", EDGE_LIT]],
+		["Select all warships", ["Tab", EDGE_LIT]],
+		["Camera to your starbase", ["H", EDGE_LIT]],
+		["Next world of yours", ["P", EDGE_LIT]],
+		["Build on the focused world", ["F", EDGE_LIT]],
+		["Research", ["R", EDGE_LIT]],
+		["Set / select control group", ["Ctrl + 1-9  /  1-9", EDGE_LIT]],
+		["Centre on a control group", ["1-9 twice", EDGE_LIT]],
+		["Pause and resume", ["Space", EDGE_LIT]],
+		["Game speed", ["-  /  =  (Backspace resets)", EDGE_LIT]],
+		["Menu, or close what's open", ["Esc", EDGE_LIT]],
+	])

@@ -408,18 +408,24 @@ func _build_hotkeys_tab() -> void:
 			["Select all of a class on screen", "Double-click"],
 			["Move / attack / mine / colonize", "Right click"],
 			["Attack-move", "Ctrl + Right click"],
-			["Pan camera", "Middle drag / WASD / edges"], ["Zoom", "Mouse wheel"]]],
-		["Orders & Selection", ENABLED_COLOR, [
-			["Stop", "T"], ["Use ship ability (job)", "Q"], ["Select warships", "Tab"], ["Camera to home", "H"],
-			["Research", "R"], ["Found starbase (Constructor)", "F"], ["Build Weapons Depot (Constructor)", "E"],
-			["Set control group", "Ctrl + 1-9"],
-			["Select control group", "1-9"], ["Centre on group", "1-9 twice"]]],
-		["Game & Build", DISABLED_COLOR, [
+			["Pan camera", "Middle drag / arrows / edges"], ["Zoom", "Mouse wheel"]]],
+		["Panel grid (bottom-left)", ENABLED_COLOR, [
+			["First row of buttons", "Q  W  E"],
+			["Second row", "A  S  D"],
+			["Third row", "Z  X  C"],
+			["Overflow", "V  B  N"],
+			["", ""],
+			["The keys follow the buttons on screen: whatever the", ""],
+			["selected ship, starbase or depot offers, in that order.", ""],
+			["Each button shows its letter in the corner.", ""],
+			["Build picker on a planet uses the same letters.", ""]]],
+		["Orders & Game", DISABLED_COLOR, [
+			["Stop", "T"], ["Select warships", "Tab"], ["Camera to home", "H"],
+			["Research", "R"], ["Next world", "P"], ["Build on this world", "F"],
+			["Set control group", "Ctrl + 1-9"], ["Select control group", "1-9"],
+			["Centre on group", "1-9 twice"],
 			["Pause / play", "Space"], ["Slower / faster", "- / ="],
-			["Normal speed", "Backspace"], ["Menu", "Esc"],
-			["Mining Barge", "Z"], ["Gas Skimmer", "M"], ["Colony Ship", "X"],
-			["Constructor", "C"], ["Corvette", "V"], ["Destroyer", "B"], ["Cruiser", "N"],
-			["Scout", "G"], ["Heat Shield Frigate", "J"], ["Repair Tender", "K"]]],
+			["Normal speed", "Backspace"], ["Menu", "Esc"]]],
 	]
 	for g in groups:
 		var col := _column(cols, g[0], g[1], 1.0)

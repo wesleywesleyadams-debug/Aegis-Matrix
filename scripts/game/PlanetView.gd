@@ -31,6 +31,9 @@ var _deco: Control
 var _ring_color := Color(1, 1, 1, 0.5)
 var _ring := {}
 var _picker: PopupPanel
+## Grid hotkeys for the build picker's rows (same letters as the selection
+## panel: Q W E / A S D / Z X C), assigned in the order the rows are added.
+var _picker_keys := {}
 var _picker_list: VBoxContainer
 var _menu_field: int = -1
 var _field_buttons: Array[Button] = []
@@ -75,6 +78,7 @@ func _ready() -> void:
 	_picker_list.add_theme_constant_override("separation", 4)
 	_picker.add_child(_picker_list)
 	add_child(_picker)
+	_picker.window_input.connect(_on_picker_input)
 
 func show_planet(p: Planet) -> void:
 	var was := planet
@@ -368,6 +372,7 @@ func _on_field_pressed(i: int) -> void:
 	if planet == null or planet.owner_id != game.player_id:
 		return
 	_menu_field = i
+	_picker_keys.clear()
 	for c in _picker_list.get_children():
 		c.queue_free()
 	var built: String = planet.buildings[i]
@@ -399,6 +404,21 @@ func _on_field_pressed(i: int) -> void:
 ## resource icons. Disabled rows show why in their tooltip.
 func _add_pick(title: String, art: String, cost: Dictionary, seconds: float, action: int, why: String, desc: String = "") -> void:
 	var b := Button.new()
+	var key_i := _picker_keys.size()
+	if key_i < HUD.PANEL_KEYS.size():
+		var k: Key = HUD.PANEL_KEYS[key_i]
+		_picker_keys[k] = b
+		var tag := Label.new()
+		tag.text = OS.get_keycode_string(k)
+		tag.add_theme_font_size_override("font_size", 12)
+		tag.add_theme_color_override("font_color", Color(0.76, 0.81, 0.91, 0.75))
+		tag.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		tag.offset_left = -14
+		tag.offset_top = -17
+		tag.offset_right = -3
+		tag.offset_bottom = -2
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(tag)
 	b.custom_minimum_size = Vector2(420, 48)
 	b.focus_mode = Control.FOCUS_NONE
 	b.disabled = why != ""
@@ -452,3 +472,25 @@ func _on_menu(id: int) -> void:
 			return
 	game.sfx.play_ui("click")
 	refresh()
+
+## Grid hotkeys inside the build picker: the popup is its own window, so its
+## key events arrive here.
+func _on_picker_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	if event.keycode == KEY_ESCAPE:
+		_picker.hide()
+		return
+	var b = _picker_keys.get(event.keycode)
+	if b != null and is_instance_valid(b) and not b.disabled:
+		b.pressed.emit()
+
+## Opens the build picker on this planet's first free field (the F key).
+func open_build_picker() -> bool:
+	if planet == null or planet.owner_id != game.player_id:
+		return false
+	for i in planet.fields:
+		if planet.buildings[i] == "" and planet.field_job(i) == "":
+			_on_field_pressed(i)
+			return true
+	return false

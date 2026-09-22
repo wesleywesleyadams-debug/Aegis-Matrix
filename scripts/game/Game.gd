@@ -1004,11 +1004,22 @@ func _handle_key(e: InputEventKey) -> void:
 			_last_group_key = n
 			_last_group_time = now()
 		return
-	if k == KEY_F and _selected_role("constructor"):
-		start_starbase_placement()
+	# The selection panel's own grid keys (Q W E / A S D / Z X C ...) come
+	# first: they always match the buttons on screen.
+	if hud.press_panel_key(k):
 		return
-	if k == KEY_E and _selected_role("constructor"):
-		start_depot_placement()
+	# The same letter with no starbase panel open: select every ship of that
+	# class you own (Q barges, W skimmers, ... just like the build grid).
+	var bt := hud.build_type_for_key(k)
+	if bt != "":
+		select_all_of_type(bt)
+		return
+	if k == KEY_P:
+		cycle_planet()
+		return
+	if k == KEY_F:
+		if not hud.planet_view.open_build_picker():
+			sfx.play_ui("deny")
 		return
 	if k == KEY_MINUS or k == KEY_KP_SUBTRACT:
 		hud.set_speed_index(hud.speed_index() - 1)
@@ -1032,18 +1043,10 @@ func _handle_key(e: InputEventKey) -> void:
 		KEY_T:
 			for s in _own_ships_selected():
 				s.order_stop()
-		KEY_Q:
-			use_abilities()
 		KEY_TAB:
 			# Select every combat ship you own.
 			var all: Array = get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == player_id and s.def["role"] == "warship")
 			_set_selection(all, false)
-		_:
-			var sb := selected_starbase()
-			if sb:
-				for t in Defs.BUILD_ORDER:
-					if Defs.SHIPS[t].get("hotkey", -1) == k:
-						request_build(sb, t)
 
 ## Writes the match to a new save file (Esc menu > Save Game).
 func save_game() -> void:
@@ -1698,6 +1701,33 @@ func _enter_dev_capture() -> void:
 			t.max_hp = 1e6
 			t.hp = 1e6
 			t.order_stop()
+	if OS.get_environment("SL_SHOT_OPEN") == "keys":
+		# Dev: the panel grid keys press the buttons they are drawn on.
+		var sb0 := nearest_starbase(player_id, Vector2.ZERO)
+		_set_selection([sb0], false)
+		await get_tree().process_frame
+		var before := sb0.queue.size()
+		var okq := hud.press_panel_key(KEY_Q)
+		var okd := hud.press_panel_key(KEY_D)
+		await get_tree().process_frame
+		print("KEYS starbase Q=%s D=%s queue %d -> %s" % [str(okq), str(okd), before, str(sb0.queue)])
+		var con2 := spawn_ship("constructor", player_id, sb0.global_position + Vector2(60, 0))
+		_set_selection([con2], false)
+		await get_tree().process_frame
+		var okw := hud.press_panel_key(KEY_W)
+		print("KEYS constructor W=%s placing_depot=%s variant=%s" % [str(okw), str(placing_depot), placing_depot_variant])
+		placing_depot = false
+		var hp3: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0]
+		_focus_planet(hp3)
+		selection_changed.emit()
+		await get_tree().process_frame
+		print("KEYS build picker F=%s" % str(hud.planet_view.open_build_picker()))
+		_set_selection([], false)
+		clear_planet_focus()
+		await get_tree().process_frame
+		_handle_key(InputEventKey.new())
+		select_all_of_type("miner")
+		print("KEYS select-all miners: %d selected, key maps to %s" % [selection.size(), hud.build_type_for_key(KEY_Q)])
 	if OS.get_environment("SL_SHOT_OPEN") == "depot":
 		# Dev: a Constructor builds a Weapons Depot, two corvettes refit to Slip,
 		# then a refit of a specialist is refused.
@@ -2022,3 +2052,40 @@ func refit_selected(v: String) -> void:
 			s.order_refit(v)
 			n += 1
 	sfx.play_ui("click" if n > 0 else "deny")
+
+## P: steps through your worlds, centering the camera on each and opening its
+## panel (the same as clicking it).
+var _planet_cycle: int = 0
+
+func cycle_planet() -> void:
+	var mine: Array = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)
+	if mine.is_empty():
+		sfx.play_ui("deny")
+		message.emit("You have no worlds yet: settle one with a Colony Ship.", Color("ff8a5a"))
+		return
+	mine.sort_custom(func(a, b): return String(a.planet_name) < String(b.planet_name))
+	_planet_cycle = (_planet_cycle + 1) % mine.size()
+	var p: Planet = mine[_planet_cycle]
+	center_on(p.global_position)
+	_set_selection([], false)
+	_focus_planet(p)
+	selection_changed.emit()
+	sfx.play_ui("click")
+
+## Selects every living ship of one type you own (the build-grid letter with
+## no starbase selected). Centers on them if none are on screen.
+func select_all_of_type(t: String) -> void:
+	var all: Array = get_tree().get_nodes_in_group("ships").filter(
+		func(s): return s.owner_id == player_id and s.ship_type == t and s.is_alive() and not s.docked)
+	if all.is_empty():
+		sfx.play_ui("deny")
+		message.emit("No %s in your fleet." % Defs.SHIPS[t]["name"], Color("ff8a5a"))
+		return
+	_set_selection(all, false)
+	var view := _visible_world_rect()
+	if not all.any(func(s): return view.has_point(s.global_position)):
+		var c := Vector2.ZERO
+		for s in all:
+			c += s.global_position
+		center_on(c / all.size())
+	sfx.play_ui("click")

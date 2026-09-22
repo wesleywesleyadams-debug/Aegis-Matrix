@@ -48,6 +48,11 @@ var planet_view: PlanetView
 var _speed_slider: HSlider
 var _speed_label: Label
 var _sel_panel: PanelContainer
+## Grid hotkeys for the selection panel's buttons, assigned by position as
+## the panel is rebuilt: Q W E / A S D / Z X C, then V B N if a panel needs
+## more. Each button shows its letter in the corner (see _register_action).
+const PANEL_KEYS: Array[Key] = [KEY_Q, KEY_W, KEY_E, KEY_A, KEY_S, KEY_D, KEY_Z, KEY_X, KEY_C, KEY_V, KEY_B, KEY_N]
+var _panel_keys := {}
 
 ## Game speed steps; index NORMAL_SPEED is 1x.
 const SPEEDS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 4.0]
@@ -332,7 +337,7 @@ func _build_messages(root: Control) -> void:
 	root.add_child(_messages)
 
 func _build_help(root: Control) -> void:
-	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Q ship ability · Tab warships · H home · R research · F starbase · E depot (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · Space pause · - / = game speed · Esc menu", DIM, 13)
+	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · panel buttons QWE/ASD/ZXC · T stop · Tab warships · H home · P next world · F build · R research · Ctrl+1-9 groups · arrows/edge/MMB pan · wheel zoom · Space pause · - / = game speed · Esc menu", DIM, 13)
 	l.anchor_top = 1.0
 	l.anchor_bottom = 1.0
 	l.anchor_right = 1.0
@@ -537,6 +542,9 @@ func _rebuild_selection() -> void:
 	_sel_panel.visible = not (game.selection.filter(func(e): return is_instance_valid(e)).is_empty() and is_instance_valid(game.focused_planet))
 	for c in _sel_body.get_children():
 		c.queue_free()
+	_panel_keys.clear()
+	for c in _sel_body.get_children():
+		c.queue_free()
 	_build_buttons.clear()
 	for c in _queue_row.get_children():
 		c.free()
@@ -620,7 +628,7 @@ func _build_ship_controls(s: Ship) -> void:
 
 func _add_found_button() -> void:
 	var b := Button.new()
-	b.text = "Found Starbase [F]"
+	b.text = "Found Starbase"
 	b.custom_minimum_size = Vector2(0, 40)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	var cost := CostRow.make(Defs.STARBASE["cost"], 13, Defs.STARBASE["build_time"])
@@ -638,6 +646,7 @@ func _add_found_button() -> void:
 	b.tooltip_text = "You have %d starbase%s. Starbase #%d raises total starbase upkeep from %.1f to %.1f energy/s (x%.1f each).\nUpkeep climbs steeply past 10 starbases." % [n, "" if n == 1 else "s", n + 1, now_u, next_u, game.starbase_upkeep_multiplier(pid, n + 1)]
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(game.start_starbase_placement)
+	_register_action(b)
 	_sel_body.add_child(b)
 
 func _build_starbase_controls(sb: Starbase) -> void:
@@ -662,11 +671,12 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var v := VBoxContainer.new()
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.alignment = BoxContainer.ALIGNMENT_CENTER
-		v.add_child(_label(("[%s] %s" % [OS.get_keycode_string(d["hotkey"]), d["name"]]) if d.has("hotkey") else d["name"], Defs.VARIANTS[d["variant"]]["color"] if d.has("variant") else TEXT, 13))
+		v.add_child(_label(d["name"], Defs.VARIANTS[d["variant"]]["color"] if d.has("variant") else TEXT, 13))
 		v.add_child(CostRow.make(d["cost"], 12, -1.0, 1))
 		h.add_child(v)
 		b.add_child(h)
 		b.pressed.connect(func(): game.request_build(sb, t))
+		_register_action(b)
 		grid.add_child(b)
 		_build_buttons[t] = b
 	_sel_body.add_child(grid)
@@ -1123,6 +1133,7 @@ func _add_job_panel(s: Ship) -> void:
 		b.custom_minimum_size = Vector2(0, 36)
 		b.add_theme_color_override("font_color", j["color"])
 		b.pressed.connect(game.use_abilities)
+		_register_action(b)
 		_sel_body.add_child(b)
 		_ability_button = b
 		_ability_ship = s
@@ -1134,7 +1145,7 @@ func _refresh_ability_button() -> void:
 	var j: Dictionary = Defs.JOBS[_ability_ship.def["job"]]
 	var wait := Abilities.ready_in(_ability_ship)
 	var name: String = {"barrage": "Barrage", "beacon": "Drop Beacon", "heat_screen": "Heat Surge", "field_repair": "Emergency Repair"}.get(_ability_ship.def["job"], j["name"])
-	_ability_button.text = ("%s [Q]" % name) if wait <= 0.0 else ("%s: recharging %ds" % [name, int(ceil(wait))])
+	_ability_button.text = name if wait <= 0.0 else ("%s: recharging %ds" % [name, int(ceil(wait))])
 	_ability_button.disabled = wait > 0.0
 
 ## One research button: name/status line, cost with resource icons, effect,
@@ -1190,7 +1201,7 @@ func _tech_button(id: String, width: float = 340.0) -> Button:
 ## Constructor: one button per depot type. Each depot fits one variant;
 ## E places the last type picked.
 func _add_depot_button() -> void:
-	_sel_body.add_child(_label("Build a Weapons Depot [E] — %s over %ds. Each depot refits generalists into one variant:" % [
+	_sel_body.add_child(_label("Build a Weapons Depot — %s over %ds. Each depot refits generalists into one variant:" % [
 		Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), int(Defs.WEAPONS_DEPOT["build_time"])], DIM, 13))
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 6)
@@ -1205,6 +1216,7 @@ func _add_depot_button() -> void:
 Refits a generalist into a %s: %s" % [vd["desc"], vd["label"], Defs.VARIANTS[v]["desc"]]
 		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(func(): game.start_depot_placement(v))
+		_register_action(b)
 		row.add_child(b)
 	_sel_body.add_child(row)
 
@@ -1244,6 +1256,7 @@ func _add_refit_buttons(sel: Array) -> void:
 			b.tooltip_text = "Needs an %s Depot (build one with a Constructor, E)." % vd["label"]
 		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(func(): game.refit_selected(v))
+		_register_action(b)
 		row.add_child(b)
 	_sel_body.add_child(row)
 
@@ -1288,3 +1301,41 @@ func _build_depot_panel(d: WeaponsDepot) -> void:
 	all.focus_mode = Control.FOCUS_NONE
 	all.pressed.connect(func(): d.cancel_all(); game.selection_changed.emit())
 	_sel_body.add_child(all)
+
+# ---------------------------------------------------------------- panel keys
+
+## Gives a selection-panel button the next grid hotkey (Q W E / A S D / Z X C
+## / V B N) and stamps that letter in its bottom-right corner, so the keys
+## always match what is on screen.
+func _register_action(b: Button) -> void:
+	var i := _panel_keys.size()
+	if i >= PANEL_KEYS.size():
+		return
+	var k: Key = PANEL_KEYS[i]
+	_panel_keys[k] = b
+	var tag := _label(OS.get_keycode_string(k), Color(TEXT, 0.75), 12)
+	tag.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	tag.offset_left = -14
+	tag.offset_top = -17
+	tag.offset_right = -3
+	tag.offset_bottom = -2
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(tag)
+
+## Presses the panel button wired to this key. Returns false if nothing is.
+func press_panel_key(k: Key) -> bool:
+	var b = _panel_keys.get(k)
+	if b == null or not is_instance_valid(b) or b.disabled:
+		return false
+	b.pressed.emit()
+	return true
+
+## The ship type a grid key builds at a starbase: BUILD_ORDER in panel-key
+## order (Q W E / A S D / Z X C / V B N). Used for "select every ship of that
+## type" when no starbase is selected, so one key means one ship class
+## wherever you are.
+func build_type_for_key(k: Key) -> String:
+	var i := PANEL_KEYS.find(k)
+	if i < 0 or i >= Defs.BUILD_ORDER.size():
+		return ""
+	return Defs.BUILD_ORDER[i]

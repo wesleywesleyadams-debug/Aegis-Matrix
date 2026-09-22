@@ -71,7 +71,7 @@ Base damage needed to destroy a target, relative to a generalist
 
 Starbases build generalists only; every specialist is refitted at a depot.
 
-- Built by a **Constructor** (**E**, or its panel buttons): 250 minerals + 20
+- Built by a **Constructor** (its panel buttons, or their grid keys): 250 minerals + 20
   spice over 30 s. No weapons, and losing one doesn't lose the match.
 - **There are five depot types, one per variant**: an Ion Depot refits
   generalists into Ion ships, a Slip Depot into Slip ships, and so on. A depot
