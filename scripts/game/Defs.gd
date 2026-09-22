@@ -58,19 +58,37 @@ const SHIPS := {
 		"name": "Corvette", "role": "warship", "hotkey": KEY_V,
 		"hp": 90.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 60}, "build_time": 8.0, "upkeep": 0.1,
-		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0,
+		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm",
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "hotkey": KEY_B,
 		"hp": 220.0, "shield": 80.0, "speed": 85.0, "radius": 11.0,
 		"cost": {"minerals": 140, "spice": 5}, "build_time": 14.0, "upkeep": 0.25,
-		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0,
+		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort",
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "hotkey": KEY_N, "requires": "cruiser_doctrine",
 		"hp": 560.0, "shield": 200.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 300, "spice": 25}, "build_time": 24.0, "upkeep": 0.6,
-		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0,
+		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "job": "barrage",
+	},
+	"scout": {
+		"name": "Scout", "role": "scout", "hotkey": KEY_G,
+		"hp": 50.0, "shield": 10.0, "speed": 155.0, "radius": 7.0,
+		"cost": {"minerals": 45}, "build_time": 6.0, "upkeep": 0.05,
+		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 600.0, "job": "beacon",
+	},
+	"heatshield": {
+		"name": "Heat Shield Frigate", "role": "warship", "hotkey": KEY_J, "requires": "deflectors",
+		"hp": 200.0, "shield": 140.0, "speed": 80.0, "radius": 11.0,
+		"cost": {"minerals": 110, "spice": 10}, "build_time": 14.0, "upkeep": 0.2,
+		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
+	},
+	"tender": {
+		"name": "Repair Tender", "role": "support", "hotkey": KEY_K, "requires": "nanite_plating",
+		"hp": 240.0, "shield": 60.0, "speed": 75.0, "radius": 11.0,
+		"cost": {"minerals": 130, "spice": 10}, "build_time": 16.0, "upkeep": 0.25,
+		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 300.0, "job": "field_repair",
 	},
 }
 
@@ -220,4 +238,23 @@ const STAR_TYPES := {
 	"yellow": {"label": "Yellow Star", "tex": "star", "core": 34.0, "zone": 180.0, "dps": 60.0, "tint": Color("ffb347")},
 	"orange": {"label": "Orange Star", "tex": "star_orange", "core": 36.0, "zone": 195.0, "dps": 65.0, "tint": Color("ff8a2a")},
 	"blue_giant": {"label": "Blue Giant", "tex": "star_blue", "core": 46.0, "zone": 260.0, "dps": 95.0, "tint": Color("7ab0ff")},
+}
+
+## Ship jobs (see Abilities): what each ship is good at. Passive jobs always
+## work; active ones are triggered with Q (or the ship panel's button) and
+## then need `cooldown` seconds; `duration` is how long an active effect
+## lasts. `color` is the job's accent (sprites and effects share it).
+const JOBS := {
+	"swarm": {"name": "Swarm", "active": false, "color": Color("7fb2ff"),
+		"desc": "+6% damage for each other corvette within 150 px (up to +36%). Strong in numbers, weak alone."},
+	"escort": {"name": "Escort", "active": false, "color": Color("7fd8ff"),
+		"desc": "Friendly ships within 130 px take 15% less weapon damage. Guards miners, colony ships and fleets."},
+	"barrage": {"name": "Torpedo Barrage", "active": true, "cooldown": 40.0, "duration": 6.0, "color": Color("ff8a4a"),
+		"desc": "[Q] Reload twice as fast for 6 s. Best when the enemy is already in range."},
+	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
+		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
+	"heat_screen": {"name": "Heat Screen", "active": true, "cooldown": 40.0, "duration": 10.0, "color": Color("ffc24a"),
+		"desc": "Ships within 170 px take 75% less radiation damage and keep their shields in spice nebulae. [Q] Surge: full protection within 240 px for 10 s."},
+	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
+		"desc": "Repairs up to 4 ships within 180 px (6 hull/s each) once they're out of combat. [Q] Emergency repair: +35% hull to ships within 200 px."},
 }

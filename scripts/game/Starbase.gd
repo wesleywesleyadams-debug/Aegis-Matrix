@@ -156,6 +156,7 @@ func _launch(ship_type: String) -> void:
 	var dir := (rally_point - global_position).normalized() if has_rally else Vector2.from_angle(randf() * TAU)
 	var ship := g.spawn_ship(ship_type, owner_id, global_position + dir * (radius + 6.0))
 	g.stats.count(owner_id, "ships_built")
+	g.stats.count(owner_id, "built_" + ship_type)
 	if owner_id == g.player_id:
 		g.notify("%s ready." % Defs.SHIPS[ship_type]["name"], "note_ship", ship.global_position)
 	ship.rotation = dir.angle()

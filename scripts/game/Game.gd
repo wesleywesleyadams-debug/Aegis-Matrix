@@ -57,6 +57,8 @@ var vision: Vision
 ## Every player's sensors / intel by player id (the AI plays by these too).
 ## Empty with SL_NOFOG (then the AI knows everything, as before).
 var visions := {}
+## Alive ships by job id, rebuilt every tick (see Abilities).
+var job_ships := {}
 ## Starbase placement mode for a selected Constructor.
 var placing_starbase: bool = false
 
@@ -578,6 +580,14 @@ func _physics_process(delta: float) -> void:
 	# Per-frame snapshots of small groups that ships query constantly (a group
 	# lookup allocates a fresh array every call).
 	stars_list = get_tree().get_nodes_in_group("stars")
+	# Ships by job (see Abilities), for cheap nearby-effect checks.
+	job_ships.clear()
+	for s in get_tree().get_nodes_in_group("ships"):
+		var jid: String = s.def.get("job", "")
+		if jid != "" and s.is_alive():
+			if not job_ships.has(jid):
+				job_ships[jid] = []
+			job_ships[jid].append(s)
 	starbase_list = get_tree().get_nodes_in_group("starbases")
 	nebula_list = get_tree().get_nodes_in_group("nebulae")
 	storm_list = get_tree().get_nodes_in_group("storms")
@@ -758,7 +768,7 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 func fire(from: SpaceEntity, to: Node2D, weapon: String, damage: float) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
-	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"))
+	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage") * (Abilities.damage_mult(from) if from is Ship else 1.0))
 	if not sim_mode:
 		sfx.play_at("laser" if weapon == "laser" else "torpedo", from.global_position, -8.0)
 
@@ -1005,6 +1015,8 @@ func _handle_key(e: InputEventKey) -> void:
 		KEY_T:
 			for s in _own_ships_selected():
 				s.order_stop()
+		KEY_Q:
+			use_abilities()
 		KEY_TAB:
 			# Select every combat ship you own.
 			var all: Array = get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == player_id and s.def["role"] == "warship")
@@ -1633,6 +1645,31 @@ func _enter_dev_capture() -> void:
 				sum += f
 			print("STRESS ships %d  frames %d  avg %.2f ms  p95 %.2f ms  max %.2f ms  projectiles %d" % [get_tree().get_nodes_in_group("ships").size(), frames.size(), sum / maxf(frames.size(), 1), frames[int(frames.size() * 0.95)] if frames.size() > 0 else 0.0, frames[-1] if frames.size() > 0 else 0.0, fx_root.get_child_count()])
 			get_tree().quit())
+	if OS.get_environment("SL_SHOT_OPEN") == "jobs":
+		# Dev: job ships at work. Heat Shield + 3 corvettes inside the sun's
+		# radiation (right) vs 3 unprotected corvettes (left); a Tender beside
+		# three half-hull destroyers; a Scout dropping a beacon.
+		var star: Node2D = get_tree().get_nodes_in_group("stars")[0]
+		var rr: float = star.radiation_radius - 50.0
+		var hs := spawn_ship("heatshield", player_id, star.global_position + Vector2(rr, 0))
+		var shielded: Array = []
+		var bare: Array = []
+		for i in 3:
+			shielded.append(spawn_ship("corvette", player_id, star.global_position + Vector2(rr, -30 + i * 30)))
+			bare.append(spawn_ship("corvette", player_id, star.global_position + Vector2(-rr, -30 + i * 30)))
+		var tender := spawn_ship("tender", player_id, star.global_position + Vector2(0, 520))
+		var hurt: Array = []
+		for i in 3:
+			var d := spawn_ship("destroyer", player_id, star.global_position + Vector2(-60 + i * 60, 470))
+			d.hp = d.max_hp * 0.5
+			hurt.append(d)
+		var sc := spawn_ship("scout", player_id, star.global_position + Vector2(0, -420))
+		for s in shielded + bare + hurt + [hs, tender, sc]:
+			s.order_stop()
+		get_tree().create_timer(0.5).timeout.connect(func(): print("JOBS beacon: ", Abilities.use(sc), "  surge: ", Abilities.use(hs)))
+		get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.2).timeout.connect(func():
+			var f := func(arr): return ", ".join(arr.map(func(s): return "%d/%d" % [int(s.hp), int(s.max_hp)]))
+			print("JOBS shielded corvettes %s | bare corvettes %s | repaired destroyers %s | beacons %d" % [f.call(shielded), f.call(bare), f.call(hurt), get_tree().get_nodes_in_group("beacons").size()]))
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()
@@ -1727,3 +1764,22 @@ func _add_vision(pid: int, render: bool) -> Vision:
 	v.setup(self, pid)
 	visions[pid] = v
 	return v
+
+## Q: every selected ship of yours with a ready ability uses it (see
+## Abilities); a "deny" click if none could.
+func use_abilities() -> void:
+	var used := 0
+	var why := ""
+	for s in _own_ships_selected():
+		if Defs.JOBS.get(s.def.get("job", ""), {}).get("active", false):
+			var r := Abilities.use(s)
+			if r == "":
+				used += 1
+			else:
+				why = r
+	if used == 0:
+		sfx.play_ui("deny")
+		if why != "":
+			message.emit(why, Color("ff6a5a"))
+	else:
+		sfx.play_ui("click")

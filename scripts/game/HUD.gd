@@ -328,7 +328,7 @@ func _build_messages(root: Control) -> void:
 	root.add_child(_messages)
 
 func _build_help(root: Control) -> void:
-	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Tab warships · H home · R research · F found starbase (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · Space pause · - / = game speed · Esc menu", DIM, 13)
+	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Q ship ability · Tab warships · H home · R research · F found starbase (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · Space pause · - / = game speed · Esc menu", DIM, 13)
 	l.anchor_top = 1.0
 	l.anchor_bottom = 1.0
 	l.anchor_right = 1.0
@@ -594,6 +594,7 @@ func _entity_icon(e: SpaceEntity, px: int) -> Control:
 	return stack
 
 func _build_ship_controls(s: Ship) -> void:
+	_add_job_panel(s)
 	match s.def["role"]:
 		"colony":
 			_sel_body.add_child(_label("Right-click an unowned planet to settle it with %d pops." % int(Defs.START_POP), DIM, 13))
@@ -708,6 +709,7 @@ func _build_planet_panel(p: Planet) -> void:
 	_sel_body.add_child(_info_label)
 
 func _update_selection_info() -> void:
+	_refresh_ability_button()
 	if _info_label == null:
 		return
 	var sel: Array = game.selection.filter(func(e): return is_instance_valid(e))
@@ -1065,3 +1067,42 @@ class StatChart extends Control:
 				var y: float = pad.y + area.y * (1.0 - float(s[str(sd[0])][field]) / v_max)
 				pts.append(Vector2(x, y))
 			draw_polyline(pts, sd[1], 2.0, true)
+
+# ---------------------------------------------------------------- jobs
+
+var _ability_button: Button
+var _ability_ship: Ship
+
+## A ship's job: its name in the job's color, what it does, and for active
+## jobs a Q button showing the recharge.
+func _add_job_panel(s: Ship) -> void:
+	_ability_button = null
+	var jid: String = s.def.get("job", "")
+	if jid == "":
+		return
+	var j: Dictionary = Defs.JOBS[jid]
+	var head := _label("Job: " + j["name"], j["color"], 15)
+	_sel_body.add_child(head)
+	var d := _label(j["desc"], DIM, 13)
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	d.custom_minimum_size = Vector2(560, 0)
+	_sel_body.add_child(d)
+	if j.get("active", false):
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(0, 36)
+		b.add_theme_color_override("font_color", j["color"])
+		b.pressed.connect(game.use_abilities)
+		_sel_body.add_child(b)
+		_ability_button = b
+		_ability_ship = s
+		_refresh_ability_button()
+
+func _refresh_ability_button() -> void:
+	if _ability_button == null or not is_instance_valid(_ability_ship):
+		return
+	var j: Dictionary = Defs.JOBS[_ability_ship.def["job"]]
+	var wait := Abilities.ready_in(_ability_ship)
+	var name: String = {"barrage": "Barrage", "beacon": "Drop Beacon", "heat_screen": "Heat Surge", "field_repair": "Emergency Repair"}.get(_ability_ship.def["job"], j["name"])
+	_ability_button.text = ("%s [Q]" % name) if wait <= 0.0 else ("%s: recharging %ds" % [name, int(ceil(wait))])
+	_ability_button.disabled = wait > 0.0

@@ -86,6 +86,14 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			base.enqueue("miner")
 		elif giant and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2:
 			base.enqueue("skimmer")
+		# Jobs: a Scout for sensors, a Repair Tender once the fleet is sizable,
+		# a Heat Shield where the system has radiation hazards to fight in.
+		elif v and v.explored_fraction() < SCOUT_UNTIL and _count_role(ships, base, "scout") == 0 and base.can_queue("scout") == "":
+			base.enqueue("scout")
+		elif war.size() >= 8 and _count_type(ships, base, "tender") == 0 and base.can_queue("tender") == "" and res["spice"] >= 15.0:
+			base.enqueue("tender")
+		elif war.size() >= 6 and _hazardous(game) and _count_type(ships, base, "heatshield") == 0 and base.can_queue("heatshield") == "" and res["spice"] >= 15.0:
+			base.enqueue("heatshield")
 		# Keep colonizing unless enemies are actually at our worlds (being
 		# outgunned elsewhere isn't a reason to stop growing).
 		elif free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= 10.0:
@@ -138,7 +146,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			if p.order_build(i, pick) == "":
 				break
 
-	_scout(pid, st, game, war)
+	_scout(pid, st, game, ships.filter(func(s): return s.def["role"] == "scout") + war)
+	_use_jobs(pid, ships, game)
 
 	# The learned commander decides builds and fleet moves itself.
 	if nn != null:
@@ -252,9 +261,12 @@ func _scout(pid: int, st: Dictionary, game: Game, war: Array) -> void:
 	var old = st.get("scout")
 	var sc: Ship = old if is_instance_valid(old) else null
 	if sc == null or not sc.is_alive():
-		# The fastest warship (corvettes) makes the best scout.
-		war.sort_custom(func(a, b): return a.def["speed"] > b.def["speed"])
-		sc = war[0]
+		# A Scout if we have one, else the fastest warship (corvettes).
+		var pick: Array = war.filter(func(s): return s.def["role"] == "scout")
+		if pick.is_empty():
+			pick = war.duplicate()
+			pick.sort_custom(func(a, b): return a.def["speed"] > b.def["speed"])
+		sc = pick[0]
 		st["scout"] = sc
 	if sc.state == Ship.State.IDLE or sc.global_position.distance_to(sc.move_goal) < 60.0 or v.is_explored_at(sc.move_goal):
 		sc.order_move(v.nearest_unexplored(sc.global_position))
@@ -362,3 +374,57 @@ func _manage_queues(pid: int, st: Dictionary, game: Game, base: Starbase) -> voi
 				st["pstall"][key] = 0.0
 		else:
 			st["pstall"][key] = 0.0
+
+# ---------------------------------------------------------------- jobs
+
+func _count_type(ships: Array, base: Starbase, t: String) -> int:
+	return ships.filter(func(s): return s.ship_type == t).size() + base.queue.count(t)
+
+func _count_role(ships: Array, base: Starbase, role: String) -> int:
+	var q := 0
+	for t in base.queue:
+		if Defs.SHIPS[t]["role"] == role:
+			q += 1
+	return ships.filter(func(s): return s.def["role"] == role).size() + q
+
+## Systems where a Heat Shield earns its keep: a spice nebula or twin suns.
+func _hazardous(game: Game) -> bool:
+	if not game.nebula_list.is_empty():
+		return true
+	return game.stars_list.any(func(s): return s.orbit_radius > 0.0)
+
+## Uses ship abilities when the situation calls for them, and keeps Repair
+## Tenders with the fleet.
+func _use_jobs(pid: int, ships: Array, game: Game) -> void:
+	var war := ships.filter(func(s): return s.def["role"] == "warship")
+	var home := game.nearest_starbase(pid, Vector2.ZERO)
+	for s in ships:
+		match s.def.get("job", ""):
+			"heat_screen":
+				if Abilities.ready_in(s) <= 0.0:
+					for o in Abilities.allies_near(s, Abilities.HEAT_SURGE_RANGE) + [s]:
+						if game.in_nebula(o.global_position) or game.stars_list.any(func(st): return st.dps_at(st.global_position.distance_to(o.global_position), o.radius) > 0.0):
+							Abilities.use(s)
+							break
+			"field_repair":
+				if Abilities.ready_in(s) <= 0.0:
+					var hurt := Abilities.allies_near(s, Abilities.EMERGENCY_RANGE).filter(func(o): return o.hp < o.max_hp * 0.6)
+					if hurt.size() >= 3:
+						Abilities.use(s)
+				# Stay with the fleet: move to the warships' center.
+				if not war.is_empty():
+					var c := Vector2.ZERO
+					for w in war:
+						c += w.global_position
+					c /= war.size()
+					if s.global_position.distance_to(c) > 160.0 and (s.state == Ship.State.IDLE or s.global_position.distance_to(s.move_goal) > 200.0 or s.move_goal.distance_to(c) > 160.0):
+						s.order_move(c)
+			"barrage":
+				if Abilities.ready_in(s) <= 0.0 and s.state == Ship.State.ATTACK and is_instance_valid(s.target) and s.global_position.distance_to(s.target.global_position) <= s.def["range"] + s.target.radius:
+					Abilities.use(s)
+			"beacon":
+				# Leave a beacon deep in the field (far from home, none nearby).
+				if Abilities.ready_in(s) <= 0.0 and home and s.global_position.distance_to(home.global_position) > 1200.0:
+					var near := game.get_tree().get_nodes_in_group("beacons").any(func(b): return b.owner_id == pid and b.global_position.distance_to(s.global_position) < 600.0)
+					if not near:
+						Abilities.use(s)

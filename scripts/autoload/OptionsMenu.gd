@@ -410,7 +410,7 @@ func _build_hotkeys_tab() -> void:
 			["Attack-move", "Ctrl + Right click"],
 			["Pan camera", "Middle drag / WASD / edges"], ["Zoom", "Mouse wheel"]]],
 		["Orders & Selection", ENABLED_COLOR, [
-			["Stop", "T"], ["Select warships", "Tab"], ["Camera to home", "H"],
+			["Stop", "T"], ["Use ship ability (job)", "Q"], ["Select warships", "Tab"], ["Camera to home", "H"],
 			["Research", "R"], ["Found starbase (Constructor)", "F"],
 			["Set control group", "Ctrl + 1-9"],
 			["Select control group", "1-9"], ["Centre on group", "1-9 twice"]]],
@@ -418,7 +418,8 @@ func _build_hotkeys_tab() -> void:
 			["Pause / play", "Space"], ["Slower / faster", "- / ="],
 			["Normal speed", "Backspace"], ["Menu", "Esc"],
 			["Mining Barge", "Z"], ["Gas Skimmer", "M"], ["Colony Ship", "X"],
-			["Constructor", "C"], ["Corvette", "V"], ["Destroyer", "B"], ["Cruiser", "N"]]],
+			["Constructor", "C"], ["Corvette", "V"], ["Destroyer", "B"], ["Cruiser", "N"],
+			["Scout", "G"], ["Heat Shield Frigate", "J"], ["Repair Tender", "K"]]],
 	]
 	for g in groups:
 		var col := _column(cols, g[0], g[1], 1.0)

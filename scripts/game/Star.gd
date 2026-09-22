@@ -76,7 +76,11 @@ func _process(delta: float) -> void:
 			continue
 		var dps := dps_at(global_position.distance_to(e.global_position), e.radius)
 		if dps > 0.0:
-			e.take_damage(dps * dt, null)
+			# A Heat Shield Frigate nearby cuts (or, surging, blocks) radiation.
+			var cut := Abilities.radiation_mult(e) if e is SpaceEntity else 1.0
+			if cut <= 0.0:
+				continue
+			e.take_damage(dps * dt * cut, null)
 			if e.owner_id == Game.instance.player_id:
 				Game.instance.alert("Your ships are taking radiation damage from %s!" % star_name, "alert_ships", false, e.global_position)
 

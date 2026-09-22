@@ -51,7 +51,7 @@ func _die() -> void:
 
 func _regen_shields(delta: float) -> void:
 	# Spice nebula: shields bleed away and can't recharge while inside.
-	if max_shield > 0.0 and Game.instance.in_nebula(global_position):
+	if max_shield > 0.0 and Game.instance.in_nebula(global_position) and not Abilities.nebula_protected(self):
 		if shield > 0.0:
 			shield = maxf(0.0, shield - max_shield * SpiceNebula.DRAIN * delta)
 			queue_redraw()

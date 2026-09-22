@@ -40,7 +40,9 @@ func _physics_process(delta: float) -> void:
 			_vel = _vel.move_toward(want, speed * 3.0 * delta)
 			rotation = _vel.angle()
 		if global_position.distance_to(target.global_position) <= target.radius:
-			target.take_damage(damage, shooter if is_instance_valid(shooter) else null)
+			# An Escort nearby softens weapon hits (see Abilities).
+			var mult := Abilities.incoming_mult(target) if target is SpaceEntity else 1.0
+			target.take_damage(damage * mult, shooter if is_instance_valid(shooter) else null)
 			if homing:
 				Game.instance.spawn_explosion(global_position, 0.4)
 			queue_free()

@@ -45,6 +45,12 @@ var colonize_target: Planet
 var bombard_target: Planet
 var build_site: Vector2
 
+## Jobs (see Abilities): when the Q ability can be used again, until when
+## its effect lasts, and the ships a Repair Tender is currently healing.
+var ability_ready_at: float = 0.0
+var ability_until: float = 0.0
+var _repairing: Array = []
+var _repair_timer: float = 0.0
 var _cooldown: float = 0.0
 var _mine_timer: float = 0.0
 var _acquire_timer: float = 0.0
@@ -194,6 +200,14 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	_regen_shields(delta)
+	if def.get("job", "") == "field_repair":
+		_repair_timer -= delta
+		if _repair_timer <= 0.0:
+			_repair_timer = 0.5
+			_repairing = Abilities.repair_tick(self, 0.5)
+			queue_redraw()
+	if def.get("job", "") in ["heat_screen", "barrage"] and Abilities.is_active(self):
+		queue_redraw()
 	# Out of energy: weapons recharge (and engines run) at a quarter speed.
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
@@ -334,7 +348,7 @@ func _physics_process(delta: float) -> void:
 					_scan_cd = SCAN_INTERVAL
 		if shoot and global_position.distance_to(shoot.global_position) <= def["range"] + shoot.radius:
 			Game.instance.fire(self, shoot, def["weapon"], def["damage"])
-			_cooldown = def["cooldown"] * randf_range(0.9, 1.1)
+			_cooldown = def["cooldown"] * randf_range(0.9, 1.1) * Abilities.reload_mult(self)
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)
@@ -431,6 +445,7 @@ func _draw() -> void:
 		var to := to_local(mine_target.global_position)
 		var a := 0.5 + 0.4 * sin(Game.now() * 20.0)
 		draw_line(Vector2(radius * 0.6, 0), to, Color(0.45, 1.0, 0.85, a), 1.0)
+	_draw_job()
 	super._draw()
 	if cargo > 0 and selected:
 		draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
@@ -520,3 +535,42 @@ func _route(final: Vector2) -> Vector2:
 	while _path.size() > 1 and global_position.distance_to(_path[0]) < 30.0:
 		_path.remove_at(0)
 	return _path[0] if not _path.is_empty() else final
+
+## Job effects, in the job's accent color (Defs.JOBS): the Heat Shield's
+## screen (a shimmer ring, a bright dome while surging), a Tender's green
+## repair beams and emergency flash, a Cruiser's barrage glow, an Escort's
+## guard ring while selected.
+func _draw_job() -> void:
+	var jid: String = def.get("job", "")
+	if jid == "":
+		return
+	var c: Color = Defs.JOBS[jid]["color"]
+	var t := Time.get_ticks_msec() / 1000.0
+	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
+	match jid:
+		"heat_screen":
+			if Abilities.is_active(self):
+				draw_circle(Vector2.ZERO, Abilities.HEAT_SURGE_RANGE, Color(c, 0.07))
+				draw_arc(Vector2.ZERO, Abilities.HEAT_SURGE_RANGE, 0.0, TAU, 96, Color(c, 0.55 + 0.25 * sin(t * 6.0)), 2.0)
+			else:
+				var n := 48
+				for i in n:
+					if i % 2 == 0:
+						var a := TAU * i / n + t * 0.3
+						draw_arc(Vector2.ZERO, Abilities.HEAT_RANGE, a, a + TAU / n, 3, Color(c, 0.22), 1.5)
+		"field_repair":
+			for o in _repairing:
+				if is_instance_valid(o):
+					var to: Vector2 = (o.global_position - global_position)
+					draw_line(Vector2.ZERO, to, Color(c, 0.35 + 0.25 * sin(t * 10.0)), 1.5)
+					draw_circle(to, 2.0, Color(c, 0.8))
+			if Abilities.is_active(self):
+				draw_arc(Vector2.ZERO, Abilities.EMERGENCY_RANGE, 0.0, TAU, 96, Color(c, 0.8), 3.0)
+				draw_circle(Vector2.ZERO, Abilities.EMERGENCY_RANGE, Color(c, 0.12))
+		"barrage":
+			if Abilities.is_active(self):
+				draw_circle(Vector2.ZERO, radius + 6.0, Color(c, 0.18 + 0.12 * sin(t * 12.0)))
+		"escort":
+			if selected:
+				draw_arc(Vector2.ZERO, Abilities.ESCORT_RANGE, 0.0, TAU, 64, Color(c, 0.25), 1.0)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

@@ -126,7 +126,9 @@ func can_see(e: Node2D) -> bool:
 		return false
 	if e is Ship and game.in_nebula(e.global_position):
 		for s in _sources:
-			if e.global_position.distance_to(s[0]) <= NEBULA_SPOT:
+			# Deep sensors (Scouts, beacons) see into nebulae at full range.
+			var spot: float = s[1] if s.size() > 2 and s[2] else NEBULA_SPOT
+			if e.global_position.distance_to(s[0]) <= spot:
 				return true
 		return false
 	return true
@@ -139,7 +141,8 @@ func sensor_range(e: Node2D) -> float:
 		r = e.def.get("sensor", ROLE_SENSOR.get(e.def["role"], 260.0))
 	else:
 		r = PLANET_SENSOR + e.radius
-	if game.in_storm(e.global_position):
+	# Deep Sensors (Scouts) see through ion storms.
+	if game.in_storm(e.global_position) and not (e is Ship and e.def.get("job", "") == "beacon"):
 		r *= STORM_SENSOR_MULT
 	return r
 
@@ -153,15 +156,21 @@ func _refresh() -> void:
 		if s.owner_id == pid and s.is_alive():
 			var key := _cell(s.global_position)
 			var r := sensor_range(s)
-			if r > per_cell.get(key, [null, 0.0])[1]:
-				per_cell[key] = [s.global_position, r]
+			var deep: bool = s.def.get("job", "") == "beacon"
+			if deep:
+				_sources.append([s.global_position, r, true])
+			elif r > per_cell.get(key, [null, 0.0])[1]:
+				per_cell[key] = [s.global_position, r, false]
 	_sources.append_array(per_cell.values())
 	for sb in tree.get_nodes_in_group("starbases"):
 		if sb.owner_id == pid and sb.is_alive():
-			_sources.append([sb.global_position, sensor_range(sb)])
+			_sources.append([sb.global_position, sensor_range(sb), false])
 	for p in tree.get_nodes_in_group("planets"):
 		if p.owner_id == pid:
-			_sources.append([p.global_position, sensor_range(p)])
+			_sources.append([p.global_position, sensor_range(p), false])
+	for b in tree.get_nodes_in_group("beacons"):
+		if b.owner_id == pid:
+			_sources.append([b.global_position, b.sensor_range(), true])
 	_sight.fill(Color(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b, EXPLORED_ALPHA))
 	for src in _sources:
 		_stamp(_sight, src[0], src[1])
@@ -205,7 +214,7 @@ func _hide_unseen() -> void:
 				sb.set_meta("seen", true)
 			sb.visible = sb.get_meta("seen", false)
 	for p in game.fx_root.get_children():
-		if p is Projectile:
+		if p is Projectile or (p is Beacon and p.owner_id != pid):
 			p.visible = is_visible_at(p.global_position)
 	# Planets: remember the owner last seen; hide sieges / colonizing out of sight.
 	for pl in tree.get_nodes_in_group("planets"):
