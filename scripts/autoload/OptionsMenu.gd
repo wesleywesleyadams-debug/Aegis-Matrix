@@ -162,6 +162,8 @@ func _apply_font(key: String) -> void:
 
 const ENABLED_COLOR := Color("3fd6b0")   # teal
 const DISABLED_COLOR := Color("ff9a2e")  # orange
+const SCREEN_ON_COLOR := Color("6aff8a")   # green: title/lobby song, enabled
+const SCREEN_OFF_COLOR := Color("ffe14d")  # yellow: title/lobby song, disabled
 
 var _enabled_list: VBoxContainer
 var _disabled_list: VBoxContainer
@@ -309,7 +311,10 @@ func _track_row(t: Dictionary, enabled: bool) -> HBoxContainer:
 	name.mouse_filter = Control.MOUSE_FILTER_PASS
 	name.clip_text = true
 	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name.add_theme_color_override("font_color", ENABLED_COLOR if enabled else DISABLED_COLOR)
+	# The title/lobby screen songs stand out: green when enabled, yellow when not.
+	var screen := id in [Music.TITLE_TRACK, Music.LOBBY_TRACK]
+	var color := (SCREEN_ON_COLOR if enabled else SCREEN_OFF_COLOR) if screen else (ENABLED_COLOR if enabled else DISABLED_COLOR)
+	name.add_theme_color_override("font_color", color)
 	row.add_child(name)
 	var play := _small_button("Stop" if Music.previewing == id else "Preview")
 	play.pressed.connect(func():
