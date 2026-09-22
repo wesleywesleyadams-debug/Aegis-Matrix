@@ -431,7 +431,7 @@ func starbase_site_problem(pos: Vector2) -> String:
 		if p.global_position.distance_to(pos) < p.radius + 40.0:
 			return "Too close to a planet"
 	for s in get_tree().get_nodes_in_group("stars"):
-		if s.global_position.distance_to(pos) < 140.0:
+		if s.global_position.distance_to(pos) < Star.RADIATION_RADIUS + 40.0:
 			return "Too close to the star"
 	return ""
 
@@ -1133,6 +1133,43 @@ func _enter_dev_capture() -> void:
 			resources[player_id]["spice"] = 500.0
 			nearest_starbase(player_id, Vector2.ZERO).enqueue("corvette")
 			get_tree().create_timer(1.0, true, false, true).timeout.connect(func(): nearest_starbase(player_id, Vector2.ZERO)._launch("corvette"))
+	if OS.get_environment("SL_SHOT_OPEN") == "sunai":
+		# Dev: AI ships crossing the sun; one healthy + one damaged AI going
+		# after a player ship parked inside the radiation zone.
+		var foe: int = 2 if player_id == 1 else 1
+		var crossers: Array = []
+		for i in 3:
+			var s := spawn_ship("corvette", foe, Vector2(-420, -20 + i * 20))
+			s.order_move(Vector2(420, -20 + i * 20))
+			crossers.append(s)
+		var bait := spawn_ship("cruiser", player_id, Vector2(0, 90))
+		bait.order_stop()
+		bait.def = bait.def.duplicate()
+		bait.def["weapon"] = ""
+		bait.max_hp = 1e9
+		bait.hp = 1e9
+		var healthy := spawn_ship("corvette", foe, Vector2(0, 420))
+		healthy.order_attack(bait)
+		var hurt := spawn_ship("corvette", foe, Vector2(40, 420))
+		hurt.hp = hurt.max_hp * 0.3
+		hurt.order_attack(bait)
+		var closest := {}
+		var tk := Timer.new()
+		tk.wait_time = 0.1
+		add_child(tk)
+		tk.timeout.connect(func():
+			var all := crossers + [healthy, hurt]
+			for i in all.size():
+				if is_instance_valid(all[i]):
+					closest[i] = minf(closest.get(i, 1e9), all[i].global_position.length())
+					if i >= 3:
+						closest["hp%d" % i] = all[i].hp / all[i].max_hp)
+		tk.start()
+		get_tree().create_timer(25.0).timeout.connect(func():
+			for i in 3:
+				print("CROSSER %d closest %.0f (zone %.0f)" % [i, closest.get(i, -1.0), Star.RADIATION_RADIUS])
+			print("HEALTHY closest %.0f hp %.0f%%   HURT closest %.0f hp %.0f%%" % [closest.get(3, -1.0), 100 * closest.get("hp3", 0.0), closest.get(4, -1.0), 100 * closest.get("hp4", 0.0)]))
+		center_on(Vector2.ZERO)
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()

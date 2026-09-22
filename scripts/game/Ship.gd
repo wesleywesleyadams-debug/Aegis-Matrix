@@ -17,6 +17,11 @@ var state: State = State.IDLE
 var velocity: Vector2 = Vector2.ZERO
 var move_goal: Vector2
 var attack_move_goal: Vector2
+## Where _arrive was last steering to (for AI sun avoidance).
+var _nav_goal: Vector2
+## AI ships only enter a star's radiation zone when their destination is
+## inside it (an enemy parked there) and they have at least this much hull.
+const SUN_RISK_HP := 0.6
 var target: SpaceEntity
 ## An Asteroid (barges) or a gas giant Planet (skimmers); both expose
 ## resource, amount, radius and extract().
@@ -303,11 +308,14 @@ func _physics_process(delta: float) -> void:
 			Game.instance.fire(self, shoot, def["weapon"], def["damage"])
 			_cooldown = def["cooldown"] * randf_range(0.9, 1.1)
 
+	if owner_id != Game.instance.player_id:
+		desired = _avoid_sun(desired)
 	_steer(desired + _separation(), delta, face_target)
 
 ## Desired velocity toward `goal`, slowing inside the braking radius.
 ## `stop_at` leaves a gap (e.g. to hover beside an asteroid).
 func _arrive(goal: Vector2, urgency: float, stop_at: float = 0.0) -> Vector2:
+	_nav_goal = goal
 	var to := goal - global_position
 	var dist := to.length() - stop_at
 	if dist <= 1.0:
@@ -367,3 +375,40 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
 		draw_rect(Rect2(-radius - 3, radius + 4, 3, 3), Color("3fd6b0"))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+## AI steering around stars' radiation zones. Paths that would cross a zone
+## bend along its edge; a ship that finds itself inside without a reason
+## heads straight out. Entering is allowed only for a strategic goal inside
+## the zone, and only while hull is at least SUN_RISK_HP.
+func _avoid_sun(desired: Vector2) -> Vector2:
+	var goal := _nav_goal if desired != Vector2.ZERO else global_position
+	for star in get_tree().get_nodes_in_group("stars"):
+		var c: Vector2 = star.global_position
+		var r: float = Star.RADIATION_RADIUS + radius + 12.0
+		var goal_inside := goal.distance_to(c) < r and desired != Vector2.ZERO
+		if goal_inside and hp >= max_hp * SUN_RISK_HP:
+			continue
+		var out := global_position - c
+		var speed: float = max_speed()
+		if out.length() < r:
+			# Inside with no good reason: leave by the shortest way.
+			return out.normalized() * speed
+		if desired == Vector2.ZERO:
+			continue
+		if goal_inside:
+			# Worth it only with enough hull: otherwise hold at the edge.
+			if out.length() < r + 20.0 and desired.dot(-out) > 0.0:
+				return Vector2.ZERO
+			continue
+		# Does the straight path to the goal cut through the zone?
+		var seg := goal - global_position
+		var t := clampf((c - global_position).dot(seg) / maxf(seg.length_squared(), 0.001), 0.0, 1.0)
+		if (global_position + seg * t).distance_to(c) >= r:
+			continue
+		# Follow the zone's edge, turning the way that heads toward the goal.
+		var tangent := out.normalized().orthogonal()
+		if tangent.dot(seg) < 0.0:
+			tangent = -tangent
+		var push := clampf((r + 40.0 - out.length()) / 40.0, 0.0, 1.0)
+		return (tangent + out.normalized() * push).normalized() * desired.length()
+	return desired
