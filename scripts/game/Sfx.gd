@@ -10,6 +10,12 @@ const NAMES := ["laser", "torpedo", "shield", "boom", "boom_big", "build", "clai
 	"note_ship", "note_tech", "note_building", "note_colony", "note_starbase", "note_save"]
 const POOL_SIZE := 24
 const MIN_GAP := {"laser": 0.04, "torpedo": 0.08, "shield": 0.05, "boom": 0.06, "boom_big": 0.1}
+## UI volumes (dB; alarms), trimmed so each sits near an on-screen laser shot
+## (~-22 dB RMS after the laser's -8 dB). Critical ones (planet / starbase
+## lost) stay a touch louder. Shift everything with ALERT_TRIM.
+const ALERT_TRIM := 0.0
+const UI_VOLUME := {"deny": -7.5, "note_save": 3.0, "alert": -2.5, "alert_energy": -6.0, "alert_planet": -9.0, "alert_planet_lost": -10.0,
+	"alert_resource": -7.0, "alert_ships": 0.0, "alert_starbase": -12.0, "alert_starbase_lost": -10.5, "alert_starved": -7.5}
 
 var _streams := {}
 var _pool: Array[AudioStreamPlayer2D] = []
@@ -46,4 +52,5 @@ func play_at(name: String, pos: Vector2, volume_db: float = 0.0) -> void:
 ## Interface sound, not positional.
 func play_ui(name: String) -> void:
 	_ui.stream = _streams[name]
+	_ui.volume_db = UI_VOLUME.get(name, 0.0) + (ALERT_TRIM if name.begins_with("alert") else 0.0)
 	_ui.play()

@@ -471,7 +471,7 @@ func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	e.rotation = randi_range(0, 3) * PI / 2.0
 	e.scale = Vector2.ONE * clampf(snappedf(scale_mult, 0.5), 0.5, 3.0)
 	fx_root.add_child(e)
-	sfx.play_at("boom_big" if scale_mult >= 1.0 else "boom", pos)
+	sfx.play_at("boom_big" if scale_mult >= 1.0 else "boom", pos, -6.0)
 
 func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
 	var e := Effect.new()
@@ -530,21 +530,28 @@ func notify(text: String, sound: String = "") -> void:
 		sfx.play_ui(sound)
 
 ## Red alert + alarm sound for being attacked or running out of a
-## resource. At most one every ALERT_COOLDOWN seconds (game time), whatever
-## raised it.
+## resource. At most one every ALERT_COOLDOWN seconds of REAL time (so game
+## speed and pause don't change how often you hear them), whatever raised it.
 const ALERT_COOLDOWN := 15.0
-var _last_alert_time: float = -1000.0
+var _last_alert_ms: int = -1000000
+## Alarm sounds played this match (dev check for the cooldown).
+var alert_sounds: int = 0
 
 ## `sound` names the alert's own alarm (see Sfx.NAMES), so each kind of
 ## trouble is recognisable by ear.
-## `critical` alerts (a planet lost, a starbase destroyed) always sound,
-## even inside the cooldown.
+## `critical` alerts (a planet lost, a starbase destroyed) always show their
+## message, but inside the cooldown they stay silent: never more than one
+## alarm sound per ALERT_COOLDOWN.
 func alert(text: String, sound: String = "alert", critical: bool = false) -> void:
-	if not critical and now() - _last_alert_time < ALERT_COOLDOWN:
+	var t := Time.get_ticks_msec()
+	var ready := t - _last_alert_ms >= int(ALERT_COOLDOWN * 1000.0)
+	if not ready and not critical:
 		return
-	_last_alert_time = now()
 	message.emit(text, Color("ff6a5a"))
-	sfx.play_ui(sound)
+	if ready:
+		_last_alert_ms = t
+		sfx.play_ui(sound)
+		alert_sounds += 1
 
 func _end_match(won: bool) -> void:
 	if is_over:
