@@ -33,7 +33,12 @@ func show_system(id: String) -> void:
 		for a in _layout["asteroids"]:
 			if str(a["variant"]).begins_with("spice"):
 				spice += 1
-		facts = "%s · %d worlds · %d rocks (%d spice)" % [Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"], worlds, _layout["asteroids"].size(), spice]
+		facts = "%s
+%d worlds · %d rocks (%d spice)" % [Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"], worlds, _layout["asteroids"].size(), spice]
+		if _settings.get("feature", "") == "binary":
+			facts = facts.replace(Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"], "Binary " + Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"] + "s")
+			facts += "
+Twin suns orbit the center; the lane between them moves."
 		if _settings.get("feature", "") == "spice_nebula":
 			facts += "
 Spice Nebula: rich spice, but shields drain inside."
@@ -71,12 +76,20 @@ func _draw() -> void:
 		if ft["type"] == "spice_nebula":
 			draw_arc(center, (ft["inner"] + ft["outer"]) / 2.0 * sc, 0.0, TAU, 64, Color(1.0, 0.6, 0.2, 0.16), (ft["outer"] - ft["inner"]) * sc)
 	var st: Dictionary = Defs.STAR_TYPES[_settings.get("star", "yellow")]
-	# Radiation zone as a dashed ring, then the star.
+	# The star (or both binary stars, with their orbit): radiation zone as a
+	# dashed ring, then the star itself.
+	var suns: Array = [Vector2.ZERO]
+	for ft in _layout.get("features", []):
+		if ft["type"] == "binary":
+			suns = [Vector2(-ft["orbit"], 0), Vector2(ft["orbit"], 0)]
+			draw_arc(center, ft["orbit"] * sc, 0.0, TAU, 48, Color(st["tint"], 0.35), 1.0)
 	var zr: float = st["zone"] * sc
-	for i in 32:
-		var a0 := TAU * i / 32.0
-		draw_arc(center, zr, a0, a0 + TAU / 64.0, 4, Color(1, 0.35, 0.3, 0.55), 1.0)
-	draw_circle(center, maxf(3.0, st["core"] * sc * 2.2), st["tint"])
+	for sp in suns:
+		var c: Vector2 = center + sp * sc
+		for i in 32:
+			var a0 := TAU * i / 32.0
+			draw_arc(c, zr, a0, a0 + TAU / 64.0, 4, Color(1, 0.35, 0.3, 0.55), 1.0)
+		draw_circle(c, maxf(3.0, st["core"] * sc * 2.2), st["tint"])
 	for a in _layout["asteroids"]:
 		var res := "spice" if str(a["variant"]).begins_with("spice") else "minerals"
 		draw_rect(Rect2(center + a["pos"] * sc - Vector2(1, 1), Vector2(2, 2)), Defs.RESOURCE_COLORS[res])

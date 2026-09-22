@@ -184,6 +184,22 @@ func _build_system() -> void:
 		var ship := spawn_ship(s["type"], s["owner"], s["pos"])
 		ship.rotation = s["rot"]
 	for ft in layout.get("features", []):
+		if ft["type"] == "binary":
+			var a: Star = $World/Star
+			var b := Star.new()
+			b.name = "Star2"
+			world.add_child(b)
+			world.move_child(b, a.get_index() + 1)
+			b.set_type(a.star_type)
+			var base: String = a.star_name
+			a.star_name = base + " A"
+			b.star_name = base + " B"
+			for k in 2:
+				var s: Star = [a, b][k]
+				s.orbit_radius = ft["orbit"]
+				s.orbit_phase = PI * k
+				s.orbit_speed = TAU / ft["period"]
+				s.position = s.orbit_position(now())
 		if ft["type"] == "spice_nebula":
 			var neb := SpiceNebula.new()
 			neb.inner = ft["inner"]
@@ -1230,9 +1246,11 @@ func _enter_dev_capture() -> void:
 		# after a player ship parked inside the radiation zone.
 		var foe: int = 2 if player_id == 1 else 1
 		var crossers: Array = []
+		var st0: Star = get_tree().get_nodes_in_group("stars")[0]
+		var edge: float = st0.orbit_radius + st0.radiation_radius + 160.0
 		for i in 3:
-			var s := spawn_ship("corvette", foe, Vector2(-420, -20 + i * 20))
-			s.order_move(Vector2(420, -20 + i * 20))
+			var s := spawn_ship("corvette", foe, Vector2(-edge, -20 + i * 20))
+			s.order_move(Vector2(edge, -20 + i * 20))
 			crossers.append(s)
 		var bait := spawn_ship("cruiser", player_id, Vector2(0, 90))
 		bait.order_stop()
@@ -1259,7 +1277,8 @@ func _enter_dev_capture() -> void:
 		tk.start()
 		get_tree().create_timer(25.0).timeout.connect(func():
 			for i in 3:
-				print("CROSSER %d closest %.0f (zone %.0f)" % [i, closest.get(i, -1.0), get_tree().get_nodes_in_group("stars")[0].radiation_radius])
+				var cs = crossers[i]
+				print("CROSSER %d closest %.0f (zone %.0f) hull %s  at %s" % [i, closest.get(i, -1.0), get_tree().get_nodes_in_group("stars")[0].radiation_radius, ("%.0f%%" % (100.0 * cs.hp / cs.max_hp)) if is_instance_valid(cs) else "dead", str(cs.global_position.round()) if is_instance_valid(cs) else "-"])
 			print("HEALTHY closest %.0f hp %.0f%%   HURT closest %.0f hp %.0f%%" % [closest.get(3, -1.0), 100 * closest.get("hp3", 0.0), closest.get(4, -1.0), 100 * closest.get("hp4", 0.0)]))
 		center_on(Vector2.ZERO)
 	if OS.get_environment("SL_SYSTEM_TEST") != "":

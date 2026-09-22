@@ -15,8 +15,8 @@ class_name SystemGen
 const SYSTEMS := [
 	{"id": "orion_reach", "name": "Orion Reach", "desc": "The classic hand-built system.", "star": "yellow", "star_name": "Orion",
 		"bg": "violet", "arrival": "You arrive in Orion Reach. Twin deserts flank a quiet yellow sun."},
-	{"id": "vega_drift", "name": "Vega Drift", "seed": 1101, "desc": "Balanced: a few worlds, two belts.", "star": "white", "star_name": "Vega",
-		"bg": "teal", "names": "cold", "arrival": "You arrive in Vega Drift. A hard white sun lights a calm, even field.",
+	{"id": "vega_drift", "name": "Vega Drift", "seed": 1101, "desc": "Balanced worlds around twin suns.", "star": "white", "star_name": "Vega",
+		"bg": "teal", "names": "cold", "feature": "binary", "arrival": "You arrive in Vega Drift. Twin white suns wheel around a shifting safe lane.",
 		"params": {"planets": 4, "belts": 2, "spice": 0.12}},
 	{"id": "kharon_expanse", "name": "Kharon Expanse", "seed": 2207, "desc": "Sparse and spice-rich.", "star": "red_dwarf", "star_name": "Kharon",
 		"bg": "rust", "names": "dust", "feature": "spice_nebula", "arrival": "You arrive in the Kharon Expanse. Spice lies thick in the dim red dust.",
@@ -59,6 +59,10 @@ const RY := 1010.0
 static var star_clear: float = 330.0
 const EDGE_MARGIN := 90.0
 const HOME_T := 0.9
+## Binary systems: each star's distance from the center, and one orbit's
+## length in game seconds.
+const BINARY_ORBIT := 260.0
+const BINARY_PERIOD := 480.0
 
 const NAMES := ["Aster", "Belen", "Calyx", "Draxis", "Eryth", "Fenra", "Galen", "Hesper", "Ilion", "Jarro",
 	"Kalthe", "Lumen", "Marrow", "Nyx", "Ossary", "Pellan", "Quorra", "Rhaen", "Sorrel", "Tamber", "Ulthar",
@@ -103,6 +107,8 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	star_clear = float(Defs.STAR_TYPES.get(params.get("star", "yellow"), Defs.STAR_TYPES["yellow"])["zone"]) + 150.0
+	if params.get("feature", "") == "binary":
+		star_clear += BINARY_ORBIT
 	var names: Array = NAME_SETS.get(params.get("names", ""), NAMES).duplicate()
 	for i in range(names.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
@@ -180,6 +186,8 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	# Signature feature: a spice nebula ring around the star, seeded with
 	# extra spice rocks (the ring itself is symmetric; the rocks are mirrored).
 	var features: Array = []
+	if params.get("feature", "") == "binary":
+		features.append({"type": "binary", "orbit": BINARY_ORBIT, "period": BINARY_PERIOD})
 	if params.get("feature", "") == "spice_nebula":
 		var inner := star_clear + 20.0
 		var outer := inner + 400.0

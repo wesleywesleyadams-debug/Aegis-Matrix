@@ -54,7 +54,18 @@ func dps_at(d: float, r: float) -> float:
 	var t := 1.0 - gap / span
 	return max_dps * t * t
 
+## Binary systems: the star circles the system center (0, 0). Position comes
+## from the match clock, so saves and reloads line up.
+var orbit_radius: float = 0.0
+var orbit_phase: float = 0.0
+var orbit_speed: float = 0.0
+
+func orbit_position(t: float) -> Vector2:
+	return Vector2.from_angle(orbit_phase + t * orbit_speed) * orbit_radius
+
 func _process(delta: float) -> void:
+	if orbit_radius > 0.0:
+		position = orbit_position(Game.now())
 	_timer += delta
 	if _timer < TICK:
 		return

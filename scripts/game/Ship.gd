@@ -384,10 +384,25 @@ func _draw() -> void:
 ## the zone, and only while hull is at least SUN_RISK_HP.
 func _avoid_sun(desired: Vector2) -> Vector2:
 	var goal := _nav_goal if desired != Vector2.ZERO else global_position
+	var done_binary := false
 	for star in get_tree().get_nodes_in_group("stars"):
 		var c: Vector2 = star.global_position
 		var r: float = star.radiation_radius + radius + 12.0
-		var goal_inside := goal.distance_to(c) < r and desired != Vector2.ZERO
+		# A binary pair is one obstacle for the AI: its whole orbit plus both
+		# zones, centered on the system center (threading the moving lane
+		# between the suns is left to the player).
+		if star.orbit_radius > 0.0:
+			if done_binary:
+				continue
+			done_binary = true
+			c = Vector2.ZERO
+			r += star.orbit_radius
+		# Strategic exception: only a goal inside an actual star zone counts.
+		var goal_inside := false
+		if desired != Vector2.ZERO:
+			for s2 in get_tree().get_nodes_in_group("stars"):
+				if goal.distance_to(s2.global_position) < s2.radiation_radius + radius + 12.0:
+					goal_inside = true
 		if goal_inside and hp >= max_hp * SUN_RISK_HP:
 			continue
 		var out := global_position - c
