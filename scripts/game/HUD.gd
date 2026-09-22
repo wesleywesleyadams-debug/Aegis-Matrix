@@ -380,7 +380,7 @@ func _build_pause(root: Control) -> void:
 	var parts := _modal(root, "PAUSED")
 	_pause = parts[0]
 	var v: VBoxContainer = parts[1]
-	for pair in [["Resume", func(): show_pause(false)], ["Save Game", func(): game.save_game()], ["Options", func(): OptionsMenu.open()], ["Quit to Title", _quit_to_title]]:
+	for pair in [["Resume", func(): show_pause(false)], ["Save Game", func(): game.save_game()], ["Codex", open_codex], ["Options", func(): OptionsMenu.open()], ["Quit to Title", _quit_to_title]]:
 		var b := Button.new()
 		b.text = pair[0]
 		b.pressed.connect(pair[1])
@@ -402,36 +402,52 @@ func _build_end(root: Control) -> void:
 
 # ---------------------------------------------------------------- research tree
 
+## Research screen: four tabs — Weapons, Defense, Economy and General —
+## each laid out by tier. Defense is a grid of its three lines (shields,
+## armor, hull). Only one project runs at a time.
 func _build_research(root: Control) -> void:
 	var parts := _modal(root, "RESEARCH", 1100.0)
 	_research_modal = parts[0]
 	_research_modal.color = Color(0, 0, 0, 0.45)
 	var v: VBoxContainer = parts[1]
-	v.add_child(_label("Costs are paid gradually while researching; progress pauses when you can't pay (spice covers energy shortfalls).\nClick to queue a tech; click a queued or active tech to cancel it.", DIM, 13))
+	v.add_child(_label("One project at a time. Costs are paid gradually while researching; progress pauses when you can't pay (spice covers energy shortfalls).\nClick a tech to start it; click the active one to cancel it.", DIM, 13))
 	var legend := HBoxContainer.new()
 	legend.add_theme_constant_override("separation", 10)
-	for s in ["done", "active", "queued", "available", "locked"]:
+	for s in ["done", "active", "available", "locked"]:
 		var chip := ColorRect.new()
 		chip.color = STATE_COLORS[s].lightened(0.2)
 		chip.custom_minimum_size = Vector2(14, 14)
 		legend.add_child(chip)
 		legend.add_child(_label(STATE_LABELS[s].capitalize() + "   ", TEXT, 13))
 	v.add_child(legend)
-	# Two tabs: general technologies by tier, and the three defense lines.
+
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
 	v.add_child(tabs)
-	var cols := HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 18)
-	v.add_child(cols)
-	for tier in [1, 2, 3]:
-		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 10)
-		col.add_child(_label("TIER %d" % tier, DIM, 14))
-		for id in Defs.TECHS:
-			if Defs.TECHS[id]["tier"] == tier and not Defs.TECHS[id].has("line"):
-				col.add_child(_tech_button(id))
-		cols.add_child(col)
+	var pages := {}
+
+	# Weapons, Economy and anything ungrouped: columns by tier.
+	for group in ["weapons", "economy", "general"]:
+		var cols := HBoxContainer.new()
+		cols.add_theme_constant_override("separation", 18)
+		cols.visible = group == "weapons"
+		v.add_child(cols)
+		var any := false
+		for tier in [1, 2, 3]:
+			var col := VBoxContainer.new()
+			col.add_theme_constant_override("separation", 10)
+			col.add_child(_label("TIER %d" % tier, DIM, 14))
+			for id in Defs.TECHS:
+				if Defs.TECHS[id]["tier"] == tier and Defs.TECHS[id].get("group", "general") == group:
+					col.add_child(_tech_button(id))
+					any = true
+			cols.add_child(col)
+		if any:
+			pages[group] = cols
+		else:
+			cols.queue_free()
+
+	# Defense: one row per layer line, one column per tier.
 	var defs := GridContainer.new()
 	defs.columns = 4
 	defs.add_theme_constant_override("h_separation", 18)
@@ -452,20 +468,29 @@ func _build_research(root: Control) -> void:
 			for id in Defs.TECHS:
 				if Defs.TECHS[id].get("line", "") == line[0] and Defs.TECHS[id]["tier"] == tier:
 					defs.add_child(_tech_button(id, 300.0))
-	for pair in [["Technologies", cols], ["Defenses", defs]]:
+	pages["defense"] = defs
+
+	var order := [["weapons", "Weapons"], ["defense", "Defense"], ["economy", "Economy"], ["general", "General"]]
+	var buttons := {}
+	for pair in order:
+		if not pages.has(pair[0]):
+			continue
 		var tb := Button.new()
-		tb.text = pair[0]
+		tb.text = pair[1]
 		tb.toggle_mode = true
-		tb.button_pressed = pair[1] == cols
+		tb.button_pressed = pair[0] == "weapons"
 		tb.focus_mode = Control.FOCUS_NONE
-		tb.custom_minimum_size = Vector2(160, 32)
+		tb.custom_minimum_size = Vector2(150, 32)
 		tabs.add_child(tb)
-	tabs.add_child(_label("   Defense lines are expensive: pick the layer your fleet will lean on.", DIM, 13))
-	var tb0: Button = tabs.get_child(0)
-	var tb1: Button = tabs.get_child(1)
-	_defs_tab = tb1
-	tb0.pressed.connect(func(): cols.visible = true; defs.visible = false; tb0.button_pressed = true; tb1.button_pressed = false)
-	tb1.pressed.connect(func(): cols.visible = false; defs.visible = true; tb1.button_pressed = true; tb0.button_pressed = false)
+		buttons[pair[0]] = tb
+	for id in buttons:
+		var b: Button = buttons[id]
+		b.pressed.connect(func():
+			for other in pages:
+				pages[other].visible = other == id
+				buttons[other].button_pressed = other == id
+			_defs_tab = buttons.get("defense"))
+	_defs_tab = buttons.get("defense")
 	var close := Button.new()
 	close.text = "Close [R]"
 	close.focus_mode = Control.FOCUS_NONE
@@ -1352,3 +1377,14 @@ func build_type_for_key(k: Key) -> String:
 	if i < 0 or i >= Defs.BUILD_ORDER.size():
 		return ""
 	return Defs.BUILD_ORDER[i]
+
+## Opens the Codex over the match (pause menu). It runs in its own layer on
+## top and closes back to the game.
+func open_codex() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	var codex: Control = load("res://scenes/Codex.tscn").instantiate()
+	codex.overlay = true
+	layer.add_child(codex)
+	get_tree().root.add_child(layer)

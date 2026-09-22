@@ -25,6 +25,9 @@ const SECTIONS := [
 var _body: VBoxContainer
 var _nav_buttons := {}
 var _current := "overview"
+## Opened over a running match (from the pause menu) instead of from the
+## title screen: Back closes the overlay and leaves the match alone.
+var overlay := false
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -49,7 +52,7 @@ func _ready() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	var back := Button.new()
-	back.text = "Back to Title"
+	back.text = "Back to Match" if overlay else "Back to Title"
 	back.focus_mode = Control.FOCUS_NONE
 	back.pressed.connect(_back)
 	MenuStyle.button(back)
@@ -96,6 +99,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _back() -> void:
+	if overlay:
+		get_parent().queue_free()
+		return
 	get_tree().change_scene_to_file("res://scenes/TitleMenu.tscn")
 
 # ---------------------------------------------------------------- widgets
@@ -281,7 +287,7 @@ func _page_combat() -> void:
 	_para("A refit with no minerals to pay for it simply waits, and the ship stays inside until you cancel it — cancelling ejects it unchanged, still a generalist. A refitted specialist can never be refitted again. If a depot is destroyed with ships inside, they are thrown clear and lose 60% of their shields, armor and hull in the blast.")
 	_rule()
 	_heading("Defense research")
-	_para("Three lines on the research screen's Defenses tab, expensive on purpose: committing to a layer is a strategic choice.")
+	_para("Three lines on the research screen's Defense tab, expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech is time as well as energy.")
 	var lines := {"shields": "shield", "armor": "armor", "hull": "hull"}
 	for line in lines:
 		var lrows: Array = []
@@ -353,6 +359,9 @@ func _page_economy() -> void:
 		var bd: Dictionary = Defs.BUILDINGS[b]
 		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), str(bd["pop"]) + " pop", bd["desc"]])
 	_table(["Building", "Cost", "Time", "Staff", "Effect"], brows)
+	_rule()
+	_heading("Defense Battery")
+	_para("A world with a Defense Battery is no longer a free kill: each one adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries make a colony something a raiding party has to commit to." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
 	_rule()
 	_heading("Upkeep")
 	_para("Every ship costs energy per second, and the total is multiplied as the fleet grows (1 + (ships/%d)^2), so fleets plateau instead of growing forever. Starbases have their own steeper curve, which makes more than a handful expensive. With no energy in the stockpile, starbases stop producing and your ships move and fire at %d%% speed." % [int(Defs.UPKEEP_SCALE_SHIPS), int(Defs.ENERGY_STARVED_FACTOR * 100.0)])

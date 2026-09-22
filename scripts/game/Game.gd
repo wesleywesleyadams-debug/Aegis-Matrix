@@ -524,6 +524,9 @@ func queue_research(pid: int, tech_id: String) -> String:
 		"done": return "Already researched"
 		"active", "queued": return "Already in the research queue"
 		"locked": return "Requires " + ", ".join(Defs.TECHS[tech_id]["requires"].map(func(r): return Defs.TECHS[r]["name"]))
+	# One project at a time: finish or cancel the current one first.
+	if not research[pid].is_empty() or not research_queue[pid].is_empty():
+		return "Already researching something else"
 	research_queue[pid].append(tech_id)
 	return ""
 
@@ -1892,6 +1895,9 @@ func _enter_dev_capture() -> void:
 	match OS.get_environment("SL_SHOT_OPEN"):
 		"pause":
 			hud.show_pause(true)
+		"codex":
+			hud.show_pause(true)
+			hud.open_codex()
 		"research":
 			hud.toggle_research()
 		"research_def":
