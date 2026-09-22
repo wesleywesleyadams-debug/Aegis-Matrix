@@ -89,7 +89,7 @@ func _ready() -> void:
 func apply_current_settings() -> void:
 	AudioServer.set_bus_volume_db(_master_bus_index, GameState.master_volume_db)
 	master_slider.value = GameState.master_volume_db
-	Music.player.volume_db = GameState.music_volume_db
+	Music.apply_volume()
 	music_slider.value = GameState.music_volume_db
 
 	audio_enabled_checkbox.button_pressed = GameState.audio_enabled
@@ -120,8 +120,8 @@ func _on_master_slider_changed(value: float) -> void:
 	GameState.save_settings()
 
 func _on_music_slider_changed(value: float) -> void:
-	Music.player.volume_db = value
 	GameState.music_volume_db = value
+	Music.apply_volume()
 	GameState.save_settings()
 
 func _on_audio_enabled_toggled(pressed: bool) -> void:

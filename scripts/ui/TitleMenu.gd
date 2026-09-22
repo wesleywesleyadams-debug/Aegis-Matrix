@@ -15,6 +15,7 @@ var load_list_panel: Control
 
 func _ready() -> void:
 	Music.play_track(Music.TITLE_TRACK)
+	_add_credits_line()
 	_build_new_game_page()
 	$LoadListPanel.visible = false
 	load_list_panel = _build_load_screen()
@@ -270,3 +271,17 @@ func _notification(what: int) -> void:
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("user://title.png")
 		get_tree().quit()
+
+## Music attribution required by its license (see CREDITS.md).
+func _add_credits_line() -> void:
+	var l := Label.new()
+	l.text = "Music: \"Through Space\" by Maxstack · CC BY-SA 3.0"
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9, 0.7))
+	l.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	l.position = Vector2(16, size.y - 30)
+	l.anchor_top = 1.0
+	l.anchor_bottom = 1.0
+	l.offset_top = -30
+	l.offset_left = 16
+	add_child(l)
