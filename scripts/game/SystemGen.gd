@@ -6,7 +6,7 @@ class_name SystemGen
 ## planets, belts and distances. The same seed + params always give the same
 ## system (names included), which is what lets saves rebuild it.
 ##
-## Result: {"planets": [{name, kind, pos, owner}], "asteroids": [{name,
+## Result: {"planets": [{name, kind, size, pos, owner}], "asteroids": [{name,
 ## variant, pos}], "starbases": [{owner, pos}], "ships": [{type, owner, pos,
 ## rot}]}. Game builds nodes from it (see Game._build_system).
 
@@ -97,7 +97,9 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 			if not _fits(placed, pos, 260.0) or pos.distance_to(home) < 480.0:
 				continue
 			var kind := _kind_for(rng, t)
-			half_planets.append({"kind": kind, "pos": pos, "owner": 0})
+			var r := rng.randf()
+			var size := "_s" if r < 0.3 else ("_l" if r > 0.75 else "")
+			half_planets.append({"kind": kind, "size": size, "pos": pos, "owner": 0})
 			_claim(placed, pos, 110.0)
 			# Gas giants often have a barren moon.
 			if kind == "planet_gas" and rng.randf() < 0.6:
@@ -132,7 +134,7 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	for side in 2:
 		var s := 1.0 if side == 0 else -1.0
 		for pl in half_planets:
-			out["planets"].append({"name": names[n % names.size()], "kind": pl["kind"], "pos": pl["pos"] * s,
+			out["planets"].append({"name": names[n % names.size()], "kind": pl["kind"], "size": pl.get("size", ""), "pos": pl["pos"] * s,
 				"owner": (pl["owner"] if side == 0 else (2 if pl["owner"] == 1 else 0))})
 			n += 1
 		for r in half_rocks:

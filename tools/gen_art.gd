@@ -55,6 +55,12 @@ func _img(w: int, h: int) -> Image:
 
 func _save(img: Image, name: String) -> void:
 	img.save_png(OUT + name + ".png")
+	# Planets also get small and large versions, re-rendered from the same
+	# shading at other diameters (even sizes keep the sphere centered).
+	if name.begins_with("planet_"):
+		for pair in [["_s", 0.78], ["_l", 1.25]]:
+			var s := int(round(img.get_width() * pair[1] / 2.0)) * 2
+			_sphere(s, _last_shade, _last_atmo).save_png(OUT + name + pair[0] + ".png")
 
 func _dither(value: float, x: int, y: int, steps: int) -> int:
 	## Maps value in [0,1] to an index in [0, steps-1] with 4x4 ordered dither.
@@ -222,7 +228,12 @@ func _gen_starbase() -> void:
 
 # ---------------------------------------------------------------- planets
 
+var _last_shade: Callable
+var _last_atmo: Color
+
 func _sphere(size: int, shade_fn: Callable, atmo: Color = Color(0, 0, 0, 0)) -> Image:
+	_last_shade = shade_fn
+	_last_atmo = atmo
 	var img := _img(size, size)
 	var r := size / 2.0 - 1.0
 	var light := Vector3(-0.55, -0.5, 0.67).normalized()

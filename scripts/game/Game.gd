@@ -152,6 +152,7 @@ func _build_system() -> void:
 		pl.name = p["name"]
 		pl.planet_name = p["name"]
 		pl.kind = p["kind"]
+		pl.size_variant = p.get("size", "")
 		pl.owner_id = p["owner"]
 		pl.position = p["pos"]
 		$World/Planets.add_child(pl)
@@ -1224,7 +1225,7 @@ func _enter_dev_capture() -> void:
 		center_on(Vector2.ZERO)
 	if OS.get_environment("SL_SYSTEM_TEST") != "":
 		# Dev: prints the system, then (mode "save") saves after 20s.
-		var names := get_tree().get_nodes_in_group("planets").map(func(p): return "%s:%s:%d" % [p.planet_name, p.kind.trim_prefix("planet_"), p.owner_id])
+		var names := get_tree().get_nodes_in_group("planets").map(func(p): return "%s:%s%s:%d(%dpx,%d fields)" % [p.planet_name, p.kind.trim_prefix("planet_"), p.size_variant, p.owner_id, int(p.radius * 2), p.fields])
 		print("SYSTEM %s seed %d  planets %d rocks %d  %s" % [GameState.system_id, GameState.system_seed, names.size(), get_tree().get_nodes_in_group("asteroids").size(), ", ".join(names)])
 		get_tree().create_timer(20.0).timeout.connect(func():
 			var mine := get_tree().get_nodes_in_group("ships").filter(func(s): return s.is_miner() and s.state != Ship.State.IDLE).size()

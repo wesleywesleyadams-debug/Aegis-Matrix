@@ -39,7 +39,7 @@ func _init() -> void:
 		# Fairness: each side's kinds/variants must match exactly.
 		var sides := [{}, {}]
 		for p in L["planets"]:
-			var k: String = p["kind"]
+			var k: String = p["kind"] + p.get("size", "")
 			var sd := 0 if p["pos"].x < 0 else 1
 			sides[sd][k] = sides[sd].get(k, 0) + 1
 		for a in L["asteroids"]:

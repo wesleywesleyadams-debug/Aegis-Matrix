@@ -31,8 +31,15 @@ const ECON_TICK := 0.25
 	set(v):
 		kind = v
 		if has_node("Sprite"):
-			$Sprite.texture = Defs.tex(kind)
+			$Sprite.texture = Defs.tex(texture_name())
 @export var planet_name: String = "Unnamed"
+## Size within its type: "_s" small, "" standard, "_l" large. Bigger worlds
+## have more fields and bigger spice / gas reserves.
+@export var size_variant: String = "":
+	set(v):
+		size_variant = v
+		if has_node("Sprite"):
+			$Sprite.texture = Defs.tex(texture_name())
 @export var owner_id: int = 0:
 	set(v):
 		owner_id = v
@@ -92,18 +99,27 @@ var max_spice_reserve: float = 0.0
 var _check_timer: float = 0.0
 var _econ_timer: float = 0.0
 
+func texture_name() -> String:
+	return kind + size_variant
+
+## Reserve multiplier by size: scales with the planet's area.
+func reserve_scale() -> float:
+	var w := float(Defs.tex(texture_name()).get_width())
+	var base := float(Defs.tex(kind).get_width())
+	return (w / base) * (w / base)
+
 func _ready() -> void:
-	$Sprite.texture = Defs.tex(kind)
+	$Sprite.texture = Defs.tex(texture_name())
 	radius = $Sprite.texture.get_width() / 2.0
 	if Engine.is_editor_hint():
 		return
 	add_to_group("planets")
 	fields = Defs.field_count($Sprite.texture.get_width()) if is_habitable() else 0
-	spice_reserve = float(type_def().get("spice_reserve", 0))
+	spice_reserve = float(type_def().get("spice_reserve", 0)) * reserve_scale()
 	max_spice_reserve = spice_reserve
 	if not is_habitable():
 		resource = "minerals"
-		amount = int(type_def().get("gas_reserve", 0))
+		amount = int(type_def().get("gas_reserve", 0) * reserve_scale())
 	buildings.resize(fields)
 	buildings.fill("")
 	operating.resize(fields)
@@ -173,7 +189,7 @@ func _process(delta: float) -> void:
 		depleted_timer -= delta
 		if depleted_timer <= 0.0:
 			depleted_timer = 0.0
-			amount = int(type_def().get("gas_reserve", 0))
+			amount = int(type_def().get("gas_reserve", 0) * reserve_scale())
 			$Sprite.modulate = Color.WHITE
 			queue_redraw()
 	_econ_timer += delta
