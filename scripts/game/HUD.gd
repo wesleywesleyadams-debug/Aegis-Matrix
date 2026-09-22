@@ -637,7 +637,9 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(198, 62)
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s\nHull %d  Shield %d  Speed %d\nUpkeep %.2f energy/s base (scales with fleet size)\nCost %s, paid over %ds" % [d["name"], d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.2f energy/s base (scales with fleet size)\nCost %s, paid over %ds" % [d["name"], d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		if d.has("variant"):
+			b.tooltip_text += "\n" + Defs.VARIANTS[d["variant"]]["desc"]
 		var h := HBoxContainer.new()
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -647,7 +649,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var v := VBoxContainer.new()
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.alignment = BoxContainer.ALIGNMENT_CENTER
-		v.add_child(_label("[%s] %s" % [OS.get_keycode_string(d["hotkey"]), d["name"]], TEXT, 13))
+		v.add_child(_label(("[%s] %s" % [OS.get_keycode_string(d["hotkey"]), d["name"]]) if d.has("hotkey") else d["name"], Defs.VARIANTS[d["variant"]]["color"] if d.has("variant") else TEXT, 13))
 		v.add_child(CostRow.make(d["cost"], 12, -1.0, 1))
 		h.add_child(v)
 		b.add_child(h)
@@ -1081,6 +1083,13 @@ var _ability_ship: Ship
 ## jobs a Q button showing the recharge.
 func _add_job_panel(s: Ship) -> void:
 	_ability_button = null
+	# Weapon profile vs the defense layers (see Defs.VARIANTS).
+	if s.def["weapon"] != "":
+		if s.def.has("variant"):
+			var vd: Dictionary = Defs.VARIANTS[s.def["variant"]]
+			_sel_body.add_child(_label("Weapons: %s. %s" % [vd["label"], vd["desc"]], vd["color"], 13))
+		else:
+			_sel_body.add_child(_label("Weapons: Generalist. Full damage to shields, armor and hull.", DIM, 13))
 	var jid: String = s.def.get("job", "")
 	if jid == "":
 		return

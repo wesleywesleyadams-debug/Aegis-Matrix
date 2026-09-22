@@ -1025,7 +1025,7 @@ func _handle_key(e: InputEventKey) -> void:
 			var sb := selected_starbase()
 			if sb:
 				for t in Defs.BUILD_ORDER:
-					if Defs.SHIPS[t]["hotkey"] == k:
+					if Defs.SHIPS[t].get("hotkey", -1) == k:
 						request_build(sb, t)
 
 ## Writes the match to a new save file (Esc menu > Save Game).
@@ -1655,6 +1655,29 @@ func _enter_dev_capture() -> void:
 				sum += f
 			print("STRESS ships %d  frames %d  avg %.2f ms  p95 %.2f ms  max %.2f ms  projectiles %d" % [get_tree().get_nodes_in_group("ships").size(), frames.size(), sum / maxf(frames.size(), 1), frames[int(frames.size() * 0.95)] if frames.size() > 0 else 0.0, frames[-1] if frames.size() > 0 else 0.0, fx_root.get_child_count()])
 			get_tree().quit())
+	if OS.get_environment("SL_SHOT_OPEN") == "variants":
+		# Dev: base damage each variant needs to destroy each generalist,
+		# relative to a generalist attacker (1.00 = same, lower = faster).
+		var line := "VARIANTS %-10s" % "target"
+		for v in Defs.VARIANTS:
+			line += "%10s" % v
+		print(line)
+		for tgt in ["corvette", "destroyer", "cruiser"]:
+			var row := "VARIANTS %-10s" % tgt
+			var gen := 0.0
+			for v in [""] + Defs.VARIANTS.keys():
+				var s := spawn_ship(tgt, 3 - player_id, Vector2(-1500, -900))
+				var prof := Defs.damage_profile({"variant": v}) if v != "" else {}
+				var per: float = Defs.VARIANTS[v]["damage"] if v != "" else 1.0
+				var used := 0.0
+				while s.hp > 0.0:
+					s.take_damage(per, null, prof)
+					used += 1.0
+				if v == "":
+					gen = used
+				else:
+					row += "%10.2f" % (used / gen)
+			print(row)
 	if OS.get_environment("SL_SHOT_OPEN") == "armor":
 		# Dev: damage runs shields -> armor -> hull; a Tender restores hull, then armor.
 		var d := spawn_ship("destroyer", player_id, Vector2(-1400, 0))

@@ -326,7 +326,7 @@ func _update_intel() -> void:
 	var tree := get_tree()
 	for s in tree.get_nodes_in_group("ships"):
 		if s.owner_id != pid and s.is_alive() and s.def["role"] == "warship" and can_see(s):
-			sightings[s.get_instance_id()] = [now, s.max_hp + s.max_armor + s.max_shield, s.global_position]
+			sightings[s.get_instance_id()] = [now, s.max_hp + s.max_armor + s.max_shield, s.global_position, Vector3(s.max_shield, s.max_armor, s.max_hp)]
 	for id in sightings.keys():
 		var sg: Array = sightings[id]
 		# Forget old sightings, and ships seen to be gone from where they were.
@@ -394,3 +394,14 @@ func nearest_unexplored(from: Vector2) -> Vector2:
 					best_d = d
 					best = p
 	return best
+
+## Seen enemy warships' defenses by layer: {shield, armor, hull} totals.
+func enemy_layers() -> Dictionary:
+	var t := {"shield": 0.0, "armor": 0.0, "hull": 0.0}
+	for id in sightings:
+		var sg: Array = sightings[id]
+		if sg.size() > 3:
+			t["shield"] += sg[3].x
+			t["armor"] += sg[3].y
+			t["hull"] += sg[3].z
+	return t

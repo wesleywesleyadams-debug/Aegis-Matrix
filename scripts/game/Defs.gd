@@ -27,7 +27,7 @@ static func team_color(owner_id: int) -> Color:
 ## role: miner / warship / colony / constructor.
 ## cost is the total, paid over build_time. upkeep is energy per second.
 ## requires: tech id that must be researched before it can be queued.
-const SHIPS := {
+const BASE_SHIPS := {
 	"miner": {
 		"name": "Mining Barge", "role": "miner", "hotkey": KEY_Z,
 		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0,
@@ -62,13 +62,13 @@ const SHIPS := {
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "hotkey": KEY_B,
-		"hp": 130.0, "armor": 90.0, "shield": 80.0, "speed": 85.0, "radius": 11.0,
+		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 11.0,
 		"cost": {"minerals": 140, "spice": 5}, "build_time": 14.0, "upkeep": 0.25,
 		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort",
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "hotkey": KEY_N, "requires": "cruiser_doctrine",
-		"hp": 300.0, "armor": 260.0, "shield": 200.0, "speed": 55.0, "radius": 16.0,
+		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 300, "spice": 25}, "build_time": 24.0, "upkeep": 0.6,
 		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "job": "barrage",
 	},
@@ -92,7 +92,11 @@ const SHIPS := {
 	},
 }
 
-const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor", "corvette", "destroyer", "cruiser"]
+## Starbase build menu order (and G/J/K etc. hotkey lookup): economy,
+## support, generalist warships, then specialist variants.
+const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor", "scout", "tender",
+	"corvette", "destroyer", "cruiser", "heatshield",
+	"ion_corvette", "breacher_corvette", "reaver_corvette", "slip_corvette", "disruptor_corvette"]
 
 const STARBASE := {
 	"name": "Starbase", "hp": 2800.0, "armor": 1200.0, "shield": 1500.0, "radius": 26.0,
@@ -239,6 +243,59 @@ const STAR_TYPES := {
 	"orange": {"label": "Orange Star", "tex": "star_orange", "core": 36.0, "zone": 195.0, "dps": 65.0, "tint": Color("ff8a2a")},
 	"blue_giant": {"label": "Blue Giant", "tex": "star_blue", "core": 46.0, "zone": 260.0, "dps": 95.0, "tint": Color("7ab0ff")},
 }
+
+## Every buildable ship: the base designs plus their specialist variants
+## (see VARIANTS), e.g. "slip_corvette".
+static var SHIPS: Dictionary = _with_variants()
+
+## Damage vs the defense layers. Generalists deal their full base damage to
+## shields, armor and hull alike. Specialists are variants of a generalist:
+##   bonus  - 80% base damage, x2.2 against one layer (x1.9 for hull, the
+##            biggest layer on most ships)
+##   pierce - skip layers entirely: 1 = shields (65% base damage),
+##            2 = shields and armor (40% base damage)
+## All variants cost the same as their generalist. Balance: vs the
+## generalists' distinct profiles (corvette hull-heavy, destroyer
+## shield-heavy, cruiser armor-heavy) each specialist kills its favored
+## targets 7-18% faster and the others 5-46% slower (see tools notes).
+## color: the variant's markings and shot color.
+const VARIANTS := {
+	"ion": {"label": "Ion", "vs": {"shield": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
+		"desc": "80% base damage, x2.2 against shields."},
+	"breacher": {"label": "Breacher", "vs": {"armor": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff8a2a"),
+		"desc": "80% base damage, x2.2 against armor."},
+	"reaver": {"label": "Reaver", "vs": {"hull": 1.9}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff4a3a"),
+		"desc": "80% base damage, x1.9 against hull."},
+	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("b48cff"),
+		"desc": "Shots slip past shields straight to armor and hull, at 65% base damage."},
+	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.4, "cost": 1.0, "color": Color("ff5ad2"),
+		"desc": "Shots pass through shields and armor straight to the hull, at 40% base damage."},
+}
+## Which variants each generalist has so far.
+const VARIANTS_OF := {"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"]}
+
+static func _with_variants() -> Dictionary:
+	var out := BASE_SHIPS.duplicate(true)
+	for base in VARIANTS_OF:
+		for v in VARIANTS_OF[base]:
+			var vd: Dictionary = VARIANTS[v]
+			var d: Dictionary = BASE_SHIPS[base].duplicate(true)
+			d["name"] = "%s %s" % [vd["label"], d["name"]]
+			d["variant"] = v
+			d["base"] = base
+			d.erase("hotkey")
+			d["damage"] = d["damage"] * vd["damage"]
+			for r in d["cost"]:
+				d["cost"][r] = int(round(d["cost"][r] * vd["cost"]))
+			out["%s_%s" % [v, base]] = d
+	return out
+
+## A ship def's damage profile: {"vs": layer multipliers, "pierce": 0-2}.
+static func damage_profile(d: Dictionary) -> Dictionary:
+	if not d.has("variant"):
+		return {"vs": {}, "pierce": 0}
+	var v: Dictionary = VARIANTS[d["variant"]]
+	return {"vs": v["vs"], "pierce": v["pierce"]}
 
 ## Ship jobs (see Abilities): what each ship is good at. Passive jobs always
 ## work; active ones are triggered with Q (or the ship panel's button) and

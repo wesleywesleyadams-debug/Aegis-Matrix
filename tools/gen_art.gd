@@ -36,10 +36,12 @@ func _init() -> void:
 	if OS.get_environment("ART_ONLY") == "ships":
 		_gen_ships()
 		_gen_job_ships()
+		_gen_variants()
 		quit()
 		return
 	_gen_ships()
 	_gen_job_ships()
+	_gen_variants()
 	_gen_starbase()
 	_gen_planets()
 	_gen_star()
@@ -885,3 +887,53 @@ func _gen_job_ships() -> void:
 			for s in [-1, 1]:
 				for x in range(12, 22, 3):
 					_px(img, x, cy + s * 11, A["battleship"][0]))
+
+# ---------------------------------------------------------------- variants
+
+## Specialist variants (Defs.VARIANTS) of the generalist warships: the base
+## sprite with markings in the variant's color: a glowing emitter at the
+## nose, a stripe down the spine and lit wingtips, so an Ion Corvette reads
+## differently from a Slip or Disruptor Corvette at a glance.
+const VARIANT_COLORS := {
+	"ion": [Color("1d5f8a"), Color("7fd8ff"), Color("e6fbff")],
+	"breacher": [Color("7a3a10"), Color("ff8a2a"), Color("ffd6a0")],
+	"reaver": [Color("7a1a14"), Color("ff4a3a"), Color("ffc8b8")],
+	"slip": [Color("4a2a8a"), Color("b48cff"), Color("f0e6ff")],
+	"disruptor": [Color("7a1a66"), Color("ff5ad2"), Color("ffd6f4")],
+}
+const VARIANT_BASES := {"corvette": ["ion", "breacher", "reaver", "slip", "disruptor"]}
+
+func _gen_variants() -> void:
+	for base in VARIANT_BASES:
+		var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s.png" % base))
+		var team := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s_team.png" % base))
+		var w := hull.get_width()
+		var h := hull.get_height()
+		var cy := h / 2
+		for v in VARIANT_BASES[base]:
+			var c: Array = VARIANT_COLORS[v]
+			var img := hull.duplicate() as Image
+			# Spine stripe: the middle row of hull pixels over the rear 2/3.
+			for x in range(2, int(w * 0.62)):
+				if img.get_pixel(x, cy).a > 0.0 and img.get_pixel(x, cy) != OUTLINE:
+					img.set_pixel(x, cy, c[0] if x % 2 == 0 else c[1])
+			# Nose emitter: the frontmost hull pixel on the centerline and the
+			# one behind it.
+			for x in range(w - 1, 0, -1):
+				if img.get_pixel(x, cy).a > 0.0 and img.get_pixel(x, cy) != OUTLINE:
+					img.set_pixel(x, cy, c[2])
+					img.set_pixel(x - 1, cy, c[1])
+					break
+			# Wingtips: the top- and bottom-most hull pixels of each column.
+			for x in w:
+				for dir in [1, -1]:
+					var y := 0 if dir == 1 else h - 1
+					while y >= 0 and y < h and img.get_pixel(x, y).a == 0.0:
+						y += dir
+					# y is the outline; the pixel just inside it gets the color.
+					var inner: int = y + dir
+					if inner >= 0 and inner < h and absi(inner - cy) >= 3:
+						if img.get_pixel(x, inner).a > 0.0 and img.get_pixel(x, inner) != OUTLINE:
+							img.set_pixel(x, inner, c[1])
+			_save(img, "ship_%s_%s" % [v, base])
+			_save(team.duplicate() as Image, "ship_%s_%s_team" % [v, base])

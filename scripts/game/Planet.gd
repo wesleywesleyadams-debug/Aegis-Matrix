@@ -19,7 +19,7 @@ const PLANET_SHIELD_REGEN := 20.0
 const SHIELD_REGEN_DELAY := 5.0
 
 ## Pops killed per point of damage, pegged so one base corvette shot = 1 pop.
-static var POP_PER_DAMAGE: float = 1.0 / float(Defs.SHIPS["corvette"]["damage"])
+static var POP_PER_DAMAGE: float = 1.0 / float(Defs.BASE_SHIPS["corvette"]["damage"])
 const COLONIZE_TIME := 60.0
 ## A planet counts as under siege for this long after its last hit.
 const SIEGE_TIME := 3.0
@@ -283,17 +283,22 @@ func under_siege() -> bool:
 
 ## Weapon fire from bombarding ships: the planetary shield absorbs it first,
 ## then each point kills POP_PER_DAMAGE pops.
-func take_damage(amount: float, from: Node2D = null) -> void:
+func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -> void:
 	if owner_id == 0:
 		return
 	var g := Game.instance
 	if g.now() - last_hit_time > SIEGE_MEMORY or siege_start_pop <= 0.0:
 		siege_start_pop = maxf(pop, 1.0)
 	last_hit_time = g.now()
-	# The planetary shield soaks damage first.
-	var absorbed := minf(shield, amount)
-	shield -= absorbed
-	amount -= absorbed
+	# The planetary shield soaks damage first (shield-piercing shots slip past;
+	# Ion shots hit it harder; Reavers hit the population harder).
+	var absorbed := 0.0
+	if profile.get("pierce", 0) < 1:
+		var m: float = profile.get("vs", {}).get("shield", 1.0)
+		absorbed = minf(shield, amount * m)
+		shield -= absorbed
+		amount -= absorbed / m
+	amount *= profile.get("vs", {}).get("hull", 1.0)
 	if absorbed > 0.0:
 		g.spawn_shield_hit(global_position, radius * 0.6, from.global_position if is_instance_valid(from) else global_position + Vector2.RIGHT)
 	pop -= amount * POP_PER_DAMAGE

@@ -134,8 +134,8 @@ func cargo_cap() -> int:
 
 # ---------------------------------------------------------------- orders
 
-func take_damage(amount: float, from: SpaceEntity = null) -> void:
-	super.take_damage(amount, from)
+func take_damage(amount: float, from: SpaceEntity = null, profile: Dictionary = {}) -> void:
+	super.take_damage(amount, from, profile)
 	if owner_id == Game.instance.player_id and hp > 0.0 and from != null:
 		Game.instance.alert("Your ships are under attack!", "alert_ships", false, global_position)
 

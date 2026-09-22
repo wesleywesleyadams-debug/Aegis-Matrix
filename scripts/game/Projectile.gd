@@ -6,6 +6,8 @@ extends Sprite2D
 var shooter: SpaceEntity
 var target: Node2D # a SpaceEntity or a Planet being bombarded
 var damage: float
+## Damage vs defense layers (Defs.damage_profile of the shooter).
+var profile: Dictionary = {}
 var speed: float
 var homing: bool
 var life: float = 3.0
@@ -22,6 +24,11 @@ func setup(from: SpaceEntity, to: Node2D, weapon: String, dmg: float) -> void:
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
 	texture = Defs.tex("bolt_" + weapon)
 	modulate = Defs.team_color(from.owner_id).lightened(0.35)
+	if from is Ship:
+		profile = Defs.damage_profile(from.def)
+		# Specialist shots glow in their variant's color.
+		if from.def.has("variant"):
+			modulate = Defs.VARIANTS[from.def["variant"]]["color"].lightened(0.2)
 	global_position = from.global_position
 	var lead := to.global_position
 	if to is Ship:
@@ -42,7 +49,7 @@ func _physics_process(delta: float) -> void:
 		if global_position.distance_to(target.global_position) <= target.radius:
 			# An Escort nearby softens weapon hits (see Abilities).
 			var mult := Abilities.incoming_mult(target) if target is SpaceEntity else 1.0
-			target.take_damage(damage * mult, shooter if is_instance_valid(shooter) else null)
+			target.take_damage(damage * mult, shooter if is_instance_valid(shooter) else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(global_position, 0.4)
 			queue_free()

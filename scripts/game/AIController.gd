@@ -201,8 +201,15 @@ func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	# Stop growing the fleet once upkeep would outrun income.
 	if game.rates[pid].get("energy", 0.0) < 0.5 and res["energy"] < 200.0:
 		return ""
+	# Specialists: swap some corvettes for the variant that suits the enemy
+	# defenses we've actually seen.
+	var spec := _pick_variant(pid, game)
+	if spec != "" and randf() < 0.6:
+		for i in options.size():
+			if options[i] == "corvette":
+				options[i] = spec + "_corvette"
 	for t in options:
-		if st.get("corvettes_only", false) and t != "corvette":
+		if st.get("corvettes_only", false) and Defs.SHIPS[t].get("base", t) != "corvette":
 			continue
 		# Recently cancelled for stalling: give it a minute.
 		if Game.now() < st.get("blocked", {}).get(t, -1.0):
@@ -449,3 +456,21 @@ func _nebula_spot(from: Vector2, game: Game, v: Vision) -> Vector2:
 		if v == null or v.is_explored_at(p):
 			return p
 	return Vector2.INF
+
+## The corvette variant that best fits the enemy defenses seen so far (see
+## Defs.VARIANTS), or "" when we haven't seen enough of their fleet.
+func _pick_variant(pid: int, game: Game) -> String:
+	var v: Vision = game.visions.get(pid)
+	if v == null:
+		return ""
+	var l := v.enemy_layers()
+	var total: float = l["shield"] + l["armor"] + l["hull"]
+	if total < 300.0:
+		return ""
+	if (l["shield"] + l["armor"]) / total > 0.62:
+		return "disruptor"
+	if l["shield"] >= l["armor"] and l["shield"] / total > 0.3:
+		return "ion" if randf() < 0.5 else "slip"
+	if l["armor"] / total > 0.3:
+		return "breacher"
+	return "reaver"

@@ -37,16 +37,30 @@ func is_alive() -> bool:
 func is_enemy_of(other_owner: int) -> bool:
 	return owner_id != 0 and other_owner != 0 and owner_id != other_owner
 
-func take_damage(amount: float, _from: SpaceEntity = null) -> void:
+## `profile` (Defs.damage_profile): "vs" multiplies damage against a layer,
+## "pierce" skips layers (1 = shields, 2 = shields and armor). Damage works
+## through the layers in order; what a layer can't absorb carries on to the
+## next at base value.
+func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary = {}) -> void:
 	if _dead:
 		return
 	_last_hit_time = Game.now()
-	var absorbed := minf(shield, amount)
-	shield -= absorbed
-	var rest := amount - absorbed
-	var plated := minf(armor, rest)
-	armor -= plated
-	hp -= rest - plated
+	var vs: Dictionary = profile.get("vs", {})
+	var pierce: int = profile.get("pierce", 0)
+	var rest := amount
+	var absorbed := 0.0
+	if pierce < 1:
+		var m: float = vs.get("shield", 1.0)
+		absorbed = minf(shield, rest * m)
+		shield -= absorbed
+		rest -= absorbed / m
+	if pierce < 2 and rest > 0.0:
+		var m: float = vs.get("armor", 1.0)
+		var plated := minf(armor, rest * m)
+		armor -= plated
+		rest -= plated / m
+	if rest > 0.0:
+		hp -= rest * vs.get("hull", 1.0)
 	if absorbed > 0.0:
 		Game.instance.spawn_shield_hit(global_position, radius, (_from.global_position if is_instance_valid(_from) else global_position + Vector2.RIGHT))
 	queue_redraw()
