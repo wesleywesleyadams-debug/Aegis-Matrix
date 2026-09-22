@@ -33,15 +33,12 @@ func show_system(id: String) -> void:
 		for a in _layout["asteroids"]:
 			if str(a["variant"]).begins_with("spice"):
 				spice += 1
-		facts = "%s
-%d worlds · %d rocks (%d spice)" % [Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"], worlds, _layout["asteroids"].size(), spice]
+		facts = "%s\n%d worlds · %d rocks (%d spice)" % [Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"], worlds, _layout["asteroids"].size(), spice]
 		if _settings.get("feature", "") == "binary":
 			facts = facts.replace(Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"], "Binary " + Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"] + "s")
-			facts += "
-Twin suns orbit the center; the lane between them moves."
+			facts += "\nTwin suns orbit the center; the lane between them moves."
 		if _settings.get("feature", "") == "spice_nebula":
-			facts += "
-Spice Nebula: rich spice, but shields drain inside."
+			facts += "\nSpice Nebula: rich spice, but shields drain inside."
 	queue_redraw()
 
 ## Orion Reach is hand-placed in Main.tscn: read its planets, rocks and
