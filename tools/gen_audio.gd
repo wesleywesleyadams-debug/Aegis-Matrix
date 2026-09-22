@@ -51,6 +51,8 @@ func _init() -> void:
 		"note_save": _echo(_seq([[1047, 0.07, 0.06, "tri"]], 0.0)),
 		# Match won: a bright brass fanfare over a timpani roll.
 		"victory": _fanfare(),
+		# Match lost: a slow, falling minor lament.
+		"defeat": _lament(),
 	}
 	# GEN_ONLY=a,b bakes just those SFX (and no music), leaving the rest as is.
 	var only := OS.get_environment("GEN_ONLY").split(",", false)
@@ -309,4 +311,47 @@ func _fanfare() -> PackedFloat32Array:
 	# Final fade.
 	for i in int(0.5 * RATE):
 		out[n - 1 - i] *= float(i) / (0.5 * RATE)
+	return out
+
+## Defeat: a slow brass lament falling through C minor (G, E-flat, D, C)
+## into a dark, low C minor chord that sags and fades, with muffled
+## timpani and a long, distant echo.
+func _lament() -> PackedFloat32Array:
+	var dur := 4.4
+	var n := int(dur * RATE)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var notes := [
+		[0.00, 0.60, [392.0, 196.0]], [0.65, 0.60, [311.1, 155.6]],
+		[1.30, 0.45, [293.7, 146.8]], [1.80, 2.60, [261.6, 130.8, 155.6, 196.0]],
+	]
+	for nt in notes:
+		var s0 := int(float(nt[0]) * RATE)
+		var len := int(float(nt[1]) * RATE)
+		for f in nt[2]:
+			for i in len:
+				if s0 + i >= n:
+					break
+				var t := float(i) / RATE
+				# The last chord slowly sags in pitch.
+				var sag := 1.0 - 0.03 * minf(t / 2.5, 1.0) if len > RATE else 1.0
+				var vib := 1.0 + 0.003 * sin(TAU * 4.0 * t) * minf(t * 2.0, 1.0)
+				var v := 0.0
+				for h in [[1.0, 1.0], [2.0, 0.35], [3.0, 0.12]]:
+					v += sin(TAU * f * h[0] * vib * sag * t) * h[1]
+				var attack := minf(1.0, t / 0.08)
+				var release := minf(1.0, float(len - i) / (0.25 * RATE))
+				out[s0 + i] += v * 0.11 * attack * release
+	for hit in [[0.0, 0.6], [1.8, 1.0]]:
+		var s0 := int(float(hit[0]) * RATE)
+		for i in int(1.2 * RATE):
+			if s0 + i >= n:
+				break
+			var t := float(i) / RATE
+			out[s0 + i] += sin(TAU * lerpf(70.0, 45.0, minf(t * 3.0, 1.0)) * t) * exp(-t * 3.0) * 0.3 * float(hit[1])
+	var d := int(0.3 * RATE)
+	for i in range(d, n):
+		out[i] += out[i - d] * 0.3
+	for i in int(1.0 * RATE):
+		out[n - 1 - i] *= float(i) / RATE
 	return out

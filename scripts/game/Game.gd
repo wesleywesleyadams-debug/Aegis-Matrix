@@ -870,8 +870,7 @@ func _end_match(won: bool) -> void:
 	# the camera, HUD and View Map selection keep working.
 	$World.process_mode = Node.PROCESS_MODE_DISABLED
 	ai.process_mode = Node.PROCESS_MODE_DISABLED
-	if won:
-		sfx.play_ui("victory")
+	sfx.play_ui("victory" if won else "defeat")
 	match_over.emit(won)
 
 # ---------------------------------------------------------------- input
@@ -1360,7 +1359,7 @@ func _enter_dev_capture() -> void:
 		# screen (end.png), the Stats window (stats.png) and View Map (map.png).
 		await get_tree().create_timer(secs).timeout
 		for sb in get_tree().get_nodes_in_group("starbases"):
-			if sb.owner_id != player_id:
+			if (sb.owner_id == player_id) == (OS.get_environment("SL_SHOT_LOSE") != ""):
 				sb._die()
 		await get_tree().create_timer(1.0).timeout
 		Engine.time_scale = 1.0
