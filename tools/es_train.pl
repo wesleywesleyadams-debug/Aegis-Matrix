@@ -31,7 +31,7 @@ my $EVAL_GAMES = $ENV{EVAL_GAMES} // 10;
 # scripted AI. Evaluations always use the scripted AI (comparable scores).
 my $SELFPLAY = $ENV{SELFPLAY} // 0;
 my $GODOT = $ENV{GODOT} // "/c/Users/whole/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe";
-my ($N_IN, $N_H, $N_OUT) = (21, 16, 9);
+my ($N_IN, $N_H, $N_OUT) = (40, 28, 19);
 my $NP = $N_H * $N_IN + $N_H + $N_OUT * $N_H + $N_OUT;
 
 my $USER = "$ENV{APPDATA}/Godot/app_userdata/Star Lords";

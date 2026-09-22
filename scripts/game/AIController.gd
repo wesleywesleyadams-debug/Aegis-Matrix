@@ -31,6 +31,11 @@ func setup(ai_players: Array) -> void:
 			path = "res://ai/commander.json"
 		if path != "":
 			var net := NeuralNet.load_json(path)
+			# Weights from an older network shape can't drive this commander.
+			if net and (net.n_in != NeuralCommander.N_FEATURES or net.n_out != NeuralCommander.ACTIONS.size()):
+				push_warning("Ignoring %s: %d x %d weights, this build needs %d x %d" % [
+					path, net.n_in, net.n_out, NeuralCommander.N_FEATURES, NeuralCommander.ACTIONS.size()])
+				net = null
 			if net:
 				_state[pid]["nn"] = NeuralCommander.new(net, pid)
 
