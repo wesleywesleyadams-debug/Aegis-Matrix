@@ -17,8 +17,10 @@ var pid: int
 var last_action: String = ""
 var counts := {}
 var _next: float = 0.0
-## Training runs (SL_NN_EXPLORE) sample actions instead of taking the best.
-var explore: bool = OS.get_environment("SL_NN_EXPLORE") != ""
+## The trained policy is stochastic: it samples actions by their softmax
+## weights (that mix is what training rewarded; always taking the top score
+## plays a different, much weaker strategy). SL_NN_GREEDY forces argmax.
+var explore: bool = OS.get_environment("SL_NN_GREEDY") == ""
 
 func _init(network: NeuralNet, side: int) -> void:
 	net = network
@@ -32,8 +34,7 @@ func tick(game: Game, base: Starbase, ai: AIController) -> void:
 	var scores := net.forward(features(game, base))
 	var best := -1
 	if explore:
-		# Training: sample from a softmax over the valid actions so perturbed
-		# networks actually play differently (and learning has signal).
+		# Sample from a softmax over the valid actions.
 		var ps := PackedFloat32Array()
 		var total := 0.0
 		var top := -INF

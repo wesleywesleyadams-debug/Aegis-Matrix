@@ -56,7 +56,8 @@ sub play {
 	my ($explore, @jobs) = @_;   # jobs: [tag, weights path, side, seed]
 	my $list = join("", map { "$_->[0] $_->[1] $_->[2] $_->[3]\n" } @jobs);
 	spit("$RL/jobs.txt", $list);
-	# Training matches sample actions (exploration); evaluations play greedily.
+	# The policy samples its actions by default (see NeuralCommander.explore);
+	# SL_NN_EXPLORE is kept for older builds.
 	my $ex = $explore ? "SL_NN_EXPLORE=1 " : "";
 	my $cmd = "cat \"$RL/jobs.txt\" | xargs -P $JOBS -L 1 sh -c '${ex}SL_SIM=\"\$0\" SL_NN_WEIGHTS=\"\$1\" SL_NN_SIDE=\"\$2\" SL_SEED=\"\$3\" SL_SIM_MINUTES=$CAP SL_SYSTEM=$SYSTEM timeout 2400 \"$GODOT\" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'";
 	system($cmd);
