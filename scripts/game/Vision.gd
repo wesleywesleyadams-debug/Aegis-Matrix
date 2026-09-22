@@ -216,6 +216,8 @@ func draw_fog(ci: CanvasItem, rect: Rect2) -> void:
 func _ready() -> void:
 	if OS.get_environment("SL_FOG_TEST") != "":
 		_fog_test.call_deferred()
+	if OS.get_environment("SL_FOG_SAVE") != "":
+		_fog_save_test.call_deferred(OS.get_environment("SL_FOG_SAVE"))
 
 func _fog_test() -> void:
 	await get_tree().create_timer(3.0).timeout
@@ -252,4 +254,43 @@ func _fog_test() -> void:
 	var enemy_planets := get_tree().get_nodes_in_group("planets").filter(func(pl): return pl.owner_id != 0 and pl.owner_id != pid)
 	print("FOG TEST enemy planets %d, shown as enemy %d, out-of-sight leaks %d" % [enemy_planets.size(), enemy_planets.filter(func(pl): return pl.shown_owner() == pl.owner_id).size(), leaks])
 	print("FOG TEST enemy ships shown %d / %d, enemy starbases shown %d, explored %.0f%%" % [shown, total, sb_shown, 100.0 * ex / (cols * rows)])
+	get_tree().quit()
+
+## Save / load (see SaveGame): the explored map and the planet owners last
+## seen.
+func export_state() -> Dictionary:
+	var owners := {}
+	for pl in get_tree().get_nodes_in_group("planets"):
+		owners[String(pl.name)] = pl.seen_owner
+	return {"cols": cols, "rows": rows, "explored": Marshalls.raw_to_base64(_dark.get_data()), "planets": owners}
+
+func import_state(d: Dictionary) -> void:
+	if int(d.get("cols", 0)) == cols and int(d.get("rows", 0)) == rows and d.has("explored"):
+		var bytes := Marshalls.base64_to_raw(d["explored"])
+		if bytes.size() == cols * rows * 2:
+			_dark.set_data(cols, rows, false, Image.FORMAT_LA8, bytes)
+			_dark_tex.update(_dark)
+	var owners: Dictionary = d.get("planets", {})
+	for pl in get_tree().get_nodes_in_group("planets"):
+		if owners.has(String(pl.name)):
+			pl.seen_owner = int(owners[String(pl.name)])
+			pl.queue_redraw()
+	_refresh()
+
+## Dev aid: SL_FOG_SAVE=write explores an extra patch, marks a planet as
+## seen enemy-owned and saves; SL_FOG_SAVE=check (with SL_LOAD=<that save>)
+## prints the same numbers after loading, to compare.
+func _fog_save_test(mode: String) -> void:
+	await get_tree().create_timer(1.0).timeout
+	var pl: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == 0)[0]
+	if mode == "write":
+		_stamp(_dark, Vector2(900, -500), 400.0)
+		pl.seen_owner = 3 - pid
+		print("FOGSAVE saved ", SaveGame.write(game, "fog test"))
+	var ex := 0
+	for y in rows:
+		for x in cols:
+			ex += int(_dark.get_pixel(x, y).a == 0.0)
+	var sb_seen := get_tree().get_nodes_in_group("starbases").filter(func(s): return s.get_meta("seen", false)).size()
+	print("FOGSAVE %s explored cells %d, %s seen owner %d, starbases seen %d" % [mode, ex, pl.name, pl.seen_owner, sb_seen])
 	get_tree().quit()

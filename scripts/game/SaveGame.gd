@@ -39,6 +39,9 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"ships": [],
 		"camera": _v(game.camera.global_position),
 	}
+	# Fog of war: what the player has explored and last saw.
+	if game.vision:
+		data["fog"] = game.vision.export_state()
 	for pid in game.researched:
 		data["researched"][str(pid)] = game.researched[pid].keys()
 	# AI claimer lists hold node refs; they're rebuilt as the AI thinks.
@@ -65,6 +68,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			"queue": Array(sb.queue), "build_progress": sb.build_progress,
 			"rally": _v(sb.rally_point), "has_rally": sb.has_rally,
 			"under_construction": sb.under_construction, "construct_progress": sb.construct_progress,
+			"seen": sb.get_meta("seen", false),
 		})
 	for s in tree.get_nodes_in_group("ships"):
 		if not s.is_alive():
@@ -207,6 +211,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		sb.build_progress = float(d.get("build_progress", 0.0))
 		sb.rally_point = _p(d.get("rally", [0, 0]))
 		sb.has_rally = bool(d.get("has_rally", false))
+		sb.set_meta("seen", bool(d.get("seen", false)))
 	for d in data.get("ships", []):
 		if not Defs.SHIPS.has(d["type"]):
 			continue

@@ -156,6 +156,8 @@ func _ready() -> void:
 			vision = Vision.new()
 			$World.add_child(vision)
 			vision.setup(self, player_id)
+			if loaded:
+				vision.import_state(save_data.get("fog", {}))
 	if not loaded:
 		# Starting barges go straight to work.
 		for s in get_tree().get_nodes_in_group("ships"):
