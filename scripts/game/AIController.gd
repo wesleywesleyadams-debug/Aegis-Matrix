@@ -24,6 +24,9 @@ func setup(ai_players: Array) -> void:
 		var path := ""
 		if OS.get_environment("SL_NN_WEIGHTS") != "" and int(OS.get_environment("SL_NN_SIDE")) == pid:
 			path = OS.get_environment("SL_NN_WEIGHTS")
+		# Self-play training: the opposing side runs another network.
+		elif OS.get_environment("SL_NN_OPP_WEIGHTS") != "" and int(OS.get_environment("SL_NN_SIDE")) != pid:
+			path = OS.get_environment("SL_NN_OPP_WEIGHTS")
 		elif GameState.neural_ai and OS.get_environment("SL_SIM") == "":
 			path = "res://ai/commander.json"
 		if path != "":

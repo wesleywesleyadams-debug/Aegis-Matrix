@@ -26,6 +26,10 @@ my $LR = $ENV{LR} // 0.03;
 my $EVAL_EVERY = $ENV{EVAL_EVERY} // 5;
 my $SEEDS = $ENV{SEEDS} // 2;
 my $EVAL_GAMES = $ENV{EVAL_GAMES} // 10;
+# Self-play: SELFPLAY=1 makes every other pair play a snapshot of the best
+# network (ai/train/opp.json, refreshed on each new best) instead of the
+# scripted AI. Evaluations always use the scripted AI (comparable scores).
+my $SELFPLAY = $ENV{SELFPLAY} // 0;
 my $GODOT = $ENV{GODOT} // "/c/Users/whole/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe";
 my ($N_IN, $N_H, $N_OUT) = (21, 16, 9);
 my $NP = $N_H * $N_IN + $N_H + $N_OUT * $N_H + $N_OUT;
@@ -41,6 +45,8 @@ mkdir "ai/train";
 my $TAG = $ENV{TAG} // "";
 sub res_path { my $name = "$TAG" . shift; return ("ai/train/$name", "res://ai/train/$name") }
 my $json = JSON::PP->new->canonical;
+my ($OPP_FILE, $OPP_RES) = res_path("opp.json");
+if ($SELFPLAY and -e "ai/commander.json") { copy("ai/commander.json", $OPP_FILE) or die "opp snapshot: $!" }
 
 sub gauss { my $u1 = rand() || 1e-12; my $u2 = rand(); return sqrt(-2 * log($u1)) * cos(6.283185307 * $u2) }
 sub slurp { my $f = shift; open my $h, "<", $f or return undef; local $/; my $d = <$h>; close $h; return $d }
@@ -58,13 +64,13 @@ print $LOG "gen,mean_fitness,win_rate,best_fitness,eval_win_rate,seconds\n" if $
 
 # Plays the given weight files as the NN side; returns {tag => fitness, ...}.
 sub play {
-	my ($explore, @jobs) = @_;   # jobs: [tag, weights path, side, seed, system]
-	my $list = join("", map { "$_->[0] $_->[1] $_->[2] $_->[3] $_->[4]\n" } @jobs);
+	my ($explore, @jobs) = @_;   # jobs: [tag, weights path, side, seed, system, opponent weights or -]
+	my $list = join("", map { "$_->[0] $_->[1] $_->[2] $_->[3] $_->[4] " . ($_->[5] // "-") . "\n" } @jobs);
 	spit("$RL/jobs.txt", $list);
 	# The policy samples its actions by default (see NeuralCommander.explore);
 	# SL_NN_EXPLORE is kept for older builds.
 	my $ex = $explore ? "SL_NN_EXPLORE=1 " : "";
-	my $cmd = "cat \"$RL/jobs.txt\" | xargs -P $JOBS -L 1 sh -c '${ex}SL_SIM=\"\$0\" SL_NN_WEIGHTS=\"\$1\" SL_NN_SIDE=\"\$2\" SL_SEED=\"\$3\" SL_SIM_MINUTES=$CAP SL_SYSTEM=\"\$4\" timeout 2400 \"$GODOT\" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'";
+	my $cmd = "cat \"$RL/jobs.txt\" | xargs -P $JOBS -L 1 sh -c '${ex}SL_SIM=\"\$0\" SL_NN_WEIGHTS=\"\$1\" SL_NN_SIDE=\"\$2\" SL_SEED=\"\$3\" SL_SIM_MINUTES=$CAP SL_SYSTEM=\"\$4\" SL_NN_OPP_WEIGHTS=\"\$5\" timeout 2400 \"$GODOT\" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'";
 	system($cmd);
 	my %fit;
 	for my $j (@jobs) {
@@ -101,7 +107,8 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 			# same seeds, so their difference reflects the weights, not luck.
 			for my $m (1 .. $SEEDS) {
 				my $sys = $SYSTEMS[($g * $PAIRS + $k * $SEEDS + $m) % @SYSTEMS];
-				push @jobs, ["rl${c}m${m}s$_", $cres, $_, "g${g}k${k}m${m}s$_", $sys] for (1, 2);
+				my $opp = ($SELFPLAY and $k % 2 == 1) ? $OPP_RES : "-";
+				push @jobs, ["rl${c}m${m}s$_", $cres, $_, "g${g}k${k}m${m}s$_", $sys, $opp] for (1, 2);
 			}
 		}
 	}
@@ -148,6 +155,7 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 		if ($w / @ej >= $prev->{eval}) {
 			spit("$RL/best.json", $json->encode({gen => $g, eval => $w / @ej}));
 			weights_file("ai/commander.json", \@theta) if $TAG eq "";   # test runs never touch the game's files
+			weights_file($OPP_FILE, \@theta) if $SELFPLAY;   # a stronger self-play opponent
 		}
 	}
 	my $mf = 0; $mf += $mean{$_} for keys %mean; $mf /= scalar keys %mean;
