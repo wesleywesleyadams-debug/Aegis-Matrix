@@ -17,6 +17,12 @@ var state: State = State.IDLE
 var velocity: Vector2 = Vector2.ZERO
 var move_goal: Vector2
 var attack_move_goal: Vector2
+## Seconds until an idle weapon may scan for targets again (empty scans only).
+const SCAN_INTERVAL := 0.2
+var _scan_cd: float = 0.0
+## max_speed() is asked several times a tick; compute it once per tick.
+var _speed_frame: int = -1
+var _speed_cache: float = 0.0
 ## Where _arrive was last steering to (for AI sun avoidance).
 var _nav_goal: Vector2
 ## Route around debris rings: remaining waypoints, the goal they lead to,
@@ -102,8 +108,13 @@ func refresh_stats() -> void:
 	shield = max_shield * sh_frac
 
 func max_speed() -> float:
+	var f := Engine.get_physics_frames()
+	if f == _speed_frame:
+		return _speed_cache
+	_speed_frame = f
 	var storm := IonStorm.SLOW if Game.instance.in_storm(global_position) else 1.0
-	return def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
+	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
+	return _speed_cache
 
 func cargo_cap() -> int:
 	return int(def.get("cargo", 0) * Game.instance.mod(owner_id, "cargo"))
@@ -187,6 +198,7 @@ func _physics_process(delta: float) -> void:
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
 	_acquire_timer -= delta
+	_scan_cd -= delta
 
 	var desired := Vector2.ZERO
 	var face_target: SpaceEntity = null
@@ -313,7 +325,13 @@ func _physics_process(delta: float) -> void:
 		if state == State.BOMBARD and is_instance_valid(bombard_target):
 			shoot = bombard_target
 		if shoot == null or global_position.distance_to(shoot.global_position) > def["range"] + shoot.radius:
-			shoot = Game.instance.nearest_enemy(self, def["range"])
+			# Nothing locked on: scan for anything in range, but only every
+			# SCAN_INTERVAL when the last scan came up empty.
+			shoot = null
+			if _scan_cd <= 0.0:
+				shoot = Game.instance.nearest_enemy(self, def["range"])
+				if shoot == null:
+					_scan_cd = SCAN_INTERVAL
 		if shoot and global_position.distance_to(shoot.global_position) <= def["range"] + shoot.radius:
 			Game.instance.fire(self, shoot, def["weapon"], def["damage"])
 			_cooldown = def["cooldown"] * randf_range(0.9, 1.1)
@@ -344,17 +362,31 @@ func _arrive(goal: Vector2, urgency: float, stop_at: float = 0.0) -> Vector2:
 	return to.normalized() * speed * slow
 
 func _separation() -> Vector2:
+	# Reads the fine grid directly (no temporary array), only the cells that
+	# could hold an overlapping hull (reach = our radius + the largest hull).
 	var push := Vector2.ZERO
-	for other in Game.instance.ships_near(global_position, radius * 2.5):
-		if other == self:
-			continue
-		var d: Vector2 = global_position - other.global_position
-		var min_d: float = radius + other.radius
-		var len := d.length()
-		if len < min_d and len > 0.01:
-			push += d / len * (min_d - len) * 6.0
-		elif len <= 0.01:
-			push += Vector2.from_angle(randf() * TAU) * 10.0
+	var g := Game.instance
+	var reach := radius + 16.0
+	var p := global_position
+	var lo := Vector2i(((p - Vector2(reach, reach)) / Game.CELL).floor())
+	var hi := Vector2i(((p + Vector2(reach, reach)) / Game.CELL).floor())
+	for cy in range(lo.y, hi.y + 1):
+		for cx in range(lo.x, hi.x + 1):
+			var cell = g._grid.get(Vector2i(cx, cy))
+			if cell == null:
+				continue
+			for other in cell:
+				if other == self or not is_instance_valid(other):
+					continue
+				var d: Vector2 = p - other.global_position
+				if absf(d.x) > reach or absf(d.y) > reach:
+					continue
+				var min_d: float = radius + other.radius
+				var len := d.length()
+				if len < min_d and len > 0.01:
+					push += d / len * (min_d - len) * 6.0
+				elif len <= 0.01:
+					push += Vector2.from_angle(randf() * TAU) * 10.0
 	return push
 
 func _steer(desired: Vector2, delta: float, face: SpaceEntity) -> void:
@@ -412,7 +444,7 @@ func _draw() -> void:
 func _avoid_sun(desired: Vector2) -> Vector2:
 	var goal := _nav_goal if desired != Vector2.ZERO else global_position
 	var done_binary := false
-	for star in get_tree().get_nodes_in_group("stars"):
+	for star in Game.instance.stars_list:
 		var c: Vector2 = star.global_position
 		var r: float = star.radiation_radius + radius + 12.0
 		# A binary pair is one obstacle for the AI: its whole orbit plus both
@@ -427,7 +459,7 @@ func _avoid_sun(desired: Vector2) -> Vector2:
 		# Strategic exception: only a goal inside an actual star zone counts.
 		var goal_inside := false
 		if desired != Vector2.ZERO:
-			for s2 in get_tree().get_nodes_in_group("stars"):
+			for s2 in Game.instance.stars_list:
 				if goal.distance_to(s2.global_position) < s2.radiation_radius + radius + 12.0:
 					goal_inside = true
 		if goal_inside and hp >= max_hp * SUN_RISK_HP:
@@ -460,7 +492,7 @@ func _avoid_sun(desired: Vector2) -> Vector2:
 ## AI: an idle ship parked in a spice nebula moves just outside it (the
 ## nearest edge), since sitting there only costs shields.
 func _leave_nebula() -> void:
-	for n in get_tree().get_nodes_in_group("nebulae"):
+	for n in Game.instance.nebula_list:
 		if n.contains(global_position):
 			var out: Vector2 = global_position - n.global_position
 			var d := out.length()

@@ -17,6 +17,8 @@ const ASTEROID_SCENE := preload("res://scenes/Asteroid.tscn")
 const MAP_RECT := Rect2(-1800, -1150, 3600, 2300)
 const ZOOM_LEVELS: Array[float] = [1.0, 2.0, 3.0, 4.0, 6.0]
 const CELL := 64.0
+## Coarse spatial hash for target searches (weapon ranges are a few hundred px).
+const BIG_CELL := 256.0
 const PAN_SPEED := 900.0
 const EDGE_PAN_MARGIN := 6
 const SUBSTITUTABLE := ["food", "minerals", "energy"]
@@ -45,6 +47,13 @@ var is_over: bool = false
 var placing_starbase: bool = false
 
 var _grid := {}
+var _grid_big := {}
+## Cached once per physics tick (see _physics_process).
+var stars_list: Array = []
+var starbase_list: Array = []
+var nebula_list: Array = []
+var storm_list: Array = []
+var ring_list: Array = []
 var _rate_acc := {}
 var _rate_timer: float = 0.0
 var _was_starved := false
@@ -248,7 +257,7 @@ var nav: AStarGrid2D = null
 
 ## Solid debris at p (grown by margin).
 func is_blocked(p: Vector2, margin: float = 0.0) -> bool:
-	for r in get_tree().get_nodes_in_group("debris_rings"):
+	for r in ring_list:
 		if r.blocks(p, margin):
 			return true
 	return false
@@ -262,6 +271,8 @@ func line_clear(a: Vector2, b: Vector2, margin: float = 12.0) -> bool:
 	return true
 
 func _build_nav() -> void:
+	# Runs during setup, before the first tick has filled the cached lists.
+	ring_list = get_tree().get_nodes_in_group("debris_rings")
 	nav = AStarGrid2D.new()
 	nav.region = Rect2i(0, 0, int(ceil(MAP_RECT.size.x / NAV_CELL)), int(ceil(MAP_RECT.size.y / NAV_CELL)))
 	nav.cell_size = Vector2(NAV_CELL, NAV_CELL)
@@ -312,14 +323,14 @@ func find_path(a: Vector2, b: Vector2) -> PackedVector2Array:
 
 ## Whether `p` is inside an active ion-storm arm (ships crawl there).
 func in_storm(p: Vector2) -> bool:
-	for s in get_tree().get_nodes_in_group("storms"):
+	for s in storm_list:
 		if s.contains(p):
 			return true
 	return false
 
 ## Whether `p` is inside a spice nebula (shields drain there).
 func in_nebula(p: Vector2) -> bool:
-	for n in get_tree().get_nodes_in_group("nebulae"):
+	for n in nebula_list:
 		if n.contains(p):
 			return true
 	return false
@@ -504,13 +515,26 @@ func _on_tech_done(pid: int, tech_id: String) -> void:
 # ---------------------------------------------------------------- queries
 
 func _physics_process(delta: float) -> void:
-	# Rebuild the ship spatial hash once per tick for separation/claims.
+	# Rebuild the ship spatial hashes once per tick: a fine one for
+	# separation, a coarse one for target searches.
 	_grid.clear()
+	_grid_big.clear()
 	for s in get_tree().get_nodes_in_group("ships"):
 		var key := Vector2i((s.global_position / CELL).floor())
 		if not _grid.has(key):
 			_grid[key] = []
 		_grid[key].append(s)
+		var big := Vector2i((s.global_position / BIG_CELL).floor())
+		if not _grid_big.has(big):
+			_grid_big[big] = []
+		_grid_big[big].append(s)
+	# Per-frame snapshots of small groups that ships query constantly (a group
+	# lookup allocates a fresh array every call).
+	stars_list = get_tree().get_nodes_in_group("stars")
+	starbase_list = get_tree().get_nodes_in_group("starbases")
+	nebula_list = get_tree().get_nodes_in_group("nebulae")
+	storm_list = get_tree().get_nodes_in_group("storms")
+	ring_list = get_tree().get_nodes_in_group("debris_rings")
 	if is_over:
 		return
 	for pid in players:
@@ -548,20 +572,34 @@ func ships_near(pos: Vector2, r: float) -> Array:
 	return out
 
 func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
+	# Walks the coarse grid directly (no temporary arrays); compares squared
+	# distances until a candidate is close enough to matter.
 	var best: SpaceEntity = null
 	var best_d := max_dist
-	for s in ships_near(from.global_position, max_dist + 20.0):
-		if s.is_enemy_of(from.owner_id) and s.is_alive():
-			var d: float = from.global_position.distance_to(s.global_position) - s.radius
-			# Prefer warships over civilian hulls at similar range.
-			if s.def["role"] != "warship":
-				d += 40.0
-			if d < best_d:
-				best_d = d
-				best = s
-	for sb in get_tree().get_nodes_in_group("starbases"):
-		if sb.is_enemy_of(from.owner_id) and sb.is_alive():
-			var d: float = from.global_position.distance_to(sb.global_position) - sb.radius
+	var fp := from.global_position
+	var pid := from.owner_id
+	var reach := max_dist + 40.0
+	var lo := Vector2i(((fp - Vector2(reach, reach)) / BIG_CELL).floor())
+	var hi := Vector2i(((fp + Vector2(reach, reach)) / BIG_CELL).floor())
+	for y in range(lo.y, hi.y + 1):
+		for x in range(lo.x, hi.x + 1):
+			var cell = _grid_big.get(Vector2i(x, y))
+			if cell == null:
+				continue
+			for s in cell:
+				# Ships destroyed earlier this tick are still in the grid.
+				if not is_instance_valid(s) or s.owner_id == pid or not s.is_enemy_of(pid) or not s.is_alive():
+					continue
+				var d: float = fp.distance_to(s.global_position) - s.radius
+				# Prefer warships over civilian hulls at similar range.
+				if s.def["role"] != "warship":
+					d += 40.0
+				if d < best_d:
+					best_d = d
+					best = s
+	for sb in starbase_list:
+		if is_instance_valid(sb) and sb.is_enemy_of(pid) and sb.is_alive():
+			var d: float = fp.distance_to(sb.global_position) - sb.radius
 			if d < best_d:
 				best_d = d
 				best = sb
@@ -1464,6 +1502,30 @@ func _enter_dev_capture() -> void:
 			get_tree().create_timer(t).timeout.connect(func():
 				print("STORM t=%.0f stage %s  in-arm ship speed %.0f (in storm %s)  control speed %.0f" % [now(), storm.stage(now()), a.max_speed(), str(in_storm(a.global_position)), b.max_speed()]))
 		center_on(arm_dir * 800.0)
+	if OS.get_environment("SL_STRESS") != "":
+		# Dev benchmark: N warships per side clash away from the star; logs real
+		# frame times (run headless with --fixed-fps 60 so frames go flat out).
+		var n := int(OS.get_environment("SL_STRESS"))
+		var kinds := ["corvette", "corvette", "destroyer", "cruiser"]
+		for i in n:
+			var off := Vector2(i % 12 * 18, i / 12 * 18)
+			spawn_ship(kinds[i % 4], 1, Vector2(-900, -780) + off).order_attack_move(Vector2(600, -600))
+			spawn_ship(kinds[i % 4], 2, Vector2(700, -780) + off).order_attack_move(Vector2(-700, -600))
+		var frames: Array = []
+		var last := [Time.get_ticks_usec()]
+		var on_frame := func():
+			var t := Time.get_ticks_usec()
+			if now() > 3.0:
+				frames.append((t - last[0]) / 1000.0)
+			last[0] = t
+		get_tree().process_frame.connect(on_frame)
+		get_tree().create_timer(18.0).timeout.connect(func():
+			frames.sort()
+			var sum := 0.0
+			for f in frames:
+				sum += f
+			print("STRESS ships %d  frames %d  avg %.2f ms  p95 %.2f ms  max %.2f ms  projectiles %d" % [get_tree().get_nodes_in_group("ships").size(), frames.size(), sum / maxf(frames.size(), 1), frames[int(frames.size() * 0.95)] if frames.size() > 0 else 0.0, frames[-1] if frames.size() > 0 else 0.0, fx_root.get_child_count()])
+			get_tree().quit())
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()
