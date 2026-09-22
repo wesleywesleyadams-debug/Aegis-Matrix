@@ -278,7 +278,13 @@ func _refresh_tracks() -> void:
 		for c in list.get_children():
 			c.queue_free()
 	var tracks := Music.available_tracks()
-	var enabled := tracks.filter(func(t): return GameState.music_playlist.has(t["id"]))
+	# Enabled songs in the order they were enabled (newest at the bottom),
+	# which is also the order they play in.
+	var enabled: Array = []
+	for id in GameState.music_playlist:
+		for t in tracks:
+			if t["id"] == id:
+				enabled.append(t)
 	var disabled := tracks.filter(func(t): return not GameState.music_playlist.has(t["id"]))
 	_enabled_title.text = "Playlist (%d)" % enabled.size()
 	_disabled_title.text = "Disabled (%d)" % disabled.size()
