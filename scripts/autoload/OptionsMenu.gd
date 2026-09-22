@@ -316,7 +316,7 @@ func _track_row(t: Dictionary, enabled: bool) -> HBoxContainer:
 	var color := (SCREEN_ON_COLOR if enabled else SCREEN_OFF_COLOR) if screen else (ENABLED_COLOR if enabled else DISABLED_COLOR)
 	name.add_theme_color_override("font_color", color)
 	row.add_child(name)
-	var play := _small_button("Stop" if Music.previewing == id else "Preview")
+	var play := _small_button("Stop" if Music.previewing == id else "Play")
 	play.pressed.connect(func():
 		if Music.previewing == id:
 			Music.stop_preview()
