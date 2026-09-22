@@ -275,6 +275,8 @@ func _build_system() -> void:
 ## most every NEBULA_WARN_MS, with a minimap flare where it happened.
 const NEBULA_WARN_MS := 20000
 var _nebula_warn_ms: int = -100000
+const NEBULA_ALARM_DB := -2.5
+
 func warn_nebula(at: Vector2) -> void:
 	var t := Time.get_ticks_msec()
 	if t - _nebula_warn_ms < NEBULA_WARN_MS:
@@ -282,6 +284,12 @@ func warn_nebula(at: Vector2) -> void:
 	_nebula_warn_ms = t
 	add_flare(at, Color("ffae4a"))
 	message.emit("Your ships are in the Spice Nebula: shields drain and won't recharge inside.", Color("ffae4a"))
+	# The radiation alarm, 25% quieter (-2.5 dB) so it isn't obtrusive; shares
+	# the alert cooldown (at most one alarm per ALERT_COOLDOWN).
+	if t - _last_alert_ms >= int(ALERT_COOLDOWN * 1000.0):
+		_last_alert_ms = t
+		sfx.play_ui("alert_ships", NEBULA_ALARM_DB)
+		alert_sounds += 1
 
 # ---------------------------------------------------------------- navigation
 
@@ -644,11 +652,15 @@ func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
 				best = sb
 	return best
 
-func nearest_asteroid(pos: Vector2, max_dist: float, resource: String = "minerals") -> Asteroid:
+## `known`: only rocks that player's sensors have explored (the AI passes
+## its own Vision so it can't pick rocks it has never seen).
+func nearest_asteroid(pos: Vector2, max_dist: float, resource: String = "minerals", known: Vision = null) -> Asteroid:
 	var best: Asteroid = null
 	var best_d := max_dist
 	for a in get_tree().get_nodes_in_group("asteroids"):
 		if a.is_queued_for_deletion() or a.amount <= 0 or a.resource != resource:
+			continue
+		if known and not known.is_explored_at(a.global_position):
 			continue
 		var d := pos.distance_to(a.global_position)
 		if d < best_d:
@@ -656,11 +668,11 @@ func nearest_asteroid(pos: Vector2, max_dist: float, resource: String = "mineral
 			best = a
 	return best
 
-func nearest_gas_giant(pos: Vector2, max_dist: float) -> Planet:
+func nearest_gas_giant(pos: Vector2, max_dist: float, known: Vision = null) -> Planet:
 	var best: Planet = null
 	var best_d := max_dist
 	for p in get_tree().get_nodes_in_group("planets"):
-		if p.is_habitable() or p.amount <= 0:
+		if p.is_habitable() or p.amount <= 0 or (known and known.known_owner(p) < 0):
 			continue
 		var d := pos.distance_to(p.global_position)
 		if d < best_d:
@@ -1535,7 +1547,7 @@ func _enter_dev_capture() -> void:
 		ai_s.order_stop()
 		print("NEB start: in %.0f/%.0f  out %.0f/%.0f  ai dist %.0f (ring %.0f-%.0f)" % [c_in.shield, c_in.max_shield, c_out.shield, c_out.max_shield, ai_s.global_position.length(), neb.inner, neb.outer])
 		get_tree().create_timer(12.0).timeout.connect(func():
-			print("NEB 12s: in %.0f/%.0f  out %.0f/%.0f  ai dist %.0f  ai in nebula %s" % [c_in.shield, c_in.max_shield, c_out.shield, c_out.max_shield, ai_s.global_position.length(), str(in_nebula(ai_s.global_position))]))
+			print("NEB 12s: in %.0f/%.0f  out %.0f/%.0f  ai dist %.0f  ai in nebula %s  alarms %d" % [c_in.shield, c_in.max_shield, c_out.shield, c_out.max_shield, ai_s.global_position.length(), str(in_nebula(ai_s.global_position)), alert_sounds]))
 		center_on(Vector2(0, mid - 200))
 	if OS.get_environment("SL_SHOT_OPEN") == "rings":
 		# Dev: ships inside the ring ordered straight out through solid debris.

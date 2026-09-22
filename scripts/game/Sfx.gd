@@ -52,9 +52,9 @@ func play_at(name: String, pos: Vector2, volume_db: float = 0.0) -> void:
 	p.play()
 
 ## Interface sound, not positional.
-func play_ui(name: String) -> void:
+func play_ui(name: String, extra_db: float = 0.0) -> void:
 	if Game.instance and Game.instance.sim_mode:
 		return
 	_ui.stream = _streams[name]
-	_ui.volume_db = UI_VOLUME.get(name, 0.0) + (ALERT_TRIM if name.begins_with("alert") else 0.0)
+	_ui.volume_db = UI_VOLUME.get(name, 0.0) + (ALERT_TRIM if name.begins_with("alert") else 0.0) + extra_db
 	_ui.play()

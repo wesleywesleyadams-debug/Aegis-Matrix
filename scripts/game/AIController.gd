@@ -54,11 +54,17 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	var ships: Array = game.get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == pid)
 	var miners := ships.filter(func(s): return s.def["role"] == "miner")
 	var skimmers := ships.filter(func(s): return s.def["role"] == "skimmer")
-	var giant := game.nearest_gas_giant(base.global_position, 4000.0)
+	# Fog of war: this player's own sensors and memory (null without fog).
+	var v: Vision = game.visions.get(pid)
+	var giant := game.nearest_gas_giant(base.global_position, 4000.0, v)
 	var war := ships.filter(func(s): return s.def["role"] == "warship")
 	var colonists := ships.filter(func(s): return s.def["role"] == "colony")
 	if OS.get_environment("SL_AI_DEBUG") != "" and int(Game.now()) % 20 == 0:
 		print("AIDBG t=%d pid=%d mode=%s queue=%s stalled=%s stall=%s blocked=%s prog=%.1f" % [Game.now(), pid, st.get("mode", ""), str(base.queue), str(base.build_stalled), str(st.get("stall", 0)), str(st.get("blocked", {})), base.build_progress])
+	# Enemies just spotted near home: re-plan now instead of at the next
+	# scheduled rethink.
+	if v and not st.get("threat", false) and v.enemy_near(base.global_position, 900.0) > 0:
+		st["next_rethink"] = 0.0
 	var nn: NeuralCommander = st.get("nn")
 	if nn == null:
 		_rethink(pid, st, game, base, war)
@@ -106,9 +112,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			# Spice gates colonies and bigger hulls: keep up to two miners on it
 			# while it's short.
 			var want := "spice" if res["spice"] < 150.0 and on_spice < 2 else "minerals"
-			var rock := game.nearest_asteroid(m.global_position, 1600.0, want)
+			var rock := game.nearest_asteroid(m.global_position, 1600.0, want, v)
 			if rock == null:
-				rock = game.nearest_asteroid(m.global_position, 1600.0)
+				rock = game.nearest_asteroid(m.global_position, 1600.0, "minerals", v)
 			if rock:
 				m.order_mine(rock)
 				if rock.resource == "spice":
@@ -141,6 +147,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 
 	# Defend: enemies near the starbase pull every warship home.
 	var threat := game.nearest_enemy(base, 450.0)
+	# Only enemies our sensors can actually see (not ones hidden in a nebula).
+	if threat and v and not v.can_see(threat):
+		threat = null
 	if threat:
 		for s in war:
 			if s.state != Ship.State.ATTACK:
@@ -150,7 +159,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
 	# Idle warships next to an enemy planet start bombarding it.
 	for s in idle.duplicate():
-		var ep := _nearest_planet(s.global_position, game, func(pl): return pl.is_enemy_of(pid))
+		var ep := _nearest_planet(s.global_position, game, func(pl): return pl.is_enemy_of(pid) and (v == null or v.is_visible_at(pl.global_position)))
 		# Only small colonies are worth bombarding; big worlds would take forever.
 		if ep and ep.pop < 4000.0 and s.global_position.distance_to(ep.global_position) < 350.0:
 			s.order_bombard(ep)
