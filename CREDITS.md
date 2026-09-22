@@ -12,3 +12,4 @@ The title and lobby music and all sound effects are generated procedurally by
 `tools/gen_audio.gd`.
 
 - "Space Life No. 14" by YD (OpenGameArt.org) - assets/audio/music_spacelife.ogg. License: please confirm (the Space Life series is believed to be CC0).
+- "Magic Space" - assets/audio/music_magic_space.ogg (converted from mp3). Author/license: please fill in (no metadata in the file).
