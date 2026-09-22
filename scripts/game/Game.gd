@@ -1093,6 +1093,16 @@ func _enter_dev_capture() -> void:
 		spawn_ship("colony", player_id, np.global_position + Vector2(-120, 0)).order_colonize(np)
 		hud.flash_target(np, "colonize")
 		print("SIEGE target ", ep.planet_name, " pop ", ep.pop, "  colonize ", np.planet_name)
+	if OS.get_environment("SL_SHOT_OPEN") == "battle":
+		# Dev: two 28-ship fleets meet in view, for mix loudness checks.
+		var foe: int = 2 if player_id == 1 else 1
+		var c := Vector2(0, 700)
+		for i in 28:
+			var k: String = "cruiser" if i < 2 else ("destroyer" if i < 8 else "corvette")
+			var off := Vector2(i % 7 * 16, i / 7 * 18)
+			spawn_ship(k, player_id, c + Vector2(-260, -40) + off).order_attack_move(c + Vector2(200, 0))
+			spawn_ship(k, foe, c + Vector2(160, -40) + off).order_attack_move(c - Vector2(200, 0))
+		center_on(c)
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()

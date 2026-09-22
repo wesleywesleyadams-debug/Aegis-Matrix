@@ -59,6 +59,13 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	background.visible = false
 	_master_bus_index = AudioServer.get_bus_index("Master")
+	# Mix bus safety: pull the whole mix down 3 dB (a big battle measured
+	# -15 LUFS, a touch hot) and hard-limit peaks at -1.5 dB so 50 ships
+	# firing at once can never clip. Independent of the player's volume slider.
+	var limiter := AudioEffectHardLimiter.new()
+	limiter.pre_gain_db = -3.0
+	limiter.ceiling_db = -1.5
+	AudioServer.add_bus_effect(_master_bus_index, limiter)
 
 	close_button.pressed.connect(close)
 	master_slider.value_changed.connect(_on_master_slider_changed)
