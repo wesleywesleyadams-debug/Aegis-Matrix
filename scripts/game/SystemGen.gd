@@ -19,7 +19,7 @@ const SYSTEMS := [
 		"bg": "teal", "names": "cold", "arrival": "You arrive in Vega Drift. A hard white sun lights a calm, even field.",
 		"params": {"planets": 4, "belts": 2, "spice": 0.12}},
 	{"id": "kharon_expanse", "name": "Kharon Expanse", "seed": 2207, "desc": "Sparse and spice-rich.", "star": "red_dwarf", "star_name": "Kharon",
-		"bg": "rust", "names": "dust", "arrival": "You arrive in the Kharon Expanse. Spice lies thick in the dim red dust.",
+		"bg": "rust", "names": "dust", "feature": "spice_nebula", "arrival": "You arrive in the Kharon Expanse. Spice lies thick in the dim red dust.",
 		"params": {"planets": 3, "belts": 1, "spice": 0.28}},
 	{"id": "tethys_cluster", "name": "Tethys Cluster", "seed": 3313, "desc": "Crowded: many worlds, many rocks.", "star": "orange", "star_name": "Tethys",
 		"bg": "verdant", "names": "myth", "arrival": "You arrive in the Tethys Cluster. Worlds crowd close around a warm orange sun.",
@@ -74,7 +74,7 @@ static func settings(id: String, seed: int) -> Dictionary:
 	var out: Dictionary = sys.get("params", {}).duplicate()
 	if id == "random" or out.is_empty():
 		out = random_params(seed)
-	for k in ["star", "bg", "names", "star_name", "arrival"]:
+	for k in ["star", "bg", "names", "star_name", "arrival", "feature"]:
 		if sys.has(k):
 			out[k] = sys[k]
 	if not out.has("star_name"):
@@ -177,8 +177,25 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 			half_rocks.append({"variant": variant, "pos": p})
 			_claim(placed, p, 12.0)
 
+	# Signature feature: a spice nebula ring around the star, seeded with
+	# extra spice rocks (the ring itself is symmetric; the rocks are mirrored).
+	var features: Array = []
+	if params.get("feature", "") == "spice_nebula":
+		var inner := star_clear + 20.0
+		var outer := inner + 400.0
+		features.append({"type": "spice_nebula", "inner": inner, "outer": outer})
+		for k in 24:
+			var a := PI + rng.randf_range(-PI / 2.0 + 0.1, PI / 2.0 - 0.1)
+			var p := Vector2.from_angle(a) * rng.randf_range(inner + 40.0, outer - 40.0)
+			if p.x > -20.0 or not _fits(placed, p, 26.0):
+				continue
+			half_rocks.append({"variant": "spice_%d" % rng.randi_range(0, 1), "pos": p})
+			_claim(placed, p, 12.0)
+			if half_rocks.filter(func(r): return r["pos"].length() > inner and r["pos"].length() < outer and str(r["variant"]).begins_with("spice")).size() >= 7:
+				break
+
 	# Mirror through the star for player 2.
-	var out := {"planets": [], "asteroids": [], "starbases": [], "ships": []}
+	var out := {"planets": [], "asteroids": [], "starbases": [], "ships": [], "features": features}
 	var n := 0
 	for side in 2:
 		var s := 1.0 if side == 0 else -1.0

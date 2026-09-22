@@ -191,6 +191,8 @@ func _physics_process(delta: float) -> void:
 					attack_move_goal = global_position
 					target = e
 					state = State.ATTACK
+				elif owner_id != Game.instance.player_id and max_shield > 0.0 and Game.instance.in_nebula(global_position):
+					_leave_nebula()
 			desired = _arrive(move_goal, 0.0)
 		State.MOVE:
 			desired = _arrive(move_goal, 1.0)
@@ -412,3 +414,14 @@ func _avoid_sun(desired: Vector2) -> Vector2:
 		var push := clampf((r + 40.0 - out.length()) / 40.0, 0.0, 1.0)
 		return (tangent + out.normalized() * push).normalized() * desired.length()
 	return desired
+
+## AI: an idle ship parked in a spice nebula moves just outside it (the
+## nearest edge), since sitting there only costs shields.
+func _leave_nebula() -> void:
+	for n in get_tree().get_nodes_in_group("nebulae"):
+		if n.contains(global_position):
+			var out: Vector2 = global_position - n.global_position
+			var d := out.length()
+			var edge: float = n.inner - 40.0 if d - n.inner < n.outer - d else n.outer + 40.0
+			order_move(n.global_position + out.normalized() * edge)
+			return

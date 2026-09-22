@@ -183,6 +183,32 @@ func _build_system() -> void:
 	for s in layout["ships"]:
 		var ship := spawn_ship(s["type"], s["owner"], s["pos"])
 		ship.rotation = s["rot"]
+	for ft in layout.get("features", []):
+		if ft["type"] == "spice_nebula":
+			var neb := SpiceNebula.new()
+			neb.inner = ft["inner"]
+			neb.outer = ft["outer"]
+			world.add_child(neb)
+			world.move_child(neb, 0)
+
+## Amber heads-up (no alarm) when your shielded ships are in a nebula, at
+## most every NEBULA_WARN_MS, with a minimap flare where it happened.
+const NEBULA_WARN_MS := 20000
+var _nebula_warn_ms: int = -100000
+func warn_nebula(at: Vector2) -> void:
+	var t := Time.get_ticks_msec()
+	if t - _nebula_warn_ms < NEBULA_WARN_MS:
+		return
+	_nebula_warn_ms = t
+	add_flare(at, Color("ffae4a"))
+	message.emit("Your ships are in the Spice Nebula: shields drain and won't recharge inside.", Color("ffae4a"))
+
+## Whether `p` is inside a spice nebula (shields drain there).
+func in_nebula(p: Vector2) -> bool:
+	for n in get_tree().get_nodes_in_group("nebulae"):
+		if n.contains(p):
+			return true
+	return false
 
 # ---------------------------------------------------------------- economy
 
@@ -1246,6 +1272,23 @@ func _enter_dev_capture() -> void:
 			if OS.get_environment("SL_SYSTEM_TEST") == "save":
 				var path := SaveGame.write(self, "system test")
 				print("SAVED ", path))
+	if OS.get_environment("SL_SHOT_OPEN") == "nebula":
+		# Dev: cruiser in the nebula vs one outside; idle AI corvette inside.
+		var neb = get_tree().get_nodes_in_group("nebulae")[0]
+		var mid: float = (neb.inner + neb.outer) / 2.0
+		var c_in := spawn_ship("cruiser", player_id, Vector2(0, mid))
+		c_in.order_stop()
+		c_in.shield = c_in.max_shield * 0.5
+		var c_out := spawn_ship("cruiser", player_id, Vector2(0, neb.outer + 120.0))
+		c_out.order_stop()
+		c_out.shield = c_out.max_shield * 0.5
+		var foe: int = 2 if player_id == 1 else 1
+		var ai_s := spawn_ship("corvette", foe, Vector2(mid, -60))
+		ai_s.order_stop()
+		print("NEB start: in %.0f/%.0f  out %.0f/%.0f  ai dist %.0f (ring %.0f-%.0f)" % [c_in.shield, c_in.max_shield, c_out.shield, c_out.max_shield, ai_s.global_position.length(), neb.inner, neb.outer])
+		get_tree().create_timer(12.0).timeout.connect(func():
+			print("NEB 12s: in %.0f/%.0f  out %.0f/%.0f  ai dist %.0f  ai in nebula %s" % [c_in.shield, c_in.max_shield, c_out.shield, c_out.max_shield, ai_s.global_position.length(), str(in_nebula(ai_s.global_position))]))
+		center_on(Vector2(0, mid - 200))
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()

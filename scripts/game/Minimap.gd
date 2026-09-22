@@ -38,6 +38,10 @@ func _gui_input(event: InputEvent) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("05050c"))
 	var tree := game.get_tree()
+	# Spice nebulae as a faint amber ring.
+	var msc := size.x / Game.MAP_RECT.size.x
+	for neb in tree.get_nodes_in_group("nebulae"):
+		draw_arc(_map_to_ui(neb.global_position), (neb.inner + neb.outer) / 2.0 * msc, 0.0, TAU, 64, Color(1.0, 0.6, 0.2, 0.14), (neb.outer - neb.inner) * msc)
 	for star in tree.get_nodes_in_group("stars"):
 		draw_circle(_map_to_ui(star.global_position), 3.0 + star.core_radius / 10.0, star.tint)
 	# Asteroids as small blips in their resource's color (minerals teal,

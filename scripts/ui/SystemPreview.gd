@@ -34,6 +34,9 @@ func show_system(id: String) -> void:
 			if str(a["variant"]).begins_with("spice"):
 				spice += 1
 		facts = "%s · %d worlds · %d rocks (%d spice)" % [Defs.STAR_TYPES[_settings.get("star", "yellow")]["label"], worlds, _layout["asteroids"].size(), spice]
+		if _settings.get("feature", "") == "spice_nebula":
+			facts += "
+Spice Nebula: rich spice, but shields drain inside."
 	queue_redraw()
 
 ## Orion Reach is hand-placed in Main.tscn: read its planets, rocks and
@@ -64,6 +67,9 @@ func _draw() -> void:
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(0, center.y + 10), "?", HORIZONTAL_ALIGNMENT_CENTER, size.x, 36, Color(0.7, 0.75, 0.9, 0.8))
 		return
+	for ft in _layout.get("features", []):
+		if ft["type"] == "spice_nebula":
+			draw_arc(center, (ft["inner"] + ft["outer"]) / 2.0 * sc, 0.0, TAU, 64, Color(1.0, 0.6, 0.2, 0.16), (ft["outer"] - ft["inner"]) * sc)
 	var st: Dictionary = Defs.STAR_TYPES[_settings.get("star", "yellow")]
 	# Radiation zone as a dashed ring, then the star.
 	var zr: float = st["zone"] * sc
