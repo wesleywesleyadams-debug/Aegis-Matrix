@@ -23,12 +23,14 @@ func setup(from: SpaceEntity, to: Node2D, weapon: String, dmg: float) -> void:
 	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
 	texture = Defs.tex("bolt_" + weapon)
-	modulate = Defs.team_color(from.owner_id).lightened(0.35)
+	# Shot colors: generalists (and starbases) fire yellow; specialists fire
+	# their variant's color (the layer they hit hardest: light blue shields,
+	# red armor, green hull).
+	modulate = Defs.GENERALIST_SHOT
 	if from is Ship:
 		profile = Defs.damage_profile(from.def)
-		# Specialist shots glow in their variant's color.
 		if from.def.has("variant"):
-			modulate = Defs.VARIANTS[from.def["variant"]]["color"].lightened(0.2)
+			modulate = Defs.VARIANTS[from.def["variant"]]["color"].lightened(0.15)
 	global_position = from.global_position
 	var lead := to.global_position
 	if to is Ship:

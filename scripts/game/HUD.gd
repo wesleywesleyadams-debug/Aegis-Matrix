@@ -429,7 +429,7 @@ func _build_research(root: Control) -> void:
 	defs.add_child(_label("", DIM, 14))
 	for tier in [1, 2, 3]:
 		defs.add_child(_label("TIER %d" % tier, DIM, 14))
-	for line in [["shields", "SHIELDS", Color("7fd8ff")], ["armor", "ARMOR", SpaceEntity.ARMOR_COLOR], ["hull", "HULL", Color("58e07a")]]:
+	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]]]:
 		var head := _label(line[1], line[2], 18)
 		head.custom_minimum_size = Vector2(90, 0)
 		defs.add_child(head)

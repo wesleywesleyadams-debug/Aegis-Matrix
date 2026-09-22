@@ -1668,6 +1668,19 @@ func _enter_dev_capture() -> void:
 				sum += f
 			print("STRESS ships %d  frames %d  avg %.2f ms  p95 %.2f ms  max %.2f ms  projectiles %d" % [get_tree().get_nodes_in_group("ships").size(), frames.size(), sum / maxf(frames.size(), 1), frames[int(frames.size() * 0.95)] if frames.size() > 0 else 0.0, frames[-1] if frames.size() > 0 else 0.0, fx_root.get_child_count()])
 			get_tree().quit())
+	if OS.get_environment("SL_SHOT_OPEN") == "shots":
+		# Dev: shot colors. Rows of generalist, Ion, Breacher and Reaver corvettes
+		# fire at enemy destroyers.
+		var foe := 3 - player_id
+		var kinds := ["corvette", "ion_corvette", "breacher_corvette", "reaver_corvette"]
+		for i in kinds.size():
+			var y := 560.0 + i * 70.0
+			for j in 8:
+				spawn_ship(kinds[i], player_id, Vector2(-150 + (j % 4) * 18, y - 12 + (j / 4) * 24)).order_stop()
+			var t := spawn_ship("destroyer", foe, Vector2(-20, y))
+			t.max_hp = 1e6
+			t.hp = 1e6
+			t.order_stop()
 	if OS.get_environment("SL_SHOT_OPEN") == "depot":
 		# Dev: a Constructor builds a Weapons Depot, two corvettes refit to Slip,
 		# then a refit of a specialist is refused.

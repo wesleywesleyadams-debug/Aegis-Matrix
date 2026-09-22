@@ -289,9 +289,9 @@ static var SHIPS: Dictionary = _with_variants()
 const VARIANTS := {
 	"ion": {"label": "Ion", "vs": {"shield": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
 		"desc": "80% base damage, x2.2 against shields."},
-	"breacher": {"label": "Breacher", "vs": {"armor": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff8a2a"),
+	"breacher": {"label": "Breacher", "vs": {"armor": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff4a4a"),
 		"desc": "80% base damage, x2.2 against armor."},
-	"reaver": {"label": "Reaver", "vs": {"hull": 1.9}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff4a3a"),
+	"reaver": {"label": "Reaver", "vs": {"hull": 1.9}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("58e07a"),
 		"desc": "80% base damage, x1.9 against hull."},
 	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("b48cff"),
 		"desc": "Shots slip past shields straight to armor and hull, at 65% base damage."},
@@ -342,3 +342,9 @@ const JOBS := {
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
 		"desc": "Repairs up to 4 ships within 180 px (6 points/s each: hull first, then armor, the only way to restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
 }
+
+## Visual language for the defense layers: bars, research lines, and the
+## lasers of specialists that hit a layer harder all use these colors.
+const LAYER_COLORS := {"shield": Color("7fd8ff"), "armor": Color("ff4a4a"), "hull": Color("58e07a")}
+## Generalists (and starbases) fire yellow lasers.
+const GENERALIST_SHOT := Color("ffd84a")

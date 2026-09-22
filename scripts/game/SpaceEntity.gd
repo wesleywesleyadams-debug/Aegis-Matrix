@@ -22,8 +22,8 @@ var selected: bool = false:
 		selected = v
 		queue_redraw()
 
-## Armor bar color (steel).
-const ARMOR_COLOR := Color("c8ccd8")
+## Layer bar colors (Defs.LAYER_COLORS): shields light blue, armor red, hull green.
+const ARMOR_COLOR := Color("ff4a4a")
 
 var _last_hit_time: float = -100.0
 var _dead: bool = false
@@ -110,8 +110,8 @@ func _draw() -> void:
 	var w := r * 2.0
 	var top := -r - 5.0
 	draw_rect(Rect2(-r, top, w, 2), Color(0, 0, 0, 0.7))
-	draw_rect(Rect2(-r, top, w * clampf(hp / max_hp, 0, 1), 2), Color("58e07a").lerp(Color("ff5040"), 1.0 - hp / max_hp))
-	# Bars, bottom to top: hull (green to red), armor (steel), shields (blue).
+	draw_rect(Rect2(-r, top, w * clampf(hp / max_hp, 0, 1), 2), Color("58e07a"))
+	# Bars, bottom to top: hull (green), armor (red), shields (light blue).
 	var row := 3.0
 	if max_armor > 0.0:
 		draw_rect(Rect2(-r, top - row, w, 2), Color(0, 0, 0, 0.7))

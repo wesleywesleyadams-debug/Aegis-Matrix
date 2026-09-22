@@ -898,8 +898,8 @@ func _gen_job_ships() -> void:
 ## differently from a Slip or Disruptor Corvette at a glance.
 const VARIANT_COLORS := {
 	"ion": [Color("1d5f8a"), Color("7fd8ff"), Color("e6fbff")],
-	"breacher": [Color("7a3a10"), Color("ff8a2a"), Color("ffd6a0")],
-	"reaver": [Color("7a1a14"), Color("ff4a3a"), Color("ffc8b8")],
+	"breacher": [Color("7a1414"), Color("ff4a4a"), Color("ffc8c8")],
+	"reaver": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
 	"slip": [Color("4a2a8a"), Color("b48cff"), Color("f0e6ff")],
 	"disruptor": [Color("7a1a66"), Color("ff5ad2"), Color("ffd6f4")],
 }
