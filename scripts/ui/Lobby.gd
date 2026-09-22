@@ -88,6 +88,9 @@ func _ready() -> void:
 		start_button.add_theme_stylebox_override(st, gb)
 	start_button.add_theme_color_override("font_color", Color("d6ffe0"))
 	start_button.add_theme_color_override("font_hover_color", Color.WHITE)
+	# Same button size as the other menus.
+	for b in [options_button, start_button, back_button]:
+		MenuStyle.button(b)
 
 	_add_mode_title()
 	_populate_players_grid()
@@ -141,13 +144,14 @@ func _populate_players_grid() -> void:
 
 		var badge := Label.new()
 		badge.text = str(i + 1)
-		badge.custom_minimum_size = Vector2(50, 0)
+		badge.custom_minimum_size = Vector2(40, 0)
 		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		badge.add_theme_color_override("font_color", BADGE_COLORS[i % BADGE_COLORS.size()])
 		players_grid.add_child(badge)
 
 		var slot_option := OptionButton.new()
-		slot_option.custom_minimum_size = Vector2(210, 0)
+		slot_option.custom_minimum_size = Vector2(200, 0)
+		slot_option.clip_text = true
 		slot_option.add_item(_username)
 		slot_option.add_item("AI")
 		# Single-player has no Open slots (nobody else can join): unused slots
@@ -157,14 +161,16 @@ func _populate_players_grid() -> void:
 		players_grid.add_child(slot_option)
 
 		var race_option := OptionButton.new()
-		race_option.custom_minimum_size = Vector2(140, 0)
+		race_option.custom_minimum_size = Vector2(190, 0)
+		race_option.clip_text = true
 		for pair in RACE_OPTIONS:
 			race_option.add_item(pair[1])
 		race_option.selected = _race_index(slot["race"])
 		players_grid.add_child(race_option)
 
 		var team_option := OptionButton.new()
-		team_option.custom_minimum_size = Vector2(90, 0)
+		team_option.custom_minimum_size = Vector2(140, 0)
+		team_option.clip_text = true
 		for pair in TEAM_OPTIONS:
 			team_option.add_item(pair[0])
 		team_option.selected = _team_index(slot["team"])
@@ -251,10 +257,14 @@ func _on_team_selected(index: int, slot_index: int) -> void:
 func _update_row_visuals(slot_index: int) -> void:
 	var row: Dictionary = _slot_rows[slot_index]
 	var is_open: bool = GameState.player_slots[slot_index]["slot_type"] == "open"
-	row["race"].disabled = is_open
-	row["race"].modulate.a = 0.4 if is_open else 1.0
-	row["team"].disabled = is_open
-	row["team"].modulate.a = 0.4 if is_open else 1.0
+	# Empty (Open / Closed) slots show only their slot picker: Race and Team
+	# are hidden (kept in the grid, just invisible) so the list reads cleanly.
+	for k in ["race", "team"]:
+		var o: OptionButton = row[k]
+		o.disabled = is_open
+		o.modulate.a = 0.0 if is_open else 1.0
+		o.mouse_filter = Control.MOUSE_FILTER_IGNORE if is_open else Control.MOUSE_FILTER_STOP
+	row["slot"].modulate = Color(1, 1, 1, 0.6) if is_open else Color.WHITE
 	row["badge"].add_theme_color_override(
 		"font_color", OPEN_BADGE_COLOR if is_open else BADGE_COLORS[slot_index % BADGE_COLORS.size()]
 	)
