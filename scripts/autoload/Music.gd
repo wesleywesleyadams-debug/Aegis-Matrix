@@ -203,7 +203,7 @@ func _play_playlist_item() -> void:
 func _on_finished() -> void:
 	if previewing != "" or _playlist.is_empty():
 		return
-	_playlist_index = (_playlist_index + 1) % _playlist.size()
+	_playlist_index = _next_index()
 	_play_playlist_item()
 
 func _start(id: String, stream: AudioStream) -> void:
@@ -375,6 +375,24 @@ func _live_test() -> void:
 	print("LIVE title screen, title off -> ", _current)
 	play_screen(LOBBY_TRACK)
 	print("LIVE lobby screen -> ", _current)
+	GameState.music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal"]
+	play_game_playlist()
+	for s in [false, true]:
+		GameState.music_shuffle = s
+		var seq := []
+		for k in 12:
+			_on_finished()
+			seq.append(_playlist_index)
+		print("LIVE shuffle=", s, " order: ", seq)
+	GameState.music_shuffle = false
 	GameState.music_playlist = saved
 	GameState.save_settings()
 	get_tree().quit()
+
+## The next song: the following one in list order, or with shuffle on a
+## random one (never the song that just played, if there's a choice).
+func _next_index() -> int:
+	if not GameState.music_shuffle or _playlist.size() < 2:
+		return (_playlist_index + 1) % _playlist.size()
+	var i := randi() % (_playlist.size() - 1)
+	return i + 1 if i >= _playlist_index else i

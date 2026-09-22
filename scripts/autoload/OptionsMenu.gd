@@ -78,6 +78,8 @@ func apply_current_settings() -> void:
 	show_grid_checkbox.button_pressed = GameState.show_debug_grid
 	_apply_show_debug_grid(GameState.show_debug_grid)
 
+	if _shuffle_checkbox:
+		_shuffle_checkbox.set_pressed_no_signal(GameState.music_shuffle)
 	font_option.selected = maxi(FONT_OPTION_KEYS.find(GameState.ui_font), 0)
 	_apply_font(GameState.ui_font)
 
@@ -171,6 +173,7 @@ var _enabled_title: Label
 var _disabled_title: Label
 var _track_status: Label
 var _file_dialog: FileDialog
+var _shuffle_checkbox: CheckBox
 
 ## Audio tab as three panels side by side:
 ##   1. Audio: the volume sliders and Audio / Music toggles (moved in from the
@@ -206,11 +209,19 @@ func _build_music_section() -> void:
 	_enabled_title = pl.get_child(0)
 	_enabled_list = _scroll_list(pl)
 	var hint := Label.new()
-	hint.text = "These play during matches, one after another. Title and Lobby synths (green) only play on their own screens."
+	hint.text = "These play during matches in this order (random with Shuffle). Title and Lobby synths (green) only play on their own screens."
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pl.add_child(hint)
+	var shuffle := CheckBox.new()
+	shuffle.text = "Shuffle (random order)"
+	shuffle.button_pressed = GameState.music_shuffle
+	shuffle.toggled.connect(func(on):
+		GameState.music_shuffle = on
+		GameState.save_settings())
+	pl.add_child(shuffle)
+	_shuffle_checkbox = shuffle
 	var add := Button.new()
 	add.text = "Add Song..."
 	add.pressed.connect(func(): _file_dialog.popup_centered_ratio(0.7))
