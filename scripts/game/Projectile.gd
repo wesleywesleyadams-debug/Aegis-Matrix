@@ -8,6 +8,8 @@ var target: Node2D # a SpaceEntity or a Planet being bombarded
 var damage: float
 ## Damage vs defense layers (Defs.damage_profile of the shooter).
 var profile: Dictionary = {}
+## Slip shots (skip shields, hit armor and hull) are orange.
+const SLIP_SHOT := Color("ffa43a")
 var speed: float
 var homing: bool
 var life: float = 3.0
@@ -32,7 +34,7 @@ func setup(from: SpaceEntity, to: Node2D, weapon: String, dmg: float) -> void:
 		if from.def.has("variant"):
 			modulate = Defs.VARIANTS[from.def["variant"]]["color"].lightened(0.15)
 			# Shots that bypass layers are colored by the layers they do hit:
-			# Slip (armor + hull) alternates red and green, Disruptor (hull
+			# Slip (armor + hull) is orange (red + green), Disruptor (hull
 			# only) is green. Their lasers are V-shaped; torpedoes stay round.
 			if profile["pierce"] > 0:
 				if weapon == "laser":
@@ -40,9 +42,7 @@ func setup(from: SpaceEntity, to: Node2D, weapon: String, dmg: float) -> void:
 				if profile["pierce"] >= 2:
 					modulate = Defs.LAYER_COLORS["hull"].lightened(0.15)
 				else:
-					var red: bool = not from.get_meta("slip_red", false)
-					from.set_meta("slip_red", red)
-					modulate = Defs.LAYER_COLORS["armor" if red else "hull"].lightened(0.15)
+					modulate = SLIP_SHOT
 	global_position = from.global_position
 	var lead := to.global_position
 	if to is Ship:

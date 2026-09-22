@@ -457,17 +457,36 @@ func _pick_variant(pid: int, game: Game) -> String:
 	var v: Vision = game.visions.get(pid)
 	if v == null:
 		return ""
-	var l := v.enemy_layers()
-	var total: float = l["shield"] + l["armor"] + l["hull"]
-	if total < 300.0:
+	# For every enemy warship seen lately, the base damage each variant needs
+	# to destroy it (layer by layer, with its bonus / pierce and base damage)
+	# vs a generalist; pick the variant with the lowest total.
+	var seen: Array = []
+	for id in v.sightings:
+		var sg: Array = v.sightings[id]
+		if sg.size() > 3:
+			seen.append(sg[3])
+	if seen.size() < 3:
 		return ""
-	if (l["shield"] + l["armor"]) / total > 0.62:
-		return "disruptor"
-	if l["shield"] >= l["armor"] and l["shield"] / total > 0.3:
-		return "ion" if randf() < 0.5 else "slip"
-	if l["armor"] / total > 0.3:
-		return "breacher"
-	return "reaver"
+	var gen := 0.0
+	for l in seen:
+		gen += l.x + l.y + l.z
+	var best := ""
+	var best_cost := gen * 0.97
+	for vid in Defs.VARIANTS:
+		var vd: Dictionary = Defs.VARIANTS[vid]
+		var vs: Dictionary = vd["vs"]
+		var cost := 0.0
+		for l in seen:
+			var need: float = l.z / vs.get("hull", 1.0)
+			if vd["pierce"] < 2:
+				need += l.y / vs.get("armor", 1.0)
+			if vd["pierce"] < 1:
+				need += l.x / vs.get("shield", 1.0)
+			cost += need / vd["damage"]
+		if cost < best_cost:
+			best_cost = cost
+			best = vid
+	return best
 
 # ---------------------------------------------------------------- weapons depot
 

@@ -293,7 +293,7 @@ const VARIANTS := {
 		"desc": "80% base damage, x2.2 against armor."},
 	"reaver": {"label": "Reaver", "vs": {"hull": 1.9}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("58e07a"),
 		"desc": "80% base damage, x1.9 against hull."},
-	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("b48cff"),
+	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("ffa43a"),
 		"desc": "Shots slip past shields straight to armor and hull, at 65% base damage."},
 	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.4, "cost": 1.0, "color": Color("ff5ad2"),
 		"desc": "Shots pass through shields and armor straight to the hull, at 40% base damage."},
