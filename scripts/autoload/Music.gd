@@ -118,16 +118,6 @@ func import_file(src: String) -> String:
 	tracks_changed.emit()
 	return id
 
-## Takes a song out of the list: imported songs are deleted, built-in ones
-## are just unchecked (they can't be deleted).
-func remove_track(id: String) -> void:
-	if previewing == id:
-		stop_preview()
-	set_in_playlist(id, false)
-	if id.begins_with("user:"):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_DIR + "/" + id.substr(5)))
-	tracks_changed.emit()
-
 func set_in_playlist(id: String, on: bool) -> void:
 	var pl: Array = GameState.music_playlist
 	if on and not pl.has(id):
@@ -219,7 +209,8 @@ func restart_current_track() -> void:
 	player.seek(0.0)
 
 ## Dev aid: SL_MUSIC_TEST=<path to a song> imports it, previews it, stops
-## the preview, plays the playlist, removes the song, printing each step.
+## the preview, plays the playlist, disables and re-enables it (then deletes
+## the test copy), printing each step.
 func _self_test(src: String) -> void:
 	var saved: Array = GameState.music_playlist.duplicate()
 	print("TEST tracks: ", available_tracks().map(func(t): return t["id"]))
@@ -233,8 +224,12 @@ func _self_test(src: String) -> void:
 	print("TEST after stop: current=%s playing=%s" % [_current, str(player.playing)])
 	play_game_playlist()
 	print("TEST playlist %s -> now playing %s (loop %s)" % [str(_playlist), _current, str(_playlist.size() == 1)])
-	remove_track(id)
-	print("TEST removed: file gone %s, in playlist %s" % [str(not FileAccess.file_exists(USER_DIR + "/" + id.substr(5))), str(GameState.music_playlist.has(id))])
+	set_in_playlist(id, false)
+	print("TEST disabled: still listed %s, in playlist %s" % [str(available_tracks().any(func(t): return t["id"] == id)), str(GameState.music_playlist.has(id))])
+	set_in_playlist(id, true)
+	print("TEST re-enabled: in playlist %s" % str(GameState.music_playlist.has(id)))
+	# Test clean-up only: delete the imported copy.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_DIR + "/" + id.substr(5)))
 	GameState.music_playlist = saved
 	GameState.save_settings()
 	get_tree().quit()

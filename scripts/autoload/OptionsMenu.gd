@@ -210,9 +210,9 @@ var _track_list: VBoxContainer
 var _track_status: Label
 var _file_dialog: FileDialog
 
-## Audio tab: every song that can play during matches, with a checkbox to
-## include it in the playlist, a preview button, Remove for imported songs,
-## and "Add Song..." to import one from disk (see Music).
+## Audio tab: the in-game Playlist and a Disabled list (songs move between
+## them with Disable / Enable), Preview on every song, and "Add Song..." to
+## import one from disk (see Music). Songs are never deleted here.
 func _build_music_section() -> void:
 	var audio: Control = $Background/Panel/VBox/TabContainer/Audio
 	var box := VBoxContainer.new()
@@ -227,7 +227,7 @@ func _build_music_section() -> void:
 	title.text = "In-Game Music Tracks"
 	box.add_child(title)
 	var hint := Label.new()
-	hint.text = "Checked songs play during matches, one after another."
+	hint.text = "Playlist songs play during matches, one after another."
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
 	box.add_child(hint)
@@ -261,41 +261,74 @@ func _build_music_section() -> void:
 	Music.tracks_changed.connect(_refresh_tracks)
 	_refresh_tracks()
 
+## Two lists: the Playlist (enabled songs, each with Disable) and Disabled
+## (each with Enable to put it back). Nothing is ever deleted here.
 func _refresh_tracks() -> void:
 	if _track_list == null:
 		return
 	for c in _track_list.get_children():
 		c.queue_free()
-	for t in Music.available_tracks():
-		var id: String = t["id"]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		var check := CheckBox.new()
-		check.text = t["name"]
-		check.button_pressed = GameState.music_playlist.has(id)
-		check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		check.clip_text = true
-		check.tooltip_text = t["name"]
-		check.toggled.connect(func(on: bool): Music.set_in_playlist(id, on))
-		row.add_child(check)
-		var play := Button.new()
-		play.text = "Stop" if Music.previewing == id else "Preview"
-		play.custom_minimum_size = Vector2(84, 0)
-		play.pressed.connect(func():
-			if Music.previewing == id:
-				Music.stop_preview()
-			else:
-				Music.preview(id)
-			_refresh_tracks())
-		row.add_child(play)
-		if t["user"]:
-			var rm := Button.new()
-			rm.text = "Remove"
-			rm.pressed.connect(func():
-				Music.remove_track(id)
-				_track_status.text = "Removed %s." % t["name"])
-			row.add_child(rm)
-		_track_list.add_child(row)
+	var tracks := Music.available_tracks()
+	var enabled := tracks.filter(func(t): return GameState.music_playlist.has(t["id"]))
+	var disabled := tracks.filter(func(t): return not GameState.music_playlist.has(t["id"]))
+	_track_list.add_child(_list_heading("Playlist (%d)" % enabled.size(), Color(0.55, 1.0, 0.65)))
+	if enabled.is_empty():
+		_track_list.add_child(_list_note("Empty: matches will play Through Space."))
+	for t in enabled:
+		_track_list.add_child(_track_row(t, true))
+	_track_list.add_child(_list_heading("Disabled (%d)" % disabled.size(), Color(0.75, 0.78, 0.9)))
+	if disabled.is_empty():
+		_track_list.add_child(_list_note("No disabled songs."))
+	for t in disabled:
+		_track_list.add_child(_track_row(t, false))
+
+func _list_heading(text: String, color: Color) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 15)
+	l.add_theme_color_override("font_color", color)
+	return l
+
+func _list_note(text: String) -> Label:
+	var l := Label.new()
+	l.text = "   " + text
+	l.add_theme_font_size_override("font_size", 13)
+	l.add_theme_color_override("font_color", Color(0.6, 0.63, 0.75))
+	return l
+
+## One song: its name, Preview/Stop, and Disable (playlist) or Enable (disabled).
+func _track_row(t: Dictionary, enabled: bool) -> HBoxContainer:
+	var id: String = t["id"]
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var name := Label.new()
+	name.text = t["name"]
+	name.tooltip_text = t["name"]
+	name.mouse_filter = Control.MOUSE_FILTER_PASS
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name.clip_text = true
+	if not enabled:
+		name.modulate = Color(1, 1, 1, 0.6)
+	row.add_child(name)
+	var play := Button.new()
+	play.text = "Stop" if Music.previewing == id else "Preview"
+	play.custom_minimum_size = Vector2(128, 0)
+	play.pressed.connect(func():
+		if Music.previewing == id:
+			Music.stop_preview()
+		else:
+			Music.preview(id)
+		_refresh_tracks())
+	row.add_child(play)
+	var toggle := Button.new()
+	toggle.text = "Disable" if enabled else "Enable"
+	toggle.custom_minimum_size = Vector2(128, 0)
+	toggle.pressed.connect(func():
+		Music.set_in_playlist(id, not enabled)
+		_track_status.text = ("Disabled %s." if enabled else "Enabled %s.") % t["name"]
+		_refresh_tracks())
+	row.add_child(toggle)
+	return row
 
 func _on_songs_selected(paths: PackedStringArray) -> void:
 	var added := 0
