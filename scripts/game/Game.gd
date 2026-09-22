@@ -154,7 +154,7 @@ func _ready() -> void:
 		if home:
 			camera.global_position = home.global_position
 	camera.zoom = Vector2.ONE * ZOOM_LEVELS[_zoom_index]
-	Music.play_track(Music.IN_GAME_TRACK)
+	Music.play_game_playlist()
 	if loaded:
 		notify("Saved game loaded.", "note_save")
 	else:

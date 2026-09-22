@@ -67,6 +67,7 @@ func _ready() -> void:
 	limiter.ceiling_db = -1.5
 	AudioServer.add_bus_effect(_master_bus_index, limiter)
 
+	_build_music_section()
 	MenuStyle.button(close_button)
 	close_button.pressed.connect(close)
 	master_slider.value_changed.connect(_on_master_slider_changed)
@@ -109,9 +110,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func open() -> void:
+	_refresh_tracks()
 	background.visible = true
 
 func close() -> void:
+	Music.stop_preview()
 	background.visible = false
 
 func _on_master_slider_changed(value: float) -> void:
@@ -200,3 +203,106 @@ func _add_hotkey_row(label_text: String, key_text: String) -> void:
 	key_label.add_theme_color_override("font_color", Color(1, 0.85, 0.2, 1))
 	hotkeys_list.add_child(action_label)
 	hotkeys_list.add_child(key_label)
+
+# ---------------------------------------------------------------- music tracks
+
+var _track_list: VBoxContainer
+var _track_status: Label
+var _file_dialog: FileDialog
+
+## Audio tab: every song that can play during matches, with a checkbox to
+## include it in the playlist, a preview button, Remove for imported songs,
+## and "Add Song..." to import one from disk (see Music).
+func _build_music_section() -> void:
+	var audio: Control = $Background/Panel/VBox/TabContainer/Audio
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = 12
+	box.offset_top = 132
+	box.offset_right = -12
+	box.offset_bottom = -64
+	box.add_theme_constant_override("separation", 6)
+	audio.add_child(box)
+	var title := Label.new()
+	title.text = "In-Game Music Tracks"
+	box.add_child(title)
+	var hint := Label.new()
+	hint.text = "Checked songs play during matches, one after another."
+	hint.add_theme_font_size_override("font_size", 13)
+	hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
+	box.add_child(hint)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	_track_list = VBoxContainer.new()
+	_track_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_track_list.add_theme_constant_override("separation", 4)
+	scroll.add_child(_track_list)
+	var row := HBoxContainer.new()
+	box.add_child(row)
+	var add := Button.new()
+	add.text = "Add Song..."
+	add.pressed.connect(func(): _file_dialog.popup_centered_ratio(0.7))
+	row.add_child(add)
+	_track_status = Label.new()
+	_track_status.add_theme_font_size_override("font_size", 13)
+	_track_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_track_status.clip_text = true
+	row.add_child(_track_status)
+	_file_dialog = FileDialog.new()
+	_file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILES
+	_file_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_file_dialog.use_native_dialog = true
+	_file_dialog.title = "Add songs to the in-game music"
+	_file_dialog.filters = PackedStringArray(["*.ogg, *.mp3, *.wav ; Music files"])
+	_file_dialog.files_selected.connect(_on_songs_selected)
+	add_child(_file_dialog)
+	Music.tracks_changed.connect(_refresh_tracks)
+	_refresh_tracks()
+
+func _refresh_tracks() -> void:
+	if _track_list == null:
+		return
+	for c in _track_list.get_children():
+		c.queue_free()
+	for t in Music.available_tracks():
+		var id: String = t["id"]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var check := CheckBox.new()
+		check.text = t["name"]
+		check.button_pressed = GameState.music_playlist.has(id)
+		check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		check.clip_text = true
+		check.tooltip_text = t["name"]
+		check.toggled.connect(func(on: bool): Music.set_in_playlist(id, on))
+		row.add_child(check)
+		var play := Button.new()
+		play.text = "Stop" if Music.previewing == id else "Preview"
+		play.custom_minimum_size = Vector2(84, 0)
+		play.pressed.connect(func():
+			if Music.previewing == id:
+				Music.stop_preview()
+			else:
+				Music.preview(id)
+			_refresh_tracks())
+		row.add_child(play)
+		if t["user"]:
+			var rm := Button.new()
+			rm.text = "Remove"
+			rm.pressed.connect(func():
+				Music.remove_track(id)
+				_track_status.text = "Removed %s." % t["name"])
+			row.add_child(rm)
+		_track_list.add_child(row)
+
+func _on_songs_selected(paths: PackedStringArray) -> void:
+	var added := 0
+	var failed := 0
+	for p in paths:
+		if Music.import_file(p) != "":
+			added += 1
+		else:
+			failed += 1
+	_track_status.text = "Added %d song%s%s." % [added, "" if added == 1 else "s", (", %d couldn't be read" % failed) if failed > 0 else ""]
