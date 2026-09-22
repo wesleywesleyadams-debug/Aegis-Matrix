@@ -37,13 +37,17 @@ func _ready() -> void:
 	radius = Defs.STARBASE["radius"]
 	refresh_stats()
 	hp = max_hp * (0.1 if under_construction else 1.0)
+	armor = 0.0 if under_construction else max_armor
 	shield = 0.0 if under_construction else max_shield
 	_update_site_look()
 
 func refresh_stats() -> void:
 	var g := Game.instance
+	var ar_frac := armor / max_armor if max_armor > 0.0 else 1.0
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
 	max_hp = Defs.STARBASE["hp"] * g.mod(owner_id, "hull")
+	max_armor = Defs.STARBASE.get("armor", 0.0) * g.mod(owner_id, "armor")
+	armor = max_armor * ar_frac
 	max_shield = Defs.STARBASE["shield"] * g.mod(owner_id, "shield")
 	hp = max_hp * hp_frac
 	shield = minf(shield, max_shield)

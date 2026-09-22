@@ -326,7 +326,7 @@ func _update_intel() -> void:
 	var tree := get_tree()
 	for s in tree.get_nodes_in_group("ships"):
 		if s.owner_id != pid and s.is_alive() and s.def["role"] == "warship" and can_see(s):
-			sightings[s.get_instance_id()] = [now, s.max_hp + s.max_shield, s.global_position]
+			sightings[s.get_instance_id()] = [now, s.max_hp + s.max_armor + s.max_shield, s.global_position]
 	for id in sightings.keys():
 		var sg: Array = sightings[id]
 		# Forget old sightings, and ships seen to be gone from where they were.
@@ -335,7 +335,7 @@ func _update_intel() -> void:
 			sightings.erase(id)
 	for sb in tree.get_nodes_in_group("starbases"):
 		if sb.owner_id != pid and sb.is_alive() and can_see(sb):
-			seen_bases[sb] = [sb.global_position, (sb.hp + sb.shield) / maxf(sb.max_hp + sb.max_shield, 1.0)]
+			seen_bases[sb] = [sb.global_position, (sb.hp + sb.armor + sb.shield) / maxf(sb.max_hp + sb.max_armor + sb.max_shield, 1.0)]
 	for sb in seen_bases.keys():
 		if not is_instance_valid(sb) or not sb.is_alive():
 			seen_bases.erase(sb)

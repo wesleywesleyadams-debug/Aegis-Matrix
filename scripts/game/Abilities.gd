@@ -49,8 +49,7 @@ static func use(s: Ship) -> String:
 			g.fx_root.add_child(b)
 		"field_repair":
 			for o in allies_near(s, EMERGENCY_RANGE):
-				o.hp = minf(o.max_hp, o.hp + o.max_hp * EMERGENCY_HEAL)
-				o.queue_redraw()
+				repair(o, (o.max_hp + o.max_armor) * EMERGENCY_HEAL)
 			s.ability_until = Game.now() + 0.6   # for the flash
 	g.stats.count(s.owner_id, "ability_" + s.def["job"])
 	s.ability_ready_at = Game.now() + float(j["cooldown"])
@@ -112,8 +111,16 @@ static func repair_tick(s: Ship, dt: float) -> Array:
 	for o in allies_near(s, REPAIR_RANGE):
 		if healed.size() >= REPAIR_MAX_TARGETS:
 			break
-		if o.hp < o.max_hp and Game.now() - o._last_hit_time > REPAIR_CALM:
-			o.hp = minf(o.max_hp, o.hp + REPAIR_RATE * dt)
-			o.queue_redraw()
+		if (o.hp < o.max_hp or o.armor < o.max_armor) and Game.now() - o._last_hit_time > REPAIR_CALM:
+			repair(o, REPAIR_RATE * dt)
 			healed.append(o)
 	return healed
+
+## Restores `amount` points to a ship: hull first, then armor (shields
+## regenerate on their own). Repair Tenders are the only way to get armor
+## back.
+static func repair(o: SpaceEntity, amount: float) -> void:
+	var to_hull := minf(amount, o.max_hp - o.hp)
+	o.hp += to_hull
+	o.armor = minf(o.max_armor, o.armor + amount - to_hull)
+	o.queue_redraw()

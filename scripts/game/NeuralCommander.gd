@@ -69,13 +69,13 @@ func _war(game: Game, side: int) -> Array:
 func _power(ships: Array) -> float:
 	var p := 0.0
 	for s in ships:
-		p += s.max_hp + s.max_shield
+		p += s.max_hp + s.max_armor + s.max_shield
 	return p
 
 func _base_frac(game: Game, side: int) -> float:
 	for sb in game.starbase_list:
 		if is_instance_valid(sb) and sb.owner_id == side and sb.is_alive() and not sb.under_construction:
-			return (sb.hp + sb.shield) / maxf(sb.max_hp + sb.max_shield, 1.0)
+			return (sb.hp + sb.armor + sb.shield) / maxf(sb.max_hp + sb.max_armor + sb.max_shield, 1.0)
 	return 0.0
 
 ## What the network sees, each roughly in [-1, 1].

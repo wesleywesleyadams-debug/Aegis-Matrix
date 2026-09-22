@@ -64,7 +64,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		if not sb.is_alive():
 			continue
 		data["starbases"].append({
-			"owner": sb.owner_id, "pos": _v(sb.global_position), "hp": sb.hp, "shield": sb.shield,
+			"owner": sb.owner_id, "pos": _v(sb.global_position), "hp": sb.hp, "shield": sb.shield, "armor": sb.armor,
 			"queue": Array(sb.queue), "build_progress": sb.build_progress,
 			"rally": _v(sb.rally_point), "has_rally": sb.has_rally,
 			"under_construction": sb.under_construction, "construct_progress": sb.construct_progress,
@@ -75,7 +75,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			continue
 		data["ships"].append({
 			"type": s.ship_type, "owner": s.owner_id, "pos": _v(s.global_position), "rot": s.rotation,
-			"hp": s.hp, "shield": s.shield, "cargo": s.cargo, "cargo_type": s.cargo_type,
+			"hp": s.hp, "shield": s.shield, "armor": s.armor, "cargo": s.cargo, "cargo_type": s.cargo_type,
 			"order": _order_of(s),
 		})
 	return data
@@ -204,6 +204,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		game.starbases_root.add_child(sb)
 		sb.construct_progress = float(d.get("construct_progress", 0.0))
 		sb.hp = float(d["hp"])
+		sb.armor = float(d.get("armor", sb.max_armor))
 		sb.shield = float(d["shield"])
 		for t in d.get("queue", []):
 			if Defs.SHIPS.has(t):
@@ -218,6 +219,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		var s := game.spawn_ship(str(d["type"]), int(d["owner"]), _p(d["pos"]))
 		s.rotation = float(d.get("rot", 0.0))
 		s.hp = float(d["hp"])
+		s.armor = float(d.get("armor", s.max_armor))
 		s.shield = float(d["shield"])
 		s.cargo = int(d.get("cargo", 0))
 		s.cargo_type = str(d.get("cargo_type", "minerals"))
@@ -243,8 +245,10 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		if e.has_method("refresh_stats"):
 			var hp: float = e.hp
 			var sh: float = e.shield
+			var ar: float = e.armor
 			e.refresh_stats()
 			e.hp = minf(hp, e.max_hp)
 			e.shield = minf(sh, e.max_shield)
+			e.armor = minf(ar, e.max_armor)
 	game.center_on(_p(data.get("camera", [0, 0])))
 	return true

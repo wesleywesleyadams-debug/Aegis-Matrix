@@ -1,7 +1,9 @@
 class_name SpaceEntity
 extends Node2D
-## Anything with an owner, hull and shields that can be selected and shot:
-## ships and starbases. Hit detection is a plain circle (radius).
+## Anything with an owner and defenses that can be selected and shot: ships
+## and starbases. Defenses are layered: shields (regenerate), then armor
+## (doesn't regenerate; Repair Tenders restore it), then hull. Damage drains
+## them in that order; the entity dies when its hull reaches 0. Hit detection is a plain circle (radius).
 
 signal died(entity: SpaceEntity)
 
@@ -12,11 +14,16 @@ var max_hp: float = 100.0
 var hp: float = 100.0
 var max_shield: float = 0.0
 var shield: float = 0.0
+var max_armor: float = 0.0
+var armor: float = 0.0
 var radius: float = 8.0
 var selected: bool = false:
 	set(v):
 		selected = v
 		queue_redraw()
+
+## Armor bar color (steel).
+const ARMOR_COLOR := Color("c8ccd8")
 
 var _last_hit_time: float = -100.0
 var _dead: bool = false
@@ -36,7 +43,10 @@ func take_damage(amount: float, _from: SpaceEntity = null) -> void:
 	_last_hit_time = Game.now()
 	var absorbed := minf(shield, amount)
 	shield -= absorbed
-	hp -= amount - absorbed
+	var rest := amount - absorbed
+	var plated := minf(armor, rest)
+	armor -= plated
+	hp -= rest - plated
 	if absorbed > 0.0:
 		Game.instance.spawn_shield_hit(global_position, radius, (_from.global_position if is_instance_valid(_from) else global_position + Vector2.RIGHT))
 	queue_redraw()
@@ -70,7 +80,7 @@ func _regen_shields(delta: float) -> void:
 ## Selection brackets plus hull/shield bars, drawn in world space so they
 ## scale with the pixel zoom like everything else.
 func _draw() -> void:
-	var damaged := hp < max_hp or (max_shield > 0.0 and shield < max_shield)
+	var damaged := hp < max_hp or (max_shield > 0.0 and shield < max_shield) or armor < max_armor
 	if not selected and not damaged:
 		return
 	var r := radius + 3.0
@@ -87,7 +97,13 @@ func _draw() -> void:
 	var top := -r - 5.0
 	draw_rect(Rect2(-r, top, w, 2), Color(0, 0, 0, 0.7))
 	draw_rect(Rect2(-r, top, w * clampf(hp / max_hp, 0, 1), 2), Color("58e07a").lerp(Color("ff5040"), 1.0 - hp / max_hp))
+	# Bars, bottom to top: hull (green to red), armor (steel), shields (blue).
+	var row := 3.0
+	if max_armor > 0.0:
+		draw_rect(Rect2(-r, top - row, w, 2), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(-r, top - row, w * clampf(armor / max_armor, 0, 1), 2), ARMOR_COLOR)
+		row += 3.0
 	if max_shield > 0.0:
-		draw_rect(Rect2(-r, top - 3, w, 2), Color(0, 0, 0, 0.7))
-		draw_rect(Rect2(-r, top - 3, w * clampf(shield / max_shield, 0, 1), 2), Color("7fd8ff"))
+		draw_rect(Rect2(-r, top - row, w, 2), Color(0, 0, 0, 0.7))
+		draw_rect(Rect2(-r, top - row, w * clampf(shield / max_shield, 0, 1), 2), Color("7fd8ff"))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

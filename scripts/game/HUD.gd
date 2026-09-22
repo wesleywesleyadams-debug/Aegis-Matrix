@@ -637,7 +637,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(198, 62)
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s\nHull %d  Shield %d  Speed %d\nUpkeep %.2f energy/s base (scales with fleet size)\nCost %s, paid over %ds" % [d["name"], d["hp"], d["shield"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		b.tooltip_text = "%s\nHull %d  Shield %d  Speed %d\nUpkeep %.2f energy/s base (scales with fleet size)\nCost %s, paid over %ds" % [d["name"], d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
 		var h := HBoxContainer.new()
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		h.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -728,9 +728,13 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 	if sel.size() != 1:
 		return
 	var e: SpaceEntity = sel[0]
-	var txt := "Hull %d/%d" % [ceili(e.hp), e.max_hp]
+	# Defense layers in the order damage takes them: shields, armor, hull.
+	var txt := ""
 	if e.max_shield > 0:
-		txt += "   Shield %d/%d" % [ceili(e.shield), e.max_shield]
+		txt += "Shield %d/%d   " % [ceili(e.shield), e.max_shield]
+	if e.max_armor > 0:
+		txt += "Armor %d/%d   " % [ceili(e.armor), e.max_armor]
+	txt += "Hull %d/%d" % [ceili(e.hp), e.max_hp]
 	if e is Ship:
 		var s := e as Ship
 		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Bombarding planet"][s.state]

@@ -71,6 +71,7 @@ func _ready() -> void:
 	refresh_stats()
 	hp = max_hp
 	shield = max_shield
+	armor = max_armor
 	radius = def["radius"]
 	move_goal = global_position
 	_acquire_timer = randf() * 0.3
@@ -106,15 +107,18 @@ func _find_mine_target(resource: String) -> Node2D:
 		return Game.instance.nearest_gas_giant(global_position, 3000.0)
 	return Game.instance.nearest_asteroid(global_position, 900.0, resource)
 
-## Re-derives hull/shield caps from research, keeping current fractions.
+## Re-derives hull/armor/shield caps from research, keeping current fractions.
 func refresh_stats() -> void:
 	var g := Game.instance
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
+	var ar_frac := armor / max_armor if max_armor > 0.0 else 1.0
 	var sh_frac := shield / max_shield if max_shield > 0.0 else 1.0
 	max_hp = def["hp"] * g.mod(owner_id, "hull")
 	max_shield = def["shield"] * g.mod(owner_id, "shield")
 	hp = max_hp * hp_frac
 	shield = max_shield * sh_frac
+	max_armor = def.get("armor", 0.0) * g.mod(owner_id, "armor")
+	armor = max_armor * ar_frac
 
 func max_speed() -> float:
 	var f := Engine.get_physics_frames()

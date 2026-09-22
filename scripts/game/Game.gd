@@ -1655,6 +1655,18 @@ func _enter_dev_capture() -> void:
 				sum += f
 			print("STRESS ships %d  frames %d  avg %.2f ms  p95 %.2f ms  max %.2f ms  projectiles %d" % [get_tree().get_nodes_in_group("ships").size(), frames.size(), sum / maxf(frames.size(), 1), frames[int(frames.size() * 0.95)] if frames.size() > 0 else 0.0, frames[-1] if frames.size() > 0 else 0.0, fx_root.get_child_count()])
 			get_tree().quit())
+	if OS.get_environment("SL_SHOT_OPEN") == "armor":
+		# Dev: damage runs shields -> armor -> hull; a Tender restores hull, then armor.
+		var d := spawn_ship("destroyer", player_id, Vector2(-1400, 0))
+		d.order_stop()
+		var show := func(tag): print("ARMOR %-10s shield %3d  armor %3d  hull %3d" % [tag, d.shield, d.armor, d.hp])
+		show.call("new")
+		for hit in [60, 60, 60, 60]:
+			d.take_damage(hit)
+			show.call("-%d" % hit)
+		var t := spawn_ship("tender", player_id, Vector2(-1440, 30))
+		t.order_stop()
+		get_tree().create_timer(12.0).timeout.connect(func(): show.call("repaired"))
 	if OS.get_environment("SL_SHOT_OPEN") == "skim":
 		# Dev: a skimmer harvesting spice gas in the nearest spice nebula.
 		var home := nearest_starbase(player_id, Vector2.ZERO)

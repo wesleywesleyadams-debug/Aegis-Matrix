@@ -299,7 +299,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 	st["next_rethink"] = Game.now() + RETHINK
 	var mine := 0.0
 	for s in war:
-		mine += s.max_hp + s.max_shield
+		mine += s.max_hp + s.max_armor + s.max_shield
 	var theirs := 0.0
 	var threat := false
 	var v: Vision = game.visions.get(pid)
@@ -314,7 +314,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 	for s in ([] if v else game.get_tree().get_nodes_in_group("ships")):
 		if s.owner_id == pid or s.owner_id == 0 or not s.is_alive() or s.def["role"] != "warship":
 			continue
-		theirs += s.max_hp + s.max_shield
+		theirs += s.max_hp + s.max_armor + s.max_shield
 		if s.global_position.distance_to(base.global_position) < 900.0:
 			threat = true
 		else:

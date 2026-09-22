@@ -62,7 +62,7 @@ static func sample(t: float) -> Dictionary:
 				continue
 			if s.def["role"] == "warship":
 				war += 1
-				power += s.max_hp + s.max_shield
+				power += s.max_hp + s.max_armor + s.max_shield
 			elif s.is_miner():
 				miners += 1
 		var bases := 0

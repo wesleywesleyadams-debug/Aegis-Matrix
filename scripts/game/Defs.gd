@@ -44,31 +44,31 @@ const SHIPS := {
 	},
 	"colony": {
 		"name": "Colony Ship", "role": "colony", "hotkey": KEY_X,
-		"hp": 120.0, "shield": 20.0, "speed": 60.0, "radius": 9.0,
+		"hp": 100.0, "armor": 20.0, "shield": 20.0, "speed": 60.0, "radius": 9.0,
 		"cost": {"minerals": 80, "spice": 10}, "build_time": 15.0, "upkeep": 0.1,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"constructor": {
 		"name": "Constructor", "role": "constructor", "hotkey": KEY_C,
-		"hp": 150.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
+		"hp": 110.0, "armor": 40.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
 		"cost": {"minerals": 120, "spice": 5}, "build_time": 12.0, "upkeep": 0.1,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship", "hotkey": KEY_V,
-		"hp": 90.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
+		"hp": 70.0, "armor": 20.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 60}, "build_time": 8.0, "upkeep": 0.1,
 		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm",
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "hotkey": KEY_B,
-		"hp": 220.0, "shield": 80.0, "speed": 85.0, "radius": 11.0,
+		"hp": 130.0, "armor": 90.0, "shield": 80.0, "speed": 85.0, "radius": 11.0,
 		"cost": {"minerals": 140, "spice": 5}, "build_time": 14.0, "upkeep": 0.25,
 		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort",
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "hotkey": KEY_N, "requires": "cruiser_doctrine",
-		"hp": 560.0, "shield": 200.0, "speed": 55.0, "radius": 16.0,
+		"hp": 300.0, "armor": 260.0, "shield": 200.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 300, "spice": 25}, "build_time": 24.0, "upkeep": 0.6,
 		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "job": "barrage",
 	},
@@ -80,13 +80,13 @@ const SHIPS := {
 	},
 	"heatshield": {
 		"name": "Heat Shield Frigate", "role": "warship", "hotkey": KEY_J, "requires": "deflectors",
-		"hp": 200.0, "shield": 140.0, "speed": 80.0, "radius": 11.0,
+		"hp": 130.0, "armor": 70.0, "shield": 140.0, "speed": 80.0, "radius": 11.0,
 		"cost": {"minerals": 110, "spice": 10}, "build_time": 14.0, "upkeep": 0.2,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
 	},
 	"tender": {
 		"name": "Repair Tender", "role": "support", "hotkey": KEY_K, "requires": "nanite_plating",
-		"hp": 240.0, "shield": 60.0, "speed": 75.0, "radius": 11.0,
+		"hp": 150.0, "armor": 90.0, "shield": 60.0, "speed": 75.0, "radius": 11.0,
 		"cost": {"minerals": 130, "spice": 10}, "build_time": 16.0, "upkeep": 0.25,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 300.0, "job": "field_repair",
 	},
@@ -95,7 +95,7 @@ const SHIPS := {
 const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor", "corvette", "destroyer", "cruiser"]
 
 const STARBASE := {
-	"name": "Starbase", "hp": 4000.0, "shield": 1500.0, "radius": 26.0,
+	"name": "Starbase", "hp": 2800.0, "armor": 1200.0, "shield": 1500.0, "radius": 26.0,
 	"weapon": "laser", "damage": 22.0, "cooldown": 0.7, "range": 220.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 400, "spice": 20}, "build_time": 40.0,
@@ -256,5 +256,5 @@ const JOBS := {
 	"heat_screen": {"name": "Heat Screen", "active": true, "cooldown": 40.0, "duration": 10.0, "color": Color("ffc24a"),
 		"desc": "Ships within 170 px take 75% less radiation damage and keep their shields in spice nebulae. [Q] Surge: full protection within 240 px for 10 s."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
-		"desc": "Repairs up to 4 ships within 180 px (6 hull/s each) once they're out of combat. [Q] Emergency repair: +35% hull to ships within 200 px."},
+		"desc": "Repairs up to 4 ships within 180 px (6 points/s each: hull first, then armor, the only way to restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
 }
