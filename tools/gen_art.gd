@@ -37,11 +37,13 @@ func _init() -> void:
 		_gen_ships()
 		_gen_job_ships()
 		_gen_variants()
+		_gen_depot()
 		quit()
 		return
 	_gen_ships()
 	_gen_job_ships()
 	_gen_variants()
+	_gen_depot()
 	_gen_starbase()
 	_gen_planets()
 	_gen_star()
@@ -937,3 +939,20 @@ func _gen_variants() -> void:
 							img.set_pixel(x, inner, c[1])
 			_save(img, "ship_%s_%s" % [v, base])
 			_save(team.duplicate() as Image, "ship_%s_%s_team" % [v, base])
+
+## Weapons Depot: a hub with a cross of docking arms and five weapon racks
+## lit in the variant colors (Ion, Breacher, Reaver, Slip, Disruptor).
+func _gen_depot() -> void:
+	_ship("depot", 34, 34,
+		[[10, 24, 7.0, 7.0], [2, 32, 2.2, 2.2], [14, 20, 2.0, 2.0, 11.0], [6, 10, 3.0, 3.0, 8.0], [24, 28, 3.0, 3.0, 8.0]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 9.0 or (x >= 15 and x <= 18 and absf(dy) < 2.0),
+		[16, 2], [], [13, 20],
+		func(img: Image, cy: float) -> void:
+			var cols := ["ion", "breacher", "reaver", "slip", "disruptor"]
+			for i in 5:
+				var c: Array = VARIANT_COLORS[cols[i]]
+				var x := 7 + i * 5
+				_px(img, x, cy - 4, c[1])
+				_px(img, x, cy + 4, c[1])
+				_px(img, x + 1, cy - 4, c[2])
+				_px(img, x + 1, cy + 4, c[0]))

@@ -92,7 +92,7 @@ func reveal_all() -> void:
 	visible = false
 	for s in get_tree().get_nodes_in_group("ships"):
 		s.visible = true
-	for sb in get_tree().get_nodes_in_group("starbases"):
+	for sb in get_tree().get_nodes_in_group("starbases") + get_tree().get_nodes_in_group("depots"):
 		sb.visible = true
 	for p in game.fx_root.get_children():
 		p.visible = true
@@ -168,6 +168,9 @@ func _refresh() -> void:
 	for p in tree.get_nodes_in_group("planets"):
 		if p.owner_id == pid:
 			_sources.append([p.global_position, sensor_range(p), false])
+	for dp in tree.get_nodes_in_group("depots"):
+		if dp.owner_id == pid and dp.is_alive():
+			_sources.append([dp.global_position, 300.0, false])
 	for b in tree.get_nodes_in_group("beacons"):
 		if b.owner_id == pid:
 			_sources.append([b.global_position, b.sensor_range(), true])
@@ -207,8 +210,8 @@ func _hide_unseen() -> void:
 			if not s.visible and s.selected:
 				game.selection.erase(s)
 				s.selected = false
-	# Enemy starbases: shown once seen, then remembered.
-	for sb in tree.get_nodes_in_group("starbases"):
+	# Enemy starbases and depots: shown once seen, then remembered.
+	for sb in tree.get_nodes_in_group("starbases") + tree.get_nodes_in_group("depots"):
 		if sb.owner_id != pid:
 			if can_see(sb):
 				sb.set_meta("seen", true)

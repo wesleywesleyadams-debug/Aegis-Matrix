@@ -61,6 +61,8 @@ var visions := {}
 var job_ships := {}
 ## Starbase placement mode for a selected Constructor.
 var placing_starbase: bool = false
+## Placing a Weapons Depot (Constructor, E).
+var placing_depot: bool = false
 
 var _grid := {}
 var _grid_big := {}
@@ -495,6 +497,9 @@ func upkeep(pid: int) -> float:
 			u += s.def["upkeep"]
 	u *= upkeep_multiplier(pid)
 	u += starbase_count(pid) * Defs.STARBASE["upkeep"] * starbase_upkeep_multiplier(pid)
+	for dp in get_tree().get_nodes_in_group("depots"):
+		if dp.owner_id == pid:
+			u += Defs.WEAPONS_DEPOT["upkeep"]
 	return u
 
 # ---------------------------------------------------------------- research
@@ -932,9 +937,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _handle_mouse_button(e: InputEventMouseButton) -> void:
 	match e.button_index:
 		MOUSE_BUTTON_LEFT:
-			if placing_starbase:
+			if placing_starbase or placing_depot:
 				if e.pressed:
-					_place_starbase(get_global_mouse_position())
+					if placing_depot:
+						_place_depot(get_global_mouse_position())
+					else:
+						_place_starbase(get_global_mouse_position())
 				return
 			if e.pressed:
 				_mouse_down = true
@@ -950,8 +958,9 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 				_dragging = false
 		MOUSE_BUTTON_RIGHT:
 			if e.pressed and not is_over:
-				if placing_starbase:
+				if placing_starbase or placing_depot:
 					placing_starbase = false
+					placing_depot = false
 				else:
 					_issue_command(get_global_mouse_position(), e.ctrl_pressed)
 		MOUSE_BUTTON_MIDDLE:
@@ -966,8 +975,9 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 func _handle_key(e: InputEventKey) -> void:
 	var k := e.keycode
 	if k == KEY_ESCAPE:
-		if placing_starbase:
+		if placing_starbase or placing_depot:
 			placing_starbase = false
+			placing_depot = false
 		elif is_instance_valid(focused_planet) or is_instance_valid(focused_asteroid) or is_instance_valid(focused_star):
 			clear_planet_focus()
 		elif hud.research_open():
@@ -992,6 +1002,9 @@ func _handle_key(e: InputEventKey) -> void:
 		return
 	if k == KEY_F and _selected_role("constructor"):
 		start_starbase_placement()
+		return
+	if k == KEY_E and _selected_role("constructor"):
+		start_depot_placement()
 		return
 	if k == KEY_MINUS or k == KEY_KP_SUBTRACT:
 		hud.set_speed_index(hud.speed_index() - 1)
@@ -1655,6 +1668,26 @@ func _enter_dev_capture() -> void:
 				sum += f
 			print("STRESS ships %d  frames %d  avg %.2f ms  p95 %.2f ms  max %.2f ms  projectiles %d" % [get_tree().get_nodes_in_group("ships").size(), frames.size(), sum / maxf(frames.size(), 1), frames[int(frames.size() * 0.95)] if frames.size() > 0 else 0.0, frames[-1] if frames.size() > 0 else 0.0, fx_root.get_child_count()])
 			get_tree().quit())
+	if OS.get_environment("SL_SHOT_OPEN") == "depot":
+		# Dev: a Constructor builds a Weapons Depot, two corvettes refit to Slip,
+		# then a refit of a specialist is refused.
+		var home := nearest_starbase(player_id, Vector2.ZERO)
+		resources[player_id]["minerals"] = 2000.0
+		resources[player_id]["spice"] = 200.0
+		var site: Vector2 = ai._depot_site(home.global_position, self)
+		var con := spawn_ship("constructor", player_id, home.global_position + Vector2(50, 0))
+		con.order_build_depot(site)
+		var cvs: Array = []
+		for i in 2:
+			cvs.append(spawn_ship("corvette", player_id, home.global_position + Vector2(-40, 30 * i)))
+		get_tree().create_timer(45.0).timeout.connect(func():
+			print("DEPOT finished: ", nearest_depot(player_id, site) != null)
+			for c in cvs:
+				c.order_refit("slip")
+			_set_selection([nearest_depot(player_id, site)], false))
+		get_tree().create_timer(75.0).timeout.connect(func():
+			print("DEPOT refitted: ", cvs.map(func(c): return c.ship_type if is_instance_valid(c) else "gone"), "  can refit again: ", cvs[0].can_refit("ion"))
+			center_on(site))
 	if OS.get_environment("SL_SHOT_OPEN") == "variants":
 		# Dev: base damage each variant needs to destroy each generalist,
 		# relative to a generalist attacker (1.00 = same, lower = faster).
@@ -1870,3 +1903,78 @@ func nearest_pocket(p: Vector2, max_dist: float) -> NebulaPocket:
 			best_d = d
 			best = n
 	return best
+
+# ---------------------------------------------------------------- weapons depots
+
+## "" if a Weapons Depot can go at pos, else why not. Like a starbase site,
+## but it only needs a little room from other stations.
+func depot_site_problem(pos: Vector2) -> String:
+	if not MAP_RECT.grow(-60).has_point(pos):
+		return "Too close to the edge of the system"
+	for n in get_tree().get_nodes_in_group("depots") + get_tree().get_nodes_in_group("starbases"):
+		if n.global_position.distance_to(pos) < Defs.WEAPONS_DEPOT["min_spacing"] * (0.4 if n is Starbase else 1.0) + 40.0:
+			return "Too close to another station"
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.global_position.distance_to(pos) < p.radius + 40.0:
+			return "Too close to a planet"
+	for s in get_tree().get_nodes_in_group("stars"):
+		if s.global_position.distance_to(pos) < s.radiation_radius + 40.0:
+			return "Too close to the star"
+	if is_blocked(pos, 40.0):
+		return "Blocked by the debris ring"
+	return ""
+
+func found_depot(pid: int, pos: Vector2) -> WeaponsDepot:
+	var d := WeaponsDepot.new()
+	d.owner_id = pid
+	d.position = pos
+	starbases_root.add_child(d)
+	if pid == player_id:
+		notify("Weapons Depot construction started.", "note_starbase", pos)
+	return d
+
+## The nearest finished Weapons Depot of pid (null if none).
+func nearest_depot(pid: int, pos: Vector2) -> WeaponsDepot:
+	var best: WeaponsDepot = null
+	var best_d := INF
+	for d in get_tree().get_nodes_in_group("depots"):
+		if d.owner_id == pid and d.is_alive() and not d.under_construction:
+			var dd: float = d.global_position.distance_to(pos)
+			if dd < best_d:
+				best_d = dd
+				best = d
+	return best
+
+func start_depot_placement() -> void:
+	placing_depot = true
+	placing_starbase = false
+	message.emit("Left-click open space for a Weapons Depot (%s over %ds). Right-click to cancel." % [Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), Defs.WEAPONS_DEPOT["build_time"]], Color("c3cde4"))
+
+func _place_depot(pos: Vector2) -> void:
+	var why := depot_site_problem(pos)
+	if why != "":
+		message.emit(why + ".", Color("ff8a5a"))
+		sfx.play_ui("deny")
+		return
+	var builders: Array = _own_ships_selected().filter(func(s): return s.def["role"] == "constructor")
+	placing_depot = false
+	if builders.is_empty():
+		return
+	builders.sort_custom(func(a, b): return a.global_position.distance_to(pos) < b.global_position.distance_to(pos))
+	builders[0].order_build_depot(pos)
+	hud.ping(pos, Color("ffd46b"))
+	sfx.play_ui("click")
+
+## Refit every selected generalist of yours that has variant `v` (see
+## Ship.order_refit).
+func refit_selected(v: String) -> void:
+	if nearest_depot(player_id, Vector2.ZERO) == null:
+		message.emit("Build a Weapons Depot first (Constructor, E).", Color("ff8a5a"))
+		sfx.play_ui("deny")
+		return
+	var n := 0
+	for s in _own_ships_selected():
+		if s.can_refit(v):
+			s.order_refit(v)
+			n += 1
+	sfx.play_ui("click" if n > 0 else "deny")

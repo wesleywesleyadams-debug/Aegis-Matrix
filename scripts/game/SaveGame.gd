@@ -36,6 +36,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"planets": {},
 		"asteroids": {},
 		"starbases": [],
+		"depots": [],
 		"ships": [],
 		"camera": _v(game.camera.global_position),
 	}
@@ -70,6 +71,10 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			"under_construction": sb.under_construction, "construct_progress": sb.construct_progress,
 			"seen": sb.get_meta("seen", false),
 		})
+	for dp in tree.get_nodes_in_group("depots"):
+		if dp.is_alive():
+			data["depots"].append({"owner": dp.owner_id, "pos": _v(dp.global_position), "hp": dp.hp, "armor": dp.armor, "shield": dp.shield,
+				"under_construction": dp.under_construction, "construct_progress": dp.construct_progress, "seen": dp.get_meta("seen", false)})
 	for s in tree.get_nodes_in_group("ships"):
 		if not s.is_alive():
 			continue
@@ -95,7 +100,9 @@ static func _order_of(s: Ship) -> Dictionary:
 			if is_instance_valid(s.colonize_target):
 				return {"kind": "colonize", "target": String(s.colonize_target.name)}
 		Ship.State.BUILD:
-			return {"kind": "build", "at": _v(s.build_site)}
+			return {"kind": "build", "at": _v(s.build_site), "what": s.build_kind}
+		Ship.State.REFIT:
+			return {"kind": "refit", "variant": s.refit_variant, "left": s.refit_left}
 		Ship.State.BOMBARD:
 			if is_instance_valid(s.bombard_target):
 				return {"kind": "bombard", "target": String(s.bombard_target.name)}
@@ -213,6 +220,17 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		sb.rally_point = _p(d.get("rally", [0, 0]))
 		sb.has_rally = bool(d.get("has_rally", false))
 		sb.set_meta("seen", bool(d.get("seen", false)))
+	for d in data.get("depots", []):
+		var dp := WeaponsDepot.new()
+		dp.owner_id = int(d["owner"])
+		dp.under_construction = bool(d.get("under_construction", false))
+		dp.construct_progress = float(d.get("construct_progress", 0.0))
+		dp.position = _p(d["pos"])
+		game.starbases_root.add_child(dp)
+		dp.hp = float(d["hp"])
+		dp.armor = float(d.get("armor", 0.0))
+		dp.shield = float(d.get("shield", 0.0))
+		dp.set_meta("seen", bool(d.get("seen", false)))
 	for d in data.get("ships", []):
 		if not Defs.SHIPS.has(d["type"]):
 			continue
@@ -237,7 +255,14 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			"colonize":
 				if planets.has(o["target"]):
 					s.order_colonize(planets[o["target"]])
-			"build": s.order_build_starbase(_p(o["at"]))
+			"build":
+				if o.get("what", "starbase") == "depot":
+					s.order_build_depot(_p(o["at"]))
+				else:
+					s.order_build_starbase(_p(o["at"]))
+			"refit":
+				s.order_refit(str(o["variant"]))
+				s.refit_left = float(o.get("left", s.refit_left))
 			"bombard":
 				if planets.has(o["target"]):
 					s.order_bombard(planets[o["target"]])

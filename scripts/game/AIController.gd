@@ -159,6 +159,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 
 	_scout(pid, st, game, ships.filter(func(s): return s.def["role"] == "scout") + war)
 	_use_jobs(pid, ships, game)
+	_manage_depot(pid, ships, base, game)
 
 	# The learned commander decides builds and fleet moves itself.
 	if nn != null:
@@ -201,13 +202,6 @@ func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	# Stop growing the fleet once upkeep would outrun income.
 	if game.rates[pid].get("energy", 0.0) < 0.5 and res["energy"] < 200.0:
 		return ""
-	# Specialists: swap some corvettes for the variant that suits the enemy
-	# defenses we've actually seen.
-	var spec := _pick_variant(pid, game)
-	if spec != "" and randf() < 0.6:
-		for i in options.size():
-			if options[i] == "corvette":
-				options[i] = spec + "_corvette"
 	for t in options:
 		if st.get("corvettes_only", false) and Defs.SHIPS[t].get("base", t) != "corvette":
 			continue
@@ -474,3 +468,46 @@ func _pick_variant(pid: int, game: Game) -> String:
 	if l["armor"] / total > 0.3:
 		return "breacher"
 	return "reaver"
+
+# ---------------------------------------------------------------- weapons depot
+
+## Once the fleet is sizable: get a Constructor, build a Weapons Depot near
+## home, then refit idle generalist corvettes near home into the variant
+## that suits the enemy defenses seen so far (a few at a time).
+func _manage_depot(pid: int, ships: Array, base: Starbase, game: Game) -> void:
+	var war := ships.filter(func(s): return s.def["role"] == "warship")
+	var have_depot := game.get_tree().get_nodes_in_group("depots").any(func(d): return d.owner_id == pid)
+	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
+	if not have_depot:
+		if war.size() >= 6 and builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
+			base.enqueue("constructor")
+		for c in builders:
+			if c.state == Ship.State.IDLE:
+				var site := _depot_site(base.global_position, game)
+				if site != Vector2.INF:
+					c.order_build_depot(site)
+				break
+		return
+	var depot := game.nearest_depot(pid, base.global_position)
+	if depot == null:
+		return
+	var spec := _pick_variant(pid, game)
+	if spec == "":
+		return
+	var busy := ships.filter(func(s): return s.state == Ship.State.REFIT).size()
+	for s in war:
+		if busy >= 3:
+			break
+		if s.state == Ship.State.IDLE and s.can_refit(spec) and s.global_position.distance_to(base.global_position) < 1200.0 and randf() < 0.5:
+			s.order_refit(spec)
+			busy += 1
+
+## A free spot for a depot a little way from home, toward the middle.
+func _depot_site(home: Vector2, game: Game) -> Vector2:
+	var dir := (-home).normalized() if home.length() > 1.0 else Vector2.RIGHT
+	for r in [260.0, 340.0, 420.0]:
+		for a in [0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, PI]:
+			var p: Vector2 = home + dir.rotated(a) * r
+			if game.depot_site_problem(p) == "":
+				return p
+	return Vector2.INF

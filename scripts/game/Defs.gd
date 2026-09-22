@@ -93,10 +93,20 @@ const BASE_SHIPS := {
 }
 
 ## Starbase build menu order (and G/J/K etc. hotkey lookup): economy,
-## support, generalist warships, then specialist variants.
+## support, generalist warships. Specialist variants aren't built here: a
+## generalist is refitted into one at a Weapons Depot (WEAPONS_DEPOT).
 const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor", "scout", "tender",
-	"corvette", "destroyer", "cruiser", "heatshield",
-	"ion_corvette", "breacher_corvette", "reaver_corvette", "slip_corvette", "disruptor_corvette"]
+	"corvette", "destroyer", "cruiser", "heatshield"]
+
+## Weapons Depot: built by a Constructor like a starbase (paid over
+## build_time). Generalist warships dock there to be refitted into a specialist
+## variant (Defs.VARIANTS), which is permanent: a specialist can't be refitted
+## again. Doesn't count as a starbase (losing it doesn't lose the match).
+const WEAPONS_DEPOT := {
+	"name": "Weapons Depot", "hp": 900.0, "armor": 400.0, "shield": 300.0, "radius": 22.0,
+	"cost": {"minerals": 250, "spice": 20}, "build_time": 30.0, "upkeep": 0.3,
+	"refit_time": 12.0, "refit_cost": {"minerals": 25}, "min_spacing": 250.0,
+}
 
 const STARBASE := {
 	"name": "Starbase", "hp": 2800.0, "armor": 1200.0, "shield": 1500.0, "radius": 26.0,

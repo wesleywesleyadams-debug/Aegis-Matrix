@@ -85,6 +85,12 @@ func _draw() -> void:
 		var pos := _map_to_ui(sb.global_position)
 		draw_rect(Rect2(pos - Vector2(4, 4), Vector2(8, 8)), Defs.team_color(sb.owner_id))
 		draw_rect(Rect2(pos - Vector2(4, 4), Vector2(8, 8)), Color.WHITE, false, 1.0)
+	# Weapons Depots: a small hollow diamond in the owner's color.
+	for dp in tree.get_nodes_in_group("depots"):
+		if dp.visible:
+			var dpos := _map_to_ui(dp.global_position)
+			var dc := Defs.team_color(dp.owner_id)
+			draw_polyline(PackedVector2Array([dpos + Vector2(0, -4), dpos + Vector2(4, 0), dpos + Vector2(0, 4), dpos + Vector2(-4, 0), dpos + Vector2(0, -4)]), dc, 1.5)
 	for s in tree.get_nodes_in_group("ships"):
 		if not s.visible:
 			continue

@@ -4,7 +4,7 @@ extends SpaceEntity
 ## A single ship. Stats come from Defs.SHIPS[ship_type]; sprites are
 ## assets/pixel/ship_<type>.png plus a team-tinted overlay layer.
 
-enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD }
+enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD, REFIT }
 
 @export_enum("miner", "colony", "constructor", "corvette", "destroyer", "cruiser") var ship_type: String = "corvette":
 	set(v):
@@ -44,6 +44,13 @@ var cargo_type: String = "minerals"
 var colonize_target: Planet
 var bombard_target: Planet
 var build_site: Vector2
+## What a Constructor is building at build_site: "starbase" or "depot".
+var build_kind: String = "starbase"
+## Refit (see order_refit): the variant being fitted, the depot, and the
+## refit time still to go.
+var refit_variant: String = ""
+var refit_depot: WeaponsDepot
+var refit_left: float = 0.0
 
 ## Jobs (see Abilities): when the Q ability can be used again, until when
 ## its effect lasts, and the ships a Repair Tender is currently healing.
@@ -194,6 +201,7 @@ func order_build_starbase(pos: Vector2) -> void:
 	if def["role"] != "constructor":
 		return
 	build_site = pos
+	build_kind = "starbase"
 	state = State.BUILD
 
 func order_stop() -> void:
@@ -310,8 +318,13 @@ func _physics_process(delta: float) -> void:
 				face_target = null
 		State.BUILD:
 			if global_position.distance_to(build_site) <= 8.0:
-				if Game.instance.starbase_site_problem(build_site) == "":
-					Game.instance.found_starbase(owner_id, build_site)
+				var is_depot := build_kind == "depot"
+				var problem: String = Game.instance.depot_site_problem(build_site) if is_depot else Game.instance.starbase_site_problem(build_site)
+				if problem == "":
+					if is_depot:
+						Game.instance.found_depot(owner_id, build_site)
+					else:
+						Game.instance.found_starbase(owner_id, build_site)
 					_dead = true
 					died.emit(self)
 					queue_free()
@@ -322,6 +335,26 @@ func _physics_process(delta: float) -> void:
 				move_goal = global_position
 			else:
 				desired = _arrive(build_site, 1.0)
+		State.REFIT:
+			if not is_instance_valid(refit_depot) or not refit_depot.is_alive() or refit_depot.under_construction:
+				refit_depot = Game.instance.nearest_depot(owner_id, global_position)
+			if refit_depot == null:
+				state = State.IDLE
+				move_goal = global_position
+			else:
+				var dock: float = refit_depot.radius + radius + 12.0
+				if global_position.distance_to(refit_depot.global_position) > dock + 8.0:
+					desired = _arrive(refit_depot.global_position, 1.0, dock)
+				else:
+					# Docked: the refit is paid over its time, like a build.
+					var dd: Dictionary = Defs.WEAPONS_DEPOT
+					var per_sec := {}
+					for k in dd["refit_cost"]:
+						per_sec[k] = dd["refit_cost"][k] / dd["refit_time"]
+					refit_left -= delta * Game.instance.pay_over_time(owner_id, per_sec, delta)
+					queue_redraw()
+					if refit_left <= 0.0:
+						_become(refit_variant + "_" + ship_type)
 		State.RETURN:
 			var base := Game.instance.nearest_starbase(owner_id, global_position)
 			if base == null:
@@ -581,3 +614,49 @@ func _draw_job() -> void:
 			if selected:
 				draw_arc(Vector2.ZERO, Abilities.ESCORT_RANGE, 0.0, TAU, 64, Color(c, 0.25), 1.0)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# ---------------------------------------------------------------- refits
+
+## Can this ship be refitted into variant v? Only generalists that have
+## that variant; a specialist is permanent (see Defs.VARIANTS).
+func can_refit(v: String) -> bool:
+	return not def.has("variant") and Defs.VARIANTS_OF.get(ship_type, []).has(v)
+
+## Fly to the nearest Weapons Depot and refit into variant v there.
+func order_refit(v: String) -> void:
+	if not can_refit(v):
+		return
+	refit_variant = v
+	refit_left = Defs.WEAPONS_DEPOT["refit_time"]
+	refit_depot = null
+	state = State.REFIT
+
+## Turns this ship into another type in place (a finished refit), keeping
+## how damaged each layer is.
+func _become(new_type: String) -> void:
+	var hp_f := hp / max_hp if max_hp > 0.0 else 1.0
+	var ar_f := armor / max_armor if max_armor > 0.0 else 1.0
+	var sh_f := shield / max_shield if max_shield > 0.0 else 1.0
+	ship_type = new_type
+	def = Defs.SHIPS[new_type]
+	display_name = def["name"]
+	refresh_stats()
+	hp = max_hp * hp_f
+	armor = max_armor * ar_f
+	shield = max_shield * sh_f
+	refit_variant = ""
+	state = State.IDLE
+	move_goal = global_position
+	var g := Game.instance
+	g.stats.count(owner_id, "refit_" + def["variant"])
+	if owner_id == g.player_id:
+		g.notify("Refit complete: %s." % def["name"], "note_ship", global_position)
+		g.selection_changed.emit()
+	queue_redraw()
+
+func order_build_depot(pos: Vector2) -> void:
+	if def["role"] != "constructor":
+		return
+	build_site = pos
+	build_kind = "depot"
+	state = State.BUILD
