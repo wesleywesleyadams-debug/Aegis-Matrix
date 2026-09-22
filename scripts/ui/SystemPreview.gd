@@ -16,6 +16,10 @@ var _settings: Dictionary = {}
 var _random := false
 static var _orion_cache: Dictionary = {}
 
+func _ready() -> void:
+	# Storm arms and the like reach past the edge: keep them in the box.
+	clip_contents = true
+
 func show_system(id: String) -> void:
 	_random = id == "random"
 	var sys := SystemGen.find(id)
@@ -41,6 +45,8 @@ func show_system(id: String) -> void:
 			facts += "\nDebris ring: four narrow gaps funnel every fleet."
 		if _settings.get("feature", "") == "spice_nebula":
 			facts += "\nSpice Nebula: rich spice, but shields drain inside."
+		if _settings.get("feature", "") == "storms":
+			facts += "\nIon storms: sweeping arms slow ships to 40%."
 	queue_redraw()
 
 ## Orion Reach is hand-placed in Main.tscn: read its planets, rocks and
@@ -71,6 +77,13 @@ func _draw() -> void:
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(0, center.y + 10), "?", HORIZONTAL_ALIGNMENT_CENTER, size.x, 36, Color(0.7, 0.75, 0.9, 0.8))
 		return
+	for ft in _layout.get("features", []):
+		if ft["type"] == "storms":
+			for arm in 2:
+				var mid: float = ft["phase"] + PI * arm
+				var reach := size.length()
+				draw_colored_polygon(PackedVector2Array([center + Vector2.from_angle(mid - IonStorm.HALF_WIDTH) * ft["inner"] * sc, center + Vector2.from_angle(mid - IonStorm.HALF_WIDTH) * reach,
+					center + Vector2.from_angle(mid + IonStorm.HALF_WIDTH) * reach, center + Vector2.from_angle(mid + IonStorm.HALF_WIDTH) * ft["inner"] * sc]), Color(0.5, 0.75, 1.0, 0.14))
 	for ft in _layout.get("features", []):
 		if ft["type"] == "rings":
 			for i in 96:

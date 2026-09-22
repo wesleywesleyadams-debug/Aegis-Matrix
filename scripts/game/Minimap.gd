@@ -38,6 +38,18 @@ func _gui_input(event: InputEvent) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("05050c"))
 	var tree := game.get_tree()
+	# Ion storms: active arms as blue wedges, a faint outline while building.
+	for storm in tree.get_nodes_in_group("storms"):
+		var sg: String = storm.stage(Game.now())
+		if sg == "calm":
+			continue
+		var sc0 := _map_to_ui(storm.global_position)
+		var ms := size.x / Game.MAP_RECT.size.x
+		for arm in 2:
+			var mid: float = storm.arm_angle(Game.now()) + PI * arm
+			var pts := PackedVector2Array([sc0 + Vector2.from_angle(mid - IonStorm.HALF_WIDTH) * storm.inner * ms, sc0 + Vector2.from_angle(mid - IonStorm.HALF_WIDTH) * IonStorm.REACH * ms,
+				sc0 + Vector2.from_angle(mid + IonStorm.HALF_WIDTH) * IonStorm.REACH * ms, sc0 + Vector2.from_angle(mid + IonStorm.HALF_WIDTH) * storm.inner * ms])
+			draw_colored_polygon(pts, Color(0.5, 0.75, 1.0, 0.22 if sg == "active" else 0.07))
 	# Debris rings: solid grey-brown band, gaps left open.
 	for ring in tree.get_nodes_in_group("debris_rings"):
 		var rc := _map_to_ui(ring.global_position)

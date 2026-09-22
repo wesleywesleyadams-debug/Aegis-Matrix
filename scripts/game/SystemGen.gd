@@ -24,8 +24,8 @@ const SYSTEMS := [
 	{"id": "tethys_cluster", "name": "Tethys Cluster", "seed": 3313, "desc": "Crowded worlds behind a debris ring.", "star": "orange", "star_name": "Tethys",
 		"bg": "verdant", "names": "myth", "feature": "rings", "arrival": "You arrive in the Tethys Cluster. A wall of rubble rings the inner worlds; find the gaps.",
 		"params": {"planets": 5, "belts": 3, "spice": 0.1}},
-	{"id": "sable_verge", "name": "Sable Verge", "seed": 4419, "desc": "Few worlds, heavy mineral belts.", "star": "blue_giant", "star_name": "Sable",
-		"bg": "ash", "names": "stone", "arrival": "You arrive at the Sable Verge. A blue giant scorches a wide, deadly core.",
+	{"id": "sable_verge", "name": "Sable Verge", "seed": 4419, "desc": "Heavy belts, swept by ion storms.", "star": "blue_giant", "star_name": "Sable",
+		"bg": "ash", "names": "stone", "feature": "storms", "arrival": "You arrive at the Sable Verge. Ion storms wheel around a blue giant; time your moves.",
 		"params": {"planets": 3, "belts": 3, "spice": 0.05}},
 	{"id": "random", "name": "Random", "desc": "A new system every match.", "arrival": "You arrive in uncharted space."},
 ]
@@ -194,6 +194,8 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	# Signature feature: a spice nebula ring around the star, seeded with
 	# extra spice rocks (the ring itself is symmetric; the rocks are mirrored).
 	var features: Array = []
+	if params.get("feature", "") == "storms":
+		features.append({"type": "storms", "inner": star_clear - 60.0, "phase": rng.randf() * TAU})
 	if ring_radius > 0.0:
 		# Two gaps per half, mirrored through the star.
 		var g1 := rng.randf_range(0.3, 1.1)

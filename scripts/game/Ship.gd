@@ -102,7 +102,8 @@ func refresh_stats() -> void:
 	shield = max_shield * sh_frac
 
 func max_speed() -> float:
-	return def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id)
+	var storm := IonStorm.SLOW if Game.instance.in_storm(global_position) else 1.0
+	return def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
 
 func cargo_cap() -> int:
 	return int(def.get("cargo", 0) * Game.instance.mod(owner_id, "cargo"))
