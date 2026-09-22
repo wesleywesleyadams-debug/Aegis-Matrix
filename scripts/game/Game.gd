@@ -1122,6 +1122,8 @@ func _enter_dev_capture() -> void:
 		queue_research(player_id, "plasma_lances")
 	await get_tree().create_timer(secs).timeout
 	match OS.get_environment("SL_SHOT_OPEN"):
+		"pause":
+			hud.show_pause(true)
 		"research":
 			hud.toggle_research()
 		"picker":

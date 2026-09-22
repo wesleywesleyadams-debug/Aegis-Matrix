@@ -47,6 +47,8 @@ func _ready() -> void:
 	new_account_panel.visible = false
 	sign_in_panel.visible = false
 
+	for b in [create_account_button, steam_button, account_close_button]:
+		MenuStyle.button(b)
 	account_close_button.pressed.connect(close)
 	sign_in_button.pressed.connect(_on_sign_in_button_pressed)
 	create_account_button.pressed.connect(_on_create_account_pressed)

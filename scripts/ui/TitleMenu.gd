@@ -44,8 +44,7 @@ func _ready() -> void:
 	# Bigger buttons; the menu is centered on screen (see TitleMenu.tscn).
 	for b in vbox.get_children():
 		if b is Button:
-			b.custom_minimum_size.y = 64
-			b.add_theme_font_size_override("font_size", 26)
+			MenuStyle.button(b)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and _new_game_page.visible:
@@ -71,7 +70,7 @@ var _new_game_page: VBoxContainer
 
 func _build_new_game_page() -> void:
 	_new_game_page = VBoxContainer.new()
-	_new_game_page.add_theme_constant_override("separation", 12)
+	_new_game_page.add_theme_constant_override("separation", 16)
 	_new_game_page.visible = false
 	add_child(_new_game_page)
 	for spec in [
@@ -87,6 +86,7 @@ func _build_new_game_page() -> void:
 		else:
 			b.disabled = true
 			b.tooltip_text = spec[2]
+		MenuStyle.button(b)
 		_new_game_page.add_child(b)
 
 ## Both modes use the lobby; the chosen mode is kept on GameState.
@@ -103,8 +103,9 @@ func _show_new_game_page(on: bool) -> void:
 		AccountMenu.close()
 	_new_game_page.visible = on
 	if on:
-		_new_game_page.size = Vector2(vbox.size.x, 0)
-		_new_game_page.position = vbox.position
+		# Centered on screen, like the main menu.
+		_new_game_page.reset_size()
+		_new_game_page.position = (size - _new_game_page.size) / 2.0
 
 func _on_editor_pressed() -> void:
 	get_tree().change_scene_to_file("res://scenes/MapEditor.tscn")
@@ -184,7 +185,7 @@ func _build_load_screen() -> Control:
 		_save_lists[pair[0]] = list
 	var close := Button.new()
 	close.text = "Back"
-	close.custom_minimum_size = Vector2(220, 0)
+	MenuStyle.button(close)
 	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close.pressed.connect(_on_close_load_list_pressed)
 	v.add_child(close)
@@ -214,6 +215,7 @@ func _on_load_pressed() -> void:
 	# The main menu and account section step aside while this is open.
 	vbox.visible = false
 	quit_button.visible = false
+	$TitleLabel.visible = false
 	AccountMenu.close()
 	load_list_panel.visible = true
 
@@ -232,6 +234,7 @@ func _on_save_entry_pressed(path: String, mode: String, save_name: String) -> vo
 
 func _on_close_load_list_pressed() -> void:
 	load_list_panel.visible = false
+	$TitleLabel.visible = true
 	vbox.visible = true
 	quit_button.visible = true
 
@@ -257,6 +260,9 @@ func _notification(what: int) -> void:
 			# In-memory only (never saved): a second account to show both row states.
 			GameState.accounts.append({"name": "Guest", "password_hash": ""})
 			account_button.pressed.emit()
+			await get_tree().process_frame
+		if OS.get_environment("SL_TITLE_SHOT") == "options":
+			OptionsMenu.open()
 			await get_tree().process_frame
 		if OS.get_environment("SL_TITLE_SHOT") == "create":
 			AccountMenu._on_create_account_pressed()

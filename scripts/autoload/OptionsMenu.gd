@@ -67,6 +67,7 @@ func _ready() -> void:
 	limiter.ceiling_db = -1.5
 	AudioServer.add_bus_effect(_master_bus_index, limiter)
 
+	MenuStyle.button(close_button)
 	close_button.pressed.connect(close)
 	master_slider.value_changed.connect(_on_master_slider_changed)
 	music_slider.value_changed.connect(_on_music_slider_changed)

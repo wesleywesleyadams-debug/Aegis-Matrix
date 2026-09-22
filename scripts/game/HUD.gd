@@ -370,6 +370,7 @@ func _build_pause(root: Control) -> void:
 		var b := Button.new()
 		b.text = pair[0]
 		b.pressed.connect(pair[1])
+		MenuStyle.button(b)
 		v.add_child(b)
 
 func _build_end(root: Control) -> void:
@@ -378,6 +379,7 @@ func _build_end(root: Control) -> void:
 	_end_label = parts[2]
 	var b := Button.new()
 	b.text = "Return to Title"
+	MenuStyle.button(b)
 	b.pressed.connect(_quit_to_title)
 	parts[1].add_child(b)
 
