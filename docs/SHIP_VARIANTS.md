@@ -1,6 +1,7 @@
 # Star Lords — Defense layers, ship variants and the Weapons Depot
 
-Reference for the combat design. Numbers live in `scripts/game/Defs.gd`
+Reference for the combat design. A color-coded version with the ship sprites is
+`docs/ship-variants.html` (open it in a browser). Numbers live in `scripts/game/Defs.gd`
 (`SHIPS`, `VARIANTS`, `VARIANTS_OF`, `WEAPONS_DEPOT`, `LAYER_COLORS`); the damage
 maths is in `SpaceEntity.take_damage`.
 

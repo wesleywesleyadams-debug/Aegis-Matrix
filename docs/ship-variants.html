@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Star Lords Combat Reference</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+  /* Single, deliberate look: the game's own dark cockpit palette, so the
+     layer colors on this page are the exact colors seen in game. */
+  :root {
+    --void: #0a0c1a;
+    --panel: #141833;
+    --panel-2: #1b2045;
+    --edge: #2b3a6b;
+    --edge-lit: #4fb4ff;
+    --ink: #c9d3e8;
+    --ink-dim: #7c88ab;
+    --shield: #7fd8ff;
+    --armor: #ff4a4a;
+    --hull: #58e07a;
+    --slip: #ffa43a;
+    --gen: #ffd84a;
+    --spice: #ff9a2e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, #171c3d 0%, transparent 60%),
+      radial-gradient(900px 500px at 90% 0%, #1a1430 0%, transparent 55%),
+      var(--void);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; padding-block: 40px 72px; }
+  h1, h2, h3 { font-family: "Chakra Petch", "IBM Plex Sans", sans-serif; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(30px, 5vw, 46px); letter-spacing: 0.02em; font-weight: 700; }
+  h2 { font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+  h3 { font-size: 17px; letter-spacing: 0.02em; }
+  .sub { color: var(--ink-dim); max-width: 62ch; }
+  header .rule { height: 2px; background: linear-gradient(90deg, var(--shield), var(--armor) 45%, var(--hull) 80%, transparent); margin: 18px 0 0; }
+  section { margin-top: 44px; display: grid; gap: 16px; }
+  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); }
+
+  /* layer trio */
+  .layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .layer { border: 1px solid var(--edge); border-left: 5px solid var(--c); background: var(--panel); padding: 14px 16px; }
+  .layer h3 { color: var(--c); }
+  .layer p { margin: 6px 0 0; color: var(--ink-dim); font-size: 14px; }
+  .order { display: flex; align-items: center; gap: 10px; font-family: "IBM Plex Mono", monospace; font-size: 14px; flex-wrap: wrap; }
+  .chip { padding: 3px 10px; border: 1px solid currentColor; }
+  .arrow { color: var(--ink-dim); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .scroll { overflow-x: auto; }
+  th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--edge); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); border-bottom-color: var(--edge-lit); }
+  tbody tr:hover { background: var(--panel); }
+  .best { color: var(--hull); font-weight: 600; }
+  .worst { color: var(--armor); }
+  .lead { color: var(--ink); }
+
+  /* stacked defense bars */
+  .bar { display: flex; height: 12px; width: 190px; border: 1px solid var(--edge); }
+  .bar span { display: block; }
+  .bar .s { background: var(--shield); }
+  .bar .a { background: var(--armor); }
+  .bar .h { background: var(--hull); }
+
+  /* variant cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+  .card { border: 1px solid var(--edge); background: var(--panel); padding: 14px 16px; display: grid; gap: 8px; align-content: start; }
+  .card.gen { border-style: dashed; }
+  .card header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .card h3 { color: var(--c); }
+  .card .dmg { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--ink-dim); }
+  .card p { margin: 0; font-size: 14px; }
+  .mark { border: 1px solid var(--edge); background: #0b0e20; }
+  .meta { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-dim); }
+  .meta b { color: var(--c); font-weight: 600; }
+
+  .note { border-left: 3px solid var(--edge-lit); padding: 2px 0 2px 14px; color: var(--ink-dim); font-size: 14px; }
+  ul { margin: 0; padding-left: 18px; }
+  li { margin: 4px 0; }
+  code { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--shield); }  /* fleet chart: real sprites, upscaled */
+  .fleet { display: grid; gap: 18px; }
+  .fleet-row { border: 1px solid var(--edge); background: var(--panel); padding: 12px 14px; }
+  .fleet-name { font-family: "Chakra Petch", sans-serif; font-size: 18px; letter-spacing: 0.04em; display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .fleet-name .meta { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .fleet-ships { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .ship { margin: 0; display: grid; justify-items: center; gap: 6px; padding: 10px 6px 8px; background: #0b0e20; border: 1px solid var(--edge); border-top: 3px solid var(--c); }
+  .ship img { image-rendering: pixelated; width: auto; max-width: 100%; height: 56px; }
+  .ship .shot { line-height: 0; }
+  .ship figcaption { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--c); letter-spacing: 0.04em; }
+
+  footer { margin-top: 52px; border-top: 1px solid var(--edge); padding-top: 14px; color: var(--ink-dim); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Star Lords · combat design</div>
+    <h1>Shields, Armor, Hull</h1>
+    <p class="sub">How damage moves through a ship, how the three generalists differ, and what each specialist variant is for. Colors here are the colors in game: <b style="color:var(--shield)">shields</b>, <b style="color:var(--armor)">armor</b>, <b style="color:var(--hull)">hull</b>.</p>
+    <div class="rule"></div>
+  </header>
+
+  <section>
+    <div class="eyebrow">Damage order</div>
+    <div class="order">
+      <span class="chip" style="color:var(--shield)">SHIELDS</span>
+      <span class="arrow">→</span>
+      <span class="chip" style="color:var(--armor)">ARMOR</span>
+      <span class="arrow">→</span>
+      <span class="chip" style="color:var(--hull)">HULL</span>
+      <span class="arrow">→ ship destroyed at 0 hull</span>
+    </div>
+    <div class="layers">
+      <div class="layer" style="--c: var(--shield)">
+        <h3>Shields</h3>
+        <p>Regenerate on their own for a little energy. Drained inside spice nebulae, so armored fleets own that terrain.</p>
+      </div>
+      <div class="layer" style="--c: var(--armor)">
+        <h3>Armor</h3>
+        <p><b>Never regenerates.</b> Only a Repair Tender restores it, which is what makes support ships matter in a long war.</p>
+      </div>
+      <div class="layer" style="--c: var(--hull)">
+        <h3>Hull</h3>
+        <p>The ship's life. A Repair Tender heals hull first, then armor.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Generalists</div>
+    <h2>Each leans on a different layer</h2>
+    <p class="sub">Same total toughness per ship, split differently. This is what gives specialists something to specialize against.</p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Ship</th><th>Shield</th><th>Armor</th><th>Hull</th><th>Profile</th><th>Leans on</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="lead">Corvette</td><td>30</td><td>20</td><td>70</td>
+            <td><div class="bar"><span class="s" style="width:25%"></span><span class="a" style="width:17%"></span><span class="h" style="width:58%"></span></div></td>
+            <td style="color:var(--hull)">hull</td>
+          </tr>
+          <tr>
+            <td class="lead">Destroyer</td><td>140</td><td>40</td><td>120</td>
+            <td><div class="bar"><span class="s" style="width:47%"></span><span class="a" style="width:13%"></span><span class="h" style="width:40%"></span></div></td>
+            <td style="color:var(--shield)">shields</td>
+          </tr>
+          <tr>
+            <td class="lead">Cruiser</td><td>150</td><td>360</td><td>250</td>
+            <td><div class="bar"><span class="s" style="width:20%"></span><span class="a" style="width:47%"></span><span class="h" style="width:33%"></span></div></td>
+            <td style="color:var(--armor)">armor</td>
+          </tr>
+          <tr>
+            <td class="lead">Starbase</td><td>1500</td><td>1200</td><td>2800</td>
+            <td><div class="bar"><span class="s" style="width:27%"></span><span class="a" style="width:22%"></span><span class="h" style="width:51%"></span></div></td>
+            <td style="color:var(--hull)">hull</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Specialists</div>
+    <h2>Five variants of every warship</h2>
+    <p class="sub">Color says which layer a variant hits; the marking pattern says which variant it is. Every variant costs the same as its generalist — the price is paid in base damage.</p>
+    <div class="cards">
+
+      <div class="card gen" style="--c: var(--gen)">
+        <header><h3>Generalist</h3><span class="dmg">100% base</span></header>
+        <svg class="mark" viewBox="0 0 120 26" width="100%" height="26" role="img" aria-label="No markings">
+          <rect x="0" y="0" width="120" height="26" fill="none"/>
+          <text x="60" y="17" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="#7c88ab">no markings</text>
+        </svg>
+        <p>Full damage to shields, armor and hull alike. Never a wrong answer, never a great one.</p>
+        <div class="meta">Shots: <b>yellow lasers</b></div>
+      </div>
+
+      <div class="card" style="--c: var(--shield)">
+        <header><h3>Ion</h3><span class="dmg">80% base · ×2.2 shields</span></header>
+        <svg class="mark" viewBox="0 0 120 26" width="100%" height="26" role="img" aria-label="Dotted spine stripe and nose emitter">
+          <g fill="#7fd8ff">
+            <rect x="10" y="12" width="6" height="3"/><rect x="22" y="12" width="6" height="3"/><rect x="34" y="12" width="6" height="3"/>
+            <rect x="46" y="12" width="6" height="3"/><rect x="58" y="12" width="6" height="3"/><rect x="70" y="12" width="6" height="3"/>
+            <circle cx="98" cy="13" r="4"/>
+          </g>
+        </svg>
+        <p>Strips shields fast. Best against shield-heavy Destroyers and starbase shields; weak once shields are already down.</p>
+        <div class="meta">Shots: <b>light blue lasers</b> · dotted spine, nose emitter</div>
+      </div>
+
+      <div class="card" style="--c: var(--armor)">
+        <header><h3>Breacher</h3><span class="dmg">80% base · ×2.2 armor</span></header>
+        <svg class="mark" viewBox="0 0 120 26" width="100%" height="26" role="img" aria-label="Solid spine stripe and ram prongs">
+          <g fill="#ff4a4a">
+            <rect x="10" y="12" width="70" height="3"/>
+            <rect x="88" y="6" width="18" height="3"/><rect x="88" y="18" width="18" height="3"/>
+          </g>
+        </svg>
+        <p>Chews through plating. Best against armor-heavy Cruisers; wasted on lightly armored swarms.</p>
+        <div class="meta">Shots: <b>red lasers</b> · solid spine, ram prongs</div>
+      </div>
+
+      <div class="card" style="--c: var(--hull)">
+        <header><h3>Reaver</h3><span class="dmg">80% base · ×1.9 hull</span></header>
+        <svg class="mark" viewBox="0 0 120 26" width="100%" height="26" role="img" aria-label="Solid spine stripe and saw-tooth edges">
+          <g fill="#58e07a">
+            <rect x="10" y="12" width="90" height="3"/>
+            <path d="M12 4 l6 0 l-3 5 z M28 4 l6 0 l-3 5 z M44 4 l6 0 l-3 5 z M60 4 l6 0 l-3 5 z M76 4 l6 0 l-3 5 z"/>
+            <path d="M12 22 l6 0 l-3 -5 z M28 22 l6 0 l-3 -5 z M44 22 l6 0 l-3 -5 z M60 22 l6 0 l-3 -5 z M76 22 l6 0 l-3 -5 z"/>
+          </g>
+        </svg>
+        <p>Finishes ships once their outer layers are gone, and mauls hull-heavy corvette swarms and starbases outright.</p>
+        <div class="meta">Shots: <b>green lasers</b> · solid spine, saw teeth</div>
+      </div>
+
+      <div class="card" style="--c: var(--slip)">
+        <header><h3>Slip</h3><span class="dmg">65% base · ignores shields</span></header>
+        <svg class="mark" viewBox="0 0 120 26" width="100%" height="26" role="img" aria-label="Twin dashed side stripes">
+          <g fill="#ffa43a">
+            <rect x="10" y="6" width="9" height="3"/><rect x="25" y="6" width="9" height="3"/><rect x="40" y="6" width="9" height="3"/><rect x="55" y="6" width="9" height="3"/><rect x="70" y="6" width="9" height="3"/>
+            <rect x="10" y="18" width="9" height="3"/><rect x="25" y="18" width="9" height="3"/><rect x="40" y="18" width="9" height="3"/><rect x="55" y="18" width="9" height="3"/><rect x="70" y="18" width="9" height="3"/>
+            <path d="M92 6 l10 7 l-10 7 l0 -3 l6 -4 l-6 -4 z"/>
+          </g>
+        </svg>
+        <p>Shots pass straight through shields into armor and hull — so shield regeneration never buys the enemy anything. Strongest pick against Destroyers.</p>
+        <div class="meta">Shots: <b>orange V-shots</b> · twin dashed side stripes</div>
+      </div>
+
+      <div class="card" style="--c: var(--hull)">
+        <header><h3>Disruptor</h3><span class="dmg">40% base · ignores shields + armor</span></header>
+        <svg class="mark" viewBox="0 0 120 26" width="100%" height="26" role="img" aria-label="V chevrons down the spine">
+          <g fill="none" stroke="#58e07a" stroke-width="3">
+            <path d="M14 7 l8 6 l-8 6"/><path d="M34 7 l8 6 l-8 6"/><path d="M54 7 l8 6 l-8 6"/><path d="M74 7 l8 6 l-8 6"/><path d="M94 7 l8 6 l-8 6"/>
+          </g>
+        </svg>
+        <p>Hits the hull directly, ignoring everything in front of it. Terrible against cheap hulls, decisive against a Cruiser wall.</p>
+        <div class="meta">Shots: <b>green V-shots</b> · V-chevrons down the spine</div>
+      </div>
+
+    </div>
+    <p class="note">Cruisers fire torpedoes in the same colors; only lasers take the V shape. Against planets, piercing shots skip the planetary shield, Ion hits it harder, and Reaver kills population faster.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">Fleet chart</div>
+    <h2>Every ship, every variant, every shot</h2>
+    <p class="sub">Markings and shot color are the same language across all three hulls: color names the layer, pattern names the variant. Cruisers fire torpedoes, so their piercing rounds stay round instead of taking the V shape.</p>
+    <div class="fleet">
+      <div class="fleet-row">
+        <div class="fleet-name">Corvette<span class="meta">laser</span></div>
+        <div class="fleet-ships">
+          <figure class="ship" style="--c: #ffd84a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAATJJREFUOI2tlL9OAkEQh78ztLsFBY2LMZGCSrQxV/jn7IgUNBYW1sYH8AlMfAV9AhtLE6yMObUQbRQrCkIIKsWRM0Erq7WAvRzcYeDkV+3MZL/5ZWazEJIUSjMrSaF0+VLr/0LnwsFPr8v2+RtSqMTgVDhY9x/BhyO3CkDJsfXX97s1NXDUze39MwAVt0rJsTXApGBLCqUrA0cGFNbWxqpxG6nFNbGkULr3UObkuhjb8bVWY7lQCMAfS/NB7SCbjTQYmuFfMu7Pjk/J7e0D/ZGEVXJsbUmhdHH3cCyo1aizmMvzdHcVqX167YhDSwql05kFANY2dyIwr9OMvWwAo7nUIDm05VajDoDXaQagibdsDlIonV9xApBxlegdGvnpTB/04k7laiwQoHtzkQgUq1n8Nr/vcoCcEojrUQAAAABJRU5ErkJggg==" alt="Generalist Corvette">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><rect x="18" y="5" width="26" height="3.5" fill="#ffd84a"/><rect x="42" y="4" width="4" height="5.5" fill="#fff" opacity="0.8"/></svg></div>
+            <figcaption>Generalist</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #7fd8ff">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAAUpJREFUOI2tlD1PAkEQhp8zdGavoKBhMSZaYCPaGAo/sCNiQmNvZ2yNJhbU/gZ+gY2lyUlDzCGFpxaIDRSEEFEKCCRoZSzWAu5ycmcCyNvszkz2mTc7mwWXdCEVs5IupEpfK/Vf6Jw7+Op32L1sogs5NTjgDja7D9CFM9MCIJWIq4/PN21i4KibQrEEgGFapBJxBTAuWNOFVMbQkQ1ya2dr3Xbrqfk10XQhVf8+zUU+6dvxpVxmNRZzwO9LYad2FIl4GjhD+U7u+64r5xkA8vNhCsUSp4cZsrkK2VwFw7QwTIuTpybV3mCYmi6kSh4c+18I0KhVWVyO8nh346n12q8eh5oupAqGFgDY2N7zwNqtuu9hGzCaCwyTv6bcqFUBaLfqDmjsKdsbXUgVXUs4INvVVO/QVjcYGoCezYlc/QkE6NxeTQXy1Sx+mx/VDJDN5naqEQAAAABJRU5ErkJggg==" alt="Ion Corvette">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><rect x="18" y="5" width="26" height="3.5" fill="#7fd8ff"/><rect x="42" y="4" width="4" height="5.5" fill="#fff" opacity="0.8"/></svg></div>
+            <figcaption>Ion</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #ff4a4a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAAT5JREFUOI2tlDFPwkAUx381OLYDA4vFmEgME+BiOojWjcDA4uDgbPwAxpFJP4qLowlMxlQdRBfFiYEgUWSA1KQwOZ1D6dlKSaDyn97Le/e7/927HPikqbpgUdJUXZSvhPgvdMmffDsD9i4+0FQ9MjjmT7btR7DhxKoDUDINMRx1lbmBf93c3j8DULXqlExDAMwKVjRVF9WxIw/k125+03M7UXPyGTeoVFAMQ5FA56HM+XUhdMfXRoNMNivBn+srsnaUTAZ6h6OuIoGcvs1yIvTlHKmDQwDONrRArWQarsPC/vFUQKfVZC2V5umuNlH76r+HO4wnVgHY2ilOwPq9duhiCL/D2Hh6gSl3Wk0A+r22BIVNWal13aD26142aaou0jlTgjxXkd6hJzuecEEv1lRXcwEBBjeXkUChWsRv8wPgeoH9Oty4kgAAAABJRU5ErkJggg==" alt="Breacher Corvette">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><rect x="18" y="5" width="26" height="3.5" fill="#ff4a4a"/><rect x="42" y="4" width="4" height="5.5" fill="#fff" opacity="0.8"/></svg></div>
+            <figcaption>Breacher</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #58e07a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAAUtJREFUOI2tlL9LAmEYxz+KY3eBg0sqYRINmTQUBv0wWkQHGxoKojGihv6J+keSlqaIdIq4cvBqCavhhkMOM4eTE9Sp6RrK4/ROMPO7vc/3fT/P931eeMEmUQiajEuiEDSzN6b5X6jXvvhqNdi8/EAUgiODe4CrxhNLlVvykkz67WCkEXjBObuH4gvz1yvkJfnPaT2iEDTzkmyB+vW+XeLEOCaTTDi8dqfmcQW2SlnO71KuHV/LZRbicTbWFgH4nJmyvMNQyNHAAu5NTA51peIpRHf3ATibFXu8TDLxkzC1czQQoKkK09E5nh8LDq+pV90T+gNhAJbX0w5YJBdG3pIch7uA/prvt9jzipqqAKDXKygxaeBhN3ntmzVVQVMV9HqFSC5MU6/S7tQ8w8IsYFeGP4DhD9DUqxRiF0OnssvXX2jcX40EctU4fptvdcSL2MIp9xcAAAAASUVORK5CYII=" alt="Reaver Corvette">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><rect x="18" y="5" width="26" height="3.5" fill="#58e07a"/><rect x="42" y="4" width="4" height="5.5" fill="#fff" opacity="0.8"/></svg></div>
+            <figcaption>Reaver</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #ffa43a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAAU1JREFUOI2tlL9LgkEcxj9vtN4FEi6dUeRgS9bmYGS0SA4uYQ3NUXtLNESB9B/UX9CQY2BThf2ArKVs0UFKyho0A3Vquoa3115TQ81nursv9/k+99xxYJMUStMrSaF0+Ejr/0L77JPPcpHZgxekUF2D++0Tf+kGSrCeSAIQCvh0pZo3Ogb+dnN+eQdAPJEkFPBpgHbBhhRKx78d+dMRAKLvG2wO7gJwNR7Dn44wsPbcsLlZE0MKpcvXYaInwaYdH1IpJrxeZqanAHgdG6rVVlyuhgZ1Gf4lK4b9nT3cS8uAGYldoYBPG1IoHVxYbQnKZTOMuD3cXhw31D4K9TFUqnnDkEJph3MYgKdts7B4Os/hnAkY3TLX284Qfm7ZcprLZgAovD3WXLR9y9ZACqU9k4EayDpSV+/QUsnhNEH3iY5ctQQCFM9iXYGaqhe/zRf2SYMKU4wPnwAAAABJRU5ErkJggg==" alt="Slip Corvette">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><path d="M24 2 l7 5 l-7 5" fill="none" stroke="#ffa43a" stroke-width="2.5"/><path d="M33 2 l7 5 l-7 5" fill="none" stroke="#ffa43a" stroke-width="2.5" opacity="0.55"/></svg></div>
+            <figcaption>Slip</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #58e07a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAAV9JREFUOI2tlDtLQmEYx39HnILzDoYuHR26QINBNIRCw4kaBAcbHBqaI3RwaZeCPoBD9gGiJRwkcKswGrSpjAZBCek2JCewRGjpbVAPxxuk+d+e2++58PKCRULVJOOSUDUZOpPyv1Cb1fiuVVk9eUao2shgu9VYMW7AgN1sHoCg7pOfXy/K0MDuaa6ubwHIZPMEdZ8E+CtYEaomM62JDieTeNP+joSHjRxRI0JQ9/UU92uiCFWTtVyIg/OACbBC7wsFbPEGUSMCwOvMlBnbdrt7GnTcEMCb9hOOzZFKlDp8zlidVKLE0X6S2c0toHmStpxLdZbFulSEqslAeMcM2OINfvYmTLtSLjJ97CG/lu1Z+eP9qWdCRaiadLg8APgu9IGw7uI2oNtnbzklYMIq5SIA72+PFBeyA4v7yUwSqibnF3UT1F5ppHfYluFwNUF3w001EAhQvTwdCdRX4/htfgFjQpWXkenmmgAAAABJRU5ErkJggg==" alt="Disruptor Corvette">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><path d="M24 2 l7 5 l-7 5" fill="none" stroke="#58e07a" stroke-width="2.5"/><path d="M33 2 l7 5 l-7 5" fill="none" stroke="#58e07a" stroke-width="2.5" opacity="0.55"/></svg></div>
+            <figcaption>Disruptor</figcaption>
+          </figure>
+        </div>
+      </div>
+      <div class="fleet-row">
+        <div class="fleet-name">Destroyer<span class="meta">laser</span></div>
+        <div class="fleet-ships">
+          <figure class="ship" style="--c: #ffd84a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAcJJREFUSIm1lTtM21AUhr9UmZDsIUOEiFVVkIGplIVaog1mQEJYFWuHSszMoC4VE+qSFaSuWVg6dCiPoapQgIHHQgMMDBFC5SE1L8nJxHQ7JL66jh07Ucg/3evzn/P/514fG0Kga4YIiw8EumaIxZ9CDEr8RVjwySkzu3WHrhnPbiAeFnxXPYUqrOZPALAtU9Qb97FO/Chzam68m4SDo3MAdvMn2Jbp4brFdM0Quy2DnaAaj4cluIIuNjZztHNVIxubOW6L15Qeb0INAMR0zRDO8SJff89Hki8KBV5PTMj9dkUwPPWB1dSDx2h2bTkw33fU/eDJKfOQSQGQHktRzO14TsW2TLl2r7TeuI/1LQywsvSF9MdPAMzhvaKga7QtU0jhi0IhUuC2eO3ZV2o1AKYTQ/DrR7MOcHa4JznZtb++OrLjt8sO4MjAq/R4dwYSSSqXef5dNbtKjowCUCv5xVxBdx3TNUMkki8DiVOZBZ9Y+xurinxe/wbAzPvJwHq2ZUpxOYNBxPE3lmdferzxdaPOcacGVJNyjtVkFaoZt0s1sR2t5719uTqhmkg2Bf/kfYlRhaMQOU7l/e89FXwWDPJ//B8U9s6gK3A3RgAAAABJRU5ErkJggg==" alt="Generalist Destroyer">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><rect x="18" y="5" width="26" height="3.5" fill="#ffd84a"/><rect x="42" y="4" width="4" height="5.5" fill="#fff" opacity="0.8"/></svg></div>
+            <figcaption>Generalist</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #7fd8ff">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAdRJREFUSIm1lT1M21AUhT9XWe0hQhFtrIKAgaWlXWgGCu6GCIixIzNjVdQFMVVdKnUCKWuWLh2hgQVVbhkIIMRfJTJECJUEqQmJ5GRCHV6H4KfnOLZLIUey/J7vzzn3+l0bQmDopgizdwWGborZVSG6Rf4gzHjtVHn1+QJDN+9dQCzMOFbbgRos2HkA0lZKNJolLcg/SpwaG/uXgO9bBwDk7DxpK+XxdZMZuilyNwKDoAqPhQW4hC6WV7K0+6pClleynBcLVC7PQgUAaIZuCmd7lg+bk5HOx0dHPB0Zkfu1K0Hv6AwLybJH6Mel+Y7xvlbfBddOlfJ4EoChwSTF7FdPV9JWSq7dV9poljR5qv9MTv/XHeDt3CKZjVMyG6dAq3L3ytl5eb3Zu6BQb02JbPXrTw8jqzsvFugfGpb7/XqdnicWfeVjj9/uj3W5rld++fI0miUtBvBi3gEcaVCTBwkAIJ7g6sTm989WaxOPBgLJXEJ3rRm6KeKJxx0dR8enfGTtJ1Ylefc+A8DEy+cd86WtlCSXM9jJcfiZ5dlXLs981ahzHFSAKlLOsRqsQhXjVqkGtuPm+e2+XEGoxRMtwkPbFxiVOAqRc1z99uVWCe8F3fwf/wXmLOy3JXwo+wAAAABJRU5ErkJggg==" alt="Ion Destroyer">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><rect x="18" y="5" width="26" height="3.5" fill="#7fd8ff"/><rect x="42" y="4" width="4" height="5.5" fill="#fff" opacity="0.8"/></svg></div>
+            <figcaption>Ion</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #ff4a4a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAeVJREFUSIm1lTFME2EUx39nmjjdGRvSBHtRgySwAMqg3wB4DCbGDiwkTCaOshM2WIgxIeoCCWuXxsRRRRdjqgwiidEgA0NBIi0JLW1y7cT0OVzv+K7Xu6OR/qf77r3/+//fu3t3EAFDN2VUvCswdFNOvZWyW+KXooKndoXJ3CGGbl64gURUcKz6Haowl98EIGMJWW8UtbD8OHMqN3EewpeNnwCs5zfJWMKX6xYzdFOuNw2GQTWeiCK4gi5WVrO05qpGVlazHBR2KR/tRxqAZsdjl5/z7NPD2ORWM+9OJJO5Q+bSJS82PDLC8sKsj2OPDzsXuVdoQpwJ/w9O7QqliTQA/bfSFLLvfVPJWIIrG9vO4cE0hm7KeqOoaYZuSvvbFMz/6VhUjD7l6oDg4+snWI9fOLWP93w598fvBHgZS+AJz7zsjRU6KOxys3/QO/+o1egZsrhR2vblbX394F3Xyn8DdeqNopYAuDdrA7YXUIuHGQAgmeLkd57jHWe0qWt9bcW8Z7y4iCaEBjgdJ1PX2wrcnXgUEGt9Y1WR+aU1oP14wRmxu07eDrZLHLxt+c7lo/1AN+oehzWgmvT2WCWrUM24XarEVjTvd/blCkM1mXIEf+UDxLjCcYjd48rnNx0VvBB083/8D2on1c5Gj5KRAAAAAElFTkSuQmCC" alt="Breacher Destroyer">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><rect x="18" y="5" width="26" height="3.5" fill="#ff4a4a"/><rect x="42" y="4" width="4" height="5.5" fill="#fff" opacity="0.8"/></svg></div>
+            <figcaption>Breacher</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #58e07a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAf1JREFUSIm1lT9oFEEUxn97pAruqgme4i1BYsAUxmgTVzDxVISQIGlEEMTaaBvsgojYpLJJbCwkYpNCRL2r9Fi1yGojSSxSnGeIl5Pcn8DegZDGsTh2nHX/XMTcB8tj+N4333tvZliIgaGbIo5vCwzdFBMvhWiXeSKO3HYrnH/2HUM3d72AjjjybO0j1GDKdpjtniM7MC/qjaIWld+qOFWb8AR/f6rg3YfPHH9xhoztBHJV04ztMLZyg6io5mueYLZ7jtu1WzJ6hiqWl5ZI3P3pyxtPW5IfvXKTtfwq5VIhtOOt8rrsWjN0U7iLEzx4Mxo3JWl8YnBQrl9VBYeGLjOV2vAVOjM9GapXRx17xjvBtlthYyQFQN/RFPknr8nYjuTViXijrjeKmuz42p69/2z67bHF/mMW+4Yf8mPxOgCXNr/6cs4NnwroxtPWn45/3etsabSWX+VIX79cV7fsZie5Tg7yHIBl4NP7rMyZmV4P7FNvFLUOgNOTLuBKQt08qgAAupJUV2w2vzRHmzzcCzQvURjUM9YM3RRdyR6st2mci7aMAEMjYwGz3qc9vjzV5M79R0D4eKE5YnmrIfrh959M+9blUiHQjbdRVANqzA7M+43DYOim8IzLpUJAGKWJ4tQiWxofuHAVgEpuISD8X7R8x5Xcwq4a7gjt/B//Bg0Y/EAEidhUAAAAAElFTkSuQmCC" alt="Reaver Destroyer">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><rect x="18" y="5" width="26" height="3.5" fill="#58e07a"/><rect x="42" y="4" width="4" height="5.5" fill="#fff" opacity="0.8"/></svg></div>
+            <figcaption>Reaver</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #ffa43a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAd1JREFUSIm1lT9IG3EUxz+RTMIdNNhQ9OgQCnWqdtED/10pQskhju0gtJs4VwQRJxHBVUHcsji0g4N/MpRaUh2qXdpYB4cgoq1gvATSTp1+DvF+/i53uVNIvtN7v9977/t9eb93gRDomiHC7psCXTPE6IYQzSJvCbv8X7nixdo5umY0XEA87LK/dAAlmMztA2Bbpvj773esXnyUODU3fpeEr3s/ANjO7WNbpifWLaZrhti+EVgPqvB4WIJL6GJpOUNtrCpkaTnDaeGY4sVJqACAmK4ZovJtlPnPr5hpWwBg3pkOtF/vpPnwMivPNx3Bo54RJjv+eIQuzk4Ekqk/tYc4Cof5PM+6uqS/6QgePDV5N/JQnhUyWwwNPJe+bZmBAkIf113x/u0MT96MATCMd0RBY7QtU0jiw3w+kuC0cOzxnXIZgL5EK3xar9YBvu9mZczi7Jmvjuy4d6ICVDgYrz4KdZaq3VtI3dqrKUgkcX7luDyqdpVsTwFQLvrJXELXjumaIRLJx4GBPYNpX7e1L1YlmZpbAfDMWIVtmZJc7mBQYGe35fGLFye+btQ9rteAKlLusZqsQhXjdqkm1uLm/H5frnooJZJVwp85X2JU4ShErtPVl4/3KtgQNPP/+BoZO+TPuAKQIwAAAABJRU5ErkJggg==" alt="Slip Destroyer">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><path d="M24 2 l7 5 l-7 5" fill="none" stroke="#ffa43a" stroke-width="2.5"/><path d="M33 2 l7 5 l-7 5" fill="none" stroke="#ffa43a" stroke-width="2.5" opacity="0.55"/></svg></div>
+            <figcaption>Slip</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #58e07a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAghJREFUSIm1lT9oE2EYxn8pmQp3Q8Ag5ijSRugQbHWICf6LoCBGaQcHB4vFrVMHi4sUkeLSTVpwLYiLiASlDqVI1CG1S03MULCkJW0K5o9wrYhd/Byud3zfXXIx0Dxw8N3zve/7PO/35w58oGuG8JvvCnTNECNvheiWeI/f5IFZ48rLbXTNOHIDQb/JC40v0ICp7AoA6VRC7O3vBFrFtzMn5wb/J+Hj5zUAFrMrpFMJJdYupmuGWDw02Aqy8aBfgi1oY25+AXesbGRufoGtjXWquyVfAwABXTOEmRvh6fJ1iqM5YpmkEiBzhXye00NDDveuLjgev8VUpKIYnZ2eaComL7VyuGKZJMXRHJ1wB2aNykCEykCE6PhNwNoS+5EhH1LP4YplktyePMXrZ989XOF+XuE2sVb5wb1HRO/cBeAa6ha5xY+d/UVcvyoc4ULeKtrz+LciIHNbG+sKV5/8A8D5UC8svbHqAKuf3jtxs9Nld2/s7e8EggDnJkzApP9FH6WxMiejg4rA3ye9HiOlsTKEwtS/ZflRtLoKn+gH4GfVK2YL2uOArhkiFO5rGhi/dMMZ2926T6ws8nDmOQCXL55pWi+dSjjizh1sFjg4nFLeq7slTzfyPW7VgGzSucdysgzZjN2lnOjGId/Zl6sVGqGwJfg160lsV7gdfIUBah9edVTwSNDN//E/rJz9CxNqVskAAAAASUVORK5CYII=" alt="Disruptor Destroyer">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><path d="M24 2 l7 5 l-7 5" fill="none" stroke="#58e07a" stroke-width="2.5"/><path d="M33 2 l7 5 l-7 5" fill="none" stroke="#58e07a" stroke-width="2.5" opacity="0.55"/></svg></div>
+            <figcaption>Disruptor</figcaption>
+          </figure>
+        </div>
+      </div>
+      <div class="fleet-row">
+        <div class="fleet-name">Cruiser<span class="meta">torpedo</span></div>
+        <div class="fleet-ships">
+          <figure class="ship" style="--c: #ffd84a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAmhJREFUSInNVz1s00AU/gwWTLZEiyqhOMAQCRZSMUA9lOJKIEUEdWmlIAUJxnauxFIxIYSEYGol1iwd2hkQA0rMz1BYiMNipKgq/QEpJq6STpnMkPo4X853gcYR3+L3c+/587vn57MCAXTNCNoHuwqts2tofxKITa5rRjC9uoNKMU1s06s7PesqxXSiJFWRs9PyCKlKMY1OyyO+/W8bOHXBTIoXwTHZgk7LixAdNoQVnGx+InKt7ODK+HhXdhz4dRf6Xi1ZdpAQjEP2kOhW3e1rPe/l4oHXy+rfJGAxM1uAW7VJPO8GumYEr+yNvvLlLTNgc6iiBO8+fJEmpWPzlsl90OWVUkRnK9/4sRmbXwWAyZNP8PhtTkqGB/ohaLLP9lJEzm6+7IkL2wQAnj5cACDY4kFheaVEbtwZPTGQnCqAf67eoBBWnm6RsJoqACzdeDMUkpn7t7tXdK/1UnfrwzZh+7l9sKsMdItlWLy3hMydu0S/yfjZfs5bZqDomhHk5ualybfqLs5nLsbqrO17Kkvs55iBzosFgM/vXxPZb2yDVHBt8ScKz89ISSaFkJjf2Ca2SA8Cf2YT78lkoOdaKDd9n9gCvyGMCYnFjpmJhRY3UEZWNHCPj4wJY/uFomtGMDJ2luu8OnUrlgyPFL1FNB48ehHRa44TGdTXr10GAOQts6eKChD/Lc7NzUsPBG7VJnLctziuACzCF4O2qaLELLmZ2QKRwyq4VVt4oj70He00kzSO8ksgJNhkGv3j6ASR91MB2pSeFPquoFdex+lLFtF/fbUToNMLKUGvvE5kltQwSAp743/4L/4N01EngIhPvuYAAAAASUVORK5CYII=" alt="Generalist Cruiser">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><circle cx="30" cy="7" r="5" fill="#ffd84a"/><circle cx="30" cy="7" r="2" fill="#fff" opacity="0.85"/></svg></div>
+            <figcaption>Generalist</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #7fd8ff">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAoNJREFUSInNVz1s00AU/gwWDMiWaFElFAcYKgEDqRigGQqkEkNEqi6tlCEDjO1cCYaICSEkVKZW6pqlA535G6rEIQyFJXEYMFJUlSYFKSGukkwRgxlSH+fL+RxoHPFJ1r337t7zd8/Pz2cJAqiKZrc7NYnW2TX0fBDwDK4qmj27WUUuFSa22c1q37pcKhwoSVk02W01CKlcKoxuq0HmDr/u4OzlaFC8CE74Lei2Gi6io4YwgzPNj0QuZw3cmJrqyYYBq2JCPSgHyw4+BL0QOSK6VzEHWs97uXjg1bL8NwFYzC8kYZZ04s+7gapo9mt9Z6B4iVjUZmPIogD5QtE3KO2biEW5G11bz7h0NvP177ue8WUAmDn9DE+3475keKA3QZNdPQgRObL7qs/PKRMAeP54GYDgEQ8La+sZcuPu+KmhxJQB/HP2hgUn83SJONmUASB9991ISE4+mOuN6I2VTO/RO2XC1nO7U5NIo/4VnxOOVx+lhTo78rByP42Nt1/IxSJfKCJfKGL7TAimVYWqaLakKpodX1zy3f1excSlySueOmv7FooQ+0WmofN8AeDT+zdEtur7aHdqkgwAL1d+IPnivC/JoOAQs+r7xOaqQeBPb+LtzA90X3PkpmURm23VhT4OMc82M73c4jr6kRU13JNjE0LfQSGpimaPTVzgTt68fc+TDI8U/YhoPHyy4dLLhuFq1HduXQcAJGLRvixKgPe3OL645HsgMEs6kb2+xV4JYOG8GLRNFgVmyc0vJInsZMEs6cIT9dHc8U4zQeM4vwRCgk2m0D+MTxP5MGSjTelBYeAMNrJbOHctRvSfn/UA6PTDl2Aju0VkltQoSApr43/4L/4Nsdk+k8pTb9gAAAAASUVORK5CYII=" alt="Ion Cruiser">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><circle cx="30" cy="7" r="5" fill="#7fd8ff"/><circle cx="30" cy="7" r="2" fill="#fff" opacity="0.85"/></svg></div>
+            <figcaption>Ion</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #ff4a4a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAp5JREFUSInNVz1s00AU/hwsmGxBi7rEAYZIZSFVB2iG/qQSSCFBZWilgsLA2M5IXRBThZAQYmmlSp2yZKAziRhQYgKiJgtJWIyU/tAfEAlxlXTKdAyuD8exz4HGEZ9k+b27e+++e3737syBAVGQSPP4gDPr1jHmfi/g6FwUJDKd2kcuEaBt06n9jnG5RMBTkjyrs9WoUVK5RACtRo32HX1VcGE47BUvCp/bgFaj1ka032BGcLz+icrlbAnXR0Z0uVSCVlEhHpa9ZQcXgk4InRDdrahdjbfbXHawy2X+bxxYMTM7D7UoU3u7CURBImlZ6cpfPBImVh88y8G7959dnZpt45Gw7UJXVpNtujXy1e/bjv55ABg/9wxP30ZdydjBvAgz2ReHfiqHtl932BlpAgDPnywCYHziXmFlNUknbg2e7YlPH4B/jl6vkJYVpGUFJBYjJBYjRFFoqvAA8Pjmm76QDD68o7+hvytJ/dPTNFlep2ONY5YTBYk0Nu8CSzs9JXP7fpLKRj1dy20ieO8Bbb/1c8vRfmpiFPFIGJwoSCQ6t+A64W5FxZXgVUfd2vbNH6Ltly0F3c4WAAr5DJW16h6axwecDwBePfrhStBLFPIZFPIZ7Ayf15/US7qj6S42apPdytxgrmuGXNc02ka0KtNGq+4BALitj3qZyfyJJA8AY4sNW0M3sqyCe2ZgiGnbLThRkMjA0CXbzhuTMUcydqSMSFixtLzWppdLpbZCPTUxCgCIR8IdxZoDnM/i6NyC64VALcpUdjqLnQJghbExzG08y7GV3MzsPJWNKKhFmXmjPuk73W3Ga5zml4BJsG5J9A+DY1Q+8hM0TbpX6DqCtewGLl6LUP3XF9kDOp1wJVjLblDZSqofJJm58T/8F/8GWC80uoUqgmQAAAAASUVORK5CYII=" alt="Breacher Cruiser">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><circle cx="30" cy="7" r="5" fill="#ff4a4a"/><circle cx="30" cy="7" r="2" fill="#fff" opacity="0.85"/></svg></div>
+            <figcaption>Breacher</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #58e07a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAr9JREFUSInFV01oE0EU/rYGvbgrNlKQbNRDwB6axB60W2jtFhVCI3qwUCUiHpv2IghepCcRoehJ215LoQd78mCDB5sfKzR6iUkvEWKp/VFMzNakp5zWQ5zJZjO7G2s2fhDmvTfzXr558+ZnOZhA4EW1vL/DaXX9GG2/HTAMLvCiOry4jVjITW3Di9sN42Iht60kHWadlVKBkoqF3KiUCrRv73MSx89KdvGi6LAaUCkV6oi2G6YZHCh+oHImmsZ5v78qp9NQclkIuxl72cGCoBF8f4hu5rJNjWdtLhZYtdxBAuh/zQS8dmOMEjDyEXhRXY4nMbJ+B1YtKwZHAsw4ZzFZnKAtACRWU3RgJp2mmdPqQ4O9AIAZ5ywi3gXmRAKj43W6PvP5bxsAACW/1ZBFBwAMHHmCxKsAEkihB/1IIIVmQSbRg35MxmsTfLrromN8G68b/LSTnZ4KA2Av8YFq0AjPX8zD569OsOI83JKYDgB4/DbQkmAHxXI8CQAIyhKtQZJNBwA8vPymLSQ9d69WW1Tb3Hx16UmZEKKEbHl/h+MEXlRLa9dx6+ixlpL5tXqPyuQ8nYutwXPzNrVf+fHF0H9osBdBWaruYv0uY2Ezl8UZT7ehrrd9dfmo/bTuQGf5AsDHdxEqkx3tAICX979j7NlJS5J2gRBT8lvUVleDQO1sYs3MCtpzjchFRaE2Vcmb+hBihsdMX7jEdLQiyzpwpRUZyUtxHOrsMvVtFpzAi2pn1ykamLQAcOHiiCEZLSkAkFZkw5vkwaO5Ol1/K5HbKChLDVnkAOPLPDA6bvkgyH6KU5m1REYJYLUR7wKbIAsCL6rd5+Q6G3kcALUsTE+FLV/U//KaaelV9zd/3CxMCRZ1hf7e2UflPZeKska3C01nsBBdwgmvTPWf63Eb6DTCkmAhukRlPal2kLQs7v/9XfwbrTlfvfVeApAAAAAASUVORK5CYII=" alt="Reaver Cruiser">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><circle cx="30" cy="7" r="5" fill="#58e07a"/><circle cx="30" cy="7" r="2" fill="#fff" opacity="0.85"/></svg></div>
+            <figcaption>Reaver</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #ffa43a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAqBJREFUSInNV01oE0EU/rYuetoFm9JLNuohoBcTPGhzqDYlCLGRemghQgS92Z4LghRPEgrFWwu95tJDevKgOUkSo2Cbi0m8rBBCTVOF/JUkp5zWg91hdzI7m5Bs8YOF9968efPNmzc/K4ADWVK0bq8mGHXax9juBCyDy5KiLe6fIBPzENvi/smAXybmcZSkyGvsdxqEVCbmQb/TIG1nPw9x9WbAKV4EU3YO/U7DRPSiwc3gfOuIyKV0EXf9/n9ysYh2WYV8WnKWHWwIWsF3TvS4rA7lz9pcLLBqWRwlAI3llSjUQpb0Zw0gS4r2MXs4VLxIMKDRMURegM9fvtsGNfaNBAPMie7sJkw6nfn674plfBEA5q9sIf4pbEuGBeMkjGTfnbqJ7Kt8GOinlwkAbL9ZB8BZ4klhZzdBBu67Lk8kpgiAZG9zZgsAEG++HpRDQLzpJ/Yolrg+j7T3Q5PQM28sET2bgiwpWufbE9slLhWLpmWhddr21TVH7Ppx5X3x2ORfTpiXfuH+HSJHggF0ezVhoktsh43nm/A+fUb0h1Q7Xc+RYEATZEnRwqtrtsGPyypueG9Z6rTtl9tH7NepA53VFwDyuRSR2/Uqur2aMAUAyY0/AIBkKIVkKMWUj15WRvIZBflcCvlcCu16lXwDNTi33gEA5sxYszbqrBulNT1LZFe7ziWoFrIAOMeMTo4ezIosyxcwH7iXDATHgSBLijY9e43ZeO/BkiUZFql2vcr0efV2z6TTJ4C+e/WdayIIWN/F4dU12weBvjyA9V1slQAaxtrTIfIC0+SWV6JE1rOgFrLcF/V523ivGacxzi8Bl2CLKnTj7XDm1tA16E5h6Aw20geYuR0kevNH1gE6g7Al2EgfEJkmdREkubXxP/wX/wXej2COKM/fBAAAAABJRU5ErkJggg==" alt="Slip Cruiser">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><circle cx="30" cy="7" r="5" fill="#ffa43a"/><circle cx="30" cy="7" r="2" fill="#fff" opacity="0.85"/></svg></div>
+            <figcaption>Slip</figcaption>
+          </figure>
+          <figure class="ship" style="--c: #58e07a">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAsRJREFUSInNV01oE0EUfhuDQmAXbKWXbNRDRQ81xYM2harpLRipQgM9hKLH9uSh4EWkRBFBvLXQm+TSgz31YOKlJNtUaMylSRRcIYSYtgqJ2ZIUCrl0PbTz3Jn9lXSLHwy8efPem2/ezLzZ5cACAi+qnf0dTttnbbTjbsA0uMCL6vjyNmTjAdSNL2/r7LLxgKskvVaD3XYTSWXjAei2mzi29z0P56+G3OKF8NgZdNtNiuhpwzKDY63PKJczJbg5PHwkl0qgVGQQdsvusgMbgmYIHhOtVWRH9kaXywhGZ9n7LwFYTExOgVyU0N9oAoEX1ZSUdxQvGg6pbAyvVYD1jS3boFrfaDhkuNCFxSTVZzPf+Fk1je8FABg79xperUVsyRhBuwgt2be7fpSD1Q86P3JMAADePJ8FAIstPiksLCZx4m7/2ROJ6QEAzN7Xh5s6g150TpGS8pCS8iDwokoaGeMEXlTbmw8okkOro7rJDxM+alvM7IjuU/8I6km5Gnx8n7KvJOmtv3v7BsrRcAg6+zucrlAPrY5C7MkVne7FuxilO0z4dHZGOi3mHj2DpY/fsLFY39jCVuisgcCLKifwohqJzaCRZ/4ADhM+ytEzfwDV6TpcHrxma0d0P/xB1F9iCnqtIlOxCAq5NMpKo/43g+/nfjmalCVsp3OKQi4NhVwalEYdG7nReItrFRlgGnQrY8kZ6YgvygDQUhQcV5WGLoa2FiqNo4WZlpmR2baho9E2mE0CQBfcM30Dlr5OwQm8qPYNXDQcvHXnnikZI1IkEyyevlyi+uVSiaoI5PaSm0sRBDB/iyOxGdsPArkooWz2FpslgIX27BF4rQKz5CYmp1AmWZCLkuUX9fFYb18zbqOXXwJLgi3moGtfhz2/Ch1N3y04zmAzswIXroex//uL5AIdPWwJNjMrKLOkToOk5dn4H/6L/wApF2um59gbUwAAAABJRU5ErkJggg==" alt="Disruptor Cruiser">
+            <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><circle cx="30" cy="7" r="5" fill="#58e07a"/><circle cx="30" cy="7" r="2" fill="#fff" opacity="0.85"/></svg></div>
+            <figcaption>Disruptor</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Matchups</div>
+    <h2>Damage needed to kill, vs a generalist</h2>
+    <p class="sub">1.00 means the same as a generalist; lower kills faster. Green is the right tool, red is the wrong one.</p>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Target</th><th style="color:var(--shield)">Ion</th><th style="color:var(--armor)">Breacher</th><th style="color:var(--hull)">Reaver</th><th style="color:var(--slip)">Slip</th><th style="color:var(--hull)">Disruptor</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="lead">Corvette <span class="meta">hull-heavy</span></td><td>1.08</td><td class="worst">1.14</td><td class="best">0.91</td><td class="worst">1.16</td><td class="worst">1.47</td></tr>
+          <tr><td class="lead">Destroyer <span class="meta">shield-heavy</span></td><td class="best">0.93</td><td class="worst">1.16</td><td>1.01</td><td class="best">0.82</td><td>1.00</td></tr>
+          <tr><td class="lead">Cruiser <span class="meta">armor-heavy</span></td><td class="worst">1.12</td><td class="best">0.93</td><td>1.06</td><td class="worst">1.24</td><td class="best">0.82</td></tr>
+          <tr><td class="lead">Starbase <span class="meta">hull + shields</span></td><td>1.06</td><td>1.10</td><td class="best">0.95</td><td>1.12</td><td class="worst">1.27</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul>
+      <li><b style="color:var(--hull)">Reaver</b> — corvette swarms and starbases.</li>
+      <li><b style="color:var(--shield)">Ion</b> and <b style="color:var(--slip)">Slip</b> — shield-heavy fleets; Slip also beats shield regeneration.</li>
+      <li><b style="color:var(--armor)">Breacher</b> and <b style="color:var(--hull)">Disruptor</b> — armor-heavy Cruisers.</li>
+      <li>Wrong target: 5–46% worse than a plain generalist. Scouting decides.</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="eyebrow">Weapons Depot</div>
+    <h2>Where a generalist becomes a specialist</h2>
+    <div class="cards">
+      <div class="card" style="--c: var(--edge-lit)">
+        <header><h3>Building it</h3><span class="dmg">250 minerals · 20 spice</span></header>
+        <p>A Constructor builds it (<code>E</code> or its panel button) over 30 s. No weapons, and losing it doesn't lose the match.</p>
+      </div>
+      <div class="card" style="--c: var(--edge-lit)">
+        <header><h3>Refitting</h3><span class="dmg">25 minerals · 12 s</span></header>
+        <p>Select generalist warships, pick a refit: they fly to the nearest depot, dock, and convert.</p>
+      </div>
+      <div class="card" style="--c: var(--armor)">
+        <header><h3>Permanent</h3><span class="dmg">one way only</span></header>
+        <p>A specialist can never be refitted again. Starbases build generalists only, so every specialist passes through a depot.</p>
+      </div>
+    </div>
+    <p class="note">The AI plays by the same rules: it builds a depot once its fleet grows, then picks refits by working out which variant kills the enemy warships its sensors have actually seen, for the least damage.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">Research</div>
+    <h2>Three defense lines, deliberately expensive</h2>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Tier</th><th style="color:var(--shield)">Shields</th><th style="color:var(--armor)">Armor</th><th style="color:var(--hull)">Hull</th><th>Cost</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="lead">1</td><td>Deflector Arrays +20%</td><td>Composite Plating +20%</td><td>Reinforced Frames +15%</td><td>1500 energy · 40 spice · 120 s</td></tr>
+          <tr><td class="lead">2</td><td>Phase Shields +25%</td><td>Reactive Armor +25%</td><td>Nanite Plating +20%</td><td>3000 energy · 100 spice · 180 s</td></tr>
+          <tr><td class="lead">3</td><td>Aegis Matrix +35%</td><td>Neutronium Armor +35%</td><td>Adaptive Hulls +30%</td><td>5000 energy · 250 spice · 240 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Deflector Arrays unlocks the Heat Shield Frigate; Reinforced Frames unlocks the Repair Tender. A full line runs about 13,000 energy, so committing to one layer is a real strategic choice.</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">Not built yet</div>
+    <h2>Open threads</h2>
+    <ul>
+      <li>Variants for the job ships: Heat Shield Frigate, Repair Tender, and the planned Pathfinder, Storm Rider, Interdictor, Siege Monitor, Carrier and Battleship.</li>
+      <li>Weapon types beyond lasers and torpedoes, one per specialist.</li>
+      <li>Carrier hangars where small ships land to repair and reload, and munitions that need restocking at a starbase or carrier.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Numbers live in <code>scripts/game/Defs.gd</code> (SHIPS, VARIANTS, VARIANTS_OF, WEAPONS_DEPOT); the damage maths is in <code>SpaceEntity.take_damage</code>. Same content as <code>docs/SHIP_VARIANTS.md</code> in the repo.
+  </footer>
+</div>
+
+</body>
+</html>
