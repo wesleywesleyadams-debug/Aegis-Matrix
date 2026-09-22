@@ -47,6 +47,11 @@ var focused_star: Star
 var control_groups := {}
 var paused_menu: bool = false
 var is_over: bool = false
+## After the match: the player chose View Map (look around, select to inspect;
+## no orders). Set by the HUD.
+var map_view: bool = false
+## Post-game stats (see MatchStats).
+var stats: MatchStats = MatchStats.new()
 ## Starbase placement mode for a selected Constructor.
 var placing_starbase: bool = false
 
@@ -134,6 +139,7 @@ func _ready() -> void:
 		loaded = SaveGame.apply(self, save_data)
 	for sb in get_tree().get_nodes_in_group("starbases"):
 		(sb as Starbase).died.connect(_on_starbase_died)
+	add_child(stats)
 	# Balance harness (SL_SIM): the AI plays both sides.
 	if OS.get_environment("SL_SIM") != "":
 		ai.setup([1, 2])
@@ -708,6 +714,8 @@ func spawn_ship(ship_type: String, pid: int, pos: Vector2) -> Ship:
 	s.owner_id = pid
 	s.position = pos
 	ships_root.add_child(s)
+	# Destroyed in battle (not used up colonizing / founding a starbase).
+	s.died.connect(func(e): if e.hp <= 0.0: stats.count(e.owner_id, "ships_lost"))
 	return s
 
 func found_starbase(pid: int, pos: Vector2) -> Starbase:
@@ -757,6 +765,9 @@ func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
 # ---------------------------------------------------------------- events
 
 func planet_claimed(p: Planet, old_owner: int) -> void:
+	stats.count(p.owner_id, "planets_won")
+	if old_owner > 0:
+		stats.count(old_owner, "planets_lost")
 	if p.owner_id == player_id:
 		notify(("%s colonized." if old_owner == 0 else "%s conquered.") % p.planet_name, "note_colony", p.global_position)
 	elif old_owner == player_id:
@@ -765,6 +776,7 @@ func planet_claimed(p: Planet, old_owner: int) -> void:
 
 ## A bombarded planet ran out of pops and went neutral.
 func planet_depopulated(p: Planet, old_owner: int, attacker: int) -> void:
+	stats.count(old_owner, "planets_lost")
 	if old_owner == player_id:
 		alert("%s has been depopulated and lost!" % p.planet_name, "alert_planet_lost", true, p.global_position)
 	elif attacker == player_id:
@@ -773,6 +785,8 @@ func planet_depopulated(p: Planet, old_owner: int, attacker: int) -> void:
 
 func _on_starbase_died(sb: SpaceEntity) -> void:
 	selection.erase(sb)
+	if not (sb as Starbase).under_construction:
+		stats.count(sb.owner_id, "starbases_lost")
 	if sb.owner_id == player_id and not (sb as Starbase).under_construction:
 		alert("A starbase has been destroyed!", "alert_starbase_lost", true, sb.global_position)
 	await get_tree().process_frame
@@ -851,12 +865,13 @@ func _end_match(won: bool) -> void:
 	if is_over:
 		return
 	is_over = true
+	stats.finish()
 	match_over.emit(won)
 
 # ---------------------------------------------------------------- input
 
 func _unhandled_input(event: InputEvent) -> void:
-	if is_over or paused_menu:
+	if paused_menu or (is_over and not map_view):
 		return
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event)
@@ -868,7 +883,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _mid_drag:
 			camera.global_position -= event.relative / camera.zoom.x
 			_clamp_camera()
-	elif event is InputEventKey and event.pressed and not event.echo:
+	elif event is InputEventKey and event.pressed and not event.echo and not is_over:
 		_handle_key(event)
 
 func _handle_mouse_button(e: InputEventMouseButton) -> void:
@@ -891,7 +906,7 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 					_click_select(get_global_mouse_position(), e.shift_pressed)
 				_dragging = false
 		MOUSE_BUTTON_RIGHT:
-			if e.pressed:
+			if e.pressed and not is_over:
 				if placing_starbase:
 					placing_starbase = false
 				else:
@@ -1025,7 +1040,7 @@ func _process(delta: float) -> void:
 	var real_dt := minf((now_us - _last_real_us) / 1000000.0, 0.1) if _last_real_us > 0 else 0.0
 	_last_real_us = now_us
 	_update_background()
-	if paused_menu or is_over:
+	if paused_menu or (is_over and not map_view):
 		return
 	var dir := Vector2(
 		Input.get_axis("cam_left", "cam_right"),
@@ -1333,6 +1348,27 @@ func _enter_dev_capture() -> void:
 		camera.zoom = Vector2.ONE * ZOOM_LEVELS[_zoom_index]
 	if parts.size() > 4:
 		center_on(Vector2(float(parts[3]), float(parts[4])))
+	if OS.get_environment("SL_SHOT_OPEN") == "victory":
+		# Play a while, destroy the enemy starbases, then capture the end
+		# screen (end.png), the Stats window (stats.png) and View Map (map.png).
+		await get_tree().create_timer(secs).timeout
+		for sb in get_tree().get_nodes_in_group("starbases"):
+			if sb.owner_id != player_id:
+				sb._die()
+		await get_tree().create_timer(1.0).timeout
+		Engine.time_scale = 1.0
+		for step in ["end", "stats", "map"]:
+			if step == "stats":
+				hud._show_stats(true)
+			elif step == "map":
+				hud._show_stats(false)
+				hud._enter_map_view()
+			await get_tree().create_timer(0.4).timeout
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("user://%s.png" % step)
+		print("VICTORY TEST built ", stats.counters, " samples ", stats.samples.size())
+		get_tree().quit()
+		return
 	if OS.get_environment("SL_SHOT_OPEN") == "planet":
 		var hp0: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0]
 		hp0.order_build(0, "farm")

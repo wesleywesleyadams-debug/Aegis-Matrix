@@ -35,37 +35,9 @@ func _process(_delta: float) -> void:
 	if t >= max_minutes * 60.0:
 		_finish("time", 0)
 
-## One snapshot per side: stockpiles, pop, worlds, fleet, starbases, tech.
+## One snapshot per side (see MatchStats.sample).
 func _sample(t: float) -> Dictionary:
-	var g := Game.instance
-	var out := {"t": int(t)}
-	for pid in [1, 2]:
-		var pop := 0.0
-		var worlds := 0
-		for p in g.get_tree().get_nodes_in_group("planets"):
-			if p.owner_id == pid:
-				pop += p.pop
-				worlds += 1
-		var war := 0
-		var miners := 0
-		var power := 0.0
-		for s in g.get_tree().get_nodes_in_group("ships"):
-			if s.owner_id != pid or not s.is_alive():
-				continue
-			if s.def["role"] == "warship":
-				war += 1
-				power += s.max_hp + s.max_shield
-			elif s.is_miner():
-				miners += 1
-		var bases := 0
-		for sb in g.get_tree().get_nodes_in_group("starbases"):
-			if sb.owner_id == pid and sb.is_alive() and not sb.under_construction:
-				bases += 1
-		var r: Dictionary = g.resources[pid]
-		out[str(pid)] = {"food": int(r["food"]), "minerals": int(r["minerals"]), "energy": int(r["energy"]), "spice": int(r["spice"]),
-			"pop": int(pop), "worlds": worlds, "warships": war, "power": int(power), "miners": miners, "starbases": bases,
-			"techs": g.researched[pid].size(), "mode": str(g.ai._state.get(pid, {}).get("mode", ""))}
-	return out
+	return MatchStats.sample(t)
 
 ## How often each side's neural commander picked each action (if any).
 func _nn_actions() -> Dictionary:

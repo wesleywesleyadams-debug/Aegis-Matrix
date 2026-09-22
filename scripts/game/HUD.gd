@@ -377,11 +377,14 @@ func _build_end(root: Control) -> void:
 	var parts := _modal(root, "")
 	_end = parts[0]
 	_end_label = parts[2]
-	var b := Button.new()
-	b.text = "Return to Title"
-	MenuStyle.button(b)
-	b.pressed.connect(_quit_to_title)
-	parts[1].add_child(b)
+	for pair in [["View Stats", func(): _show_stats(true)], ["View Map", _enter_map_view], ["Return to Title", _quit_to_title]]:
+		var b := Button.new()
+		b.text = pair[0]
+		MenuStyle.button(b)
+		b.pressed.connect(pair[1])
+		parts[1].add_child(b)
+	_build_map_bar(root)
+	_build_stats(root)
 
 # ---------------------------------------------------------------- research tree
 
@@ -513,6 +516,7 @@ func _quit_to_title() -> void:
 	get_tree().change_scene_to_file("res://scenes/TitleMenu.tscn")
 
 func _on_match_over(won: bool) -> void:
+	_won = won
 	_end_label.text = "VICTORY" if won else "DEFEAT"
 	_end_label.add_theme_color_override("font_color", GOOD if won else Color("ff4f5e"))
 	_end.visible = true
@@ -903,3 +907,151 @@ func _draw_overlay() -> void:
 		c.a = 1.0 - k
 		for d in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
 			_overlay.draw_rect(Rect2(sp + d * (18.0 - r) - Vector2(2, 2), Vector2(4, 4)), c)
+
+# ---------------------------------------------------------------- post-game
+
+var _map_bar: Control
+var _map_bar_label: Label
+var _stats_modal: Control
+var _stats_body: VBoxContainer
+var _won := false
+
+## The small bar shown at the top while looking at the map after the match.
+func _build_map_bar(root: Control) -> void:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _panel_style(10, EDGE_LIT))
+	p.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.offset_top = 70
+	p.visible = false
+	root.add_child(p)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 14)
+	p.add_child(h)
+	_map_bar_label = _label("", Color.WHITE, 18)
+	_map_bar_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(_map_bar_label)
+	for pair in [["View Stats", func(): _show_stats(true)], ["Return to Title", _quit_to_title]]:
+		var b := Button.new()
+		b.text = pair[0]
+		b.pressed.connect(pair[1])
+		h.add_child(b)
+	_map_bar = p
+
+func _enter_map_view() -> void:
+	_end.visible = false
+	game.map_view = true
+	_map_bar_label.text = ("VICTORY" if _won else "DEFEAT") + "  -  viewing the system (select to inspect)"
+	_map_bar_label.add_theme_color_override("font_color", GOOD if _won else Color("ff4f5e"))
+	_map_bar.visible = true
+
+func _build_stats(root: Control) -> void:
+	var parts := _modal(root, "MATCH STATS", 1400.0)
+	_stats_modal = parts[0]
+	_stats_body = VBoxContainer.new()
+	_stats_body.add_theme_constant_override("separation", 14)
+	parts[1].add_child(_stats_body)
+	var b := Button.new()
+	b.text = "Back"
+	MenuStyle.button(b)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.pressed.connect(func(): _show_stats(false))
+	parts[1].add_child(b)
+
+## Opens (fills) or closes the Stats window; closing returns to the end
+## screen, or to the map if the player was viewing it.
+func _show_stats(on: bool) -> void:
+	_stats_modal.visible = on
+	if not on:
+		_end.visible = not game.map_view
+		return
+	_end.visible = false
+	for c in _stats_body.get_children():
+		c.queue_free()
+	var st: MatchStats = game.stats
+	var me: int = game.player_id
+	var foe: int = 3 - me
+	var mins := int(Game.now() / 60.0)
+	var sys: Dictionary = SystemGen.find(GameState.system_id)
+	var sub := _label("%s  -  %s  -  %d:%02d" % ["VICTORY" if _won else "DEFEAT", sys.get("name", "Unknown system"), mins, int(Game.now()) % 60],
+		GOOD if _won else Color("ff4f5e"), 20)
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_stats_body.add_child(sub)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	_stats_body.add_child(row)
+	# Summary table: stat | you | enemy.
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 36)
+	grid.add_theme_constant_override("v_separation", 6)
+	row.add_child(grid)
+	grid.add_child(_label("", DIM))
+	grid.add_child(_label("You", Defs.team_color(me), 18))
+	grid.add_child(_label("Enemy", Defs.team_color(foe), 18))
+	var lines := [
+		["Ships built", func(p): return st.get_count(p, "ships_built")],
+		["Ships lost", func(p): return st.get_count(p, "ships_lost")],
+		["Enemy ships destroyed", func(p): return st.get_count(3 - p, "ships_lost")],
+		["Worlds colonized / taken", func(p): return st.get_count(p, "planets_won")],
+		["Worlds lost", func(p): return st.get_count(p, "planets_lost")],
+		["Starbases lost", func(p): return st.get_count(p, "starbases_lost")],
+		["Peak worlds", func(p): return st.peak(p, "worlds")],
+		["Peak population", func(p): return st.peak(p, "pop")],
+		["Peak warships", func(p): return st.peak(p, "warships")],
+		["Technologies researched", func(p): return game.researched[p].size()],
+	]
+	for l in lines:
+		grid.add_child(_label(l[0], TEXT))
+		for p in [me, foe]:
+			var v := _label(str(l[1].call(p)), Color.WHITE)
+			v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			grid.add_child(v)
+	# Charts over time.
+	var charts := GridContainer.new()
+	charts.columns = 2
+	charts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	charts.add_theme_constant_override("h_separation", 16)
+	charts.add_theme_constant_override("v_separation", 16)
+	row.add_child(charts)
+	for c in [["Worlds", "worlds"], ["Population", "pop"], ["Warships", "warships"], ["Fleet strength", "power"]]:
+		var box := VBoxContainer.new()
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(_label(c[0], TEXT, 15))
+		var ch := StatChart.new()
+		ch.samples = st.samples
+		ch.field = c[1]
+		ch.sides = [[me, Defs.team_color(me)], [foe, Defs.team_color(foe)]]
+		ch.custom_minimum_size = Vector2(390, 150)
+		box.add_child(ch)
+		charts.add_child(box)
+
+## A small line chart of one sampled field for both sides over the match.
+class StatChart extends Control:
+	var samples: Array = []
+	var field := ""
+	var sides: Array = []   # [[pid, color], ...]
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.03, 0.04, 0.09, 0.9))
+		draw_rect(Rect2(Vector2.ZERO, size), Color("2b3a6b"), false, 1.0)
+		if samples.size() < 2:
+			return
+		var t_max: float = maxf(samples[-1]["t"], 1.0)
+		var v_max := 1.0
+		for s in samples:
+			for sd in sides:
+				v_max = maxf(v_max, float(s[str(sd[0])][field]))
+		var font := get_theme_default_font()
+		draw_string(font, Vector2(4, 13), str(int(v_max)), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("6a7596"))
+		draw_string(font, Vector2(size.x - 44, size.y - 4), "%d min" % int(t_max / 60.0), HORIZONTAL_ALIGNMENT_RIGHT, 40, 11, Color("6a7596"))
+		var pad := Vector2(6, 18)
+		var area := size - pad * 2.0
+		for sd in sides:
+			var pts := PackedVector2Array()
+			for s in samples:
+				var x: float = pad.x + area.x * float(s["t"]) / t_max
+				var y: float = pad.y + area.y * (1.0 - float(s[str(sd[0])][field]) / v_max)
+				pts.append(Vector2(x, y))
+			draw_polyline(pts, sd[1], 2.0, true)
