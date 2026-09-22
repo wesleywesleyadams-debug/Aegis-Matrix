@@ -866,6 +866,12 @@ func _end_match(won: bool) -> void:
 		return
 	is_over = true
 	stats.finish()
+	# Freeze the battlefield exactly as it ended (ships, shots, planets, AI);
+	# the camera, HUD and View Map selection keep working.
+	$World.process_mode = Node.PROCESS_MODE_DISABLED
+	ai.process_mode = Node.PROCESS_MODE_DISABLED
+	if won:
+		sfx.play_ui("victory")
 	match_over.emit(won)
 
 # ---------------------------------------------------------------- input
@@ -1035,7 +1041,8 @@ func _place_starbase(pos: Vector2) -> void:
 	sfx.play_ui("click")
 
 func _process(delta: float) -> void:
-	_clock += delta
+	if not is_over:
+		_clock += delta
 	var now_us := Time.get_ticks_usec()
 	var real_dt := minf((now_us - _last_real_us) / 1000000.0, 0.1) if _last_real_us > 0 else 0.0
 	_last_real_us = now_us
@@ -1357,6 +1364,13 @@ func _enter_dev_capture() -> void:
 				sb._die()
 		await get_tree().create_timer(1.0).timeout
 		Engine.time_scale = 1.0
+		var probe: Node2D = get_tree().get_nodes_in_group("ships")[0]
+		var p0 := probe.global_position
+		print("VICTORY TEST sound at end: ", sfx._ui.stream.resource_path, " playing=", sfx._ui.playing, " vol=", sfx._ui.volume_db)
+		var c0 := Game.now()
+		await get_tree().create_timer(2.0).timeout
+		print("VICTORY TEST frozen: ship moved %.2f px, clock moved %.2f s" % [probe.global_position.distance_to(p0), Game.now() - c0])
+		print("VICTORY TEST sound: ", sfx._ui.stream.resource_path, " playing=", sfx._ui.playing, " vol=", sfx._ui.volume_db)
 		for step in ["end", "stats", "map"]:
 			if step == "stats":
 				hud._show_stats(true)

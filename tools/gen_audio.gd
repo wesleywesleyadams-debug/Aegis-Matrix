@@ -49,10 +49,15 @@ func _init() -> void:
 		"note_colony": _echo(_seq([[392, 0.09, 0.07, "tri"], [494, 0.09, 0.07, "tri"], [587, 0.09, 0.07, "tri"], [784, 0.22, 0.07, "tri"]], 0.0)),
 		"note_starbase": _echo(_seq([[523, 0.1, 0.075, "tri"], [659, 0.1, 0.075, "tri"], [784, 0.1, 0.075, "tri"], [1047, 0.26, 0.075, "tri"]], 0.02)),
 		"note_save": _echo(_seq([[1047, 0.07, 0.06, "tri"]], 0.0)),
+		# Match won: a bright brass fanfare over a timpani roll.
+		"victory": _fanfare(),
 	}
+	# GEN_ONLY=a,b bakes just those SFX (and no music), leaving the rest as is.
+	var only := OS.get_environment("GEN_ONLY").split(",", false)
 	for name in sfx:
-		_save("sfx_" + name, sfx[name])
-	for name in TRACKS:
+		if only.is_empty() or name in only:
+			_save("sfx_" + name, sfx[name])
+	for name in ([] if not only.is_empty() else TRACKS.keys()):
 		var t0 := Time.get_ticks_msec()
 		_save("music_" + name, _music(TRACKS[name]))
 		print("music_%s: %d ms" % [name, Time.get_ticks_msec() - t0])
@@ -255,4 +260,53 @@ func _doom(dur: float, freqs: Array) -> PackedFloat32Array:
 		var thump := sin(TAU * lerpf(70.0, 30.0, minf(t * 4.0, 1.0)) * i / RATE) * exp(-t * 9.0) * 1.2
 		var env := minf(1.0, t * 40.0) * pow(1.0 - t, 1.3)
 		out[i] = (v * 0.9 + thump) * 0.45 * env
+	return out
+
+## Victory fanfare: "ta-ta-ta TAAA" pickups, then a rising major arpeggio
+## into a long, swelling C major chord, in a brassy tone (a few detuned
+## harmonics with vibrato), over a timpani roll and a final boom, with a
+## hall-like echo.
+func _fanfare() -> PackedFloat32Array:
+	var dur := 3.6
+	var n := int(dur * RATE)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	# [start s, length s, freqs...]
+	var notes := [
+		[0.00, 0.12, [392.0]], [0.15, 0.12, [392.0]], [0.30, 0.12, [392.0]],
+		[0.45, 0.55, [523.3, 659.3]],
+		[1.05, 0.14, [523.3]], [1.20, 0.14, [659.3]], [1.35, 0.14, [784.0]],
+		[1.50, 2.10, [523.3, 659.3, 784.0, 1046.5]],
+	]
+	for nt in notes:
+		var s0 := int(float(nt[0]) * RATE)
+		var len := int(float(nt[1]) * RATE)
+		for f in nt[2]:
+			for i in len:
+				if s0 + i >= n:
+					break
+				var t := float(i) / RATE
+				var vib := 1.0 + 0.004 * sin(TAU * 5.5 * t) * minf(t * 3.0, 1.0)
+				var v := 0.0
+				for h in [[1.0, 1.0], [2.0, 0.5], [3.0, 0.3], [4.0, 0.15]]:
+					v += sin(TAU * f * h[0] * vib * t) * h[1]
+				var attack := minf(1.0, t / 0.02)
+				var release := minf(1.0, float(len - i) / (0.06 * RATE))
+				var swell := 1.0 + 0.4 * minf(t / 1.2, 1.0) if len > RATE else 1.0
+				out[s0 + i] += v * 0.12 * attack * release * swell
+	# Timpani: soft roll under the pickups, a hit on each chord, a big finish.
+	for hit in [[0.0, 0.25], [0.15, 0.25], [0.3, 0.25], [0.45, 0.7], [1.5, 1.0], [3.0, 0.5]]:
+		var s0 := int(float(hit[0]) * RATE)
+		for i in int(0.8 * RATE):
+			if s0 + i >= n:
+				break
+			var t := float(i) / RATE
+			out[s0 + i] += sin(TAU * lerpf(110.0, 65.0, minf(t * 6.0, 1.0)) * t) * exp(-t * 5.0) * 0.35 * float(hit[1])
+	# Hall echo.
+	var d := int(0.18 * RATE)
+	for i in range(d, n):
+		out[i] += out[i - d] * 0.3
+	# Final fade.
+	for i in int(0.5 * RATE):
+		out[n - 1 - i] *= float(i) / (0.5 * RATE)
 	return out
