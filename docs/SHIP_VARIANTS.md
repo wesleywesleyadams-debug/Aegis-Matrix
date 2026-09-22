@@ -35,13 +35,15 @@ its generalist.**
 | Variant | Effect | Base damage | Shots | Markings |
 |---|---|---|---|---|
 | Generalist | full damage to all layers | 100% | yellow lasers | none |
-| **Ion** | x2.2 vs **shields** | 80% | light blue | dotted spine + nose emitter |
-| **Breacher** | x2.2 vs **armor** | 80% | red | solid spine + ram prongs |
-| **Reaver** | x1.9 vs **hull** | 80% | green | solid spine + saw-tooth edges |
-| **Slip** | **ignores shields** (armor + hull) | 65% | orange V-shots | twin dashed side stripes |
-| **Disruptor** | **ignores shields and armor** (hull only) | 40% | green V-shots | V-chevrons down the spine |
+| **Ion** | x2.2 vs **shields** | 80% | light blue | one solid line down the spine |
+| **Breacher** | x2.2 vs **armor** | 80% | red | two ribs across the hull |
+| **Reaver** | x1.9 vs **hull** | 80% | green | saw teeth along both edges |
+| **Slip** | **ignores shields** (armor + hull) | 65% | orange V-shots | two stripes either side of the spine |
+| **Disruptor** | **ignores shields and armor** (hull only) | 40% | green V-shots | a row of V chevrons |
 
-Color = which layer it hits; pattern = which variant it is. Cruisers fire
+Hull markings are always drawn in the owner's player color, so the pattern alone
+names the variant (one line, two ribs, saw teeth, two stripes, chevrons); the
+shot color names the layer it hits. Cruisers fire
 torpedoes in the same colors (only lasers get the V shape). Against planets,
 piercing shots skip the planetary shield, Ion hits it harder, and Reaver kills
 population faster.

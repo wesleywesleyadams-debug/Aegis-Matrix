@@ -916,75 +916,64 @@ func _gen_variants() -> void:
 		var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s.png" % base))
 		var team := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s_team.png" % base))
 		for v in VARIANT_BASES[base]:
-			var img := hull.duplicate() as Image
-			_mark_variant(img, v, VARIANT_COLORS[v])
-			_save(img, "ship_%s_%s" % [v, base])
-			_save(team.duplicate() as Image, "ship_%s_%s_team" % [v, base])
+			var tim := team.duplicate() as Image
+			_mark_variant(hull, tim, v)
+			_save(hull.duplicate() as Image, "ship_%s_%s" % [v, base])
+			_save(tim, "ship_%s_%s_team" % [v, base])
 
-## Each variant has its own marking pattern (the color says which layer it
-## hits, the pattern says which variant it is):
-##   ion       - dotted spine stripe + nose emitter
-##   breacher  - solid spine stripe + two ram prongs past the nose
-##   reaver    - solid spine stripe + saw-tooth wing edges
-##   slip      - twin dashed side stripes (no center line)
-##   disruptor - V chevrons down the spine (like its V-shots) + nose emitter
-func _mark_variant(img: Image, v: String, c: Array) -> void:
-	var w := img.get_width()
-	var h := img.get_height()
+## Variant markings go on the TEAM layer, so they always show the owner's
+## color. That means the pattern alone has to say which variant it is:
+##   ion       - one solid line down the spine
+##   breacher  - two ribs across the hull
+##   reaver    - saw teeth along both edges
+##   slip      - two long stripes either side of the spine
+##   disruptor - a row of V chevrons
+func _mark_variant(hull: Image, tim: Image, v: String) -> void:
+	var w := hull.get_width()
+	var h := hull.get_height()
 	var cy := h / 2
+	var lit: Color = TEAM[TEAM.size() - 1]
+	var mid: Color = TEAM[TEAM.size() - 2]
 	var is_hull := func(x: int, y: int) -> bool:
-		return x >= 0 and y >= 0 and x < w and y < h and img.get_pixel(x, y).a > 0.0 and img.get_pixel(x, y) != OUTLINE
-	var nose := 0
-	for x in range(w - 1, 0, -1):
-		if is_hull.call(x, cy):
-			nose = x
-			break
-	var tail := int(w * 0.62)
+		return x >= 0 and y >= 0 and x < w and y < h and hull.get_pixel(x, y).a > 0.0 and hull.get_pixel(x, y) != OUTLINE
+	var mark := func(x: int, y: int, c: Color) -> void:
+		if is_hull.call(x, y):
+			tim.set_pixel(x, y, c)
+	var tail := int(w * 0.66)
 	match v:
 		"ion":
 			for x in range(2, tail):
-				if x % 2 == 0 and is_hull.call(x, cy):
-					img.set_pixel(x, cy, c[1])
-			img.set_pixel(nose, cy, c[2])
-			img.set_pixel(nose - 1, cy, c[1])
+				mark.call(x, cy, lit)
 		"breacher":
-			for x in range(2, tail):
-				if is_hull.call(x, cy):
-					img.set_pixel(x, cy, c[1])
-			for s in [-2, 2]:
-				for k in 3:
-					var px := nose - 3 + k
-					if px >= 0 and px < w and cy + s >= 0 and cy + s < h:
-						img.set_pixel(px, cy + s, c[1] if k < 2 else c[2])
+			# Two ribs across the hull, from edge to edge.
+			for k in 2:
+				var x := int(w * (0.30 + k * 0.16))
+				for y in h:
+					if absi(y - cy) <= 1:
+						continue
+					mark.call(x, y, lit)
+					mark.call(x + 1, y, mid)
 		"reaver":
-			for x in range(2, tail):
-				if is_hull.call(x, cy):
-					img.set_pixel(x, cy, c[1])
-			# Saw teeth: every other pixel just inside the top and bottom edge.
 			for x in w:
 				if x % 2 == 1:
 					continue
 				for dir in [1, -1]:
 					var y := 0 if dir == 1 else h - 1
-					while y >= 0 and y < h and img.get_pixel(x, y).a == 0.0:
+					while y >= 0 and y < h and hull.get_pixel(x, y).a == 0.0:
 						y += dir
 					var inner: int = y + dir
-					if absi(inner - cy) >= 2 and is_hull.call(x, inner):
-						img.set_pixel(x, inner, c[1])
+					if absi(inner - cy) >= 2:
+						mark.call(x, inner, lit)
 		"slip":
 			for s in [-2, 2]:
 				for x in range(2, tail):
-					if x % 3 != 2 and is_hull.call(x, cy + s):
-						img.set_pixel(x, cy + s, c[1])
+					mark.call(x, cy + s, lit)
 		"disruptor":
 			for x0 in range(3, tail - 2, 5):
 				for k in 3:
 					for s in [-1, 1]:
-						if is_hull.call(x0 + k, cy + s * (2 - k)):
-							img.set_pixel(x0 + k, cy + s * (2 - k), c[1])
-				if is_hull.call(x0 + 2, cy):
-					img.set_pixel(x0 + 2, cy, c[2])
-			img.set_pixel(nose, cy, c[2])
+						mark.call(x0 + k, cy + s * (2 - k), lit)
+				mark.call(x0 + 2, cy, mid)
 
 func _gen_depot() -> void:
 	_ship("depot", 34, 34,
