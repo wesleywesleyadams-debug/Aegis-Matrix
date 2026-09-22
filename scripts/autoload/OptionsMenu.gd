@@ -81,6 +81,7 @@ func apply_current_settings() -> void:
 	if _shuffle_checkbox:
 		_shuffle_checkbox.set_pressed_no_signal(GameState.music_shuffle)
 		_shuffle_checkbox.get_child(0).queue_redraw()
+		_update_shuffle_label()
 	font_option.selected = maxi(FONT_OPTION_KEYS.find(GameState.ui_font), 0)
 	_apply_font(GameState.ui_font)
 
@@ -175,6 +176,7 @@ var _disabled_title: Label
 var _track_status: Label
 var _file_dialog: FileDialog
 var _shuffle_checkbox: Button
+var _shuffle_label: Label
 
 ## Audio tab as three panels side by side:
 ##   1. Audio: the volume sliders and Audio / Music toggles (moved in from the
@@ -225,6 +227,11 @@ func _build_music_section() -> void:
 	head.add_child(_enabled_title)
 	_shuffle_checkbox = _shuffle_button()
 	head.add_child(_shuffle_checkbox)
+	_shuffle_label = Label.new()
+	_shuffle_label.add_theme_font_size_override("font_size", 12)
+	head.add_child(_shuffle_label)
+	_update_shuffle_label()
+	_shuffle_checkbox.toggled.connect(func(_on): _update_shuffle_label())
 	var add := Button.new()
 	add.text = "Add Song..."
 	add.pressed.connect(func(): _file_dialog.popup_centered_ratio(0.7))
@@ -470,3 +477,8 @@ func _shuffle_button() -> Button:
 		GameState.save_settings()
 		icon.queue_redraw())
 	return b
+
+func _update_shuffle_label() -> void:
+	var on := GameState.music_shuffle
+	_shuffle_label.text = "shuffle on" if on else "shuffle off"
+	_shuffle_label.add_theme_color_override("font_color", ENABLED_COLOR if on else Color(0.55, 0.58, 0.7))
