@@ -103,51 +103,71 @@ func close() -> void:
 func _hash_password(password: String) -> String:
 	return password.sha256_text()
 
-## Rebuilds the account list from GameState.accounts -- one selectable row
-## per saved account (a single-select toggle group: picking one just aims
-## the Sign In button, it doesn't sign you in by itself), the currently
-## signed-in one called out by its own color.
+## Rebuilds the account list from GameState.accounts. Each account is one
+## row showing its status and its own action button -- "Sign In" on other
+## accounts, "Sign Out" on the one you're playing as (green border and a
+## "Signed in" tag) -- so what a click will do is always spelled out.
 func _refresh_accounts_list() -> void:
 	for child in accounts_list.get_children():
 		child.queue_free()
 
 	for account in GameState.accounts:
 		var account_name: String = account["name"]
-		var tag := ""
-		if account_name == GameState.active_account:
-			tag = " (signed in)"
-		elif int(account.get("steam_id", 0)) != 0:
-			tag = " (Steam)"
-		var button := Button.new()
-		button.text = account_name + tag
-		button.toggle_mode = true
-		button.button_pressed = account_name == _selected_account_name
-		button.pressed.connect(_on_account_row_pressed.bind(account_name))
-		accounts_list.add_child(button)
+		var active := account_name == GameState.active_account
+		var steam := int(account.get("steam_id", 0)) != 0
+		var row := PanelContainer.new()
+		var st := StyleBoxFlat.new()
+		st.bg_color = Color("12301c") if active else Color("121a33")
+		st.border_color = Color("6aff8a") if active else Color("2e3a66")
+		st.set_border_width_all(2)
+		st.set_content_margin_all(8)
+		row.add_theme_stylebox_override("panel", st)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		row.add_child(h)
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_theme_constant_override("separation", 0)
+		h.add_child(info)
+		var name_label := Label.new()
+		name_label.text = account_name
+		info.add_child(name_label)
+		var tag := Label.new()
+		tag.text = "● Signed in" if active else ("Steam account" if steam else "Not signed in")
+		tag.add_theme_font_size_override("font_size", 12)
+		tag.add_theme_color_override("font_color", Color("6aff8a") if active else Color(0.6, 0.65, 0.8))
+		info.add_child(tag)
+		var action := Button.new()
+		action.text = "Sign Out" if active else "Sign In"
+		action.custom_minimum_size = Vector2(110, 0)
+		action.pressed.connect(_on_account_action_pressed.bind(account_name))
+		h.add_child(action)
+		accounts_list.add_child(row)
+
+	if GameState.accounts.is_empty():
+		var none := Label.new()
+		none.text = "No accounts yet. Create one below."
+		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		accounts_list.add_child(none)
 
 	active_account_label.text = (
 		"Playing as: %s" % GameState.active_account if not GameState.active_account.is_empty()
 		else "No account signed in"
 	)
-	_update_sign_in_button()
+	# Each row carries its own Sign In / Sign Out now.
+	sign_in_button.visible = false
 	create_account_button.disabled = GameState.accounts.size() >= GameState.MAX_ACCOUNTS
 	create_account_button.text = (
 		"Max Accounts Reached (%d)" % GameState.MAX_ACCOUNTS if create_account_button.disabled
 		else "Create New Account"
 	)
 
-func _on_account_row_pressed(account_name: String) -> void:
-	_selected_account_name = "" if _selected_account_name == account_name else account_name
+## A row's own button: signs out of that account if it's the active one,
+## otherwise starts signing in to it (password prompt / Steam check).
+func _on_account_action_pressed(account_name: String) -> void:
+	_selected_account_name = account_name
 	account_status_label.text = ""
-	_refresh_accounts_list()
-
-## The Sign In button doubles as Sign Out when the highlighted row is
-## already the signed-in account -- one button rather than a second one
-## that's only ever relevant for a single row.
-func _update_sign_in_button() -> void:
-	var is_active := not _selected_account_name.is_empty() and _selected_account_name == GameState.active_account
-	sign_in_button.text = "Sign Out" if is_active else "Sign In"
-	sign_in_button.disabled = _selected_account_name.is_empty()
+	_on_sign_in_button_pressed()
 
 func _on_sign_in_button_pressed() -> void:
 	if _selected_account_name.is_empty():

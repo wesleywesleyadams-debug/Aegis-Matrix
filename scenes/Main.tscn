@@ -1,417 +1,396 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bg5q3le68rx3d"]
 
-[ext_resource type="Script" path="res://scripts/game/Game.gd" id="1_game"]
-[ext_resource type="Script" path="res://scripts/game/HUD.gd" id="2_hud"]
-[ext_resource type="Script" path="res://scripts/game/AIController.gd" id="3_ai"]
+[ext_resource type="Script" uid="uid://nfi0jxytvheg" path="res://scripts/game/Game.gd" id="1_game"]
+[ext_resource type="Script" uid="uid://dclvhuvrkwi3v" path="res://scripts/game/HUD.gd" id="2_hud"]
+[ext_resource type="Script" uid="uid://c41qefywfpgm6" path="res://scripts/game/AIController.gd" id="3_ai"]
 [ext_resource type="PackedScene" path="res://scenes/Ship.tscn" id="4_ship"]
 [ext_resource type="PackedScene" path="res://scenes/Starbase.tscn" id="5_starbase"]
 [ext_resource type="PackedScene" path="res://scenes/Planet.tscn" id="6_planet"]
 [ext_resource type="PackedScene" path="res://scenes/Asteroid.tscn" id="7_asteroid"]
-[ext_resource type="Texture2D" path="res://assets/pixel/bg_stars.png" id="8_stars"]
-[ext_resource type="Texture2D" path="res://assets/pixel/bg_nebula.png" id="9_nebula"]
-[ext_resource type="Texture2D" path="res://assets/pixel/bg_dust.png" id="10_dust"]
-[ext_resource type="Texture2D" path="res://assets/pixel/star.png" id="11_star"]
-[ext_resource type="Shader" path="res://shaders/space_bg.gdshader" id="12_bg"]
-[ext_resource type="Script" path="res://scripts/game/Sfx.gd" id="13_sfx"]
-[ext_resource type="Script" path="res://scripts/game/Star.gd" id="14_star"]
+[ext_resource type="Texture2D" uid="uid://dmwu7wmq4pqma" path="res://assets/pixel/bg_stars.png" id="8_stars"]
+[ext_resource type="Texture2D" uid="uid://bv2ukhyu6gueb" path="res://assets/pixel/bg_nebula.png" id="9_nebula"]
+[ext_resource type="Texture2D" uid="uid://ch5s57e23h3mi" path="res://assets/pixel/bg_dust.png" id="10_dust"]
+[ext_resource type="Texture2D" uid="uid://l8iat3capbc2" path="res://assets/pixel/star.png" id="11_star"]
+[ext_resource type="Shader" uid="uid://d1lpxrc13cb6y" path="res://shaders/space_bg.gdshader" id="12_bg"]
+[ext_resource type="Script" uid="uid://bfpcyn272ifbp" path="res://scripts/game/Sfx.gd" id="13_sfx"]
+[ext_resource type="Script" uid="uid://co8mcm7ie3foy" path="res://scripts/game/Star.gd" id="14_star"]
 
 [sub_resource type="ShaderMaterial" id="bg_mat"]
 shader = ExtResource("12_bg")
 shader_parameter/stars = ExtResource("8_stars")
 shader_parameter/nebula = ExtResource("9_nebula")
 shader_parameter/dust = ExtResource("10_dust")
+shader_parameter/cam = Vector2(0, 0)
+shader_parameter/zoom = 3.0
+shader_parameter/screen_size = Vector2(1920, 1080)
+shader_parameter/base_color = Color(0.027, 0.024, 0.059, 1)
+shader_parameter/nebula_alpha = 0.35
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=1066663065]
 script = ExtResource("1_game")
 
-[node name="Background" type="CanvasLayer" parent="."]
+[node name="Background" type="CanvasLayer" parent="." unique_id=1963243086]
 layer = -10
 
-[node name="Space" type="ColorRect" parent="Background"]
+[node name="Space" type="ColorRect" parent="Background" unique_id=1582170505]
 material = SubResource("bg_mat")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 
-[node name="World" type="Node2D" parent="."]
+[node name="World" type="Node2D" parent="." unique_id=1902377615]
 
-[node name="Star" type="Sprite2D" parent="World" groups=["stars"]]
-script = ExtResource("14_star")
+[node name="Star" type="Sprite2D" parent="World" unique_id=661178753 groups=["stars"]]
 texture = ExtResource("11_star")
+script = ExtResource("14_star")
 
-[node name="Planets" type="Node2D" parent="World"]
+[node name="Planets" type="Node2D" parent="World" unique_id=203258080]
 
-[node name="Terra Nova" parent="World/Planets" instance=ExtResource("6_planet")]
+[node name="Terra Nova" parent="World/Planets" unique_id=257714539 instance=ExtResource("6_planet")]
 position = Vector2(-1350, 560)
-kind = "planet_terran"
 planet_name = "Terra Nova"
 owner_id = 1
+start_buildings = PackedStringArray()
 
-[node name="Glacius" parent="World/Planets" instance=ExtResource("6_planet")]
+[node name="Glacius" parent="World/Planets" unique_id=502848070 instance=ExtResource("6_planet")]
 position = Vector2(1350, -560)
 kind = "planet_ice"
 planet_name = "Glacius"
 owner_id = 2
+start_buildings = PackedStringArray()
 
-[node name="Jovara" parent="World/Planets" instance=ExtResource("6_planet")]
+[node name="Jovara" parent="World/Planets" unique_id=921726484 instance=ExtResource("6_planet")]
 position = Vector2(0, -760)
 kind = "planet_gas"
 planet_name = "Jovara"
-owner_id = 0
+start_buildings = PackedStringArray()
 
-[node name="Kess" parent="World/Planets" instance=ExtResource("6_planet")]
+[node name="Kess" parent="World/Planets" unique_id=895407863 instance=ExtResource("6_planet")]
 position = Vector2(150, -690)
 kind = "planet_moon"
 planet_name = "Kess"
-owner_id = 0
+start_buildings = PackedStringArray()
 
-[node name="Pyre" parent="World/Planets" instance=ExtResource("6_planet")]
+[node name="Pyre" parent="World/Planets" unique_id=105261170 instance=ExtResource("6_planet")]
 position = Vector2(0, 760)
 kind = "planet_lava"
 planet_name = "Pyre"
-owner_id = 0
+start_buildings = PackedStringArray()
 
-[node name="Dunmar" parent="World/Planets" instance=ExtResource("6_planet")]
+[node name="Dunmar" parent="World/Planets" unique_id=284164194 instance=ExtResource("6_planet")]
 position = Vector2(-720, -420)
 kind = "planet_desert"
 planet_name = "Dunmar"
-owner_id = 0
+start_buildings = PackedStringArray()
 
-[node name="Sarn" parent="World/Planets" instance=ExtResource("6_planet")]
+[node name="Sarn" parent="World/Planets" unique_id=934110011 instance=ExtResource("6_planet")]
 position = Vector2(720, 420)
 kind = "planet_desert"
 planet_name = "Sarn"
-owner_id = 0
+start_buildings = PackedStringArray()
 
-[node name="Asteroids" type="Node2D" parent="World"]
+[node name="Asteroids" type="Node2D" parent="World" unique_id=1580611367]
 
-[node name="Rock0" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock0" parent="World/Asteroids" unique_id=475574432 instance=ExtResource("7_asteroid")]
 position = Vector2(-1248, 871)
-variant = "asteroid_0"
 
-[node name="Rock1" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock1" parent="World/Asteroids" unique_id=1823064445 instance=ExtResource("7_asteroid")]
 position = Vector2(-1327, 764)
 variant = "asteroid_2"
 
-[node name="Rock2" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock2" parent="World/Asteroids" unique_id=1787687443 instance=ExtResource("7_asteroid")]
 position = Vector2(-1192, 859)
 variant = "asteroid_big_0"
 
-[node name="Rock3" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock3" parent="World/Asteroids" unique_id=1144607230 instance=ExtResource("7_asteroid")]
 position = Vector2(-1233, 805)
 variant = "asteroid_big_1"
 
-[node name="Rock4" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock4" parent="World/Asteroids" unique_id=1268448978 instance=ExtResource("7_asteroid")]
 position = Vector2(-1163, 846)
-variant = "asteroid_0"
 
-[node name="Rock5" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock5" parent="World/Asteroids" unique_id=1589281376 instance=ExtResource("7_asteroid")]
 position = Vector2(-1328, 842)
 variant = "asteroid_1"
 
-[node name="Rock6" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock6" parent="World/Asteroids" unique_id=619859095 instance=ExtResource("7_asteroid")]
 position = Vector2(-1250, 900)
-variant = "asteroid_0"
 
-[node name="Rock7" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock7" parent="World/Asteroids" unique_id=1229579322 instance=ExtResource("7_asteroid")]
 position = Vector2(-1555, 358)
 variant = "asteroid_2"
 
-[node name="Rock8" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock8" parent="World/Asteroids" unique_id=1672436304 instance=ExtResource("7_asteroid")]
 position = Vector2(-1490, 247)
 variant = "asteroid_2"
 
-[node name="Rock9" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock9" parent="World/Asteroids" unique_id=559739443 instance=ExtResource("7_asteroid")]
 position = Vector2(-1536, 308)
 variant = "asteroid_big_1"
 
-[node name="Rock10" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock10" parent="World/Asteroids" unique_id=1894498756 instance=ExtResource("7_asteroid")]
 position = Vector2(-1490, 414)
 variant = "asteroid_big_0"
 
-[node name="Rock11" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock11" parent="World/Asteroids" unique_id=806208622 instance=ExtResource("7_asteroid")]
 position = Vector2(-1469, 349)
 variant = "asteroid_big_1"
 
-[node name="Rock12" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock12" parent="World/Asteroids" unique_id=121435658 instance=ExtResource("7_asteroid")]
 position = Vector2(-1551, 360)
 variant = "asteroid_2"
 
-[node name="Rock13" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock13" parent="World/Asteroids" unique_id=782843918 instance=ExtResource("7_asteroid")]
 position = Vector2(1295, -805)
 variant = "asteroid_big_1"
 
-[node name="Rock14" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock14" parent="World/Asteroids" unique_id=1302797891 instance=ExtResource("7_asteroid")]
 position = Vector2(1271, -757)
 variant = "asteroid_3"
 
-[node name="Rock15" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock15" parent="World/Asteroids" unique_id=1589665916 instance=ExtResource("7_asteroid")]
 position = Vector2(1330, -778)
-variant = "asteroid_0"
 
-[node name="Rock16" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock16" parent="World/Asteroids" unique_id=1650351915 instance=ExtResource("7_asteroid")]
 position = Vector2(1171, -865)
 variant = "asteroid_1"
 
-[node name="Rock17" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock17" parent="World/Asteroids" unique_id=1018151715 instance=ExtResource("7_asteroid")]
 position = Vector2(1172, -796)
 variant = "asteroid_1"
 
-[node name="Rock18" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock18" parent="World/Asteroids" unique_id=2145082239 instance=ExtResource("7_asteroid")]
 position = Vector2(1209, -879)
 variant = "asteroid_3"
 
-[node name="Rock19" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock19" parent="World/Asteroids" unique_id=1538708454 instance=ExtResource("7_asteroid")]
 position = Vector2(1270, -834)
 variant = "asteroid_2"
 
-[node name="Rock20" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock20" parent="World/Asteroids" unique_id=341798168 instance=ExtResource("7_asteroid")]
 position = Vector2(1533, -298)
 variant = "asteroid_big_0"
 
-[node name="Rock21" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock21" parent="World/Asteroids" unique_id=1998640378 instance=ExtResource("7_asteroid")]
 position = Vector2(1499, -375)
 variant = "asteroid_big_0"
 
-[node name="Rock22" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock22" parent="World/Asteroids" unique_id=842382120 instance=ExtResource("7_asteroid")]
 position = Vector2(1476, -312)
 variant = "asteroid_2"
 
-[node name="Rock23" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock23" parent="World/Asteroids" unique_id=687429844 instance=ExtResource("7_asteroid")]
 position = Vector2(1536, -344)
-variant = "asteroid_0"
 
-[node name="Rock24" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock24" parent="World/Asteroids" unique_id=997649955 instance=ExtResource("7_asteroid")]
 position = Vector2(1489, -356)
 variant = "asteroid_1"
 
-[node name="Rock25" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock25" parent="World/Asteroids" unique_id=1340186689 instance=ExtResource("7_asteroid")]
 position = Vector2(1436, -281)
 variant = "asteroid_1"
 
-[node name="Rock26" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock26" parent="World/Asteroids" unique_id=1996684720 instance=ExtResource("7_asteroid")]
 position = Vector2(-332, 227)
 variant = "asteroid_3"
 
-[node name="Rock27" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock27" parent="World/Asteroids" unique_id=1242523432 instance=ExtResource("7_asteroid")]
 position = Vector2(-268, 323)
 variant = "asteroid_big_0"
 
-[node name="Rock28" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock28" parent="World/Asteroids" unique_id=1059102689 instance=ExtResource("7_asteroid")]
 position = Vector2(-308, 250)
 variant = "asteroid_3"
 
-[node name="Rock29" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock29" parent="World/Asteroids" unique_id=428673841 instance=ExtResource("7_asteroid")]
 position = Vector2(-283, 253)
 variant = "asteroid_3"
 
-[node name="Rock30" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock30" parent="World/Asteroids" unique_id=215103911 instance=ExtResource("7_asteroid")]
 position = Vector2(-292, 255)
-variant = "asteroid_0"
 
-[node name="Rock31" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock31" parent="World/Asteroids" unique_id=260655435 instance=ExtResource("7_asteroid")]
 position = Vector2(-301, 326)
 variant = "asteroid_big_0"
 
-[node name="Rock32" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock32" parent="World/Asteroids" unique_id=2106601986 instance=ExtResource("7_asteroid")]
 position = Vector2(357, -263)
 variant = "asteroid_1"
 
-[node name="Rock33" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock33" parent="World/Asteroids" unique_id=1676334831 instance=ExtResource("7_asteroid")]
 position = Vector2(308, -301)
 variant = "asteroid_3"
 
-[node name="Rock34" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock34" parent="World/Asteroids" unique_id=536282202 instance=ExtResource("7_asteroid")]
 position = Vector2(302, -217)
-variant = "asteroid_0"
 
-[node name="Rock35" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock35" parent="World/Asteroids" unique_id=1388773163 instance=ExtResource("7_asteroid")]
 position = Vector2(310, -268)
 variant = "asteroid_big_0"
 
-[node name="Rock36" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock36" parent="World/Asteroids" unique_id=1009718147 instance=ExtResource("7_asteroid")]
 position = Vector2(294, -259)
-variant = "asteroid_0"
 
-[node name="Rock37" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock37" parent="World/Asteroids" unique_id=24777898 instance=ExtResource("7_asteroid")]
 position = Vector2(326, -236)
 variant = "asteroid_1"
 
-[node name="Rock38" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock38" parent="World/Asteroids" unique_id=1013188589 instance=ExtResource("7_asteroid")]
 position = Vector2(-792, -912)
 variant = "asteroid_2"
 
-[node name="Rock39" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock39" parent="World/Asteroids" unique_id=1269596344 instance=ExtResource("7_asteroid")]
 position = Vector2(-823, -872)
 variant = "asteroid_3"
 
-[node name="Rock40" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock40" parent="World/Asteroids" unique_id=1514826463 instance=ExtResource("7_asteroid")]
 position = Vector2(-885, -890)
 variant = "asteroid_big_1"
 
-[node name="Rock41" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock41" parent="World/Asteroids" unique_id=75603571 instance=ExtResource("7_asteroid")]
 position = Vector2(-887, -892)
 variant = "asteroid_big_0"
 
-[node name="Rock42" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock42" parent="World/Asteroids" unique_id=130899689 instance=ExtResource("7_asteroid")]
 position = Vector2(-785, -901)
 variant = "asteroid_1"
 
-[node name="Rock43" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock43" parent="World/Asteroids" unique_id=1683991944 instance=ExtResource("7_asteroid")]
 position = Vector2(820, 939)
 variant = "asteroid_3"
 
-[node name="Rock44" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock44" parent="World/Asteroids" unique_id=960751798 instance=ExtResource("7_asteroid")]
 position = Vector2(783, 920)
 variant = "asteroid_3"
 
-[node name="Rock45" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock45" parent="World/Asteroids" unique_id=87685383 instance=ExtResource("7_asteroid")]
 position = Vector2(846, 945)
 variant = "asteroid_big_0"
 
-[node name="Rock46" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock46" parent="World/Asteroids" unique_id=1179986711 instance=ExtResource("7_asteroid")]
 position = Vector2(842, 913)
 variant = "asteroid_2"
 
-[node name="Rock47" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Rock47" parent="World/Asteroids" unique_id=1008253192 instance=ExtResource("7_asteroid")]
 position = Vector2(737, 881)
 variant = "asteroid_3"
 
-[node name="Spice0" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice0" parent="World/Asteroids" unique_id=156978073 instance=ExtResource("7_asteroid")]
 position = Vector2(20, -402)
 variant = "spice_0"
 
-[node name="Spice1" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice1" parent="World/Asteroids" unique_id=754506574 instance=ExtResource("7_asteroid")]
 position = Vector2(-11, -415)
 variant = "spice_0"
 
-[node name="Spice2" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice2" parent="World/Asteroids" unique_id=98780872 instance=ExtResource("7_asteroid")]
 position = Vector2(-21, -433)
 variant = "spice_1"
 
-[node name="Spice3" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice3" parent="World/Asteroids" unique_id=754831476 instance=ExtResource("7_asteroid")]
 position = Vector2(-13, 437)
 variant = "spice_1"
 
-[node name="Spice4" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice4" parent="World/Asteroids" unique_id=1509607302 instance=ExtResource("7_asteroid")]
 position = Vector2(-40, 433)
 variant = "spice_1"
 
-[node name="Spice5" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice5" parent="World/Asteroids" unique_id=1278406378 instance=ExtResource("7_asteroid")]
 position = Vector2(-10, 428)
 variant = "spice_0"
 
-[node name="Spice6" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice6" parent="World/Asteroids" unique_id=2125315371 instance=ExtResource("7_asteroid")]
 position = Vector2(-977, -79)
 variant = "spice_1"
 
-[node name="Spice7" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice7" parent="World/Asteroids" unique_id=1628657949 instance=ExtResource("7_asteroid")]
 position = Vector2(-994, -93)
 variant = "spice_0"
 
-[node name="Spice8" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice8" parent="World/Asteroids" unique_id=1211598274 instance=ExtResource("7_asteroid")]
 position = Vector2(984, 74)
 variant = "spice_1"
 
-[node name="Spice9" parent="World/Asteroids" instance=ExtResource("7_asteroid")]
+[node name="Spice9" parent="World/Asteroids" unique_id=1424516478 instance=ExtResource("7_asteroid")]
 position = Vector2(983, 59)
 variant = "spice_1"
 
-[node name="Starbases" type="Node2D" parent="World"]
+[node name="Starbases" type="Node2D" parent="World" unique_id=673224073]
 
-[node name="Starbase1" parent="World/Starbases" instance=ExtResource("5_starbase")]
+[node name="Starbase1" parent="World/Starbases" unique_id=980147480 instance=ExtResource("5_starbase")]
 position = Vector2(-1200, 470)
-owner_id = 1
 
-[node name="Starbase2" parent="World/Starbases" instance=ExtResource("5_starbase")]
+[node name="Starbase2" parent="World/Starbases" unique_id=326641651 instance=ExtResource("5_starbase")]
 position = Vector2(1200, -470)
 owner_id = 2
 
-[node name="Ships" type="Node2D" parent="World"]
+[node name="Ships" type="Node2D" parent="World" unique_id=929951133]
 
-[node name="Miner10" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Miner10" parent="World/Ships" unique_id=1201470056 instance=ExtResource("4_ship")]
 position = Vector2(-1150, 560)
-rotation = 0.0
 ship_type = "miner"
-owner_id = 1
 
-[node name="Miner11" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Miner11" parent="World/Ships" unique_id=34473812 instance=ExtResource("4_ship")]
 position = Vector2(-1150, 584)
-rotation = 0.0
 ship_type = "miner"
-owner_id = 1
 
-[node name="Miner12" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Miner12" parent="World/Ships" unique_id=937160512 instance=ExtResource("4_ship")]
 position = Vector2(-1150, 608)
-rotation = 0.0
 ship_type = "miner"
-owner_id = 1
 
-[node name="Corvette10" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Corvette10" parent="World/Ships" unique_id=1971455251 instance=ExtResource("4_ship")]
 position = Vector2(-1120, 380)
-rotation = 0.0
-ship_type = "corvette"
-owner_id = 1
 
-[node name="Corvette11" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Corvette11" parent="World/Ships" unique_id=218628838 instance=ExtResource("4_ship")]
 position = Vector2(-1098, 380)
-rotation = 0.0
-ship_type = "corvette"
-owner_id = 1
 
-[node name="Corvette12" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Corvette12" parent="World/Ships" unique_id=1379532588 instance=ExtResource("4_ship")]
 position = Vector2(-1076, 380)
-rotation = 0.0
-ship_type = "corvette"
-owner_id = 1
 
-[node name="Miner20" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Miner20" parent="World/Ships" unique_id=804065727 instance=ExtResource("4_ship")]
 position = Vector2(1150, -560)
 rotation = 3.14159
 ship_type = "miner"
 owner_id = 2
 
-[node name="Miner21" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Miner21" parent="World/Ships" unique_id=565136913 instance=ExtResource("4_ship")]
 position = Vector2(1150, -584)
 rotation = 3.14159
 ship_type = "miner"
 owner_id = 2
 
-[node name="Miner22" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Miner22" parent="World/Ships" unique_id=1838393150 instance=ExtResource("4_ship")]
 position = Vector2(1150, -608)
 rotation = 3.14159
 ship_type = "miner"
 owner_id = 2
 
-[node name="Corvette20" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Corvette20" parent="World/Ships" unique_id=237920323 instance=ExtResource("4_ship")]
 position = Vector2(1120, -380)
 rotation = 3.14159
-ship_type = "corvette"
 owner_id = 2
 
-[node name="Corvette21" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Corvette21" parent="World/Ships" unique_id=1118923475 instance=ExtResource("4_ship")]
 position = Vector2(1098, -380)
 rotation = 3.14159
-ship_type = "corvette"
 owner_id = 2
 
-[node name="Corvette22" parent="World/Ships" instance=ExtResource("4_ship")]
+[node name="Corvette22" parent="World/Ships" unique_id=945765025 instance=ExtResource("4_ship")]
 position = Vector2(1076, -380)
 rotation = 3.14159
-ship_type = "corvette"
 owner_id = 2
 
-[node name="FX" type="Node2D" parent="World"]
+[node name="FX" type="Node2D" parent="World" unique_id=25589015]
 
-[node name="Camera" type="Camera2D" parent="."]
+[node name="Camera" type="Camera2D" parent="." unique_id=699147524]
 zoom = Vector2(3, 3)
 
-[node name="Sfx" type="Node" parent="."]
+[node name="Sfx" type="Node" parent="." unique_id=185916221]
 script = ExtResource("13_sfx")
 
-[node name="AI" type="Node" parent="."]
+[node name="AI" type="Node" parent="." unique_id=1859839884]
 script = ExtResource("3_ai")
 
-[node name="HUD" type="CanvasLayer" parent="."]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=390491818]
 script = ExtResource("2_hud")

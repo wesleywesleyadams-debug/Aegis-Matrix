@@ -249,6 +249,8 @@ func _notification(what: int) -> void:
 			_on_play_pressed()
 			await get_tree().process_frame
 		if OS.get_environment("SL_TITLE_SHOT") == "account":
+			# In-memory only (never saved): a second account to show both row states.
+			GameState.accounts.append({"name": "Guest", "password_hash": ""})
 			account_button.pressed.emit()
 			await get_tree().process_frame
 		if OS.get_environment("SL_TITLE_SHOT") == "create":

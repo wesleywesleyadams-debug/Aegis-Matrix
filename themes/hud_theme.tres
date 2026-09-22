@@ -2,77 +2,17 @@
 
 [ext_resource type="SystemFont" path="res://themes/console_font.tres" id="1_font"]
 
-[sub_resource type="StyleBoxFlat" id="btn_normal"]
-content_margin_left = 24
-content_margin_top = 16
-content_margin_right = 24
-content_margin_bottom = 16
-bg_color = Color(0.078, 0.094, 0.212, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.169, 0.227, 0.42, 1)
-
-[sub_resource type="StyleBoxFlat" id="btn_hover"]
-content_margin_left = 24
-content_margin_top = 16
-content_margin_right = 24
-content_margin_bottom = 16
-bg_color = Color(0.114, 0.145, 0.314, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.31, 0.706, 1, 1)
-
-[sub_resource type="StyleBoxFlat" id="btn_pressed"]
-content_margin_left = 24
-content_margin_top = 16
-content_margin_right = 24
-content_margin_bottom = 16
-bg_color = Color(0.039, 0.047, 0.11, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.31, 0.706, 1, 1)
-
 [sub_resource type="StyleBoxFlat" id="btn_disabled"]
-content_margin_left = 24
-content_margin_top = 16
-content_margin_right = 24
-content_margin_bottom = 16
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
 bg_color = Color(0.063, 0.071, 0.122, 0.9)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.12, 0.15, 0.25, 1)
-
-[sub_resource type="StyleBoxFlat" id="panel"]
-content_margin_left = 12
-content_margin_top = 10
-content_margin_right = 12
-content_margin_bottom = 10
-bg_color = Color(0.047, 0.055, 0.122, 0.94)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.169, 0.227, 0.42, 1)
-
-[sub_resource type="StyleBoxFlat" id="field"]
-content_margin_left = 8
-content_margin_top = 8
-content_margin_right = 8
-content_margin_bottom = 8
-bg_color = Color(0.03, 0.035, 0.08, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.169, 0.227, 0.42, 1)
 
 [sub_resource type="StyleBoxFlat" id="focus"]
 draw_center = false
@@ -81,6 +21,66 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.31, 0.706, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="btn_hover"]
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
+bg_color = Color(0.114, 0.145, 0.314, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.31, 0.706, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="btn_normal"]
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
+bg_color = Color(0.078, 0.094, 0.212, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.169, 0.227, 0.42, 1)
+
+[sub_resource type="StyleBoxFlat" id="btn_pressed"]
+content_margin_left = 24.0
+content_margin_top = 16.0
+content_margin_right = 24.0
+content_margin_bottom = 16.0
+bg_color = Color(0.039, 0.047, 0.11, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.31, 0.706, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="field"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.03, 0.035, 0.08, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.169, 0.227, 0.42, 1)
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.047, 0.055, 0.122, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.169, 0.227, 0.42, 1)
 
 [resource]
 default_font = ExtResource("1_font")
@@ -96,19 +96,19 @@ Button/styles/focus = SubResource("focus")
 Button/styles/hover = SubResource("btn_hover")
 Button/styles/normal = SubResource("btn_normal")
 Button/styles/pressed = SubResource("btn_pressed")
-OptionButton/styles/normal = SubResource("btn_normal")
-OptionButton/styles/hover = SubResource("btn_hover")
-OptionButton/styles/pressed = SubResource("btn_pressed")
-OptionButton/styles/focus = SubResource("focus")
-Label/colors/font_color = Color(0.765, 0.804, 0.894, 1)
-LineEdit/styles/normal = SubResource("field")
-LineEdit/styles/focus = SubResource("focus")
-LineEdit/colors/font_color = Color(0.9, 0.93, 1, 1)
 CheckBox/colors/font_color = Color(0.765, 0.804, 0.894, 1)
 CheckBox/colors/font_hover_color = Color(1, 1, 1, 1)
+Label/colors/font_color = Color(0.765, 0.804, 0.894, 1)
+LineEdit/colors/font_color = Color(0.9, 0.93, 1, 1)
+LineEdit/styles/focus = SubResource("focus")
+LineEdit/styles/normal = SubResource("field")
+OptionButton/styles/focus = SubResource("focus")
+OptionButton/styles/hover = SubResource("btn_hover")
+OptionButton/styles/normal = SubResource("btn_normal")
+OptionButton/styles/pressed = SubResource("btn_pressed")
 Panel/styles/panel = SubResource("panel")
 PanelContainer/styles/panel = SubResource("panel")
 PopupMenu/styles/panel = SubResource("panel")
 TabContainer/styles/panel = SubResource("panel")
-TooltipPanel/styles/panel = SubResource("panel")
 TooltipLabel/colors/font_color = Color(0.765, 0.804, 0.894, 1)
+TooltipPanel/styles/panel = SubResource("panel")

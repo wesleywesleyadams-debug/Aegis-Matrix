@@ -75,7 +75,7 @@ text = "Sign in with Steam"
 
 [node name="CloseButton" type="Button" parent="Background/AccountPanel/OuterVBox"]
 layout_mode = 2
-text = "Continue"
+text = "Close"
 
 [node name="NewAccountPanel" type="Panel" parent="Background"]
 visible = false
