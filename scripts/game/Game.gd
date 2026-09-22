@@ -423,7 +423,7 @@ func planet_at(world_pos: Vector2) -> Planet:
 ## "" if a starbase may be founded at pos, otherwise the reason.
 func starbase_site_problem(pos: Vector2) -> String:
 	if not MAP_RECT.grow(-60).has_point(pos):
-		return "Too close to the edge of the map"
+		return "Too close to the edge of the system"
 	for sb in get_tree().get_nodes_in_group("starbases"):
 		if sb.global_position.distance_to(pos) < Defs.STARBASE["min_spacing"]:
 			return "Too close to another starbase"

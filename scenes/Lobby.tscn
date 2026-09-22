@@ -123,7 +123,7 @@ theme_override_constants/separation = 10
 [node name="Label" type="Label" parent="MainHBox/SettingsPanel/SettingsVBox/MapRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(110, 0)
-text = "Map"
+text = "System"
 
 [node name="OptionButton" type="OptionButton" parent="MainHBox/SettingsPanel/SettingsVBox/MapRow"]
 layout_mode = 2
