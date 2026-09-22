@@ -26,6 +26,10 @@ const SUBSTITUTABLE := ["food", "minerals", "energy"]
 static var instance: Game
 ## Scaled, pause-aware match clock (seconds). Use this, not wall time.
 static var _clock: float = 0.0
+## Balance-sim run (SL_SIM): skip everything that only exists to be seen or
+## heard (effects, sounds, the HUD) so matches run faster. Outcomes are
+## unaffected: projectiles, which carry the damage, still fly.
+var sim_mode: bool = false
 
 var player_id: int = 1
 var players: Array[int] = [1, 2]
@@ -87,6 +91,7 @@ func _enter_tree() -> void:
 		GameState.load_save_path = OS.get_environment("SL_LOAD")
 	instance = self
 	_clock = 0.0
+	sim_mode = OS.get_environment("SL_SIM") != ""
 	player_id = clampi(GameState.human_player_id, 1, 2)
 	for pid in players:
 		resources[pid] = Defs.START.duplicate()
@@ -126,6 +131,9 @@ func _ready() -> void:
 		seed(hash(OS.get_environment("SL_SIM")))
 		ai.setup([1, 2])
 		add_child(SimRunner.new())
+		hud.visible = false
+		hud.process_mode = Node.PROCESS_MODE_DISABLED
+		sfx.process_mode = Node.PROCESS_MODE_DISABLED
 	else:
 		ai.setup([3 - player_id])
 	if not loaded:
@@ -706,9 +714,12 @@ func fire(from: SpaceEntity, to: Node2D, weapon: String, damage: float) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"))
-	sfx.play_at("laser" if weapon == "laser" else "torpedo", from.global_position, -8.0)
+	if not sim_mode:
+		sfx.play_at("laser" if weapon == "laser" else "torpedo", from.global_position, -8.0)
 
 func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
+	if sim_mode:
+		return
 	var e := Effect.new()
 	e.texture = Defs.tex("explosion")
 	e.hframes = 8
@@ -720,6 +731,8 @@ func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	sfx.play_at("boom_big" if scale_mult >= 1.0 else "boom", pos, -6.0)
 
 func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
+	if sim_mode:
+		return
 	var e := Effect.new()
 	e.texture = Defs.tex("shield_hit")
 	e.fps = 16.0
