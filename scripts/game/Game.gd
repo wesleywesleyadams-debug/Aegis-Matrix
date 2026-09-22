@@ -774,7 +774,7 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 		notify("Starbase construction started.", "note_starbase", pos)
 	return sb
 
-func fire(from: SpaceEntity, to: Node2D, weapon: String, damage: float) -> void:
+func fire(from: Node2D, to: Node2D, weapon: String, damage: float) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage") * (Abilities.damage_mult(from) if from is Ship else 1.0))
@@ -1012,10 +1012,11 @@ func _handle_key(e: InputEventKey) -> void:
 	# first: they always match the buttons on screen.
 	if hud.press_panel_key(k):
 		return
-	# The same letter with no starbase panel open: select every ship of that
-	# class you own (Q barges, W skimmers, ... just like the build grid).
+	# The same letter with nothing of yours selected: select every ship of that
+	# class you own (Q barges, W skimmers, ... just like the build grid). With
+	# a starbase, ship or planet selected the panel owns these keys.
 	var bt := hud.build_type_for_key(k)
-	if bt != "":
+	if bt != "" and selection.is_empty() and not is_instance_valid(focused_planet):
 		select_all_of_type(bt)
 		return
 	# The rest are rebindable (Options > Hotkeys; see Defs.HOTKEYS).

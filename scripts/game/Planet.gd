@@ -194,6 +194,7 @@ func colonize(pid: int) -> void:
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	_batteries_fire(delta)
 	if depleted_timer > 0.0:
 		depleted_timer -= delta
 		if depleted_timer <= 0.0:
@@ -270,7 +271,8 @@ func _economy(dt: float) -> void:
 func max_shield() -> float:
 	if owner_id == 0:
 		return 0.0
-	return PLANET_SHIELD * Game.instance.mod(owner_id, "shield")
+	# Each Defense Battery thickens the planetary shield.
+	return (PLANET_SHIELD + count_building("battery") * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "shield")
 
 func is_alive() -> bool:
 	return owner_id != 0 and pop > 0.0 and is_inside_tree()
@@ -524,3 +526,29 @@ func pop_required() -> int:
 		if b != "" and not (b == "spice_extractor" and spice_reserve <= 0.01):
 			n += Defs.BUILDINGS[b].get("pop", 0)
 	return n
+
+## Defense Batteries shoot at enemy ships in orbit, one shot per battery.
+var _battery_cd: float = 0.0
+
+func _batteries_fire(delta: float) -> void:
+	var n := count_building("battery")
+	if n == 0 or owner_id == 0:
+		return
+	_battery_cd -= delta
+	if _battery_cd > 0.0:
+		return
+	var g := Game.instance
+	var best: SpaceEntity = null
+	var best_d := Defs.BATTERY["range"] + radius
+	for s in g.get_tree().get_nodes_in_group("ships"):
+		if not s.is_enemy_of(owner_id) or not s.is_alive() or s.docked:
+			continue
+		var d: float = global_position.distance_to(s.global_position)
+		if d < best_d:
+			best_d = d
+			best = s
+	if best:
+		g.fire(self, best, Defs.BATTERY["weapon"], Defs.BATTERY["damage"] * n)
+		_battery_cd = Defs.BATTERY["cooldown"]
+	else:
+		_battery_cd = 0.4

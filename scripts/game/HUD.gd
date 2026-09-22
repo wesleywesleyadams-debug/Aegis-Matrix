@@ -1329,11 +1329,17 @@ func _register_action(b: Button) -> void:
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(tag)
 
-## Presses the panel button wired to this key. Returns false if nothing is.
+## Presses the panel button wired to this key. Returns true if the key
+## belongs to the open panel at all — a disabled button still swallows it, so
+## a full build queue never drops you out of the starbase into "select all
+## barges".
 func press_panel_key(k: Key) -> bool:
 	var b = _panel_keys.get(k)
-	if b == null or not is_instance_valid(b) or b.disabled:
+	if b == null or not is_instance_valid(b):
 		return false
+	if b.disabled:
+		game.sfx.play_ui("deny")
+		return true
 	b.pressed.emit()
 	return true
 

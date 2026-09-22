@@ -57,19 +57,19 @@ const BASE_SHIPS := {
 	"corvette": {
 		"name": "Corvette", "role": "warship",
 		"hp": 70.0, "armor": 20.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
-		"cost": {"minerals": 60}, "build_time": 8.0, "upkeep": 0.1,
+		"cost": {"minerals": 75}, "build_time": 10.0, "upkeep": 0.1,
 		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm", "refit": {"minerals": 5, "time": 15.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship",
 		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 11.0,
-		"cost": {"minerals": 140, "spice": 5}, "build_time": 14.0, "upkeep": 0.25,
+		"cost": {"minerals": 170, "spice": 5}, "build_time": 17.0, "upkeep": 0.25,
 		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort", "refit": {"minerals": 10, "time": 25.0},
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruiser_doctrine",
 		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
-		"cost": {"minerals": 300, "spice": 25}, "build_time": 24.0, "upkeep": 0.6,
+		"cost": {"minerals": 350, "spice": 25}, "build_time": 28.0, "upkeep": 0.6,
 		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "job": "barrage", "refit": {"minerals": 15, "time": 35.0},
 	},
 	"scout": {
@@ -112,8 +112,8 @@ const WEAPONS_DEPOT := {
 }
 
 const STARBASE := {
-	"name": "Starbase", "hp": 2800.0, "armor": 1200.0, "shield": 1500.0, "radius": 26.0,
-	"weapon": "laser", "damage": 22.0, "cooldown": 0.7, "range": 220.0,
+	"name": "Starbase", "hp": 4000.0, "armor": 2000.0, "shield": 2000.0, "radius": 26.0,
+	"weapon": "laser", "damage": 34.0, "cooldown": 0.6, "range": 260.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 400, "spice": 20}, "build_time": 40.0,
 	"upkeep": 0.5,
@@ -191,10 +191,15 @@ const BUILDINGS := {
 		"desc": "+1.5 minerals/s. Needs 100 pop."},
 	"habitat": {"name": "Habitat", "pop": 0, "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
 		"desc": "+1,500 population cap. Needs no staff."},
+	"battery": {"name": "Defense Battery", "pop": 100, "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
+		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px). Needs 100 pop."},
 	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.5}, "only": [],
 		"desc": "+0.5 spice/s from the planet's spice reserve (large on barren worlds, tiny on lush ones). Needs 200 pop."},
 }
-const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor"]
+const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor", "battery"]
+## Defense Battery: shield added per battery, and its gun.
+const BATTERY_SHIELD := 1200.0
+const BATTERY := {"weapon": "laser", "damage": 18.0, "cooldown": 1.2, "range": 250.0}
 ## Buildings only operate with enough pop on the planet ("pop" above).
 ## Pop is assigned automatically in this order of output.
 const STAFFING_PRIORITY: Array[String] = ["food", "energy", "minerals", "spice"]

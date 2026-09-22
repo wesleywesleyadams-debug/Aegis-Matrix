@@ -3,7 +3,7 @@ extends Sprite2D
 ## Laser bolt or torpedo. Flies toward its target (torpedoes home) and
 ## applies damage on contact; lasers that lose their target fizzle out.
 
-var shooter: SpaceEntity
+var shooter: Node2D
 var target: Node2D # a SpaceEntity or a Planet being bombarded
 var damage: float
 ## Damage vs defense layers (Defs.damage_profile of the shooter).
@@ -15,7 +15,7 @@ var homing: bool
 var life: float = 3.0
 var _vel: Vector2
 
-func setup(from: SpaceEntity, to: Node2D, weapon: String, dmg: float) -> void:
+func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
 	shooter = from
 	target = to
 	damage = dmg

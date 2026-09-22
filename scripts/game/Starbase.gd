@@ -8,7 +8,7 @@ extends SpaceEntity
 ## under_construction site that is likewise paid over time.
 ## Losing every finished starbase loses the match.
 
-const MAX_QUEUE := 5
+const MAX_QUEUE := 15
 
 var queue: Array[String] = []
 var build_progress: float = 0.0

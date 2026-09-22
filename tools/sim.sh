@@ -6,7 +6,7 @@
 # Check a batch running elsewhere with: tools/sim_progress.sh <label> <total>
 G="${GODOT:-/c/Users/whole/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe}"
 RUNS="${1:-6}"
-MINUTES="${2:-40}"
+MINUTES="${2:-45}"
 LABEL="${3:-b}"
 JOBS="${4:-5}"
 cd "$(dirname "$0")/.."
