@@ -60,7 +60,6 @@ layout_mode = 2
 text = "Load Game"
 
 [node name="AccountButton" type="Button" parent="VBox"]
-visible = false
 layout_mode = 2
 text = "Account"
 

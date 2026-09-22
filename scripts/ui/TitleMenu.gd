@@ -38,24 +38,9 @@ func _ready() -> void:
 	# both whenever the active account changes mid-session.
 	GameState.active_account_changed.connect(_on_active_account_changed)
 
-	# Nudge a not-signed-in player straight to the Account panel the moment
-	# they land on the title screen (whether that's the game's very first
-	# launch, or just coming back here not signed in) -- already signed in
-	# (e.g. "Stay signed in" restored a session) skips this entirely.
-	# Account options live right under the main menu (no pop-up). Wait a
-	# frame so the menu has its final size.
-	await get_tree().process_frame
-	var account_bottom: float = AccountMenu.dock(vbox.get_global_rect().end.y + 24.0)
-	# Order: New Game, Load Game, Options, account section, Quit.
-	var quit_width := quit_button.size.x
-	vbox.remove_child(quit_button)
-	add_child(quit_button)
-	quit_button.size = Vector2(quit_width, quit_button.get_combined_minimum_size().y)
-	quit_button.position = Vector2((size.x - quit_width) / 2.0, account_bottom + 24.0)
-	tree_exiting.connect(AccountMenu.undock)
-	# The corner Sign In link would duplicate the options shown here.
-	SignedInLabel.visible = false
-	tree_exiting.connect(func(): SignedInLabel.visible = true)
+	# Order: New Game, Load Game, Options, Account, Quit. Account opens the
+	# account panel as a pop-up (AccountMenu.open).
+	vbox.move_child(account_button, options_button.get_index())
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and _new_game_page.visible:
@@ -109,7 +94,8 @@ func _open_lobby(mode: String) -> void:
 func _show_new_game_page(on: bool) -> void:
 	vbox.visible = not on
 	quit_button.visible = not on
-	AccountMenu.background.visible = not on
+	if on:
+		AccountMenu.close()
 	_new_game_page.visible = on
 	if on:
 		_new_game_page.size = Vector2(vbox.size.x, 0)
@@ -223,7 +209,7 @@ func _on_load_pressed() -> void:
 	# The main menu and account section step aside while this is open.
 	vbox.visible = false
 	quit_button.visible = false
-	AccountMenu.background.visible = false
+	AccountMenu.close()
 	load_list_panel.visible = true
 
 ## Single-player and campaign saves resume straight into the match; a
@@ -243,7 +229,6 @@ func _on_close_load_list_pressed() -> void:
 	load_list_panel.visible = false
 	vbox.visible = true
 	quit_button.visible = true
-	AccountMenu.background.visible = true
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
@@ -262,6 +247,9 @@ func _notification(what: int) -> void:
 			await get_tree().process_frame
 		if OS.get_environment("SL_TITLE_SHOT") == "new":
 			_on_play_pressed()
+			await get_tree().process_frame
+		if OS.get_environment("SL_TITLE_SHOT") == "account":
+			account_button.pressed.emit()
 			await get_tree().process_frame
 		if OS.get_environment("SL_TITLE_SHOT") == "create":
 			AccountMenu._on_create_account_pressed()
