@@ -5,7 +5,8 @@
 # both sides (headless sims, JOBS at a time), rank the results, and step the
 # weights toward what won (Adam). Progress is logged to rl/log.csv; weights
 # are saved every generation to rl/theta.json (training resumes from it) and
-# copied to res://ai/commander.json for the game to use.
+# copied to res://ai/commander_latest.json; the best-evaluated network so far
+# is kept as res://ai/commander.json (what the game uses).
 #
 # perl tools/es_train.pl [generations] [system] [minutes cap]
 #   env: PAIRS (6), SEEDS per side (2), JOBS (5), SIGMA (0.1), LR (0.03),
@@ -134,6 +135,13 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 		my $ef = play(0, @ej);
 		my $w = 0; $w += $ef->{"win_$_->[0]"} // 0 for @ej;
 		$eval = sprintf "%.2f", $w / @ej;
+		# Keep the best-evaluated network: that's the one the game ships with
+		# (ai/commander.json); the latest weights are ai/commander_latest.json.
+		my $prev = -e "$RL/best.json" ? decode_json(slurp("$RL/best.json")) : {eval => -1};
+		if ($w / @ej >= $prev->{eval}) {
+			spit("$RL/best.json", $json->encode({gen => $g, eval => $w / @ej}));
+			weights_file("ai/commander.json", \@theta);
+		}
 	}
 	my $mf = 0; $mf += $mean{$_} for keys %mean; $mf /= scalar keys %mean;
 	my $best = $mean{$sorted[-1]};
@@ -141,6 +149,6 @@ for my $g ($gen0 + 1 .. $gen0 + $GENS) {
 	printf $LOG "%d,%.4f,%.3f,%.4f,%s,%d\n", $g, $mf, $wins / $games, $best, $eval, time - $t0;
 	$LOG->flush;
 	spit("$RL/theta.json", $json->encode({gen => $g, weights => \@theta, m => \@m, v => \@v}));
-	weights_file("ai/commander.json", \@theta);
+	weights_file("ai/commander_latest.json", \@theta);
 }
 close $LOG;
