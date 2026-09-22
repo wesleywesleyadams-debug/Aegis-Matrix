@@ -22,6 +22,7 @@ var _timer: float = 0.0
 
 func _ready() -> void:
 	add_to_group("stars")
+	queue_redraw()
 
 ## Damage per second at distance `d` from the center for an object of
 ## radius `r`: 0 at the zone edge, MAX_DPS once it touches the core.
@@ -51,11 +52,23 @@ func _process(delta: float) -> void:
 				Game.instance.alert("Your ships are taking radiation damage from %s!" % star_name, "alert_ships")
 
 func _draw() -> void:
+	# Radiation zone, always shown: a red haze that thickens toward the core
+	# (matching the damage curve) and a dashed line at its outer edge.
+	var span := RADIATION_RADIUS - CORE_RADIUS
+	var steps := 24
+	var w := span / steps
+	for k in steps:
+		var t := 1.0 - (k + 0.5) / steps
+		draw_arc(Vector2.ZERO, CORE_RADIUS + (k + 0.5) * w, 0.0, TAU, 96, Color(1, 0.3, 0.2, 0.22 * t * t), w + 0.5)
+	var edge := Color(1, 0.35, 0.3, 0.75 if focused else 0.4)
+	var dashes := 48
+	for i in dashes:
+		var a0 := TAU * i / dashes
+		draw_arc(Vector2.ZERO, RADIATION_RADIUS, a0, a0 + TAU / dashes * 0.55, 6, edge, 1.5)
 	if not focused:
 		return
-	# Selection ring on the surface, faint red ring at the danger edge.
+	# Selection ring on the surface.
 	var n := 96
 	for i in n:
 		var a := TAU * i / n
 		draw_rect(Rect2(Vector2.from_angle(a) * (CORE_RADIUS + 6.0) - Vector2(0.5, 0.5), Vector2(1, 1)), Color(1, 0.85, 0.5))
-	draw_arc(Vector2.ZERO, RADIATION_RADIUS, 0.0, TAU, 128, Color(1, 0.35, 0.3, 0.45), 1.0)
