@@ -297,25 +297,21 @@ func _list_note(text: String) -> Label:
 	l.add_theme_color_override("font_color", Color(0.6, 0.63, 0.75))
 	return l
 
-## One song: its name (teal if enabled, orange if disabled) with Preview/Stop
-## and Disable or Enable underneath.
-func _track_row(t: Dictionary, enabled: bool) -> VBoxContainer:
+## One song on one line: its name (teal if enabled, orange if disabled), then
+## small Preview/Stop and Disable/Enable buttons.
+func _track_row(t: Dictionary, enabled: bool) -> HBoxContainer:
 	var id: String = t["id"]
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
 	var name := Label.new()
 	name.text = t["name"]
 	name.tooltip_text = t["name"]
 	name.mouse_filter = Control.MOUSE_FILTER_PASS
 	name.clip_text = true
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name.add_theme_color_override("font_color", ENABLED_COLOR if enabled else DISABLED_COLOR)
-	box.add_child(name)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	box.add_child(row)
-	var play := Button.new()
-	play.text = "Stop" if Music.previewing == id else "Preview"
-	play.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(name)
+	var play := _small_button("Stop" if Music.previewing == id else "Preview")
 	play.pressed.connect(func():
 		if Music.previewing == id:
 			Music.stop_preview()
@@ -323,15 +319,27 @@ func _track_row(t: Dictionary, enabled: bool) -> VBoxContainer:
 			Music.preview(id)
 		_refresh_tracks())
 	row.add_child(play)
-	var toggle := Button.new()
-	toggle.text = "Disable" if enabled else "Enable"
-	toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var toggle := _small_button("Disable" if enabled else "Enable")
 	toggle.pressed.connect(func():
 		Music.set_in_playlist(id, not enabled)
 		_track_status.text = ("Disabled %s." if enabled else "Enabled %s.") % t["name"]
 		_refresh_tracks())
 	row.add_child(toggle)
-	return box
+	return row
+
+func _small_button(text: String) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(84, 0)
+	b.add_theme_font_size_override("font_size", 13)
+	for st in ["normal", "hover", "pressed"]:
+		var sb: StyleBox = b.get_theme_stylebox(st).duplicate()
+		sb.content_margin_top = 2
+		sb.content_margin_bottom = 2
+		sb.content_margin_left = 6
+		sb.content_margin_right = 6
+		b.add_theme_stylebox_override(st, sb)
+	return b
 
 func _on_songs_selected(paths: PackedStringArray) -> void:
 	var added := 0
