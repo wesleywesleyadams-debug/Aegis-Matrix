@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dee187c2vdobm"
-path="res://.godot/imported/ship_depot.png-49d08b8bf7f6085e2da90f94fc94b89c.ctex"
+uid="uid://u0pmneveahxh"
+path="res://.godot/imported/ship_depot_ion_team.png-5d20233641fb402f34b947616a7f6aa5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/pixel/ship_depot.png"
-dest_files=["res://.godot/imported/ship_depot.png-49d08b8bf7f6085e2da90f94fc94b89c.ctex"]
+source_file="res://assets/pixel/ship_depot_ion_team.png"
+dest_files=["res://.godot/imported/ship_depot_ion_team.png-5d20233641fb402f34b947616a7f6aa5.ctex"]
 
 [params]
 

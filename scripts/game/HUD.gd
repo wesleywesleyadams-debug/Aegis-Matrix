@@ -332,7 +332,7 @@ func _build_messages(root: Control) -> void:
 	root.add_child(_messages)
 
 func _build_help(root: Control) -> void:
-	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Q ship ability · Tab warships · H home · R research · F found starbase (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · Space pause · - / = game speed · Esc menu", DIM, 13)
+	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · T stop · Q ship ability · Tab warships · H home · R research · F starbase · E depot (constructor) · Ctrl+1-9 groups · WASD/edge/MMB pan · wheel zoom · Space pause · - / = game speed · Esc menu", DIM, 13)
 	l.anchor_top = 1.0
 	l.anchor_bottom = 1.0
 	l.anchor_right = 1.0
@@ -577,7 +577,7 @@ func _rebuild_selection() -> void:
 		return
 	var counts := {}
 	for e in sel:
-		var k: String = e.ship_type if e is Ship else ("depot" if e is WeaponsDepot else "starbase")
+		var k: String = e.ship_type if e is Ship else ("depot_" + (e as WeaponsDepot).variant if e is WeaponsDepot else "starbase")
 		counts[k] = counts.get(k, 0) + 1
 	_sel_body.add_child(_label("%d selected" % sel.size(), TEXT, 20))
 	var grid := HFlowContainer.new()
@@ -594,7 +594,7 @@ func _rebuild_selection() -> void:
 	_add_refit_buttons(sel)
 
 func _entity_icon(e: SpaceEntity, px: int) -> Control:
-	var tex_name: String = "starbase" if e is Starbase else ("ship_depot" if e is WeaponsDepot else "ship_" + (e as Ship).ship_type)
+	var tex_name: String = "starbase" if e is Starbase else ("ship_depot_" + (e as WeaponsDepot).variant if e is WeaponsDepot else "ship_" + (e as Ship).ship_type)
 	var stack := Control.new()
 	var base := _icon(tex_name, px)
 	var team := _icon(tex_name + "_team", px)
@@ -1187,24 +1187,26 @@ func _tech_button(id: String, width: float = 340.0) -> Button:
 
 # ---------------------------------------------------------------- weapons depot
 
-## Constructor: build a Weapons Depot (E).
+## Constructor: one button per depot type. Each depot fits one variant;
+## E places the last type picked.
 func _add_depot_button() -> void:
-	var b := Button.new()
-	b.text = "Build Weapons Depot [E]"
-	b.custom_minimum_size = Vector2(0, 40)
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	var cost := CostRow.make(Defs.WEAPONS_DEPOT["cost"], 13, Defs.WEAPONS_DEPOT["build_time"])
-	cost.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	cost.offset_left = -230
-	cost.offset_right = -10
-	cost.offset_top = -12
-	cost.offset_bottom = 12
-	cost.alignment = BoxContainer.ALIGNMENT_END
-	b.add_child(cost)
-	b.tooltip_text = "Generalist warships dock at a Weapons Depot to be refitted into a specialist variant (permanent)."
-	b.focus_mode = Control.FOCUS_NONE
-	b.pressed.connect(game.start_depot_placement)
-	_sel_body.add_child(b)
+	_sel_body.add_child(_label("Build a Weapons Depot [E] — %s over %ds. Each depot refits generalists into one variant:" % [
+		Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), int(Defs.WEAPONS_DEPOT["build_time"])], DIM, 13))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	for v in Defs.VARIANTS:
+		var vd: Dictionary = Defs.VARIANTS[v]
+		var b := Button.new()
+		b.text = "%s Depot" % vd["label"]
+		b.custom_minimum_size = Vector2(132, 34)
+		b.add_theme_color_override("font_color", vd["color"])
+		b.tooltip_text = "%s
+Refits a generalist into a %s: %s" % [vd["desc"], vd["label"], Defs.VARIANTS[v]["desc"]]
+		b.focus_mode = Control.FOCUS_NONE
+		b.pressed.connect(func(): game.start_depot_placement(v))
+		row.add_child(b)
+	_sel_body.add_child(row)
 
 ## Refit buttons for the selected generalists that have variants: one per
 ## variant, in its color. Specialists can't be refitted again.
@@ -1215,11 +1217,12 @@ func _add_refit_buttons(sel: Array) -> void:
 			bases[e.ship_type] = true
 	if bases.is_empty():
 		return
-	var has_depot := game.nearest_depot(game.player_id, Vector2.ZERO) != null
-	var head := "Refit at Weapons Depot (%s each, %ds, permanent):" % [Defs.cost_text(Defs.WEAPONS_DEPOT["refit_cost"]), Defs.WEAPONS_DEPOT["refit_time"]]
-	if not has_depot:
-		head = "Refits need a Weapons Depot (build one with a Constructor, E)."
-	_sel_body.add_child(_label(head, DIM, 13))
+	# Refit costs and times are per hull (Defs.SHIPS[type].refit).
+	var costs: Array = []
+	for b in bases:
+		var r: Dictionary = Defs.SHIPS[b]["refit"]
+		costs.append("%s %d minerals, %ds" % [Defs.SHIPS[b]["name"], int(r["minerals"]), int(r["time"])])
+	_sel_body.add_child(_label("Send to a depot to refit (permanent): " + ", ".join(costs), DIM, 13))
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 6)
 	row.add_theme_constant_override("v_separation", 6)
@@ -1235,22 +1238,53 @@ func _add_refit_buttons(sel: Array) -> void:
 		b.custom_minimum_size = Vector2(104, 32)
 		b.add_theme_color_override("font_color", vd["color"])
 		b.tooltip_text = vd["desc"]
-		b.disabled = not has_depot
+		var depot := game.nearest_depot(game.player_id, Vector2.ZERO, v)
+		b.disabled = depot == null
+		if depot == null:
+			b.tooltip_text = "Needs an %s Depot (build one with a Constructor, E)." % vd["label"]
 		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(func(): game.refit_selected(v))
 		row.add_child(b)
 	_sel_body.add_child(row)
 
-## A selected Weapons Depot: what it does and which ships are refitting.
+## A selected Weapons Depot: which variant it fits and the ships docked
+## inside, each with a Cancel button. A cancelled ship leaves the way it went
+## in — still a generalist — and minerals already spent are not refunded.
 func _build_depot_panel(d: WeaponsDepot) -> void:
 	if d.under_construction:
 		_sel_body.add_child(_label("Under construction: %d%%" % int(100.0 * d.construct_progress / Defs.WEAPONS_DEPOT["build_time"]), DIM, 14))
 		return
-	var info := _label("Select generalist warships and pick a refit: they dock here and are converted permanently into a specialist variant.", DIM, 13)
+	var vd: Dictionary = Defs.VARIANTS[d.variant]
+	var info := _label("Refits generalist warships into %s ships: %s" % [vd["label"], vd["desc"]], vd["color"], 14)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(560, 0)
 	_sel_body.add_child(info)
-	var refitting := get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == d.owner_id and s.state == Ship.State.REFIT and s.refit_depot == d)
-	for s in refitting:
-		var vd: Dictionary = Defs.VARIANTS[s.refit_variant]
-		_sel_body.add_child(_label("%s -> %s %s  (%ds)" % [s.def["name"], vd["label"], s.def["name"], int(ceil(s.refit_left))], vd["color"], 13))
+	_sel_body.add_child(_label("Right-click the depot with generalists selected to send them here.  Bays: %d / %d." % [
+		d.bays.size(), int(Defs.WEAPONS_DEPOT["capacity"])], DIM, 13))
+	if d.bays.is_empty():
+		_sel_body.add_child(_label("No ships docked.", DIM, 13))
+		return
+	for bay in d.bays:
+		var s: Ship = bay["ship"]
+		if not is_instance_valid(s):
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var lab := _label("%s  ->  %s %s   (%ds left)" % [s.def["name"], vd["label"], s.def["name"], int(ceil(bay["left"]))], vd["color"], 14)
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(lab)
+		var cancel := Button.new()
+		cancel.text = "Cancel"
+		cancel.custom_minimum_size = Vector2(90, 28)
+		cancel.add_theme_font_size_override("font_size", 13)
+		cancel.focus_mode = Control.FOCUS_NONE
+		cancel.tooltip_text = "Ejects the ship, still a generalist. Minerals already spent are lost."
+		cancel.pressed.connect(func(): d.cancel(s); game.selection_changed.emit())
+		row.add_child(cancel)
+		_sel_body.add_child(row)
+	var all := Button.new()
+	all.text = "Cancel all refits"
+	all.custom_minimum_size = Vector2(0, 30)
+	all.focus_mode = Control.FOCUS_NONE
+	all.pressed.connect(func(): d.cancel_all(); game.selection_changed.emit())
+	_sel_body.add_child(all)

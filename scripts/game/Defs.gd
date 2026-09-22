@@ -58,19 +58,19 @@ const BASE_SHIPS := {
 		"name": "Corvette", "role": "warship", "hotkey": KEY_V,
 		"hp": 70.0, "armor": 20.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 60}, "build_time": 8.0, "upkeep": 0.1,
-		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm",
+		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm", "refit": {"minerals": 5, "time": 15.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "hotkey": KEY_B,
 		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 11.0,
 		"cost": {"minerals": 140, "spice": 5}, "build_time": 14.0, "upkeep": 0.25,
-		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort",
+		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort", "refit": {"minerals": 10, "time": 25.0},
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "hotkey": KEY_N, "requires": "cruiser_doctrine",
 		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 300, "spice": 25}, "build_time": 24.0, "upkeep": 0.6,
-		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "job": "barrage",
+		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "job": "barrage", "refit": {"minerals": 15, "time": 35.0},
 	},
 	"scout": {
 		"name": "Scout", "role": "scout", "hotkey": KEY_G,
@@ -99,13 +99,16 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 	"corvette", "destroyer", "cruiser", "heatshield"]
 
 ## Weapons Depot: built by a Constructor like a starbase (paid over
-## build_time). Generalist warships dock there to be refitted into a specialist
-## variant (Defs.VARIANTS), which is permanent: a specialist can't be refitted
-## again. Doesn't count as a starbase (losing it doesn't lose the match).
+## build_time). Each depot is built for ONE variant (Defs.VARIANTS) and refits
+## generalists into it: an Ion Depot makes Ion ships, a Slip Depot Slip ships.
+## Ships fly in, dock (CAPACITY at a time, hidden and safe inside) and are
+## refitted automatically as minerals allow; each hull has its own refit cost
+## and time (see SHIPS "refit"). A specialist can never be refitted again.
+## Doesn't count as a starbase (losing it doesn't lose the match).
 const WEAPONS_DEPOT := {
 	"name": "Weapons Depot", "hp": 900.0, "armor": 400.0, "shield": 300.0, "radius": 22.0,
 	"cost": {"minerals": 250, "spice": 20}, "build_time": 30.0, "upkeep": 0.3,
-	"refit_time": 12.0, "refit_cost": {"minerals": 25}, "min_spacing": 250.0,
+	"capacity": 10, "min_spacing": 250.0,
 }
 
 const STARBASE := {

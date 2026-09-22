@@ -266,10 +266,17 @@ func _page_combat() -> void:
 	mrows.append(sbrow)
 	_table(head, mrows)
 	_rule()
-	_heading("Weapons Depot")
+	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
-	_para("A Constructor builds a Weapons Depot (E) for %s over %ds. Select generalist warships and pick a refit: they fly to the nearest depot, dock, and convert for %s over %ds. A specialist can never be refitted again, and starbases build generalists only, so every specialist passes through a depot." % [
-		Defs.cost_text(wd["cost"]), int(wd["build_time"]), Defs.cost_text(wd["refit_cost"]), int(wd["refit_time"])])
+	_para("Starbases build generalists only. A Constructor builds a depot (E) for %s over %ds, and every depot is built for ONE variant: an Ion Depot makes Ion ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
+		Defs.cost_text(wd["cost"]), int(wd["build_time"])])
+	_para("Send generalists in by right-clicking the depot (or with the refit buttons in their panel). They fly in and dock — %d at a time, hidden and safe inside — and are refitted automatically as minerals allow. Each hull has its own cost and time:" % int(wd["capacity"]))
+	var rrows: Array = []
+	for t in Defs.VARIANTS_OF:
+		var r: Dictionary = Defs.SHIPS[t]["refit"]
+		rrows.append([Defs.SHIPS[t]["name"], "%d minerals" % int(r["minerals"]), "%ds" % int(r["time"])])
+	_table(["Hull", "Refit cost", "Refit time"], rrows)
+	_para("A refit with no minerals to pay for it simply waits, and the ship stays inside until you cancel it — cancelling ejects it unchanged, still a generalist. A refitted specialist can never be refitted again. If a depot is destroyed with ships inside, they are thrown clear and lose 60% of their shields, armor and hull in the blast.")
 	_rule()
 	_heading("Defense research")
 	_para("Three lines on the research screen's Defenses tab, expensive on purpose: committing to a layer is a strategic choice.")

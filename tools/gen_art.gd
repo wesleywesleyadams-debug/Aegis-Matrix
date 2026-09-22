@@ -975,20 +975,59 @@ func _mark_variant(hull: Image, tim: Image, v: String) -> void:
 						mark.call(x0 + k, cy + s * (2 - k), lit)
 				mark.call(x0 + 2, cy, mid)
 
+## Weapons Depots: a hub with docking arms and weapon racks. The racks and
+## the variant marking are drawn on the TEAM layer, so a depot always wears
+## its owner's color like every other structure; which variant it fits is
+## said by the marking pattern alone — the same language the ships use
+## (one line, two ribs, saw teeth, two stripes, chevrons).
 func _gen_depot() -> void:
-	_ship("depot", 34, 34,
+	_ship("depot_base", 34, 34,
 		[[10, 24, 7.0, 7.0], [2, 32, 2.2, 2.2], [14, 20, 2.0, 2.0, 11.0], [6, 10, 3.0, 3.0, 8.0], [24, 28, 3.0, 3.0, 8.0]],
-		func(x: int, dy: float) -> bool: return absf(dy) > 9.0 or (x >= 15 and x <= 18 and absf(dy) < 2.0),
-		[16, 2], [], [13, 20],
-		func(img: Image, cy: float) -> void:
-			var cols := ["ion", "breacher", "reaver", "slip", "disruptor"]
-			for i in 5:
-				var c: Array = VARIANT_COLORS[cols[i]]
-				var x := 7 + i * 5
-				_px(img, x, cy - 4, c[1])
-				_px(img, x, cy + 4, c[1])
-				_px(img, x + 1, cy - 4, c[2])
-				_px(img, x + 1, cy + 4, c[0]))
+		func(x: int, dy: float) -> bool: return absf(dy) > 11.0,
+		[0, 0], [], [13, 20])
+	var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_depot_base.png"))
+	var team := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_depot_base_team.png"))
+	var lit: Color = TEAM[TEAM.size() - 1]
+	var mid: Color = TEAM[TEAM.size() - 2]
+	for v in VARIANT_BASES["corvette"]:
+		var tim := team.duplicate() as Image
+		var cy := 17
+		var mark := func(x: int, y: int, col: Color) -> void:
+			if x >= 0 and y >= 0 and x < hull.get_width() and y < hull.get_height() and hull.get_pixel(x, y).a > 0.0 and hull.get_pixel(x, y) != OUTLINE:
+				tim.set_pixel(x, y, col)
+		# Weapon racks down both docking arms.
+		for i in 5:
+			var x := 8 + i * 5
+			mark.call(x, cy - 9, lit)
+			mark.call(x, cy + 9, lit)
+			mark.call(x + 1, cy - 9, mid)
+			mark.call(x + 1, cy + 9, mid)
+		# The variant's marking, across the hub.
+		if v == "ion":
+			for x in range(12, 24):
+				mark.call(x, cy, lit)
+		elif v == "breacher":
+			for x in [14, 20]:
+				for dy in range(-5, 6):
+					mark.call(x, cy + dy, lit)
+		elif v == "reaver":
+			for k in 6:
+				var x := 11 + k * 2
+				mark.call(x, cy - 6, lit)
+				mark.call(x, cy + 6, lit)
+		elif v == "slip":
+			for s in [-3, 3]:
+				for x in range(12, 24):
+					mark.call(x, cy + s, lit)
+		else:
+			for x0 in [12, 17, 22]:
+				for k in 3:
+					for s in [-1, 1]:
+						mark.call(x0 + k, cy + s * (2 - k), lit)
+				mark.call(x0 + 2, cy, mid)
+		_save(hull.duplicate() as Image, "ship_depot_" + v)
+		_save(tim, "ship_depot_" + v + "_team")
+
 
 # ---------------------------------------------------------------- layer art
 

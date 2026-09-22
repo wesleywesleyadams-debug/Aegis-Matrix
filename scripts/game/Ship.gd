@@ -46,6 +46,8 @@ var bombard_target: Planet
 var build_site: Vector2
 ## What a Constructor is building at build_site: "starbase" or "depot".
 var build_kind: String = "starbase"
+## Which variant a depot being built will fit.
+var build_variant: String = "ion"
 ## Refit (see order_refit): the variant being fitted, the depot, and the
 ## refit time still to go.
 var refit_variant: String = ""
@@ -214,6 +216,8 @@ func order_stop() -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	if docked:
+		return
 	_regen_shields(delta)
 	if def.get("job", "") == "field_repair":
 		_repair_timer -= delta
@@ -322,7 +326,7 @@ func _physics_process(delta: float) -> void:
 				var problem: String = Game.instance.depot_site_problem(build_site) if is_depot else Game.instance.starbase_site_problem(build_site)
 				if problem == "":
 					if is_depot:
-						Game.instance.found_depot(owner_id, build_site)
+						Game.instance.found_depot(owner_id, build_site, build_variant)
 					else:
 						Game.instance.found_starbase(owner_id, build_site)
 					_dead = true
@@ -336,25 +340,18 @@ func _physics_process(delta: float) -> void:
 			else:
 				desired = _arrive(build_site, 1.0)
 		State.REFIT:
-			if not is_instance_valid(refit_depot) or not refit_depot.is_alive() or refit_depot.under_construction:
-				refit_depot = Game.instance.nearest_depot(owner_id, global_position)
+			# Fly to the depot that fits this variant and wait for a free bay.
+			if not is_instance_valid(refit_depot) or not refit_depot.is_alive() or refit_depot.under_construction or refit_depot.variant != refit_variant:
+				refit_depot = Game.instance.nearest_depot(owner_id, global_position, refit_variant)
 			if refit_depot == null:
 				state = State.IDLE
 				move_goal = global_position
 			else:
-				var dock: float = refit_depot.radius + radius + 12.0
-				if global_position.distance_to(refit_depot.global_position) > dock + 8.0:
-					desired = _arrive(refit_depot.global_position, 1.0, dock)
-				else:
-					# Docked: the refit is paid over its time, like a build.
-					var dd: Dictionary = Defs.WEAPONS_DEPOT
-					var per_sec := {}
-					for k in dd["refit_cost"]:
-						per_sec[k] = dd["refit_cost"][k] / dd["refit_time"]
-					refit_left -= delta * Game.instance.pay_over_time(owner_id, per_sec, delta)
-					queue_redraw()
-					if refit_left <= 0.0:
-						_become(refit_variant + "_" + ship_type)
+				var hold: float = refit_depot.radius + radius + 12.0
+				if global_position.distance_to(refit_depot.global_position) > hold + 8.0:
+					desired = _arrive(refit_depot.global_position, 1.0, hold)
+				elif refit_depot.has_room():
+					refit_depot.dock(self)
 		State.RETURN:
 			var base := Game.instance.nearest_starbase(owner_id, global_position)
 			if base == null:
@@ -622,14 +619,33 @@ func _draw_job() -> void:
 func can_refit(v: String) -> bool:
 	return not def.has("variant") and Defs.VARIANTS_OF.get(ship_type, []).has(v)
 
-## Fly to the nearest Weapons Depot and refit into variant v there.
-func order_refit(v: String) -> void:
+## Fly to a Weapons Depot of variant v (`at` picks one) and refit there.
+func order_refit(v: String, at: WeaponsDepot = null) -> void:
 	if not can_refit(v):
 		return
 	refit_variant = v
-	refit_left = Defs.WEAPONS_DEPOT["refit_time"]
-	refit_depot = null
+	refit_left = float(def["refit"]["time"])
+	refit_depot = at
 	state = State.REFIT
+
+## Goes inside a depot: hidden, safe and not a target until the refit is done.
+func enter_depot(d: WeaponsDepot) -> void:
+	docked = true
+	refit_depot = d
+	velocity = Vector2.ZERO
+	global_position = d.global_position
+	visible = false
+	selected = false
+	Game.instance.selection.erase(self)
+
+## Launches back out of a depot once refitted.
+func leave_depot(d: WeaponsDepot) -> void:
+	docked = false
+	visible = true
+	var dir := Vector2.from_angle(randf() * TAU)
+	global_position = d.global_position + dir * (d.radius + radius + 10.0)
+	move_goal = global_position
+	state = State.IDLE
 
 ## Turns this ship into another type in place (a finished refit), keeping
 ## how damaged each layer is.
@@ -654,9 +670,10 @@ func _become(new_type: String) -> void:
 		g.selection_changed.emit()
 	queue_redraw()
 
-func order_build_depot(pos: Vector2) -> void:
+func order_build_depot(pos: Vector2, v: String = "ion") -> void:
 	if def["role"] != "constructor":
 		return
 	build_site = pos
 	build_kind = "depot"
+	build_variant = v
 	state = State.BUILD

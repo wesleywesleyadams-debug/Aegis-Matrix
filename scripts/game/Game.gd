@@ -574,6 +574,10 @@ func _physics_process(delta: float) -> void:
 	_grid.clear()
 	_grid_big.clear()
 	for s in get_tree().get_nodes_in_group("ships"):
+		# Ships inside a Weapons Depot are out of the world: no collisions, no
+		# targeting (see Ship.enter_depot).
+		if s.docked:
+			continue
 		var key := Vector2i((s.global_position / CELL).floor())
 		if not _grid.has(key):
 			_grid[key] = []
@@ -1362,6 +1366,19 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 			hud.flash_target(planet, "colonize")
 			if ships.is_empty():
 				return
+	if target is WeaponsDepot and target.owner_id == player_id and not target.under_construction:
+		var sent := 0
+		for s in ships.duplicate():
+			if s is Ship and s.can_refit(target.variant):
+				s.order_refit(target.variant, target)
+				ships.erase(s)
+				sent += 1
+			else:
+				s.order_move(world_pos)
+		hud.flash_target(target, "")
+		if sent == 0:
+			message.emit("Only generalist warships can be refitted, and only once.", Color("ff8a5a"))
+		return
 	if target is Starbase and target.owner_id == player_id:
 		for s in ships:
 			if s.is_miner() and s.cargo > 0:
@@ -1689,17 +1706,23 @@ func _enter_dev_capture() -> void:
 		resources[player_id]["spice"] = 200.0
 		var site: Vector2 = ai._depot_site(home.global_position, self)
 		var con := spawn_ship("constructor", player_id, home.global_position + Vector2(50, 0))
-		con.order_build_depot(site)
+		con.order_build_depot(site, "ion")
 		var cvs: Array = []
-		for i in 2:
+		for i in 3:
 			cvs.append(spawn_ship("corvette", player_id, home.global_position + Vector2(-40, 30 * i)))
 		get_tree().create_timer(45.0).timeout.connect(func():
-			print("DEPOT finished: ", nearest_depot(player_id, site) != null)
+			var dep := nearest_depot(player_id, site, "ion")
+			print("DEPOT finished: ", dep != null, " type ", dep.label() if dep else "-")
 			for c in cvs:
-				c.order_refit("slip")
-			_set_selection([nearest_depot(player_id, site)], false))
-		get_tree().create_timer(75.0).timeout.connect(func():
-			print("DEPOT refitted: ", cvs.map(func(c): return c.ship_type if is_instance_valid(c) else "gone"), "  can refit again: ", cvs[0].can_refit("ion"))
+				c.order_refit("ion", dep)
+			_set_selection([dep], false))
+		get_tree().create_timer(58.0).timeout.connect(func():
+			var dep2 := nearest_depot(player_id, site, "ion")
+			print("DEPOT docked: ", dep2.bays.size(), " ships hidden: ", cvs.map(func(c): return not c.visible))
+			dep2.cancel(cvs[2])
+			print("DEPOT after cancel: bays ", dep2.bays.size(), " ejected type ", cvs[2].ship_type, " docked ", cvs[2].docked))
+		get_tree().create_timer(85.0).timeout.connect(func():
+			print("DEPOT refitted: ", cvs.map(func(c): return c.ship_type if is_instance_valid(c) else "gone"), "  can refit again: ", cvs[0].can_refit("slip"))
 			center_on(site))
 	if OS.get_environment("SL_SHOT_OPEN") == "variants":
 		# Dev: base damage each variant needs to destroy each generalist,
@@ -1937,31 +1960,39 @@ func depot_site_problem(pos: Vector2) -> String:
 		return "Blocked by the debris ring"
 	return ""
 
-func found_depot(pid: int, pos: Vector2) -> WeaponsDepot:
+func found_depot(pid: int, pos: Vector2, v: String) -> WeaponsDepot:
 	var d := WeaponsDepot.new()
 	d.owner_id = pid
+	d.variant = v
 	d.position = pos
 	starbases_root.add_child(d)
 	if pid == player_id:
-		notify("Weapons Depot construction started.", "note_starbase", pos)
+		notify("%s Depot construction started." % Defs.VARIANTS[v]["label"], "note_starbase", pos)
 	return d
 
-## The nearest finished Weapons Depot of pid (null if none).
-func nearest_depot(pid: int, pos: Vector2) -> WeaponsDepot:
+## The nearest finished Weapons Depot of pid (of variant `v`, or any when v
+## is ""). Null if there is none.
+func nearest_depot(pid: int, pos: Vector2, v: String = "") -> WeaponsDepot:
 	var best: WeaponsDepot = null
 	var best_d := INF
 	for d in get_tree().get_nodes_in_group("depots"):
-		if d.owner_id == pid and d.is_alive() and not d.under_construction:
+		if d.owner_id == pid and d.is_alive() and not d.under_construction and (v == "" or d.variant == v):
 			var dd: float = d.global_position.distance_to(pos)
 			if dd < best_d:
 				best_d = dd
 				best = d
 	return best
 
-func start_depot_placement() -> void:
+## Which variant the depot being placed will fit (see start_depot_placement).
+var placing_depot_variant := "ion"
+
+func start_depot_placement(v: String = "") -> void:
+	if v != "":
+		placing_depot_variant = v
 	placing_depot = true
 	placing_starbase = false
-	message.emit("Left-click open space for a Weapons Depot (%s over %ds). Right-click to cancel." % [Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), Defs.WEAPONS_DEPOT["build_time"]], Color("c3cde4"))
+	message.emit("Left-click open space for an %s Depot (%s over %ds): generalists sent here are refitted into %s ships. Right-click to cancel." % [
+		Defs.VARIANTS[placing_depot_variant]["label"], Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), Defs.WEAPONS_DEPOT["build_time"], Defs.VARIANTS[placing_depot_variant]["label"]], Color("c3cde4"))
 
 func _place_depot(pos: Vector2) -> void:
 	var why := depot_site_problem(pos)
@@ -1974,15 +2005,15 @@ func _place_depot(pos: Vector2) -> void:
 	if builders.is_empty():
 		return
 	builders.sort_custom(func(a, b): return a.global_position.distance_to(pos) < b.global_position.distance_to(pos))
-	builders[0].order_build_depot(pos)
-	hud.ping(pos, Color("ffd46b"))
+	builders[0].order_build_depot(pos, placing_depot_variant)
+	hud.ping(pos, Defs.VARIANTS[placing_depot_variant]["color"])
 	sfx.play_ui("click")
 
-## Refit every selected generalist of yours that has variant `v` (see
-## Ship.order_refit).
+## Sends every selected generalist of yours that can take variant `v` to a
+## depot of that variant (see Ship.order_refit).
 func refit_selected(v: String) -> void:
-	if nearest_depot(player_id, Vector2.ZERO) == null:
-		message.emit("Build a Weapons Depot first (Constructor, E).", Color("ff8a5a"))
+	if nearest_depot(player_id, Vector2.ZERO, v) == null:
+		message.emit("You have no %s Depot. A Constructor builds one (E)." % Defs.VARIANTS[v]["label"], Color("ff8a5a"))
 		sfx.play_ui("deny")
 		return
 	var n := 0

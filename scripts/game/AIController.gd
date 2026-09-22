@@ -495,31 +495,35 @@ func _pick_variant(pid: int, game: Game) -> String:
 ## that suits the enemy defenses seen so far (a few at a time).
 func _manage_depot(pid: int, ships: Array, base: Starbase, game: Game) -> void:
 	var war := ships.filter(func(s): return s.def["role"] == "warship")
-	var have_depot := game.get_tree().get_nodes_in_group("depots").any(func(d): return d.owner_id == pid)
+	var want := _pick_variant(pid, game)
+	var depots: Array = game.get_tree().get_nodes_in_group("depots").filter(func(d): return d.owner_id == pid)
 	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
-	if not have_depot:
+	# Each depot fits one variant, so build one for the variant our intel says
+	# we want (and a second later if the enemy fleet changes).
+	var have := depots.any(func(d): return d.variant == want)
+	if want != "" and not have and depots.size() < 2:
 		if war.size() >= 6 and builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
 			base.enqueue("constructor")
 		for c in builders:
 			if c.state == Ship.State.IDLE:
 				var site := _depot_site(base.global_position, game)
 				if site != Vector2.INF:
-					c.order_build_depot(site)
+					c.order_build_depot(site, want)
 				break
-		return
-	var depot := game.nearest_depot(pid, base.global_position)
+	# Send idle generalists to a finished depot: the one we want if it exists,
+	# otherwise whatever we have.
+	var depot: WeaponsDepot = game.nearest_depot(pid, base.global_position, want)
+	if depot == null:
+		depot = game.nearest_depot(pid, base.global_position)
 	if depot == null:
 		return
-	var spec := _pick_variant(pid, game)
-	if spec == "":
-		return
-	var busy := ships.filter(func(s): return s.state == Ship.State.REFIT).size()
+	var heading := ships.filter(func(s): return s.state == Ship.State.REFIT).size()
 	for s in war:
-		if busy >= 3:
+		if heading + depot.bays.size() >= int(Defs.WEAPONS_DEPOT["capacity"]):
 			break
-		if s.state == Ship.State.IDLE and s.can_refit(spec) and s.global_position.distance_to(base.global_position) < 1200.0 and randf() < 0.5:
-			s.order_refit(spec)
-			busy += 1
+		if s.state == Ship.State.IDLE and s.can_refit(depot.variant) and s.global_position.distance_to(base.global_position) < 1200.0 and randf() < 0.5:
+			s.order_refit(depot.variant, depot)
+			heading += 1
 
 ## A free spot for a depot a little way from home, toward the middle.
 func _depot_site(home: Vector2, game: Game) -> Vector2:

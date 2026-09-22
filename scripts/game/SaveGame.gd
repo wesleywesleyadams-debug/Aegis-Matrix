@@ -74,13 +74,15 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 	for dp in tree.get_nodes_in_group("depots"):
 		if dp.is_alive():
 			data["depots"].append({"owner": dp.owner_id, "pos": _v(dp.global_position), "hp": dp.hp, "armor": dp.armor, "shield": dp.shield,
-				"under_construction": dp.under_construction, "construct_progress": dp.construct_progress, "seen": dp.get_meta("seen", false)})
+				"under_construction": dp.under_construction, "construct_progress": dp.construct_progress, "seen": dp.get_meta("seen", false), "variant": dp.variant})
 	for s in tree.get_nodes_in_group("ships"):
 		if not s.is_alive():
 			continue
 		data["ships"].append({
 			"type": s.ship_type, "owner": s.owner_id, "pos": _v(s.global_position), "rot": s.rotation,
 			"hp": s.hp, "shield": s.shield, "armor": s.armor, "cargo": s.cargo, "cargo_type": s.cargo_type,
+			"docked": s.docked, "docked_variant": s.refit_depot.variant if s.docked and is_instance_valid(s.refit_depot) else "",
+			"refit_left": s.refit_left,
 			"order": _order_of(s),
 		})
 	return data
@@ -224,6 +226,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		var dp := WeaponsDepot.new()
 		dp.owner_id = int(d["owner"])
 		dp.under_construction = bool(d.get("under_construction", false))
+		dp.variant = str(d.get("variant", "ion"))
 		dp.construct_progress = float(d.get("construct_progress", 0.0))
 		dp.position = _p(d["pos"])
 		game.starbases_root.add_child(dp)
@@ -266,6 +269,19 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			"bombard":
 				if planets.has(o["target"]):
 					s.order_bombard(planets[o["target"]])
+	# Ships that were inside a Weapons Depot go back in where they were.
+	for d in data.get("ships", []):
+		if not bool(d.get("docked", false)):
+			continue
+		var dep := game.nearest_depot(int(d["owner"]), _p(d["pos"]), str(d.get("docked_variant", "")))
+		if dep == null:
+			continue
+		for s2 in tree.get_nodes_in_group("ships"):
+			if s2.owner_id == int(d["owner"]) and s2.ship_type == str(d["type"]) and not s2.docked and s2.global_position.distance_to(_p(d["pos"])) < 1.0:
+				dep.dock(s2)
+				if not dep.bays.is_empty():
+					dep.bays[-1]["left"] = float(d.get("refit_left", dep.bays[-1]["left"]))
+				break
 	for e in tree.get_nodes_in_group("entities"):
 		if e.has_method("refresh_stats"):
 			var hp: float = e.hp

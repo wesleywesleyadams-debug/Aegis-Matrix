@@ -26,6 +26,8 @@ var selected: bool = false:
 const ARMOR_COLOR := Color("ff4a4a")
 
 var _last_hit_time: float = -100.0
+## Inside a Weapons Depot: hidden, safe and not a target (see Ship.enter_depot).
+var docked: bool = false
 var _dead: bool = false
 
 func _ready() -> void:

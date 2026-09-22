@@ -411,7 +411,7 @@ func _build_hotkeys_tab() -> void:
 			["Pan camera", "Middle drag / WASD / edges"], ["Zoom", "Mouse wheel"]]],
 		["Orders & Selection", ENABLED_COLOR, [
 			["Stop", "T"], ["Use ship ability (job)", "Q"], ["Select warships", "Tab"], ["Camera to home", "H"],
-			["Research", "R"], ["Found starbase (Constructor)", "F"],
+			["Research", "R"], ["Found starbase (Constructor)", "F"], ["Build Weapons Depot (Constructor)", "E"],
 			["Set control group", "Ctrl + 1-9"],
 			["Select control group", "1-9"], ["Centre on group", "1-9 twice"]]],
 		["Game & Build", DISABLED_COLOR, [
