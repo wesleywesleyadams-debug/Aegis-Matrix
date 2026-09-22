@@ -69,7 +69,7 @@ var system_seed: int = 0
 
 
 ## Up to 8 pre-match player slots (see Lobby.gd's Players panel), one dict
-## per slot: {"slot_type": "human"/"ai"/"open", "race": String, "team": int
+## per slot: {"slot_type": "human"/"ai"/"neural"/"open", "race": String, "team": int
 ## (1-4, or 0 for "No Team")}. Purely lobby-captured intent right now --
 ## there's no AI opponent, race-differentiated units, or team-alliance
 ## combat system yet for anything beyond the single human player (slot 1 by

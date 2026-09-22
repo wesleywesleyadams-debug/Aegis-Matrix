@@ -157,6 +157,8 @@ func _populate_players_grid() -> void:
 		slot_option.clip_text = true
 		slot_option.add_item(_username)
 		slot_option.add_item("AI")
+		# Experimental: the trained neural commander (res://ai/commander.json).
+		slot_option.add_item("Neural AI")
 		# Single-player has no Open slots (nobody else can join): unused slots
 		# are simply Closed, so every opponent is AI.
 		slot_option.add_item("Closed" if _single() else "Open")
@@ -188,6 +190,10 @@ func _populate_players_grid() -> void:
 		team_option.item_selected.connect(_on_team_selected.bind(i))
 
 func _capture() -> void:
+	# Dev aid: SL_LOBBY_NEURAL=1 shows slot 2 set to Neural AI.
+	if OS.get_environment("SL_LOBBY_NEURAL") != "":
+		_slot_rows[1]["slot"].selected = 2
+		# (Display only; the saved lobby settings are left untouched.)
 	await get_tree().create_timer(1.0).timeout
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("user://lobby.png")
@@ -224,7 +230,8 @@ func _slot_type_index(slot_type: String) -> int:
 	match slot_type:
 		"human": return 0
 		"ai": return 1
-		_: return 2
+		"neural": return 2
+		_: return 3
 
 func _race_index(race: String) -> int:
 	for i in RACE_OPTIONS.size():
@@ -239,7 +246,7 @@ func _team_index(team: int) -> int:
 	return TEAM_OPTIONS.size() - 1
 
 func _on_slot_selected(index: int, slot_index: int) -> void:
-	var slot_type: String = ["human", "ai", "open"][index]
+	var slot_type: String = ["human", "ai", "neural", "open"][index]
 	GameState.player_slots[slot_index]["slot_type"] = slot_type
 	_sync_human_player_id()
 	_update_row_visuals(slot_index)
@@ -286,6 +293,8 @@ func _sync_human_player_id() -> void:
 			return
 
 func _on_start_pressed() -> void:
+	# Any "Neural AI" slot puts the trained commander in charge of the AI side.
+	GameState.neural_ai = GameState.player_slots.any(func(s): return s["slot_type"] == "neural")
 	# Resuming a save keeps the save's own system (SaveGame restores it).
 	if not GameState.load_on_start:
 		var sys := SystemGen.find(GameState.system_id)

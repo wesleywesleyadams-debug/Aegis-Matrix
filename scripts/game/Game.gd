@@ -86,6 +86,9 @@ static func now() -> float:
 
 func _enter_tree() -> void:
 	# Dev aid: SL_LOAD=<path> starts the match from that save file.
+	# Dev aid: SL_NEURAL=1 plays against the trained neural commander.
+	if OS.get_environment("SL_NEURAL") != "":
+		GameState.neural_ai = true
 	if OS.get_environment("SL_LOAD") != "":
 		GameState.load_on_start = true
 		GameState.load_save_path = OS.get_environment("SL_LOAD")
@@ -1523,6 +1526,10 @@ func _enter_dev_capture() -> void:
 			get_tree().create_timer(t).timeout.connect(func():
 				print("STORM t=%.0f stage %s  in-arm ship speed %.0f (in storm %s)  control speed %.0f" % [now(), storm.stage(now()), a.max_speed(), str(in_storm(a.global_position)), b.max_speed()]))
 		center_on(arm_dir * 800.0)
+	if OS.get_environment("SL_NEURAL") != "":
+		get_tree().create_timer(58.0).timeout.connect(func():
+			var nn = ai._state.get(2, {}).get("nn")
+			print("NEURAL side 2 active: %s  actions: %s" % [str(nn != null), str(nn.counts) if nn else "-"]))
 	if OS.get_environment("SL_STRESS") != "":
 		# Dev benchmark: N warships per side clash away from the star; logs real
 		# frame times (run headless with --fixed-fps 60 so frames go flat out).
