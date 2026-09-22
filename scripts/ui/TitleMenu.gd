@@ -41,6 +41,11 @@ func _ready() -> void:
 	# Order: New Game, Load Game, Options, Account, Quit. Account opens the
 	# account panel as a pop-up (AccountMenu.open).
 	vbox.move_child(account_button, options_button.get_index())
+	# Bigger buttons; the menu is centered on screen (see TitleMenu.tscn).
+	for b in vbox.get_children():
+		if b is Button:
+			b.custom_minimum_size.y = 64
+			b.add_theme_font_size_override("font_size", 26)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and _new_game_page.visible:
