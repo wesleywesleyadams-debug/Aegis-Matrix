@@ -5,29 +5,6 @@ extends CanvasLayer
 ## one of these, matching "they all go to the same menu" -- not three
 ## copies that happen to look alike.
 
-## Actions (from project.godot's InputMap) worth showing on the Hotkeys
-## tab, paired with a human label -- deliberately not every InputMap
-## action (e.g. UI-navigation ones aren't interesting here).
-const LISTED_ACTIONS: Array = [
-	["select", "Select / Drag-Select"],
-	["command", "Move / Attack / Task Order"],
-	["cam_up", "Pan Camera Up"],
-	["cam_down", "Pan Camera Down"],
-	["cam_left", "Pan Camera Left"],
-	["cam_right", "Pan Camera Right"],
-	["cam_zoom_in", "Zoom In"],
-	["cam_zoom_out", "Zoom Out"],
-]
-## Hotkeys hardcoded in scripts rather than routed through the InputMap
-## (see RTSController._unhandled_input / MainMenu._unhandled_input), so
-## they're not discoverable via InputMap.action_get_events -- listed here
-## by hand instead.
-const HARDCODED_HOTKEYS: Array = [
-	["H", "Halt Selected Units"],
-	["Shift (hold)", "Queue Order / Add to Selection"],
-	["F5", "Pause / Resume"],
-]
-
 @onready var background: Control = $Background
 @onready var panel: Panel = $Background/Panel
 @onready var close_button: Button = $Background/Panel/VBox/CloseButtonRow/CloseButton
@@ -35,7 +12,6 @@ const HARDCODED_HOTKEYS: Array = [
 @onready var music_slider: HSlider = $Background/Panel/VBox/TabContainer/Audio/MusicVolumeRow/MusicSlider
 @onready var audio_enabled_checkbox: CheckBox = $Background/Panel/VBox/TabContainer/Audio/ToggleRow/AudioEnabledCheckBox
 @onready var music_enabled_checkbox: CheckBox = $Background/Panel/VBox/TabContainer/Audio/ToggleRow/MusicEnabledCheckBox
-@onready var hotkeys_list: GridContainer = $Background/Panel/VBox/TabContainer/Hotkeys/HotkeysList
 @onready var show_grid_checkbox: CheckBox = $Background/Panel/VBox/TabContainer/Visuals/ShowGridCheckBox
 @onready var font_option: OptionButton = $Background/Panel/VBox/TabContainer/Visuals/FontRow/FontOption
 
@@ -77,7 +53,8 @@ func _ready() -> void:
 	show_grid_checkbox.toggled.connect(_on_show_grid_toggled)
 	_populate_font_options()
 	font_option.item_selected.connect(_on_font_selected)
-	_populate_hotkeys()
+	_build_hotkeys_tab()
+	_build_visuals_tab()
 
 	apply_current_settings()
 
@@ -180,29 +157,6 @@ func _on_font_selected(index: int) -> void:
 func _apply_font(key: String) -> void:
 	var hud_theme: Theme = load("res://themes/hud_theme.tres")
 	hud_theme.default_font = FONT_OPTIONS[key][1]
-
-func _populate_hotkeys() -> void:
-	for pair in LISTED_ACTIONS:
-		var action: String = pair[0]
-		var label_text: String = pair[1]
-		var events := InputMap.action_get_events(action)
-		var key_text := events[0].as_text() if not events.is_empty() else "(unbound)"
-		_add_hotkey_row(label_text, key_text)
-	for pair in HARDCODED_HOTKEYS:
-		_add_hotkey_row(pair[1], pair[0])
-
-## Adds one row to the Hotkeys GridContainer -- two cells (action, key),
-## since GridContainer lays out its direct children in row-major order
-## rather than taking pre-built row nodes.
-func _add_hotkey_row(label_text: String, key_text: String) -> void:
-	var action_label := Label.new()
-	action_label.text = label_text
-	action_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var key_label := Label.new()
-	key_label.text = key_text
-	key_label.add_theme_color_override("font_color", Color(1, 0.85, 0.2, 1))
-	hotkeys_list.add_child(action_label)
-	hotkeys_list.add_child(key_label)
 
 # ---------------------------------------------------------------- music tracks
 
@@ -388,3 +342,67 @@ func _on_songs_selected(paths: PackedStringArray) -> void:
 		else:
 			failed += 1
 	_track_status.text = "Added %d song%s%s." % [added, "" if added == 1 else "s", (", %d couldn't be read" % failed) if failed > 0 else ""]
+
+# ---------------------------------------------------------------- other tabs
+
+const KEY_COLOR := Color("ffd166")
+
+## A full-tab row of panel columns, laid out like the Audio tab.
+func _tab_columns(tab: Control) -> HBoxContainer:
+	var cols := HBoxContainer.new()
+	cols.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cols.offset_left = 10
+	cols.offset_top = 10
+	cols.offset_right = -10
+	cols.offset_bottom = -10
+	cols.add_theme_constant_override("separation", 10)
+	tab.add_child(cols)
+	return cols
+
+## Hotkeys tab: Star Lords' controls in three panels (action -> key).
+func _build_hotkeys_tab() -> void:
+	var cols := _tab_columns($Background/Panel/VBox/TabContainer/Hotkeys)
+	var groups := [
+		["Mouse", Color("7fb2ff"), [
+			["Select", "Left click"], ["Box select", "Left drag"],
+			["Select all of a class on screen", "Double-click"],
+			["Move / attack / mine / colonize", "Right click"],
+			["Attack-move", "Ctrl + Right click"],
+			["Pan camera", "Middle drag / WASD / edges"], ["Zoom", "Mouse wheel"]]],
+		["Orders & Selection", ENABLED_COLOR, [
+			["Stop", "T"], ["Select warships", "Tab"], ["Camera to home", "H"],
+			["Research", "R"], ["Found starbase (Constructor)", "F"],
+			["Set control group", "Ctrl + 1-9"],
+			["Select control group", "1-9"], ["Centre on group", "1-9 twice"]]],
+		["Game & Build", DISABLED_COLOR, [
+			["Pause / play", "Space"], ["Slower / faster", "- / ="],
+			["Normal speed", "Backspace"], ["Menu", "Esc"],
+			["Mining Barge", "Z"], ["Gas Skimmer", "M"], ["Colony Ship", "X"],
+			["Constructor", "C"], ["Corvette", "V"], ["Destroyer", "B"], ["Cruiser", "N"]]],
+	]
+	for g in groups:
+		var col := _column(cols, g[0], g[1], 1.0)
+		var list := _scroll_list(col)
+		for row in g[2]:
+			var h := HBoxContainer.new()
+			var action := Label.new()
+			action.text = row[0]
+			action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			action.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			var key := Label.new()
+			key.text = row[1]
+			key.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			key.add_theme_color_override("font_color", KEY_COLOR)
+			h.add_child(action)
+			h.add_child(key)
+			list.add_child(h)
+
+## Visuals tab: the scene's controls moved into Display / Interface panels.
+func _build_visuals_tab() -> void:
+	var tab: Control = $Background/Panel/VBox/TabContainer/Visuals
+	var cols := _tab_columns(tab)
+	for pair in [["Display", "ShowGridCheckBox"], ["Interface", "FontRow"]]:
+		var col := _column(cols, pair[0], Color.WHITE, 1.0)
+		var n: Control = tab.get_node(pair[1])
+		tab.remove_child(n)
+		col.add_child(n)

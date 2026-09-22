@@ -264,6 +264,9 @@ func _notification(what: int) -> void:
 			await get_tree().process_frame
 		if OS.get_environment("SL_TITLE_SHOT") == "options":
 			OptionsMenu.open()
+			var tab := OS.get_environment("SL_OPTIONS_TAB")
+			if tab != "":
+				OptionsMenu.get_node("Background/Panel/VBox/TabContainer").current_tab = int(tab)
 			await get_tree().process_frame
 		if OS.get_environment("SL_TITLE_SHOT") == "create":
 			AccountMenu._on_create_account_pressed()
