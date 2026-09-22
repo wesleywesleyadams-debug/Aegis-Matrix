@@ -10,3 +10,5 @@ its volume is adjusted in code, not in the file.
 
 The title and lobby music and all sound effects are generated procedurally by
 `tools/gen_audio.gd`.
+
+- "Space Life No. 14" by YD (OpenGameArt.org) - assets/audio/music_spacelife.ogg. License: please confirm (the Space Life series is believed to be CC0).

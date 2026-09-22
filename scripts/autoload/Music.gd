@@ -14,6 +14,7 @@ const IN_GAME_TRACK: String = "through_space"
 ## Built-in songs offered for the in-game playlist: [id, display name].
 const BUILTIN_TRACKS := [
 	["through_space", "Through Space (Maxstack)"],
+	["spacelife", "Space Life No. 14 (YD)"],
 	["game", "Star Lords Synth: In-Game"],
 	["title", "Star Lords Synth: Title"],
 	["lobby", "Star Lords Synth: Lobby"],
@@ -25,7 +26,7 @@ const IMPORT_EXTENSIONS := ["ogg", "mp3", "wav"]
 ## Per-track loudness trim (dB) so tracks sit at the same level (measured
 ## integrated loudness; the procedural loops are about -22 LUFS). Recordings
 ## are left untouched and turned down here instead.
-const TRACK_TRIM := {"through_space": -3.0}
+const TRACK_TRIM := {"through_space": -3.0, "spacelife": -3.0}
 
 signal tracks_changed
 
