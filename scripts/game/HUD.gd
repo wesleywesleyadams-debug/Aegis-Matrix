@@ -342,7 +342,7 @@ func _build_messages(root: Control) -> void:
 	root.add_child(_messages)
 
 func _build_help(root: Control) -> void:
-	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · panel buttons QWE/ASD/ZXC · T stop · Tab warships · Space go to starbase · P next world · F build · R research · Ctrl+1-9 groups · arrows/edge/MMB pan · wheel zoom · Pause key pauses · - / = game speed · Esc menu", DIM, 13)
+	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · panel buttons QWE/ASD/ZXC · T stop · Tab warships · Space starbase (again: next one) · P next world · F build · R research · Ctrl+1-9 groups · arrows/edge/MMB pan · wheel zoom · Pause key pauses · - / = game speed · Esc clear selection or menu", DIM, 13)
 	l.anchor_top = 1.0
 	l.anchor_bottom = 1.0
 	l.anchor_right = 1.0

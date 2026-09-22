@@ -986,6 +986,10 @@ func _handle_key(e: InputEventKey) -> void:
 			clear_planet_focus()
 		elif hud.research_open():
 			hud.toggle_research()
+		elif not selection.is_empty():
+			# Esc clears the selection first; with nothing selected it opens the
+			# in-match menu.
+			_set_selection([], false)
 		else:
 			hud.show_pause(true)
 		return
@@ -1038,9 +1042,7 @@ func _handle_key(e: InputEventKey) -> void:
 		"research":
 			hud.toggle_research()
 		"home":
-			var sb := nearest_starbase(player_id, camera.global_position)
-			if sb:
-				center_on(sb.global_position)
+			cycle_starbase()
 		"stop":
 			for s in _own_ships_selected():
 				s.order_stop()
@@ -1702,6 +1704,29 @@ func _enter_dev_capture() -> void:
 			t.max_hp = 1e6
 			t.hp = 1e6
 			t.order_stop()
+	if OS.get_environment("SL_SHOT_OPEN") == "sbcycle":
+		var home2 := nearest_starbase(player_id, Vector2.ZERO)
+		var second := found_starbase(player_id, home2.global_position + Vector2(700, 0))
+		second.under_construction = false
+		second.construct_progress = 999.0
+		var where := func(): return "%.0f,%.0f" % [camera.global_position.x, camera.global_position.y]
+		center_on(Vector2(1500, 900))
+		cycle_starbase()
+		var a: String = where.call()
+		cycle_starbase()
+		var b: String = where.call()
+		cycle_starbase()
+		var c2: String = where.call()
+		var cv := spawn_ship("corvette", player_id, home2.global_position + Vector2(0, 80))
+		_set_selection([cv], false)
+		var e1 := InputEventKey.new()
+		e1.keycode = KEY_ESCAPE
+		_handle_key(e1)
+		var cleared := selection.is_empty() and not hud._pause.visible
+		_handle_key(e1)
+		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
+		hud.show_pause(false)
+		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
 	if OS.get_environment("SL_SHOT_OPEN") == "keys":
 		# Dev: the panel grid keys press the buttons they are drawn on.
 		var sb0 := nearest_starbase(player_id, Vector2.ZERO)
@@ -2101,4 +2126,26 @@ func select_all_of_type(t: String) -> void:
 		for s in all:
 			c += s.global_position
 		center_on(c / all.size())
+	sfx.play_ui("click")
+
+## Space: jumps to your main starbase, and each press after that (while the
+## camera is still parked on one) steps to the next one you built, looping.
+var _starbase_cycle: int = 0
+
+func cycle_starbase() -> void:
+	var mine: Array = []
+	for sb in starbases_root.get_children():
+		if sb is Starbase and sb.owner_id == player_id and sb.is_alive():
+			mine.append(sb)
+	if mine.is_empty():
+		sfx.play_ui("deny")
+		return
+	# Already looking at the one we jumped to last: step on. Otherwise start
+	# again at the main (first built) starbase.
+	var at: int = _starbase_cycle if _starbase_cycle < mine.size() else 0
+	if camera.global_position.distance_to(mine[at].global_position) < 200.0:
+		_starbase_cycle = (at + 1) % mine.size()
+	else:
+		_starbase_cycle = 0
+	center_on(mine[_starbase_cycle].global_position)
 	sfx.play_ui("click")

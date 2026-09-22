@@ -422,7 +422,7 @@ func _build_hotkeys_tab() -> void:
 			["Set control group", "Ctrl + 1-9"],
 			["Select control group", "1-9"],
 			["Centre on group", "1-9 twice"],
-			["Menu / cancel", "Esc"]]:
+			["Clear selection, or menu", "Esc"]]:
 		var h := HBoxContainer.new()
 		var a := Label.new()
 		a.text = row[0]

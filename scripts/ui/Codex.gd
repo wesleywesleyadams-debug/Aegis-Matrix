@@ -464,7 +464,7 @@ func _page_controls() -> void:
 		["Zoom", "Mouse wheel"],
 		["Stop", ["T", EDGE_LIT]],
 		["Select all warships", ["Tab", EDGE_LIT]],
-		["Go to your starbase", ["Space", EDGE_LIT]],
+		["Go to your starbase, then cycle through the others", ["Space", EDGE_LIT]],
 		["Next world of yours", ["P", EDGE_LIT]],
 		["Build on the focused world", ["F", EDGE_LIT]],
 		["Research", ["R", EDGE_LIT]],
@@ -472,5 +472,5 @@ func _page_controls() -> void:
 		["Centre on a control group", ["1-9 twice", EDGE_LIT]],
 		["Pause and resume", ["Pause key, or the Pause button", EDGE_LIT]],
 		["Game speed", ["-  /  =  (Backspace resets)", EDGE_LIT]],
-		["Menu, or close what's open", ["Esc", EDGE_LIT]],
+		["Clear the selection; with nothing selected, the menu", ["Esc", EDGE_LIT]],
 	])
