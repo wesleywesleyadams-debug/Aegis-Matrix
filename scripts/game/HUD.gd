@@ -603,7 +603,7 @@ func _build_ship_controls(s: Ship) -> void:
 		"miner":
 			_sel_body.add_child(_label("Right-click an asteroid to mine it. Orange-flecked rocks hold spice.", DIM, 13))
 		"skimmer":
-			_sel_body.add_child(_label("Right-click a gas giant to mine minerals from it.", DIM, 13))
+			_sel_body.add_child(_label("Right-click a gas giant to mine minerals, or a spot inside a spice nebula to slowly harvest spice gas (never runs out).", DIM, 13))
 
 func _add_found_button() -> void:
 	var b := Button.new()

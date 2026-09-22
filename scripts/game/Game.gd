@@ -1321,6 +1321,16 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 			hud.flash_target(planet, "")
 			if ships.is_empty():
 				return
+	# Skimmers harvest spice gas where you click inside a spice nebula.
+	if not planet and not rock and in_nebula(world_pos) and ships.any(func(s): return s.def["role"] == "skimmer"):
+		var pocket := nebula_pocket_at(world_pos)
+		for s in ships.duplicate():
+			if s.def["role"] == "skimmer":
+				s.order_mine(pocket)
+				ships.erase(s)
+		hud.ping(world_pos, Color("ffae4a"))
+		if ships.is_empty():
+			return
 	if planet and planet.is_enemy_of(player_id):
 		# Bombard: warships fire on the planet until its pops are gone.
 		for s in ships:
@@ -1645,6 +1655,24 @@ func _enter_dev_capture() -> void:
 				sum += f
 			print("STRESS ships %d  frames %d  avg %.2f ms  p95 %.2f ms  max %.2f ms  projectiles %d" % [get_tree().get_nodes_in_group("ships").size(), frames.size(), sum / maxf(frames.size(), 1), frames[int(frames.size() * 0.95)] if frames.size() > 0 else 0.0, frames[-1] if frames.size() > 0 else 0.0, fx_root.get_child_count()])
 			get_tree().quit())
+	if OS.get_environment("SL_SHOT_OPEN") == "skim":
+		# Dev: a skimmer harvesting spice gas in the nearest spice nebula.
+		var home := nearest_starbase(player_id, Vector2.ZERO)
+		var neb: Node2D = get_tree().get_nodes_in_group("nebulae")[0]
+		var spot: Vector2 = neb.global_position + (home.global_position - neb.global_position).normalized() * (neb.inner + neb.outer) / 2.0
+		var sk := spawn_ship("skimmer", player_id, home.global_position + Vector2(40, 40))
+		sk.order_mine(nebula_pocket_at(spot))
+		var trips := [0]
+		var last := [0]
+		var poll := func():
+			if not is_instance_valid(sk):
+				return
+			if last[0] > 0 and sk.cargo == 0:
+				trips[0] += 1
+			last[0] = sk.cargo
+		get_tree().physics_frame.connect(poll)
+		get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.2).timeout.connect(func():
+			print("SKIM trips home %d (x%d spice), state %s, cargo %d %s, spot %.0f px from home" % [trips[0], NebulaPocket.LOAD, Ship.State.keys()[sk.state], sk.cargo, sk.cargo_type, spot.distance_to(home.global_position)]))
 	if OS.get_environment("SL_SHOT_OPEN") == "jobs":
 		# Dev: job ships at work. Heat Shield + 3 corvettes inside the sun's
 		# radiation (right) vs 3 unprotected corvettes (left); a Tender beside
@@ -1783,3 +1811,23 @@ func use_abilities() -> void:
 			message.emit(why, Color("ff6a5a"))
 	else:
 		sfx.play_ui("click")
+
+## A spice-gas harvest spot in a nebula at p (reusing one within 60 px).
+func nebula_pocket_at(p: Vector2) -> NebulaPocket:
+	for n in get_tree().get_nodes_in_group("nebula_pockets"):
+		if n.global_position.distance_to(p) < 60.0:
+			return n
+	var pk := NebulaPocket.new()
+	pk.position = p
+	fx_root.add_child(pk)
+	return pk
+
+func nearest_pocket(p: Vector2, max_dist: float) -> NebulaPocket:
+	var best: NebulaPocket = null
+	var best_d := max_dist
+	for n in get_tree().get_nodes_in_group("nebula_pockets"):
+		var d: float = n.global_position.distance_to(p)
+		if d < best_d:
+			best_d = d
+			best = n
+	return best

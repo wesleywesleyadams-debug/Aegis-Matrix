@@ -57,6 +57,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# Fog of war: this player's own sensors and memory (null without fog).
 	var v: Vision = game.visions.get(pid)
 	var giant := game.nearest_gas_giant(base.global_position, 4000.0, v)
+	# The closest explored point inside a spice nebula (INF if none known).
+	var neb_spot := _nebula_spot(base.global_position, game, v)
 	var war := ships.filter(func(s): return s.def["role"] == "warship")
 	var colonists := ships.filter(func(s): return s.def["role"] == "colony")
 	if OS.get_environment("SL_AI_DEBUG") != "" and int(Game.now()) % 20 == 0:
@@ -84,7 +86,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game))
 		if miners.size() + base.queue.count("miner") < TARGET_MINERS:
 			base.enqueue("miner")
-		elif giant and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2:
+		elif (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2:
 			base.enqueue("skimmer")
 		# Jobs: a Scout for sensors, a Repair Tender once the fleet is sizable,
 		# a Heat Shield where the system has radiation hazards to fight in.
@@ -109,9 +111,18 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			if p:
 				c.order_colonize(p)
 
+	# Skimmers: gas giants for minerals; one harvests spice gas in a known
+	# spice nebula while spice is short (slow, but it never runs out).
+	var on_neb := skimmers.filter(func(s): return s.mine_target is NebulaPocket).size()
 	for s in skimmers:
-		if s.state == Ship.State.IDLE and giant:
-			s.order_mine(giant)
+		if neb_spot != Vector2.INF and on_neb == 0 and res["spice"] < 150.0 and not (s.mine_target is NebulaPocket):
+			s.order_mine(game.nebula_pocket_at(neb_spot))
+			on_neb += 1
+		elif s.state == Ship.State.IDLE:
+			if giant:
+				s.order_mine(giant)
+			elif neb_spot != Vector2.INF:
+				s.order_mine(game.nebula_pocket_at(neb_spot))
 
 	# Idle miners go back to work; one goes after spice when it's low.
 	var on_spice := miners.filter(func(m): return is_instance_valid(m.mine_target) and m.mine_target.resource == "spice").size()
@@ -428,3 +439,13 @@ func _use_jobs(pid: int, ships: Array, game: Game) -> void:
 					var near := game.get_tree().get_nodes_in_group("beacons").any(func(b): return b.owner_id == pid and b.global_position.distance_to(s.global_position) < 600.0)
 					if not near:
 						Abilities.use(s)
+
+## Middle of the nearest spice nebula's band on the side facing `from`, if
+## this player has explored it; Vector2.INF otherwise.
+func _nebula_spot(from: Vector2, game: Game, v: Vision) -> Vector2:
+	for n in game.get_tree().get_nodes_in_group("nebulae"):
+		var dir: Vector2 = (from - n.global_position).normalized()
+		var p: Vector2 = n.global_position + dir * (n.inner + n.outer) / 2.0
+		if v == null or v.is_explored_at(p):
+			return p
+	return Vector2.INF

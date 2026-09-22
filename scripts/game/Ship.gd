@@ -90,16 +90,19 @@ func _apply_visuals() -> void:
 func is_miner() -> bool:
 	return def.get("role", "") in ["miner", "skimmer"]
 
-## Barges mine asteroids; skimmers mine gas giants.
+## Barges mine asteroids; skimmers mine gas giants and spice nebulae.
 func can_mine(target: Node2D) -> bool:
 	if def.get("role", "") == "miner":
 		return target is Asteroid
 	if def.get("role", "") == "skimmer":
-		return target is Planet and not (target as Planet).is_habitable()
+		# Gas giants (minerals) and spice nebulae (spice gas).
+		return target is NebulaPocket or (target is Planet and not (target as Planet).is_habitable())
 	return false
 
 func _find_mine_target(resource: String) -> Node2D:
 	if def["role"] == "skimmer":
+		if resource == "spice":
+			return Game.instance.nearest_pocket(global_position, 3000.0)
 		return Game.instance.nearest_gas_giant(global_position, 3000.0)
 	return Game.instance.nearest_asteroid(global_position, 900.0, resource)
 
@@ -263,7 +266,7 @@ func _physics_process(delta: float) -> void:
 				var reach: float = mine_target.radius + radius + 4.0
 				if global_position.distance_to(mine_target.global_position) <= reach + 4.0:
 					state = State.MINING
-					_mine_timer = def["mine_time"]
+					_mine_timer = def["mine_time"] * (NebulaPocket.MINE_TIME_MULT if mine_target is NebulaPocket else 1.0)
 				else:
 					desired = _arrive(mine_target.global_position, 1.0, reach)
 		State.MINING:
