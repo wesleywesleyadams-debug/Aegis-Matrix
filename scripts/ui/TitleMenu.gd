@@ -15,7 +15,7 @@ var load_list_panel: Control
 
 func _ready() -> void:
 	Music.play_track(Music.TITLE_TRACK)
-	_add_credits_line()
+	_build_credits()
 	_build_new_game_page()
 	$LoadListPanel.visible = false
 	load_list_panel = _build_load_screen()
@@ -48,6 +48,10 @@ func _ready() -> void:
 			MenuStyle.button(b)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and _credits.visible:
+		_credits.visible = false
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel") and _new_game_page.visible:
 		_show_new_game_page(false)
 		get_viewport().set_input_as_handled()
@@ -268,6 +272,8 @@ func _notification(what: int) -> void:
 			if tab != "":
 				OptionsMenu.get_node("Background/Panel/VBox/TabContainer").current_tab = int(tab)
 			await get_tree().process_frame
+		if OS.get_environment("SL_TITLE_SHOT") == "credits":
+			_credits.visible = true
 		if OS.get_environment("SL_TITLE_SHOT") == "create":
 			AccountMenu._on_create_account_pressed()
 			await get_tree().create_timer(0.3).timeout
@@ -275,16 +281,83 @@ func _notification(what: int) -> void:
 		get_viewport().get_texture().get_image().save_png("user://title.png")
 		get_tree().quit()
 
-## Music attribution required by its license (see CREDITS.md).
-func _add_credits_line() -> void:
-	var l := Label.new()
-	l.text = "Music: \"Through Space\" by Maxstack · CC BY-SA 3.0"
-	l.add_theme_font_size_override("font_size", 13)
-	l.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9, 0.7))
-	l.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	l.position = Vector2(16, size.y - 30)
-	l.anchor_top = 1.0
-	l.anchor_bottom = 1.0
-	l.offset_top = -30
-	l.offset_left = 16
-	add_child(l)
+# ---------------------------------------------------------------- credits
+
+## Music: [title, artist, license, page]. Keep in step with CREDITS.md
+## (CC BY-SA tracks must be credited in-game).
+const MUSIC_CREDITS := [
+	["Through Space", "Maxstack", "CC BY-SA 3.0", "maxstack.googlepages.com"],
+	["Space Life No. 14", "yd", "CC0", "opengameart.org/content/spacelife-14"],
+	["Magic Space", "CodeManu", "CC0", "opengameart.org/content/magic-space"],
+	["Deus Ex Tempus", "Trevor Lentz", "CC BY-SA 3.0", "opengameart.org/content/deus-ex-tempus"],
+	["Hero Immortal", "Trevor Lentz", "CC BY-SA 3.0", "opengameart.org/content/hero-immortal"],
+]
+
+var _credits: Control
+
+## A Credits button under Quit, opening a pop-up with the credits.
+func _build_credits() -> void:
+	var btn := Button.new()
+	btn.text = "Credits"
+	vbox.add_child(btn)
+	vbox.move_child(btn, quit_button.get_index() + 1)
+	btn.pressed.connect(func(): _credits.visible = true)
+
+	_credits = ColorRect.new()
+	_credits.color = Color(0, 0, 0, 0.6)
+	_credits.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_credits.visible = false
+	add_child(_credits)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_credits.add_child(center)
+	var panel := PanelContainer.new()
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.05, 0.06, 0.12, 0.95)
+	st.border_color = Color(0.4, 0.5, 0.8, 0.7)
+	st.set_border_width_all(2)
+	st.set_content_margin_all(28)
+	panel.add_theme_stylebox_override("panel", st)
+	center.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 14)
+	panel.add_child(v)
+	var title := Label.new()
+	title.text = "Credits"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 32)
+	v.add_child(title)
+	var head := Label.new()
+	head.text = "Music"
+	head.add_theme_font_size_override("font_size", 22)
+	head.add_theme_color_override("font_color", Color("3fd6b0"))
+	v.add_child(head)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 28)
+	grid.add_theme_constant_override("v_separation", 8)
+	v.add_child(grid)
+	for c in MUSIC_CREDITS:
+		var name := Label.new()
+		name.text = "\"%s\"" % c[0]
+		grid.add_child(name)
+		var by := Label.new()
+		by.text = "by %s" % c[1]
+		by.add_theme_color_override("font_color", Color("ffd166"))
+		grid.add_child(by)
+		var lic := Label.new()
+		lic.text = "%s  ·  %s" % [c[2], c[3]]
+		lic.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
+		grid.add_child(lic)
+	var note := Label.new()
+	note.text = "CC BY-SA 3.0: creativecommons.org/licenses/by-sa/3.0\nSound effects and synth music generated procedurally for Star Lords."
+	note.add_theme_font_size_override("font_size", 14)
+	note.add_theme_color_override("font_color", Color(0.6, 0.63, 0.75))
+	v.add_child(note)
+	var close := Button.new()
+	close.text = "Close"
+	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close.custom_minimum_size = Vector2(240, 0)
+	MenuStyle.button(close)
+	close.pressed.connect(func(): _credits.visible = false)
+	v.add_child(close)
