@@ -83,20 +83,34 @@ func features(game: Game, base: Starbase) -> PackedFloat32Array:
 	var foe := 3 - pid
 	var r: Dictionary = game.resources[pid]
 	var mine := _war(game, pid)
-	var theirs := _war(game, foe)
+	# Under fog of war the enemy side comes from this player's intel (what its
+	# sensors have seen); without fog, from the truth.
+	var v: Vision = game.visions.get(pid)
+	var theirs_power := v.enemy_power() if v else _power(_war(game, foe))
 	var worlds := [0, 0, 0]
 	var free := 0
 	for p in game.get_tree().get_nodes_in_group("planets"):
+		var o: int = v.known_owner(p) if v else p.owner_id
 		if p.owner_id == pid:
 			worlds[1] += 1
-		elif p.owner_id == foe:
+		elif o == foe:
 			worlds[2] += 1
-		elif p.is_habitable():
+		elif o == 0 and p.is_habitable():
 			free += 1
 	var near := 0
-	for s in theirs:
-		if s.global_position.distance_to(base.global_position) < 900.0:
-			near += 1
+	if v:
+		near = v.enemy_near(base.global_position, 900.0)
+	else:
+		for s in _war(game, foe):
+			if s.global_position.distance_to(base.global_position) < 900.0:
+				near += 1
+	var foe_base := 0.0
+	if v:
+		var kb := v.known_enemy_base(base.global_position)
+		# Not found yet: assume it's intact.
+		foe_base = kb[1] if not kb.is_empty() else 1.0
+	else:
+		foe_base = _base_frac(game, foe)
 	var ships := game.get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == pid)
 	var miners := ships.filter(func(s): return s.is_miner()).size()
 	var colonists := ships.filter(func(s): return s.def["role"] == "colony").size()
@@ -105,12 +119,12 @@ func features(game: Game, base: Starbase) -> PackedFloat32Array:
 		minf(Game.now() / 1800.0, 2.0),
 		log(1.0 + r["minerals"]) / 8.0, log(1.0 + r["energy"]) / 8.0, log(1.0 + r["spice"]) / 6.0, log(1.0 + r["food"]) / 10.0,
 		clampf(game.rates[pid].get("energy", 0.0) / 10.0, -1.0, 1.0),
-		tanh(_power(mine) / 5000.0), tanh(_power(theirs) / 5000.0),
+		tanh(_power(mine) / 5000.0), tanh(theirs_power / 5000.0),
 		worlds[1] / 6.0, worlds[2] / 6.0, free / 8.0,
 		miners / 8.0, colonists / 2.0,
 		1.0 if near > 0 else 0.0, minf(near / 20.0, 1.0),
 		base.queue.size() / 5.0, minf(idle / 20.0, 1.0),
-		_base_frac(game, pid), _base_frac(game, foe),
+		_base_frac(game, pid), foe_base,
 		1.0 if game.has_tech(pid, "cruiser_doctrine") else 0.0,
 		1.0,
 	])
@@ -127,7 +141,7 @@ func _valid(a: String, game: Game, base: Starbase) -> bool:
 			if r["spice"] < Defs.SHIPS["colony"]["cost"]["spice"]:
 				return false
 			for p in game.get_tree().get_nodes_in_group("planets"):
-				if p.owner_id == 0 and p.is_habitable():
+				if ai_free(game, p) and p.is_habitable():
 					return base.can_queue("colony") == ""
 			return false
 		_:
@@ -160,3 +174,8 @@ func _do(a: String, game: Game, base: Starbase, ai: AIController) -> void:
 			for s in ws:
 				if s.global_position.distance_to(c) > 250.0:
 					s.order_move(c)
+
+## A planet this side knows to be free (see AIController._known_free).
+func ai_free(game: Game, p: Planet) -> bool:
+	var v: Vision = game.visions.get(pid)
+	return v.known_owner(p) == 0 if v else p.owner_id == 0

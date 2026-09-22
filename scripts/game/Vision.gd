@@ -34,6 +34,17 @@ var game: Game
 var pid: int = 1
 ## False once the match is over (everything is revealed) or in dev modes.
 var enabled := true
+## False for the AI players' sensors: same knowledge, nothing drawn or hidden.
+var render := true
+## Intel (what this player knows, used by the AI): planet owners / pops last
+## seen, enemy starbases seen, and recent enemy warship sightings
+## (instance id -> [time, power, position]).
+var seen_planet_owner := {}
+var seen_planet_pop := {}
+var seen_bases := {}
+var sightings := {}
+## How long a sighted enemy warship still counts toward its fleet estimate.
+const SIGHTING_MEMORY := 120.0
 var cols: int
 var rows: int
 ## [position, range] of every sensor this update (for can_see checks).
@@ -54,9 +65,10 @@ func setup(g: Game, player: int) -> void:
 	_dark.fill(FOG_COLOR)
 	_sight = Image.create(cols, rows, false, Image.FORMAT_LA8)
 	# Nothing is known about other planets yet.
-	for pl in get_tree().get_nodes_in_group("planets"):
-		pl.seen_owner = 0
-		pl.in_sight = false
+	if render:
+		for pl in get_tree().get_nodes_in_group("planets"):
+			pl.seen_owner = 0
+			pl.in_sight = false
 	# Stars shine across the system: their surroundings start explored.
 	for star in get_tree().get_nodes_in_group("stars"):
 		_stamp(_dark, star.global_position, star.radiation_radius + 60.0)
@@ -71,7 +83,7 @@ func _process(delta: float) -> void:
 		return
 	_timer -= delta
 	if _timer <= 0.0:
-		_timer = UPDATE
+		_timer = UPDATE if render else UPDATE * 2.0
 		_refresh()
 
 ## Lifts the fog for good (match over).
@@ -154,10 +166,12 @@ func _refresh() -> void:
 	for src in _sources:
 		_stamp(_sight, src[0], src[1])
 		_stamp(_dark, src[0], src[1])
-	_hide_unseen()
-	_dark_tex.update(_dark)
-	_sight_tex.update(_sight)
-	queue_redraw()
+	_update_intel()
+	if render:
+		_hide_unseen()
+		_dark_tex.update(_dark)
+		_sight_tex.update(_sight)
+		queue_redraw()
 
 ## Clears every cell whose center is within range of p, one row span at a
 ## time.
@@ -203,7 +217,7 @@ func _hide_unseen() -> void:
 			pl.queue_redraw()
 
 func _draw() -> void:
-	if enabled:
+	if enabled and render:
 		draw_fog(self, Rect2(Game.MAP_RECT.position, Vector2(cols, rows) * CELL))
 
 ## Draws the fog (both layers) onto any canvas item, stretched over `rect`
@@ -294,3 +308,80 @@ func _fog_save_test(mode: String) -> void:
 	var sb_seen := get_tree().get_nodes_in_group("starbases").filter(func(s): return s.get_meta("seen", false)).size()
 	print("FOGSAVE %s explored cells %d, %s seen owner %d, starbases seen %d" % [mode, ex, pl.name, pl.seen_owner, sb_seen])
 	get_tree().quit()
+
+# ---------------------------------------------------------------- intel (AI)
+
+## Records what is in sight right now into this player's memory.
+func _update_intel() -> void:
+	var now := Game.now()
+	var tree := get_tree()
+	for s in tree.get_nodes_in_group("ships"):
+		if s.owner_id != pid and s.is_alive() and s.def["role"] == "warship" and can_see(s):
+			sightings[s.get_instance_id()] = [now, s.max_hp + s.max_shield, s.global_position]
+	for id in sightings.keys():
+		var sg: Array = sightings[id]
+		# Forget old sightings, and ships seen to be gone from where they were.
+		var gone := not is_instance_id_valid(id) and is_visible_at(sg[2])
+		if now - sg[0] > SIGHTING_MEMORY or gone:
+			sightings.erase(id)
+	for sb in tree.get_nodes_in_group("starbases"):
+		if sb.owner_id != pid and sb.is_alive() and can_see(sb):
+			seen_bases[sb] = [sb.global_position, (sb.hp + sb.shield) / maxf(sb.max_hp + sb.max_shield, 1.0)]
+	for sb in seen_bases.keys():
+		if not is_instance_valid(sb) or not sb.is_alive():
+			seen_bases.erase(sb)
+	for p in tree.get_nodes_in_group("planets"):
+		if p.owner_id == pid or is_visible_at(p.global_position):
+			seen_planet_owner[p] = p.owner_id
+			seen_planet_pop[p] = p.pop
+
+## Owner last seen on planet p; -1 if it has never been seen.
+func known_owner(p: Planet) -> int:
+	return seen_planet_owner.get(p, -1)
+
+## Estimated enemy fleet strength (hull + shields of warships seen lately).
+func enemy_power() -> float:
+	var t := 0.0
+	for id in sightings:
+		t += sightings[id][1]
+	return t
+
+## Enemy warships seen within the last few seconds within r of pos.
+func enemy_near(pos: Vector2, r: float) -> int:
+	var n := 0
+	var now := Game.now()
+	for id in sightings:
+		var sg: Array = sightings[id]
+		if now - sg[0] < 5.0 and pos.distance_to(sg[2]) < r:
+			n += 1
+	return n
+
+## Position and hull fraction of a known enemy starbase (empty if none).
+func known_enemy_base(from: Vector2) -> Array:
+	var best: Array = []
+	for sb in seen_bases:
+		if best.is_empty() or from.distance_to(seen_bases[sb][0]) < from.distance_to(best[0]):
+			best = seen_bases[sb]
+	return best
+
+func explored_fraction() -> float:
+	var ex := 0
+	for y in range(0, rows, 2):
+		for x in range(0, cols, 2):
+			ex += int(_dark.get_pixel(x, y).a == 0.0)
+	return ex / float(((rows + 1) / 2) * ((cols + 1) / 2))
+
+## The nearest unexplored spot to `from` (a coarse search), or `from` if
+## the whole map is explored.
+func nearest_unexplored(from: Vector2) -> Vector2:
+	var best := from
+	var best_d := INF
+	for y in range(1, rows, 3):
+		for x in range(1, cols, 3):
+			if _dark.get_pixel(x, y).a > 0.0:
+				var p := Game.MAP_RECT.position + (Vector2(x, y) + Vector2(0.5, 0.5)) * CELL
+				var d := from.distance_squared_to(p)
+				if d < best_d:
+					best_d = d
+					best = p
+	return best

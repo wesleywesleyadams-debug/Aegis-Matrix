@@ -75,7 +75,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 
 	# Builds: only queue when stockpiles can roughly cover the next item.
 	if nn == null and base.queue.size() < 2:
-		var free_planet := _nearest_planet(base.global_position, game, func(p): return p.owner_id == 0)
+		var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game))
 		if miners.size() + base.queue.count("miner") < TARGET_MINERS:
 			base.enqueue("miner")
 		elif giant and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2:
@@ -91,7 +91,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 
 	for c in colonists:
 		if c.state == Ship.State.IDLE or c.state == Ship.State.MOVE:
-			var p := _nearest_planet(c.global_position, game, func(pl): return pl.owner_id == 0)
+			var p := _nearest_planet(c.global_position, game, func(pl): return _known_free(pid, pl, game))
 			if p:
 				c.order_colonize(p)
 
@@ -131,6 +131,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		for i in p.fields:
 			if p.order_build(i, pick) == "":
 				break
+
+	_scout(pid, st, game, war)
 
 	# The learned commander decides builds and fleet moves itself.
 	if nn != null:
@@ -197,6 +199,18 @@ func _nearest_planet(from: Vector2, game: Game, filter: Callable) -> Planet:
 func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 	# The enemy starbase wins the match; a small enemy colony on the way is
 	# fair game (big worlds take too long to bombard).
+	var v: Vision = game.visions.get(pid)
+	if v:
+		# Fog of war: only targets we've seen. With no enemy starbase found
+		# yet, head for the mirror image of our home (systems are point-
+		# symmetric, so that's where the enemy most likely started).
+		var kp := _nearest_planet(from, game, func(pl): return v.known_owner(pl) > 0 and v.known_owner(pl) != pid and v.seen_planet_pop.get(pl, 0.0) < 4000.0)
+		var kb := v.known_enemy_base(from)
+		var home := game.nearest_starbase(pid, Vector2.ZERO)
+		var base_pos: Vector2 = kb[0] if not kb.is_empty() else (-home.global_position if home else Vector2.ZERO)
+		if kp and from.distance_to(kp.global_position) < from.distance_to(base_pos):
+			return kp.global_position
+		return base_pos
 	var p := _nearest_planet(from, game, func(pl): return pl.owner_id != 0 and pl.owner_id != pid and pl.pop < 4000.0)
 	var enemy_base: Starbase = null
 	for sb in game.get_tree().get_nodes_in_group("starbases"):
@@ -205,6 +219,36 @@ func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 	if p and (enemy_base == null or from.distance_to(p.global_position) < from.distance_to(enemy_base.global_position)):
 		return p.global_position
 	return enemy_base.global_position if enemy_base else from
+
+## A planet this player knows to be free (seen unclaimed); without fog, any
+## unclaimed planet.
+func _known_free(pid: int, p: Planet, game: Game) -> bool:
+	var v: Vision = game.visions.get(pid)
+	if v:
+		return v.known_owner(p) == 0
+	return p.owner_id == 0
+
+## Scouting: one warship explores the nearest unexplored spot until most of
+## the system is known (only with fog of war).
+const SCOUT_UNTIL := 0.85
+
+func _scout(pid: int, st: Dictionary, game: Game, war: Array) -> void:
+	var v: Vision = game.visions.get(pid)
+	if v == null or war.is_empty() or Game.now() < st.get("next_scout", 0.0):
+		return
+	st["next_scout"] = Game.now() + 5.0
+	if v.explored_fraction() >= SCOUT_UNTIL:
+		return
+	# (Untyped until checked: the old scout may have been destroyed.)
+	var old = st.get("scout")
+	var sc: Ship = old if is_instance_valid(old) else null
+	if sc == null or not sc.is_alive():
+		# The fastest warship (corvettes) makes the best scout.
+		war.sort_custom(func(a, b): return a.def["speed"] > b.def["speed"])
+		sc = war[0]
+		st["scout"] = sc
+	if sc.state == Ship.State.IDLE or sc.global_position.distance_to(sc.move_goal) < 60.0 or v.is_explored_at(sc.move_goal):
+		sc.order_move(v.nearest_unexplored(sc.global_position))
 
 # ---------------------------------------------------------------- strategy
 
@@ -226,7 +270,16 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 		mine += s.max_hp + s.max_shield
 	var theirs := 0.0
 	var threat := false
-	for s in game.get_tree().get_nodes_in_group("ships"):
+	var v: Vision = game.visions.get(pid)
+	if v:
+		# Fog of war: judge the enemy only by what our sensors have seen.
+		theirs = v.enemy_power()
+		threat = v.enemy_near(base.global_position, 900.0) > 0
+		for p in game.get_tree().get_nodes_in_group("planets"):
+			if p.owner_id == pid and v.enemy_near(p.global_position, 500.0) > 0:
+				threat = true
+				break
+	for s in ([] if v else game.get_tree().get_nodes_in_group("ships")):
 		if s.owner_id == pid or s.owner_id == 0 or not s.is_alive() or s.def["role"] != "warship":
 			continue
 		theirs += s.max_hp + s.max_shield
@@ -244,7 +297,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 	# Out of spice alone isn't a crisis: corvettes cost none (see _pick_warship).
 	st["corvettes_only"] = spice_starved
 	var starved := energy_starved
-	var free := _nearest_planet(base.global_position, game, func(p): return p.owner_id == 0 and p.is_habitable()) != null
+	var free := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game) and p.is_habitable()) != null
 	var mode := "expand" if free else "build_up"
 	if starved:
 		mode = "recover"

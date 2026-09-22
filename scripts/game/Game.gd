@@ -54,6 +54,9 @@ var map_view: bool = false
 var stats: MatchStats = MatchStats.new()
 ## Fog of war for the human player (null in sims / with SL_NOFOG).
 var vision: Vision
+## Every player's sensors / intel by player id (the AI plays by these too).
+## Empty with SL_NOFOG (then the AI knows everything, as before).
+var visions := {}
 ## Starbase placement mode for a selected Constructor.
 var placing_starbase: bool = false
 
@@ -145,6 +148,9 @@ func _ready() -> void:
 	# Balance harness (SL_SIM): the AI plays both sides.
 	if OS.get_environment("SL_SIM") != "":
 		ai.setup([1, 2])
+		if OS.get_environment("SL_NOFOG") == "":
+			for p in [1, 2]:
+				_add_vision(p, false)
 		add_child(SimRunner.new())
 		hud.visible = false
 		hud.process_mode = Node.PROCESS_MODE_DISABLED
@@ -153,9 +159,8 @@ func _ready() -> void:
 		ai.setup([3 - player_id])
 		# Fog of war for the human player (SL_NOFOG=1 turns it off for dev shots).
 		if OS.get_environment("SL_NOFOG") == "":
-			vision = Vision.new()
-			$World.add_child(vision)
-			vision.setup(self, player_id)
+			vision = _add_vision(player_id, true)
+			_add_vision(3 - player_id, false)
 			if loaded:
 				vision.import_state(save_data.get("fog", {}))
 	if not loaded:
@@ -1701,3 +1706,12 @@ func _update_background() -> void:
 	mat.set_shader_parameter("cam", camera.get_screen_center_position())
 	mat.set_shader_parameter("zoom", camera.zoom.x * stretch)
 	mat.set_shader_parameter("screen_size", win)
+
+## Adds a player's sensors (see Vision); `render` only for the human.
+func _add_vision(pid: int, render: bool) -> Vision:
+	var v := Vision.new()
+	v.render = render
+	$World.add_child(v)
+	v.setup(self, pid)
+	visions[pid] = v
+	return v
