@@ -78,6 +78,16 @@ func _ready() -> void:
 	back_button.add_theme_color_override("font_hover_color", Color.WHITE)
 	back_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Start Match in green.
+	for st in ["normal", "hover", "pressed"]:
+		var gb := StyleBoxFlat.new()
+		gb.bg_color = {"normal": Color("1a5a2a"), "hover": Color("247a38"), "pressed": Color("103a1a")}[st]
+		gb.border_color = Color("6aff8a")
+		gb.set_border_width_all(2)
+		gb.set_content_margin_all(12)
+		start_button.add_theme_stylebox_override(st, gb)
+	start_button.add_theme_color_override("font_color", Color("d6ffe0"))
+	start_button.add_theme_color_override("font_hover_color", Color.WHITE)
 
 	_add_mode_title()
 	_populate_players_grid()
