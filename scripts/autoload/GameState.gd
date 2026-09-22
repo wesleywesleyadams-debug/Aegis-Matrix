@@ -49,6 +49,10 @@ var human_player_id: int = 1
 ## Which New Game option started this match setup: "single" or "multi"
 ## (both use the same lobby for now; networking isn't implemented yet).
 var game_mode: String = "single"
+## Which star system the next match uses (SystemGen.SYSTEMS id) and, for
+## generated ones, the seed it was built from (set when the match starts).
+var system_id: String = "orion_reach"
+var system_seed: int = 0
 
 ## The human player's own Paths progress -- see PathState/PathDefs' own
 ## doc comments for the actual mechanics. Lives here (not owned by

@@ -23,6 +23,8 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"version": VERSION,
 		"name": save_name,
 		"mode": GameState.game_mode,
+		"system": GameState.system_id,
+		"system_seed": GameState.system_seed,
 		"timestamp": Time.get_unix_time_from_system(),
 		"clock": Game.now(),
 		"player_id": game.player_id,

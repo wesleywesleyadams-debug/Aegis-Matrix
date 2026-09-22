@@ -92,6 +92,7 @@ func _ready() -> void:
 	for b in [options_button, start_button, back_button]:
 		MenuStyle.button(b)
 
+	_setup_system_picker()
 	_add_mode_title()
 	_populate_players_grid()
 	_claim_slot_for_self()
@@ -283,9 +284,39 @@ func _sync_human_player_id() -> void:
 			return
 
 func _on_start_pressed() -> void:
+	# Resuming a save keeps the save's own system (SaveGame restores it).
+	if not GameState.load_on_start:
+		var sys := SystemGen.find(GameState.system_id)
+		GameState.system_seed = int(sys.get("seed", 0)) if GameState.system_id != "random" else randi()
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")
 
 func _on_back_pressed() -> void:
 	GameState.load_on_start = false
 	GameState.load_save_path = ""
 	get_tree().change_scene_to_file("res://scenes/TitleMenu.tscn")
+
+## System dropdown (Match Settings): the five named systems plus Random, with
+## a one-line description under it.
+func _setup_system_picker() -> void:
+	var opt: OptionButton = $MainHBox/SettingsPanel/SettingsVBox/MapRow/OptionButton
+	opt.clear()
+	var pick := 0
+	for i in SystemGen.SYSTEMS.size():
+		var s: Dictionary = SystemGen.SYSTEMS[i]
+		opt.add_item(s["name"])
+		if s["id"] == GameState.system_id:
+			pick = i
+	opt.selected = pick
+	var desc := Label.new()
+	desc.add_theme_font_size_override("font_size", 14)
+	desc.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var row := opt.get_parent()
+	row.get_parent().add_child(desc)
+	row.get_parent().move_child(desc, row.get_index() + 1)
+	var apply := func(i: int) -> void:
+		GameState.system_id = SystemGen.SYSTEMS[i]["id"]
+		desc.text = SystemGen.SYSTEMS[i]["desc"]
+	opt.item_selected.connect(apply)
+	apply.call(pick)

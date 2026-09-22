@@ -12,6 +12,8 @@ signal tech_completed(pid: int, tech_id: String)
 
 const SHIP_SCENE := preload("res://scenes/Ship.tscn")
 const STARBASE_SCENE := preload("res://scenes/Starbase.tscn")
+const PLANET_SCENE := preload("res://scenes/Planet.tscn")
+const ASTEROID_SCENE := preload("res://scenes/Asteroid.tscn")
 const MAP_RECT := Rect2(-1800, -1150, 3600, 2300)
 const ZOOM_LEVELS: Array[float] = [1.0, 2.0, 3.0, 4.0, 6.0]
 const CELL := 64.0
@@ -92,11 +94,22 @@ func _ready() -> void:
 	tree_exiting.connect(func(): SignedInLabel.visible = true)
 	Engine.time_scale = 1.0
 	RenderingServer.set_default_clear_color(Color("07060f"))
-	# Resuming a saved match? Rebuild it before anything else runs.
+	# Resuming a saved match? Its system comes from the save.
+	var save_data := {}
+	if GameState.load_on_start:
+		save_data = SaveGame.read(GameState.load_save_path)
+		GameState.system_id = str(save_data.get("system", "orion_reach"))
+		GameState.system_seed = int(save_data.get("system_seed", 0))
+	# Dev aid: SL_SYSTEM=<id>[:seed] picks the system directly.
+	if OS.get_environment("SL_SYSTEM") != "":
+		var sp := OS.get_environment("SL_SYSTEM").split(":")
+		GameState.system_id = sp[0]
+		GameState.system_seed = int(sp[1]) if sp.size() > 1 else int(SystemGen.find(sp[0]).get("seed", 0))
+	_build_system()
 	var loaded := false
 	if GameState.load_on_start:
 		GameState.load_on_start = false
-		loaded = SaveGame.apply(self, SaveGame.read(GameState.load_save_path))
+		loaded = SaveGame.apply(self, save_data)
 	for sb in get_tree().get_nodes_in_group("starbases"):
 		(sb as Starbase).died.connect(_on_starbase_died)
 	ai.setup([3 - player_id])
@@ -117,6 +130,45 @@ func _ready() -> void:
 	else:
 		message.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"))
 	_enter_dev_capture()
+
+# ---------------------------------------------------------------- system
+
+## Swaps Main.tscn's hand-made Orion Reach for a generated system when a
+## different one is picked (see SystemGen). Orion Reach keeps the scene as-is.
+func _build_system() -> void:
+	if GameState.system_id == "orion_reach":
+		return
+	var sys := SystemGen.find(GameState.system_id)
+	var params: Dictionary = sys.get("params", {})
+	if GameState.system_id == "random" or params.is_empty():
+		params = SystemGen.random_params(GameState.system_seed)
+	var layout := SystemGen.generate(GameState.system_seed, params)
+	for root in [$World/Planets, $World/Asteroids, starbases_root, ships_root]:
+		for n in root.get_children():
+			root.remove_child(n)
+			n.free()
+	for p in layout["planets"]:
+		var pl: Planet = PLANET_SCENE.instantiate()
+		pl.name = p["name"]
+		pl.planet_name = p["name"]
+		pl.kind = p["kind"]
+		pl.owner_id = p["owner"]
+		pl.position = p["pos"]
+		$World/Planets.add_child(pl)
+	for a in layout["asteroids"]:
+		var r: Asteroid = ASTEROID_SCENE.instantiate()
+		r.name = a["name"]
+		r.variant = a["variant"]
+		r.position = a["pos"]
+		$World/Asteroids.add_child(r)
+	for s in layout["starbases"]:
+		var sb: Starbase = STARBASE_SCENE.instantiate()
+		sb.owner_id = s["owner"]
+		sb.position = s["pos"]
+		starbases_root.add_child(sb)
+	for s in layout["ships"]:
+		var ship := spawn_ship(s["type"], s["owner"], s["pos"])
+		ship.rotation = s["rot"]
 
 # ---------------------------------------------------------------- economy
 
@@ -1170,6 +1222,16 @@ func _enter_dev_capture() -> void:
 				print("CROSSER %d closest %.0f (zone %.0f)" % [i, closest.get(i, -1.0), Star.RADIATION_RADIUS])
 			print("HEALTHY closest %.0f hp %.0f%%   HURT closest %.0f hp %.0f%%" % [closest.get(3, -1.0), 100 * closest.get("hp3", 0.0), closest.get(4, -1.0), 100 * closest.get("hp4", 0.0)]))
 		center_on(Vector2.ZERO)
+	if OS.get_environment("SL_SYSTEM_TEST") != "":
+		# Dev: prints the system, then (mode "save") saves after 20s.
+		var names := get_tree().get_nodes_in_group("planets").map(func(p): return "%s:%s:%d" % [p.planet_name, p.kind.trim_prefix("planet_"), p.owner_id])
+		print("SYSTEM %s seed %d  planets %d rocks %d  %s" % [GameState.system_id, GameState.system_seed, names.size(), get_tree().get_nodes_in_group("asteroids").size(), ", ".join(names)])
+		get_tree().create_timer(20.0).timeout.connect(func():
+			var mine := get_tree().get_nodes_in_group("ships").filter(func(s): return s.is_miner() and s.state != Ship.State.IDLE).size()
+			print("AFTER 20s: working miners %d, ships p1 %d p2 %d, p2 minerals %.0f" % [mine, get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == 1).size(), get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == 2).size(), resources[2]["minerals"]])
+			if OS.get_environment("SL_SYSTEM_TEST") == "save":
+				var path := SaveGame.write(self, "system test")
+				print("SAVED ", path))
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
 		c1.order_stop()
