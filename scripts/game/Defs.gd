@@ -45,7 +45,7 @@ const SHIPS := {
 	"colony": {
 		"name": "Colony Ship", "role": "colony", "hotkey": KEY_X,
 		"hp": 120.0, "shield": 20.0, "speed": 60.0, "radius": 9.0,
-		"cost": {"minerals": 80, "spice": 20}, "build_time": 15.0, "upkeep": 0.1,
+		"cost": {"minerals": 80, "spice": 10}, "build_time": 15.0, "upkeep": 0.1,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"constructor": {
@@ -77,7 +77,7 @@ const SHIPS := {
 const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor", "corvette", "destroyer", "cruiser"]
 
 const STARBASE := {
-	"name": "Starbase", "hp": 2400.0, "shield": 800.0, "radius": 26.0,
+	"name": "Starbase", "hp": 4000.0, "shield": 1500.0, "radius": 26.0,
 	"weapon": "laser", "damage": 22.0, "cooldown": 0.7, "range": 220.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 400, "spice": 20}, "build_time": 40.0,

@@ -7,7 +7,7 @@ extends Node
 
 const TARGET_MINERS := 6
 ## Earliest game time for an attack wave (seconds).
-const FIRST_WAVE_TIME := 300.0
+const FIRST_WAVE_TIME := 420.0
 
 var players: Array[int] = []
 var _state := {}
@@ -63,7 +63,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			base.enqueue("miner")
 		elif giant and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2:
 			base.enqueue("skimmer")
-		elif free_planet and mode == "expand" and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= 20.0:
+		# Keep colonizing unless enemies are actually at our worlds (being
+		# outgunned elsewhere isn't a reason to stop growing).
+		elif free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= 10.0:
 			base.enqueue("colony")
 		elif mode != "recover":
 			var pick := _pick_warship(pid, game, st)
@@ -228,6 +230,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 		mode = "build_up"
 	elif mine > theirs * 1.4 and war.size() >= 8:
 		mode = "attack"
+	st["threat"] = threat
 	var old: String = st.get("mode", "")
 	st["mode"] = mode
 	if mode == old:
@@ -237,7 +240,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 	for i in range(base.queue.size() - 1, 0, -1):
 		var t: String = base.queue[i]
 		var role: String = Defs.SHIPS[t]["role"]
-		if (mode == "recover" and role == "warship") or (mode in ["build_up", "attack"] and role == "colony"):
+		if (mode == "recover" and role == "warship") or (threat and role == "colony"):
 			base.cancel(i)
 
 func _front_needs_spice(base: Starbase) -> bool:

@@ -329,6 +329,10 @@ func find_path(a: Vector2, b: Vector2) -> PackedVector2Array:
 		i = j + 1
 	return out
 
+## Whether side `pid` is run by the computer (both sides in balance sims).
+func is_ai(pid: int) -> bool:
+	return ai.players.has(pid)
+
 ## Whether `p` is inside an active ion-storm arm (ships crawl there).
 func in_storm(p: Vector2) -> bool:
 	for s in storm_list:

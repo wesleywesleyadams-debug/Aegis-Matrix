@@ -211,7 +211,7 @@ func _physics_process(delta: float) -> void:
 					attack_move_goal = global_position
 					target = e
 					state = State.ATTACK
-				elif owner_id != Game.instance.player_id and max_shield > 0.0 and Game.instance.in_nebula(global_position):
+				elif Game.instance.is_ai(owner_id) and max_shield > 0.0 and Game.instance.in_nebula(global_position):
 					_leave_nebula()
 			desired = _arrive(move_goal, 0.0)
 		State.MOVE:
@@ -336,7 +336,7 @@ func _physics_process(delta: float) -> void:
 			Game.instance.fire(self, shoot, def["weapon"], def["damage"])
 			_cooldown = def["cooldown"] * randf_range(0.9, 1.1)
 
-	if owner_id != Game.instance.player_id:
+	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)
 	_steer(desired + _separation(), delta, face_target)
 
