@@ -927,7 +927,7 @@ func _update_top_bar() -> void:
 	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/s for ships and starbases%s" % [game.upkeep(pid), "
 OUT OF ENERGY: ship production halted, ships at 25%% speed" if game.energy_starved(pid) else ""]
 	_pop_label.text = "Pop %s" % _fmt(game.total_pop(pid))
-	_pop_label.tooltip_text = "Population across your worlds. Each pop eats 1 food per minute."
+	_pop_label.tooltip_text = "Population across your worlds. Each pop eats %.2f food per minute." % Defs.FOOD_PER_POP_PER_MIN
 	_fleet_label.text = "%d ships · upkeep x%.2f" % [game.ship_count(pid), game.upkeep_multiplier(pid)]
 	_fleet_label.tooltip_text = "Each ship's energy upkeep is multiplied by 1 + (ships / %d)^2. Starbases scale separately: x%.1f with %d starbases.
 Total ship+starbase upkeep: %.1f energy/s." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]

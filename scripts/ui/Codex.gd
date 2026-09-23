@@ -330,7 +330,7 @@ func _page_overview() -> void:
 	_para("Sensors give fog of war. Unexplored space is black; explored space you can't currently see is dimmed and shows only terrain and the last owner you saw on a planet. Enemy ships and shots appear only inside your sensor range, and an enemy starbase stays on your map once you have seen it. Ships in a spice nebula are hidden unless something of yours is close, a Scout is close, or one of its beacons is watching; ion storms halve sensor range. The AI plays under exactly the same rules.")
 	_heading("Resources", EDGE_LIT)
 	_table(["Resource", "Comes from", "Pays for"], [
-		[["Food", Color("8fe060")], "Farms only", "1 per pop per minute (spice covers a shortfall); an unfed world shrinks as fast as it would grow"],
+		[["Food", Color("8fe060")], "Farms only", "%.2f per pop per minute (spice covers a shortfall); an unfed world shrinks as fast as it would grow" % Defs.FOOD_PER_POP_PER_MIN],
 		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes, starbase refineries", "Ships, buildings, starbases"],
 		[["Energy", Color("ffd84a")], "Power plants, starbase reactors", "Research, fleet and starbase upkeep, shield regeneration"],
 		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1"],
@@ -483,7 +483,7 @@ func _page_ships() -> void:
 
 func _page_economy() -> void:
 	_heading("Planets")
-	_para("A planet's size is its number of fields, one building each, and its population cap is size x %d. Colonies start at %d pops. Pops eat 1 food per minute; unfed pops starve. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP)])
+	_para("A planet's size is its number of fields, one building each, and its population cap is size x %d. Colonies start at %d pops. Pops eat %s food per minute; an unfed world shrinks instead of growing. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP), str(Defs.FOOD_PER_POP_PER_MIN)])
 	var prows: Array = []
 	for p in Defs.PLANET_TYPES:
 		var pd: Dictionary = Defs.PLANET_TYPES[p]
