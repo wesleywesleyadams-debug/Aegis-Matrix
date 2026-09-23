@@ -19,7 +19,7 @@ const DECIDE := 2.0
 
 ## Research grouped the way a commander thinks about it.
 const TECH_GROUPS := {
-	"research_offense": ["ion_cannons", "particle_lances", "cruiser_doctrine", "dark_matter"],
+	"research_offense": ["destroyers", "ion_cannons", "cruisers", "particle_lances", "dark_matter"],
 	"research_defense": ["deflectors", "phase_shields", "aegis_matrix", "composite_plating", "reactive_armor",
 		"neutronium_armor", "reinforced_frames", "nanite_plating", "adaptive_hulls"],
 	"research_economy": ["hydroponics", "deep_drills", "gas_skimming", "gene_clinics", "arcologies",
@@ -181,7 +181,7 @@ func features(game: Game, base: Starbase) -> PackedFloat32Array:
 		base.queue.size() / 5.0, _base_frac(game, pid), foe_base,
 		1.0 if near > 0 else 0.0, minf(near / 20.0, 1.0),
 		float(game.researched[pid].size()) / float(Defs.TECHS.size()),
-		1.0 if game.has_tech(pid, "cruiser_doctrine") else 0.0,
+		1.0 if game.has_tech(pid, "cruisers") else 0.0,
 		1.0 if game.has_tech(pid, "gas_skimming") else 0.0,
 		_line_level(game, "shields") / 3.0, _line_level(game, "armor") / 3.0, _line_level(game, "hull") / 3.0,
 		minf(depots, 2) / 2.0, float(specialists) / maxf(mine.size(), 1.0),

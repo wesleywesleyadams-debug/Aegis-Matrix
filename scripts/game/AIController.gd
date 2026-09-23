@@ -82,7 +82,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		# Skip pure-spice techs unless spice is plentiful.
 		options = options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
 		if not options.is_empty():
-			game.queue_research(pid, options.pick_random())
+			# Destroyers first: without it the fleet is stuck on Corvettes.
+			game.queue_research(pid, "destroyers" if options.has("destroyers") else options.pick_random())
 
 	# Builds: only queue when stockpiles can roughly cover the next item.
 	if nn == null and base.queue.size() < 2:

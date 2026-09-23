@@ -61,13 +61,13 @@ const BASE_SHIPS := {
 		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm", "refit": {"minerals": 5, "time": 15.0},
 	},
 	"destroyer": {
-		"name": "Destroyer", "role": "warship",
+		"name": "Destroyer", "role": "warship", "requires": "destroyers",
 		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 11.0,
 		"cost": {"minerals": 170, "spice": 5}, "build_time": 17.0, "upkeep": 0.25,
 		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort", "refit": {"minerals": 10, "time": 25.0},
 	},
 	"cruiser": {
-		"name": "Cruiser", "role": "warship", "requires": "cruiser_doctrine",
+		"name": "Cruiser", "role": "warship", "requires": "cruisers",
 		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 28.0, "upkeep": 0.6,
 		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
@@ -229,7 +229,10 @@ const TECHS := {
 		"effects": {"growth": 0.50}, "desc": "+50% population growth."},
 	"arcologies": {"name": "Arcologies", "group": "economy", "tier": 2, "requires": ["hydroponics"], "cost": {"energy": 1000, "spice": 20}, "time": 80.0,
 		"effects": {"max_pop": 0.30}, "desc": "+30% planet population cap."},
-	"cruiser_doctrine": {"name": "Cruiser Doctrine", "group": "weapons", "tier": 2, "requires": ["ion_cannons", "deep_drills"], "cost": {"energy": 800, "spice": 20}, "time": 70.0,
+	# Hull line: the warship classes unlock one after the other.
+	"destroyers": {"name": "Destroyers", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 45.0,
+		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
+	"cruisers": {"name": "Cruisers", "group": "weapons", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 1200, "spice": 30}, "time": 85.0,
 		"effects": {"unlock_cruiser": 1.0}, "desc": "Unlocks the Cruiser."},
 	# Defense lines (research screen's Defenses tab): shields, armor, hull. Each
 	# is three tiers of big, expensive upgrades for every ship and starbase,
