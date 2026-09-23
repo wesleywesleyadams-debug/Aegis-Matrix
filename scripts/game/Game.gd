@@ -1756,6 +1756,82 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "qmini":
+		# Dev: minimap right-clicks, plain and shift-held, must behave like
+		# right-clicks on the map.
+		var hb := nearest_starbase(player_id, Vector2.ZERO)
+		var sh := spawn_ship("corvette", player_id, hb.global_position + Vector2(-100, 100))
+		_set_selection([sh], false)
+		await get_tree().process_frame
+		var mini: Minimap = hud.minimap
+		var to_ui := func(world: Vector2) -> Vector2:
+			return mini._map_to_ui(world)
+		var a := hb.global_position + Vector2(400, 0)
+		var b := hb.global_position + Vector2(400, 400)
+		var e1 := InputEventMouseButton.new()
+		e1.button_index = MOUSE_BUTTON_RIGHT
+		e1.pressed = true
+		e1.position = to_ui.call(a)
+		mini._gui_input(e1)
+		var after_plain := sh.order_queue.size()
+		var e2 := InputEventMouseButton.new()
+		e2.button_index = MOUSE_BUTTON_RIGHT
+		e2.pressed = true
+		e2.shift_pressed = true
+		e2.position = to_ui.call(b)
+		mini._gui_input(e2)
+		print("QMINI plain: state=%s queue=%d | after shift: queue=%d" % [
+			Ship.State.keys()[sh.state], after_plain, sh.order_queue.size()])
+		var pts := sh.queued_points()
+		if pts.size() > 0:
+			print("QMINI queued point err=%.0f px (want ~0)" % pts[0].distance_to(b))
+		# Ctrl+Shift queues an attack-move; a rock target queues a mine order;
+		# a multi-ship selection queues one leg each, in formation.
+		var e3 := InputEventMouseButton.new()
+		e3.button_index = MOUSE_BUTTON_RIGHT
+		e3.pressed = true
+		e3.shift_pressed = true
+		e3.ctrl_pressed = true
+		e3.position = to_ui.call(hb.global_position + Vector2(-600, 200))
+		mini._gui_input(e3)
+		print("QMINI ctrl+shift: queue=%d last=%s" % [sh.order_queue.size(), str(sh.order_queue[-1][0])])
+		var rock2 := nearest_asteroid(hb.global_position, 2500.0, "minerals", null)
+		var bg := spawn_ship("miner", player_id, hb.global_position + Vector2(60, 60))
+		_set_selection([bg], false)
+		var e4 := InputEventMouseButton.new()
+		e4.button_index = MOUSE_BUTTON_RIGHT
+		e4.pressed = true
+		e4.position = to_ui.call(hb.global_position + Vector2(-300, -300))
+		mini._gui_input(e4)
+		if rock2:
+			var e5 := InputEventMouseButton.new()
+			e5.button_index = MOUSE_BUTTON_RIGHT
+			e5.pressed = true
+			e5.shift_pressed = true
+			e5.position = to_ui.call(rock2.global_position)
+			mini._gui_input(e5)
+			print("QMINI rock leg: queue=%d kind=%s hits_rock=%s" % [
+				bg.order_queue.size(), str(bg.order_queue[-1][0]),
+				str(bg.order_queue[-1][1][0] == rock2 if bg.order_queue[-1][1].size() > 0 else false)])
+		var t1 := spawn_ship("corvette", player_id, hb.global_position + Vector2(-60, 300))
+		var t2 := spawn_ship("corvette", player_id, hb.global_position + Vector2(20, 300))
+		_set_selection([t1, t2], false)
+		var e6 := InputEventMouseButton.new()
+		e6.button_index = MOUSE_BUTTON_RIGHT
+		e6.pressed = true
+		e6.position = to_ui.call(hb.global_position + Vector2(500, 500))
+		mini._gui_input(e6)
+		var e7 := InputEventMouseButton.new()
+		e7.button_index = MOUSE_BUTTON_RIGHT
+		e7.pressed = true
+		e7.shift_pressed = true
+		e7.position = to_ui.call(hb.global_position + Vector2(700, 300))
+		mini._gui_input(e7)
+		var p1 := t1.queued_points()
+		var p2 := t2.queued_points()
+		print("QMINI pair: queues=%d,%d spread=%.0f px (formation, not stacked)" % [
+			t1.order_queue.size(), t2.order_queue.size(),
+			p1[0].distance_to(p2[0]) if p1.size() > 0 and p2.size() > 0 else -1.0])
 	if OS.get_environment("SL_SHOT_OPEN") == "qfull":
 		# Dev: a long mixed chain, a save/restore round trip, and the rules
 		# around clearing and overriding a queue.

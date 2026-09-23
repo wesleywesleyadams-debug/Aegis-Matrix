@@ -2,7 +2,8 @@ class_name Minimap
 extends Control
 ## Whole-map overview: planets, asteroid fields, ships and stations as
 ## pixel dots, plus the camera frustum. Click or drag to move the camera,
-## right-click to issue a move order to the current selection.
+## right-click to issue a move order to the current selection (Ctrl for
+## attack-move, Shift to queue it behind the current orders).
 
 var game: Game
 var _dragging := false
@@ -29,7 +30,7 @@ func _gui_input(event: InputEvent) -> void:
 			if event.pressed:
 				game.center_on(_ui_to_map(event.position))
 		elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
-			game._issue_command(_ui_to_map(event.position), event.ctrl_pressed)
+			game._issue_command(_ui_to_map(event.position), event.ctrl_pressed, event.shift_pressed)
 		accept_event()
 	elif event is InputEventMouseMotion and _dragging:
 		game.center_on(_ui_to_map(event.position))

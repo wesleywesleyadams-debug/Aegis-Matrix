@@ -42,6 +42,8 @@ var _defs_tab: Button
 const LINE_ICONS := {"shields": "icon_layer_shield", "armor": "icon_layer_armor", "hull": "icon_layer_hull"}
 var _build_buttons := {}
 var _queue_row: HFlowContainer
+## The minimap, so orders can be issued through it (see Minimap._gui_input).
+var minimap: Minimap
 var _info_label: Label
 var _refresh: float = 0.0
 var planet_view: PlanetView
@@ -340,6 +342,7 @@ func _build_minimap(root: Control) -> void:
 	root.add_child(frame)
 	var mm := Minimap.new()
 	mm.game = game
+	minimap = mm
 	frame.add_child(mm)
 
 func _build_messages(root: Control) -> void:
