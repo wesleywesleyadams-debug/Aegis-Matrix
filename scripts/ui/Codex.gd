@@ -11,6 +11,7 @@ const EDGE := Color("2b3a6b")
 const EDGE_LIT := Color("4fb4ff")
 const TEXT := Color("ffffff")
 const DIM := Color("e8eefc")
+const BACK_RED := Color("ff6b6b")
 
 const SECTIONS := [
 	["overview", "Overview"],
@@ -54,12 +55,6 @@ func _ready() -> void:
 	var title := _label("CODEX", TEXT, 34)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	var back := Button.new()
-	back.text = "Back to Match" if overlay else "Back to Title"
-	back.focus_mode = Control.FOCUS_NONE
-	back.pressed.connect(_back)
-	MenuStyle.button(back)
-	head.add_child(back)
 
 	var cols := HBoxContainer.new()
 	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -80,6 +75,20 @@ func _ready() -> void:
 		b.pressed.connect(func(): _show(s[0]))
 		nav.add_child(b)
 		_nav_buttons[s[0]] = b
+	# Leaving sits at the bottom of the same column, in red.
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	nav.add_child(spacer)
+	var back := Button.new()
+	back.text = "Back to Match" if overlay else "Back to Title"
+	back.custom_minimum_size = Vector2(0, 52)
+	back.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	back.focus_mode = Control.FOCUS_NONE
+	back.add_theme_font_size_override("font_size", 22)
+	back.add_theme_color_override("font_color", BACK_RED)
+	back.add_theme_color_override("font_hover_color", Color("ff9a9a"))
+	back.pressed.connect(_back)
+	nav.add_child(back)
 
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -192,12 +201,25 @@ func _label(text: String, color: Color = TEXT, size: int = 18) -> Label:
 	l.add_theme_font_size_override("font_size", size)
 	return l
 
+## Wrapped body text. It is pinned to one column's width even inside a
+## full-width row, so no line ever runs the width of the screen.
 func _wrap(text: String, color: Color = TEXT, size: int = 17) -> Label:
 	var l := _label(text, color, size)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	l.custom_minimum_size = Vector2(minf(320.0, _half_width() - 24.0), 0)
+	l.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	l.custom_minimum_size = Vector2(_text_width(), 0)
 	return l
+
+## Text inside a card: narrower than a plain paragraph, so the card itself
+## still fits in one column beside the sprite.
+func _card_text(text: String, color: Color) -> Label:
+	var l := _wrap(text, color, 16)
+	l.custom_minimum_size = Vector2(maxf(_text_width() - 150.0, 260.0), 0)
+	return l
+
+## How wide a paragraph is allowed to get.
+func _text_width() -> float:
+	return minf(_half_width() - 16.0, 720.0)
 
 func _panel_style(border: Color = EDGE) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -219,6 +241,7 @@ func _para(text: String) -> void:
 ## pairs or plain strings.
 func _table(cols: Array, rows: Array) -> void:
 	var grid := GridContainer.new()
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	grid.columns = cols.size()
 	grid.add_theme_constant_override("h_separation", 22)
 	grid.add_theme_constant_override("v_separation", 4)
@@ -227,10 +250,19 @@ func _table(cols: Array, rows: Array) -> void:
 	for row in rows:
 		for cell in row:
 			if cell is Array:
-				grid.add_child(_label(str(cell[0]), cell[1], 17))
+				grid.add_child(_cell(str(cell[0]), cell[1]))
 			else:
-				grid.add_child(_label(str(cell), TEXT, 17))
+				grid.add_child(_cell(str(cell), TEXT))
 	_body.add_child(grid)
+
+## One table cell. A long one (a building's effect, say) wraps rather than
+## stretching its column across the page.
+func _cell(text: String, color: Color) -> Label:
+	var l := _label(text, color, 17)
+	if text.length() > 56:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(minf(460.0, _text_width()), 0)
+	return l
 
 ## A small pixel sprite (ships, icons) at `scale_px`.
 func _sprite(name: String, scale_px: int, team: bool = false) -> Control:
@@ -400,6 +432,7 @@ func _page_ships() -> void:
 		var d: Dictionary = Defs.SHIPS[t]
 		var card := PanelContainer.new()
 		card.add_theme_stylebox_override("panel", _panel_style())
+		card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 16)
 		card.add_child(row)
@@ -413,16 +446,16 @@ func _page_ships() -> void:
 		if d.has("requires"):
 			name_row.add_child(_label("needs %s" % Defs.TECHS[d["requires"]]["name"], Color("ffd84a"), 14))
 		col.add_child(name_row)
-		var stats := "%s  ·  %s shield / %s armor / %s hull  ·  speed %d  ·  sensors %d" % [
+		var stats := "%s  ·  %s shield / %s armor / %s hull\n%d speed  ·  %d sensors" % [
 			d["role"].capitalize(), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), int(d["speed"]), int(d.get("sensor", 260))]
 		if d["weapon"] != "":
 			stats += "  ·  %s %d dmg / %.1fs, range %d" % [d["weapon"], int(d["damage"]), d["cooldown"], int(d["range"])]
 		col.add_child(_label(stats, DIM, 16))
 		col.add_child(_label("%s over %ds  ·  upkeep %.2f energy/s" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 16))
 		if d.has("job"):
-			col.add_child(_wrap("Job — %s: %s" % [Defs.JOBS[d["job"]]["name"], Defs.JOBS[d["job"]]["desc"]], Defs.JOBS[d["job"]]["color"], 16))
+			col.add_child(_card_text("Job — %s: %s" % [Defs.JOBS[d["job"]]["name"], Defs.JOBS[d["job"]]["desc"]], Defs.JOBS[d["job"]]["color"]))
 		if SHIP_NOTES.has(t):
-			col.add_child(_wrap(SHIP_NOTES[t], DIM, 16))
+			col.add_child(_card_text(SHIP_NOTES[t], DIM))
 		card.set_meta("block", true)
 		_body.add_child(card)
 
