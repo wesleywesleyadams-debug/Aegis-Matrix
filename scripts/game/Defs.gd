@@ -13,7 +13,7 @@ const RESOURCES: Array[String] = ["food", "minerals", "energy", "spice"]
 const RESOURCE_NAMES := {"food": "Food", "minerals": "Minerals", "energy": "Energy", "spice": "Spice"}
 const RESOURCE_COLORS := {"food": Color("8fe060"), "minerals": Color("3fd6b0"), "energy": Color("ffd46b"), "spice": Color("ff9a2e")}
 
-const START := {"food": 5.0, "minerals": 300.0, "energy": 250.0, "spice": 50.0}
+const START := {"food": 300.0, "minerals": 300.0, "energy": 300.0, "spice": 100.0}
 
 const TEAM_COLORS: Array[Color] = [
 	Color("9aa0b0"), # 0: neutral
