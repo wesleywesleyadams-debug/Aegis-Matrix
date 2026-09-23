@@ -428,6 +428,10 @@ func _build_research(root: Control) -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", 8)
 	v.add_child(tabs)
+	# One line saying what the open tab is for (Defs.TECH_GROUP_DESC).
+	var blurb := _label("", DIM, 14)
+	blurb.custom_minimum_size = Vector2(0, 22)
+	v.add_child(blurb)
 	var pages := {}
 
 	# Weapons, Economy and anything ungrouped: columns by tier.
@@ -519,8 +523,10 @@ func _build_research(root: Control) -> void:
 			for other in pages:
 				pages[other].visible = other == id
 				buttons[other].button_pressed = other == id
+			blurb.text = Defs.TECH_GROUP_DESC.get(id, "")
 			_defs_tab = buttons.get("defense"))
 	_defs_tab = buttons.get("defense")
+	blurb.text = Defs.TECH_GROUP_DESC.get("warships", "")
 	var close := Button.new()
 	close.text = "Close [R]"
 	close.focus_mode = Control.FOCUS_NONE

@@ -294,6 +294,17 @@ static func cost_text(cost: Dictionary) -> String:
 			parts.append("%d %s" % [cost[r], RESOURCE_NAMES[r]])
 	return ", ".join(parts)
 
+## What each research group is for, shown under the tabs (HUD._build_research).
+const TECH_GROUP_DESC := {
+	"warships": "Unlock each warship class and raise its mark: Wisp, Specter, Wraith, Phantom. Every class is its own line.",
+	"weapons": "Weapon output for everything you own, warship and starbase alike.",
+	"defense": "The three defense layers — shields, armor and hull — on every ship and starbase. Pick a layer and commit.",
+	"constructs": "Starbases, depots and the other things you build rather than fly.",
+	"worlds": "Feeding and growing your colonies: food, population and the cap on both.",
+	"logistics": "Hauling, skimming and fleet movement — how fast your cargo and your ships get there.",
+	"general": "Everything else.",
+}
+
 ## Star types (set per system; see Star.set_type and SystemGen). core: glowing
 ## surface radius (px); zone: outer edge of the radiation zone; dps: damage per
 ## second on contact with the surface; tint: minimap / UI color.
