@@ -1411,10 +1411,17 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 			message.emit("Only generalist warships can be refitted, and only once.", Color("ff8a5a"))
 		return
 	if target is Starbase and target.owner_id == player_id:
-		for s in ships:
+		# Manual drop-off: loaded harvesters unload here instead of being
+		# ordered to fly to the spot and forget their cargo.
+		var unloading := 0
+		for s in ships.duplicate():
 			if s.is_miner() and s.cargo > 0:
 				s.do_or_queue(queued, "order_return", [])
+				ships.erase(s)
+				unloading += 1
 		hud.flash_target(target, "")
+		if unloading > 0 and ships.is_empty():
+			return
 	var slots := _formation(ships, world_pos)
 	for i in ships.size():
 		ships[i].do_or_queue(queued, "order_attack_move" if attack_move else "order_move", [slots[i]])
@@ -1749,6 +1756,47 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "queue":
+		# Dev: shift-queued orders. A barge gets three waypoints plus a rock
+		# to mine; a corvette gets a patrol. Prints the queue as it drains.
+		var home := nearest_starbase(player_id, Vector2.ZERO)
+		var c0 := home.global_position
+		var barge := spawn_ship("miner", player_id, c0 + Vector2(-160, 120))
+		var rock := nearest_asteroid(c0, 2000.0, "minerals", null)
+		barge.order_move(c0 + Vector2(-320, 40))
+		for p in [Vector2(-260, 260), Vector2(-40, 320), Vector2(220, 240)]:
+			barge.do_or_queue(true, "order_move", [c0 + p])
+		if rock:
+			barge.do_or_queue(true, "order_mine", [rock])
+		var cor := spawn_ship("corvette", player_id, c0 + Vector2(200, -160))
+		cor.order_move(c0 + Vector2(340, -60))
+		for p in [Vector2(420, 120), Vector2(180, 200)]:
+			cor.do_or_queue(true, "order_attack_move", [c0 + p])
+		_set_selection([barge, cor], false)
+		center_on(c0 + Vector2(60, 120))
+		await get_tree().process_frame
+		print("QUEUE barge=%d legs, corvette=%d legs, barge points=%s" % [
+			barge.order_queue.size(), cor.order_queue.size(), str(barge.queued_points().size())])
+		print("QUEUE barge pos=%s goal=%s rot=%.2f scale=%s" % [str(barge.global_position.round()), str(barge.move_goal.round()), barge.global_rotation, str(barge.global_scale)])
+		for p in barge.queued_points():
+			print("QUEUE   wp global=%s local=%s" % [str(p.round()), str(barge.to_local(p).round())])
+		# Manual drop-off: a loaded barge told to visit the starbase unloads.
+		var hauler := spawn_ship("miner", player_id, c0 + Vector2(240, -240))
+		hauler.cargo = 7
+		hauler.cargo_type = "minerals"
+		_set_selection([hauler], false)
+		_issue_command(home.global_position, false, false)
+		print("QUEUE dropoff state=%s cargo=%d" % [Ship.State.keys()[hauler.state], hauler.cargo])
+		get_tree().create_timer(20.0).timeout.connect(func():
+			if is_instance_valid(hauler):
+				print("QUEUE dropoff t=20 state=%s cargo=%d" % [Ship.State.keys()[hauler.state], hauler.cargo]))
+		_set_selection([barge, cor], false)
+		for t in [6.0, 14.0, 26.0, 40.0]:
+			get_tree().create_timer(t).timeout.connect(func():
+				if is_instance_valid(barge) and is_instance_valid(cor):
+					print("QUEUE t=%ds barge state=%s left=%d | corvette state=%s left=%d" % [
+						int(t), Ship.State.keys()[barge.state], barge.order_queue.size(),
+						Ship.State.keys()[cor.state], cor.order_queue.size()]))
 	if OS.get_environment("SL_SHOT_OPEN") == "keys":
 		# Dev: the panel grid keys press the buttons they are drawn on.
 		var sb0 := nearest_starbase(player_id, Vector2.ZERO)

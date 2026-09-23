@@ -32,14 +32,14 @@ const BASE_SHIPS := {
 		"name": "Mining Barge", "role": "miner",
 		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0,
 		"cost": {"minerals": 50}, "build_time": 6.0, "upkeep": 0.05,
-		"cargo": 10, "harvest": 0.5,
+		"cargo": 10, "harvest": 0.6,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"skimmer": {
 		"name": "Gas Skimmer", "role": "skimmer", "requires": "gas_skimming",
 		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
 		"cost": {"minerals": 90, "spice": 10}, "build_time": 12.0, "upkeep": 0.1,
-		"cargo": 20, "harvest": 0.25,
+		"cargo": 20, "harvest": 0.3,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"colony": {
@@ -189,14 +189,14 @@ const BUILDINGS := {
 		"desc": "+300 food/min (5/s): feeds 2,000 pops (boosted by Hydroponics). Needs 100 pop."},
 	"generator": {"name": "Power Plant", "pop": 100, "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 3.0}, "only": [],
 		"desc": "+3 energy/s. Needs 100 pop."},
-	"mine": {"name": "Mining Complex", "pop": 100, "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 1.5}, "only": [],
-		"desc": "+1.5 minerals/s. Needs 100 pop."},
+	"mine": {"name": "Mining Complex", "pop": 100, "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 1.8}, "only": [],
+		"desc": "+1.8 minerals/s. Needs 100 pop."},
 	"habitat": {"name": "Habitat", "pop": 0, "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
 		"desc": "+1,500 population cap. Needs no staff."},
 	"battery": {"name": "Defense Battery", "pop": 100, "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
 		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px). Needs 100 pop."},
-	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.5}, "only": [],
-		"desc": "+0.5 spice/s from the planet's spice reserve (large on barren worlds, tiny on lush ones). Needs 200 pop."},
+	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.6}, "only": [],
+		"desc": "+0.6 spice/s from the planet's spice reserve (large on barren worlds, tiny on lush ones). Needs 200 pop."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor", "battery"]
 ## Defense Battery: shield added per battery, and its gun.

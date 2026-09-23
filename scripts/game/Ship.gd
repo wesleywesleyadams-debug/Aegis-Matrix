@@ -646,7 +646,6 @@ func _draw_waypoints() -> void:
 	var pts := queued_points()
 	if pts.is_empty():
 		return
-	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
 	var c := Color(1, 1, 1, 0.35)
 	var from := to_local(move_goal if state != State.IDLE else global_position)
 	for p in pts:
@@ -658,7 +657,6 @@ func _draw_waypoints() -> void:
 				draw_line(from + d * (float(i) / steps), from + d * (float(i + 1) / steps), c, 1.0)
 		draw_circle(to, 3.0, c)
 		from = to
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_job() -> void:
 	var jid: String = def.get("job", "")
