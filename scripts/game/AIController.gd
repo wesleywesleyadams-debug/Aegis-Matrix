@@ -82,8 +82,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		# Skip pure-spice techs unless spice is plentiful.
 		options = options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
 		if not options.is_empty():
-			# Destroyers first: without it the fleet is stuck on Corvettes.
-			game.queue_research(pid, "destroyers" if options.has("destroyers") else options.pick_random())
+			game.queue_research(pid, _pick_tech(options, war.size()))
 
 	# Builds: only queue when stockpiles can roughly cover the next item.
 	if nn == null and base.queue.size() < 2:
@@ -196,6 +195,37 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		for s in idle:
 			s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 		st["wave"] = mini(st["wave"] + 4, 30)
+
+## Which tech to start next. Unlocking a class or a depot beats upgrading
+## what you already have, and a hull mark is only worth it once there is a
+## fleet to apply it to — otherwise the AI spends its early energy making
+## three corvettes slightly better while the enemy fields destroyers.
+func _pick_tech(options: Array, fleet: int) -> String:
+	var best := ""
+	var best_score := -INF
+	for t in options:
+		var d: Dictionary = Defs.TECHS[t]
+		var score := 0.0
+		match d.get("group", "general"):
+			"warships":
+				# Unlocks (they have no "class") come first, then marks.
+				score = 100.0 if not d.has("class") else 40.0 + minf(fleet, 12) * 2.0 - d["tier"] * 8.0
+			"constructs":
+				score = 70.0
+			"logistics", "worlds":
+				score = 55.0 - d["tier"] * 5.0
+			"defense":
+				score = 35.0 + minf(fleet, 12) * 1.5 - d["tier"] * 6.0
+			_:
+				score = 45.0 - d["tier"] * 5.0
+		# Cheap things first when scores are close, and a little noise so two
+		# AIs on the same map don't research in lockstep.
+		score -= (d["cost"].get("energy", 0.0) / 400.0 + d["cost"].get("spice", 0.0) / 20.0)
+		score += randf() * 6.0
+		if score > best_score:
+			best_score = score
+			best = t
+	return best
 
 func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	var options: Array[String] = ["corvette", "corvette", "destroyer", "destroyer", "cruiser"]
