@@ -57,8 +57,8 @@ const BASE_SHIPS := {
 	"corvette": {
 		"name": "Corvette", "role": "warship",
 		"hp": 70.0, "armor": 20.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
-		"cost": {"minerals": 75}, "build_time": 10.0, "upkeep": 0.1,
-		"weapon": "laser", "damage": 6.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm", "refit": {"minerals": 5, "time": 15.0},
+		"cost": {"minerals": 75}, "build_time": 14.0, "upkeep": 0.1,
+		"weapon": "laser", "damage": 5.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm", "refit": {"minerals": 5, "time": 15.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
@@ -347,7 +347,7 @@ static func damage_profile(d: Dictionary) -> Dictionary:
 ## lasts. `color` is the job's accent (sprites and effects share it).
 const JOBS := {
 	"swarm": {"name": "Swarm", "active": false, "color": Color("7fb2ff"),
-		"desc": "+6% damage for each other corvette within 150 px (up to +36%). Strong in numbers, weak alone."},
+		"desc": "+8% damage for each other corvette within 150 px (up to +64%). Strong in numbers, weak alone."},
 	"escort": {"name": "Escort", "active": false, "color": Color("7fd8ff"),
 		"desc": "Friendly ships within 130 px take 15% less weapon damage. Guards miners, colony ships and fleets."},
 	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
