@@ -515,6 +515,16 @@ func _page_economy() -> void:
 		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), str(bd["pop"]) + " pop", bd["desc"]])
 	_table(["Building", "Cost", "Time", "Staff", "Effect"], brows)
 	_rule()
+	_heading("Food")
+	_para("Food is on the same scale as every other resource, and the HUD reads it per second like the rest. One Farm feeds exactly %d pops; past that a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
+	_table(["", "Per second", "Per minute"], [
+		["A pop eats", "%.4f/s" % (Defs.FOOD_PER_POP_PER_MIN / 60.0), "%.2f/min" % Defs.FOOD_PER_POP_PER_MIN],
+		["A Farm grows", "%.2f/s" % (Defs.BUILDINGS["farm"]["output"]["food"] / 60.0), "%d/min" % int(Defs.BUILDINGS["farm"]["output"]["food"])],
+		["1,000 pops eat", "%.2f/s" % (1000.0 * Defs.FOOD_PER_POP_PER_MIN / 60.0), "%d/min" % int(1000.0 * Defs.FOOD_PER_POP_PER_MIN)],
+		["A Farm supports", "%d pops" % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN), ""],
+	])
+	_para("Spice covers a food shortfall 1:1, and pops living on it keep growing. When neither food nor spice can feed a world it starves: growth runs backwards at the same rate it would have grown, and the shortage only lifts once the world has been fed for %d seconds straight." % int(Defs.REGROW_SECONDS))
+	_rule()
 	_heading("Defense Battery")
 	_para("A world with a Defense Battery is no longer a free kill: each one adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries make a colony something a raiding party has to commit to." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
 	_rule()

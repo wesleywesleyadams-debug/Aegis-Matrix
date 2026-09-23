@@ -168,7 +168,7 @@ func _build_top_bar(root: Control) -> void:
 		box.mouse_filter = Control.MOUSE_FILTER_STOP
 		box.add_child(_icon("icon_" + key))
 		var l := _label("0")
-		# Longest realistic text: food "123.5k +1805/min", others "54.3k -12.5/s".
+		# Longest realistic text: "54.3k -12.5/s".
 		l.custom_minimum_size = Vector2(150 if key == "food" else 116, 0)
 		l.clip_text = true
 		box.add_child(l)
@@ -923,7 +923,7 @@ func _planet_text(p: Planet) -> String:
 	if p.owner_id == 0:
 		return "Size %d · Pop cap %s%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), (" · Spice %.2f/s" % t["spice"]) if t["spice"] > 0.0 else ""]
 	var lines := "Population %s / %s   (+%s/min)" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min)]
-	lines += "\nFood: grown %s/min · eaten %s/min · net %+d/min" % [_fmt(p.food_made_per_min), _fmt(p.food_eaten_per_min), int(p.food_made_per_min - p.food_eaten_per_min)]
+	lines += "\nFood: grown %.2f/s · eaten %.2f/s · net %+.2f/s" % [p.food_made_per_min / 60.0, p.food_eaten_per_min / 60.0, (p.food_made_per_min - p.food_eaten_per_min) / 60.0]
 	lines += "\nEnergy %.1f/s%s" % [p.energy_out, ("   Spice %.2f/s" % p.spice_out) if p.spice_out > 0.0 else ""]
 	if p.starving:
 		lines += "\nSTARVING: shrinking %d/min until food recovers" % int(-p.growth_per_min)
@@ -951,8 +951,8 @@ func _update_top_bar() -> void:
 	var rt: Dictionary = game.rates.get(pid, {})
 	for k in Defs.RESOURCES:
 		var rate: float = rt.get(k, 0.0)
-		# Food moves in per-minute terms (every pop eats 1/min); the rest per second.
-		var rate_txt := ("%+d/min" % int(rate * 60.0)) if k == "food" else ("%+.1f/s" % rate)
+		# Every resource reads per second now that food is on the same scale.
+		var rate_txt := "%+.2f/s" % rate if k == "food" else "%+.1f/s" % rate
 		_res_labels[k].text = "%s %s" % [_fmt(r.get(k, 0.0)), rate_txt]
 		_res_labels[k].add_theme_color_override("font_color", BAD if rate < -0.01 and r.get(k, 0.0) < 50.0 else TEXT)
 		_res_boxes[k].tooltip_text = "%s: %d stockpiled, %s net" % [Defs.RESOURCE_NAMES[k], int(r.get(k, 0.0)), rate_txt]

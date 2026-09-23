@@ -13,7 +13,7 @@ const RESOURCES: Array[String] = ["food", "minerals", "energy", "spice"]
 const RESOURCE_NAMES := {"food": "Food", "minerals": "Minerals", "energy": "Energy", "spice": "Spice"}
 const RESOURCE_COLORS := {"food": Color("8fe060"), "minerals": Color("3fd6b0"), "energy": Color("ffd46b"), "spice": Color("ff9a2e")}
 
-const START := {"food": 75.0, "minerals": 300.0, "energy": 250.0, "spice": 50.0}
+const START := {"food": 5.0, "minerals": 300.0, "energy": 250.0, "spice": 50.0}
 
 const TEAM_COLORS: Array[Color] = [
 	Color("9aa0b0"), # 0: neutral
@@ -162,7 +162,7 @@ const HOME_START_POP := 300.0
 const GROWTH_PER_PAIR_PER_MIN := 1.0
 ## Every pop eats FOOD_PER_POP_PER_MIN food a minute, from food or,
 ## failing that, spice. One Farm feeds 2,000 pops.
-const FOOD_PER_POP_PER_MIN := 0.15
+const FOOD_PER_POP_PER_MIN := 0.01
 ## A shortage ends only once the world has been fed continuously for this
 ## long; until then it neither grows nor stops losing pops.
 const REGROW_SECONDS := 5.0
@@ -185,8 +185,8 @@ static func field_count(planet_diameter_px: float) -> int:
 ## ships. output: food per MINUTE; energy/minerals/spice per SECOND.
 ## only: planet kinds it can be built on (empty = any).
 const BUILDINGS := {
-	"farm": {"name": "Farm", "pop": 100, "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 300.0}, "only": [],
-		"desc": "+300 food/min (5/s): feeds 2,000 pops (boosted by Hydroponics). Needs 100 pop."},
+	"farm": {"name": "Farm", "pop": 100, "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
+		"desc": "+20 food/min (0.33/s): feeds 2,000 pops (boosted by Hydroponics). Needs 100 pop."},
 	"generator": {"name": "Power Plant", "pop": 100, "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 3.0}, "only": [],
 		"desc": "+3 energy/s. Needs 100 pop."},
 	"mine": {"name": "Mining Complex", "pop": 100, "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 1.8}, "only": [],

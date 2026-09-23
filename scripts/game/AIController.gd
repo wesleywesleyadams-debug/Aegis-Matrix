@@ -148,7 +148,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		if p.owner_id != pid or not p.construction.is_empty() or not p.construction_queue.is_empty() or p.free_fields() == 0:
 			continue
 		var pick := "farm"
-		if food_rate > 0.15:
+		if food_rate > 0.01:
 			var cycle := ["generator", "mine", "farm", "habitat"]
 			pick = cycle[(p.fields - p.free_fields()) % cycle.size()]
 			# Energy falling: power plants first.
