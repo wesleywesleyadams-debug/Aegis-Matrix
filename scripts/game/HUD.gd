@@ -67,8 +67,9 @@ const SPEEDS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0]
 const TIME_RATE := 0.5
 const NORMAL_SPEED := 2
 ## The build queue sits between the selection panel and the minimap.
-const QUEUE_X := 670.0
-const QUEUE_W := 880.0
+const MINIMAP_W := 380.0
+## The starbase page switch always sits in this grid cell (key Z).
+const PAGE_SWITCH_SLOT := 6
 
 func _ready() -> void:
 	game = get_parent()
@@ -306,7 +307,6 @@ func _build_selection_panel(root: Control) -> void:
 	# Pinned to the bottom-left; grows upward to fit its contents (no
 	# scrolling) and shrinks back when there's less to show.
 	panel.offset_left = 12
-	panel.offset_right = 652
 	panel.offset_bottom = -12
 	panel.offset_top = -12
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -322,8 +322,7 @@ func _build_selection_panel(root: Control) -> void:
 	_queue_row.add_theme_constant_override("h_separation", 6)
 	_queue_row.add_theme_constant_override("v_separation", 6)
 	_queue_row.alignment = FlowContainer.ALIGNMENT_BEGIN
-	_queue_row.custom_minimum_size = Vector2(QUEUE_W, 0)
-	_queue_row.size = Vector2(QUEUE_W, 0)
+	_queue_row.custom_minimum_size = Vector2(0, 0)
 	_queue_row.visible = false
 	root.add_child(_queue_row)
 
@@ -716,17 +715,25 @@ func _add_found_button() -> void:
 	_register_action(b)
 	_sel_body.add_child(b)
 
+## The starbase panel has two pages: the economy ships it builds most of the
+## time, and the warships behind a button (see _build_starbase_controls).
+var _sb_page := "war" if OS.get_environment("SL_SB_PAGE") == "war" else "eco"
+
 func _build_starbase_controls(sb: Starbase) -> void:
+	var war: Array = Defs.BUILD_ORDER.filter(func(t): return Defs.SHIPS[t]["role"] == "warship")
+	var eco: Array = Defs.BUILD_ORDER.filter(func(t): return Defs.SHIPS[t]["role"] != "warship")
+	# 3x3 at most: eight hulls and the page switch.
+	var page: Array = (war if _sb_page == "war" else eco).slice(0, 8)
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
-	for t in Defs.BUILD_ORDER:
+	for t in page:
 		var d: Dictionary = Defs.SHIPS[t]
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(198, 62)
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.2f energy/s base (scales with fleet size)\nCost %s, paid over %ds" % [d["name"], d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.2f energy/s base (scales with fleet size)\nCost %s, paid over %ds" % [game.ship_name(game.player_id, t), d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
 		if d.has("variant"):
 			b.tooltip_text += "\n" + Defs.VARIANTS[d["variant"]]["desc"]
 		var h := HBoxContainer.new()
@@ -746,6 +753,26 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		_register_action(b)
 		grid.add_child(b)
 		_build_buttons[t] = b
+	# Pad so the page switch always lands in the same cell (and on the same
+	# key) whichever page is open.
+	while grid.get_child_count() < PAGE_SWITCH_SLOT:
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(198, 62)
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_skip_action()
+		grid.add_child(gap)
+	var flip := Button.new()
+	flip.custom_minimum_size = Vector2(198, 62)
+	flip.focus_mode = Control.FOCUS_NONE
+	flip.text = "< Economy" if _sb_page == "war" else "Military >"
+	flip.add_theme_color_override("font_color", GOOD)
+	flip.add_theme_color_override("font_hover_color", GOOD.lightened(0.3))
+	flip.tooltip_text = "Switch to the %s ships the starbase can build." % ("economy" if _sb_page == "war" else "military")
+	flip.pressed.connect(func():
+		_sb_page = "eco" if _sb_page == "war" else "war"
+		_rebuild_selection())
+	_register_action(flip)
+	grid.add_child(flip)
 	_sel_body.add_child(grid)
 	_queue_row.visible = true
 
@@ -945,12 +972,14 @@ Total ship+starbase upkeep: %.1f energy/s." % [int(Defs.UPKEEP_SCALE_SHIPS), gam
 ## Shrink-wraps the bottom-left panel to its contents (it grows upward) and
 ## parks the build queue row just above it.
 func _fit_selection_panel() -> void:
-	_sel_panel.size.y = 0.0
+	_sel_panel.size = Vector2.ZERO
 	_sel_panel.position.y = _sel_panel.get_parent_area_size().y - 12.0 - _sel_panel.size.y
 	if _queue_row.visible:
-		# Bottom strip between the selection panel and the minimap.
-		_queue_row.size = Vector2(QUEUE_W, 0.0)
-		_queue_row.position = Vector2(QUEUE_X, _queue_row.get_parent_area_size().y - 12.0 - _queue_row.size.y)
+		# Bottom strip: starts just right of the panel, stops at the minimap.
+		var area := _queue_row.get_parent_area_size()
+		var left: float = _sel_panel.position.x + _sel_panel.size.x + 12.0
+		_queue_row.size = Vector2(maxf(area.x - MINIMAP_W - left, 200.0), 0.0)
+		_queue_row.position = Vector2(left, area.y - 12.0 - _queue_row.size.y)
 
 func set_drag_rect(r: Rect2) -> void:
 	_drag_rect = r
@@ -1379,6 +1408,14 @@ func _build_depot_panel(d: WeaponsDepot) -> void:
 ## Gives a selection-panel button the next grid hotkey (Q W E / A S D / Z X C
 ## / V B N) and stamps that letter in its bottom-right corner, so the keys
 ## always match what is on screen.
+## Burns a panel key so a fixed slot (the starbase page switch) keeps the
+## same letter no matter how many buttons come before it.
+func _skip_action() -> void:
+	var keys := panel_keys()
+	var i := _panel_keys.size()
+	if i < keys.size():
+		_panel_keys[keys[i]] = null
+
 func _register_action(b: Button) -> void:
 	var keys := panel_keys()
 	var i := _panel_keys.size()
@@ -1400,9 +1437,13 @@ func _register_action(b: Button) -> void:
 ## a full build queue never drops you out of the starbase into "select all
 ## barges".
 func press_panel_key(k: Key) -> bool:
-	var b = _panel_keys.get(k)
-	if b == null or not is_instance_valid(b):
+	if not _panel_keys.has(k):
 		return false
+	var b = _panel_keys[k]
+	# An empty slot on this panel still belongs to it: swallow the key rather
+	# than falling through to "select every ship of that type".
+	if b == null or not is_instance_valid(b):
+		return true
 	if b.disabled:
 		game.sfx.play_ui("deny")
 		return true
