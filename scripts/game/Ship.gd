@@ -149,6 +149,50 @@ func take_damage(amount: float, from: SpaceEntity = null, profile: Dictionary = 
 	if owner_id == Game.instance.player_id and hp > 0.0 and from != null:
 		Game.instance.alert("Your ships are under attack!", "alert_ships", false, global_position)
 
+# ---------------------------------------------------------------- order queue
+
+## Shift-queued orders, each [method name, args]. The ship replays the next
+## one whenever it runs out of work (see _physics_process), so you can chain
+## "mine here, then there, then dock" in one go.
+var order_queue: Array = []
+
+## Issue an order now, or add it to the queue when the player held Shift and
+## the ship is already busy. A plain (unqueued) order wipes the queue.
+func do_or_queue(queued: bool, method: String, args: Array) -> void:
+	if queued and (state != State.IDLE or not order_queue.is_empty()):
+		order_queue.append([method, args])
+		queue_redraw()
+		return
+	if not queued:
+		order_queue.clear()
+	callv(method, args)
+
+## Starts the next queued order; drops entries whose target is gone.
+func _pop_order() -> void:
+	while not order_queue.is_empty():
+		var o: Array = order_queue.pop_front()
+		var args: Array = o[1]
+		var dead := false
+		for a in args:
+			if a is Node and not is_instance_valid(a):
+				dead = true
+		if dead:
+			continue
+		callv(o[0], args)
+		queue_redraw()
+		return
+
+## Where each queued order points, for the waypoint line (see _draw).
+func queued_points() -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for o in order_queue:
+		for a in o[1]:
+			if a is Vector2:
+				out.append(a)
+			elif a is Node2D and is_instance_valid(a):
+				out.append(a.global_position)
+	return out
+
 func order_move(pos: Vector2) -> void:
 	state = State.MOVE
 	move_goal = pos
@@ -208,6 +252,7 @@ func order_build_starbase(pos: Vector2) -> void:
 	state = State.BUILD
 
 func order_stop() -> void:
+	order_queue.clear()
 	state = State.IDLE
 	target = null
 	move_goal = global_position
@@ -237,7 +282,9 @@ func _physics_process(delta: float) -> void:
 
 	match state:
 		State.IDLE:
-			if def["weapon"] != "" and _acquire_timer <= 0.0:
+			if not order_queue.is_empty():
+				_pop_order()
+			elif def["weapon"] != "" and _acquire_timer <= 0.0:
 				var e := Game.instance.nearest_enemy(self, def["range"] + 60.0)
 				if e:
 					attack_move_goal = global_position
@@ -476,6 +523,8 @@ func _steer(desired: Vector2, delta: float, face: SpaceEntity) -> void:
 func _draw() -> void:
 	if Engine.is_editor_hint():
 		return
+	if selected and not order_queue.is_empty():
+		_draw_waypoints()
 	if state == State.MINING and is_instance_valid(mine_target):
 		# Flickering tractor beam to the asteroid.
 		var to := to_local(mine_target.global_position)
@@ -575,6 +624,26 @@ func _route(final: Vector2) -> Vector2:
 ## Job effects, in the job's accent color (Defs.JOBS): the Heat Shield's
 ## screen (a slow shimmer ring), a Tender's green repair beams and
 ## emergency flash, and an Escort's guard ring while selected.
+## The shift-queued route, drawn while the ship is selected: a dashed line
+## through each waypoint with a pip on every stop.
+func _draw_waypoints() -> void:
+	var pts := queued_points()
+	if pts.is_empty():
+		return
+	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
+	var c := Color(1, 1, 1, 0.35)
+	var from := to_local(move_goal if state != State.IDLE else global_position)
+	for p in pts:
+		var to := to_local(p)
+		var d := to - from
+		var steps := int(maxf(d.length() / 14.0, 1.0))
+		for i in steps:
+			if i % 2 == 0:
+				draw_line(from + d * (float(i) / steps), from + d * (float(i + 1) / steps), c, 1.0)
+		draw_circle(to, 3.0, c)
+		from = to
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 func _draw_job() -> void:
 	var jid: String = def.get("job", "")
 	if jid == "":

@@ -59,8 +59,12 @@ static func panel_keys() -> Array:
 	return out
 var _panel_keys := {}
 
-## Game speed steps; index NORMAL_SPEED is 1x.
-const SPEEDS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 4.0]
+## Game speed steps as the player sees them; index NORMAL_SPEED is 1x.
+## One step of "1x" runs at TIME_RATE of real time, so normal play is
+## half the old pace and the top step is still fast enough to watch a
+## whole match (or train) quickly.
+const SPEEDS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0]
+const TIME_RATE := 0.5
 const NORMAL_SPEED := 2
 
 func _ready() -> void:
@@ -281,7 +285,7 @@ func speed_index() -> int:
 
 func _on_speed_changed(v: float) -> void:
 	var s: float = SPEEDS[int(v)]
-	Engine.time_scale = 0.0 if game_paused else s
+	Engine.time_scale = 0.0 if game_paused else s * TIME_RATE
 	if _play_button:
 		_play_button.text = "Play" if game_paused else "Pause"
 		_play_button.modulate = Color("ffd46b") if game_paused else Color.WHITE

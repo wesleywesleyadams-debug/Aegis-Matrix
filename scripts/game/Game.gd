@@ -128,7 +128,8 @@ func _ready() -> void:
 	# No account controls during a match.
 	SignedInLabel.visible = false
 	tree_exiting.connect(func(): SignedInLabel.visible = true)
-	Engine.time_scale = 1.0
+	# Sims and training run on their own clock, not the player's pacing.
+	Engine.time_scale = 1.0 if OS.get_environment("SL_SIM") != "" else HUD.TIME_RATE
 	RenderingServer.set_default_clear_color(Color("07060f"))
 	# Resuming a saved match? Its system comes from the save.
 	var save_data := {}
@@ -989,7 +990,7 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 					placing_starbase = false
 					placing_depot = false
 				else:
-					_issue_command(get_global_mouse_position(), e.ctrl_pressed)
+					_issue_command(get_global_mouse_position(), e.ctrl_pressed, e.shift_pressed)
 		MOUSE_BUTTON_MIDDLE:
 			_mid_drag = e.pressed
 		MOUSE_BUTTON_WHEEL_UP:
@@ -1306,7 +1307,7 @@ func _centroid(list: Array) -> Vector2:
 
 # ---------------------------------------------------------------- orders
 
-func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
+func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false) -> void:
 	var ships := _own_ships_selected()
 	var sb := selected_starbase()
 	if ships.is_empty():
@@ -1342,24 +1343,24 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 	if target and target.is_enemy_of(player_id):
 		for s in ships:
 			if s.def["role"] == "warship":
-				s.order_attack(target)
+				s.do_or_queue(queued, "order_attack", [target])
 			else:
-				s.order_move(world_pos)
+				s.do_or_queue(queued, "order_move", [world_pos])
 		hud.flash_target(target, "attack")
 		return
 	if rock:
 		for s in ships:
 			if s.is_miner():
-				s.order_mine(rock)
+				s.do_or_queue(queued, "order_mine", [rock])
 			else:
-				s.order_move(rock.global_position)
+				s.do_or_queue(queued, "order_move", [rock.global_position])
 		hud.flash_target(rock, "")
 		return
 	if planet and not planet.is_habitable():
 		var handled := false
 		for s in ships.duplicate():
 			if s.can_mine(planet):
-				s.order_mine(planet)
+				s.do_or_queue(queued, "order_mine", [planet])
 				ships.erase(s)
 				handled = true
 		if ships.any(func(s): return s.def["role"] == "colony"):
@@ -1373,7 +1374,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 		var pocket := nebula_pocket_at(world_pos)
 		for s in ships.duplicate():
 			if s.def["role"] == "skimmer":
-				s.order_mine(pocket)
+				s.do_or_queue(queued, "order_mine", [pocket])
 				ships.erase(s)
 		hud.ping(world_pos, Color("ffae4a"))
 		if ships.is_empty():
@@ -1382,16 +1383,16 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 		# Bombard: warships fire on the planet until its pops are gone.
 		for s in ships:
 			if s.def["role"] == "warship":
-				s.order_bombard(planet)
+				s.do_or_queue(queued, "order_bombard", [planet])
 			else:
-				s.order_move(world_pos)
+				s.do_or_queue(queued, "order_move", [world_pos])
 		hud.flash_target(planet, "attack")
 		return
 	if planet and planet.owner_id == 0:
 		var colonists: Array = ships.filter(func(s): return s.def["role"] == "colony")
 		if not colonists.is_empty():
 			colonists.sort_custom(func(a, b): return a.global_position.distance_to(planet.global_position) < b.global_position.distance_to(planet.global_position))
-			colonists[0].order_colonize(planet)
+			colonists[0].do_or_queue(queued, "order_colonize", [planet])
 			ships.erase(colonists[0])
 			hud.flash_target(planet, "colonize")
 			if ships.is_empty():
@@ -1400,11 +1401,11 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 		var sent := 0
 		for s in ships.duplicate():
 			if s is Ship and s.can_refit(target.variant):
-				s.order_refit(target.variant, target)
+				s.do_or_queue(queued, "order_refit", [target.variant, target])
 				ships.erase(s)
 				sent += 1
 			else:
-				s.order_move(world_pos)
+				s.do_or_queue(queued, "order_move", [world_pos])
 		hud.flash_target(target, "")
 		if sent == 0:
 			message.emit("Only generalist warships can be refitted, and only once.", Color("ff8a5a"))
@@ -1412,14 +1413,11 @@ func _issue_command(world_pos: Vector2, attack_move: bool) -> void:
 	if target is Starbase and target.owner_id == player_id:
 		for s in ships:
 			if s.is_miner() and s.cargo > 0:
-				s.order_return()
+				s.do_or_queue(queued, "order_return", [])
 		hud.flash_target(target, "")
 	var slots := _formation(ships, world_pos)
 	for i in ships.size():
-		if attack_move:
-			ships[i].order_attack_move(slots[i])
-		else:
-			ships[i].order_move(slots[i])
+		ships[i].do_or_queue(queued, "order_attack_move" if attack_move else "order_move", [slots[i]])
 	hud.ping(world_pos, Color("ff5a5a") if attack_move else Color.WHITE)
 
 ## Grid formation facing the direction of travel, biggest hulls in front.
