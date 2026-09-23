@@ -9,6 +9,11 @@ class_name Defs
 
 const PIXEL := "res://assets/pixel/"
 
+## Resource figures (building output, harvest rates, upkeep) are all per
+## minute: steadier to read than a per-second trickle. The tick maths
+## divides by this once, at the point resources are actually moved.
+const PER_MIN := 60.0
+
 const RESOURCES: Array[String] = ["food", "minerals", "energy", "spice"]
 const RESOURCE_NAMES := {"food": "Food", "minerals": "Minerals", "energy": "Energy", "spice": "Spice"}
 const RESOURCE_COLORS := {"food": Color("8fe060"), "minerals": Color("3fd6b0"), "energy": Color("ffd46b"), "spice": Color("ff9a2e")}
@@ -25,69 +30,70 @@ static func team_color(owner_id: int) -> Color:
 	return TEAM_COLORS[clampi(owner_id, 0, TEAM_COLORS.size() - 1)]
 
 ## role: miner / warship / colony / constructor.
-## cost is the total, paid over build_time. upkeep is energy per second.
+## cost is the total, paid over build_time. upkeep is energy per minute;
+## harvest is how fast the hold fills, per minute (see Defs.PER_MIN).
 ## requires: tech id that must be researched before it can be queued.
 const BASE_SHIPS := {
 	"miner": {
 		"name": "Mining Barge", "role": "miner",
 		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0,
-		"cost": {"minerals": 50}, "build_time": 6.0, "upkeep": 0.05,
-		"cargo": 10, "harvest": 0.6,
+		"cost": {"minerals": 50}, "build_time": 6.0, "upkeep": 3.0,
+		"cargo": 10, "harvest": 36.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"skimmer": {
 		"name": "Gas Skimmer", "role": "skimmer", "requires": "gas_skimming",
 		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
-		"cost": {"minerals": 90, "spice": 10}, "build_time": 12.0, "upkeep": 0.1,
-		"cargo": 20, "harvest": 0.3,
+		"cost": {"minerals": 90, "spice": 10}, "build_time": 12.0, "upkeep": 6.0,
+		"cargo": 20, "harvest": 18.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"colony": {
 		"name": "Colony Ship", "role": "colony",
 		"hp": 100.0, "armor": 20.0, "shield": 20.0, "speed": 60.0, "radius": 9.0,
-		"cost": {"minerals": 80, "spice": 10}, "build_time": 15.0, "upkeep": 0.1,
+		"cost": {"minerals": 80, "spice": 10}, "build_time": 15.0, "upkeep": 6.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"constructor": {
 		"name": "Constructor", "role": "constructor",
 		"hp": 110.0, "armor": 40.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
-		"cost": {"minerals": 120, "spice": 5}, "build_time": 12.0, "upkeep": 0.1,
+		"cost": {"minerals": 120, "spice": 5}, "build_time": 12.0, "upkeep": 6.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
 		"hp": 70.0, "armor": 20.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
-		"cost": {"minerals": 75}, "build_time": 14.0, "upkeep": 0.1,
+		"cost": {"minerals": 75}, "build_time": 14.0, "upkeep": 6.0,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm", "refit": {"minerals": 5, "time": 15.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
 		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 11.0,
-		"cost": {"minerals": 170, "spice": 5}, "build_time": 17.0, "upkeep": 0.25,
+		"cost": {"minerals": 170, "spice": 5}, "build_time": 17.0, "upkeep": 15.0,
 		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort", "refit": {"minerals": 10, "time": 25.0},
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
 		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
-		"cost": {"minerals": 350, "spice": 25}, "build_time": 28.0, "upkeep": 0.6,
+		"cost": {"minerals": 350, "spice": 25}, "build_time": 28.0, "upkeep": 36.0,
 		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 	},
 	"scout": {
 		"name": "Scout", "role": "scout",
 		"hp": 50.0, "shield": 10.0, "speed": 155.0, "radius": 7.0,
-		"cost": {"minerals": 45}, "build_time": 6.0, "upkeep": 0.05,
+		"cost": {"minerals": 45}, "build_time": 6.0, "upkeep": 3.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 600.0, "job": "beacon",
 	},
 	"heatshield": {
 		"name": "Heat Shield Frigate", "role": "warship", "requires": "deflectors",
 		"hp": 130.0, "armor": 70.0, "shield": 140.0, "speed": 80.0, "radius": 11.0,
-		"cost": {"minerals": 110, "spice": 10}, "build_time": 14.0, "upkeep": 0.2,
+		"cost": {"minerals": 110, "spice": 10}, "build_time": 14.0, "upkeep": 12.0,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
 	},
 	"tender": {
 		"name": "Repair Tender", "role": "support", "requires": "reinforced_frames",
 		"hp": 150.0, "armor": 90.0, "shield": 60.0, "speed": 75.0, "radius": 11.0,
-		"cost": {"minerals": 130, "spice": 10}, "build_time": 16.0, "upkeep": 0.25,
+		"cost": {"minerals": 130, "spice": 10}, "build_time": 16.0, "upkeep": 15.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 300.0, "job": "field_repair",
 	},
 }
@@ -107,7 +113,7 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 ## Doesn't count as a starbase (losing it doesn't lose the match).
 const WEAPONS_DEPOT := {
 	"name": "Weapons Depot", "requires": "depots", "hp": 900.0, "armor": 400.0, "shield": 300.0, "radius": 22.0,
-	"cost": {"minerals": 250, "spice": 20}, "build_time": 30.0, "upkeep": 0.3,
+	"cost": {"minerals": 250, "spice": 20}, "build_time": 30.0, "upkeep": 18.0,
 	"capacity": 10, "min_spacing": 250.0,
 }
 
@@ -116,7 +122,7 @@ const STARBASE := {
 	"weapon": "laser", "damage": 34.0, "cooldown": 0.6, "range": 260.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 400, "spice": 20}, "build_time": 40.0,
-	"upkeep": 0.5,
+	"upkeep": 30.0,
 	# Station reactors and ore refineries.
 	"energy_per_sec": 2.0, "minerals_per_sec": 0.5,
 	"min_spacing": 500.0,
@@ -144,12 +150,12 @@ const ENERGY_STARVED_FACTOR := 0.25
 ## fertility is informational for now (farms produce a flat amount).
 ## spice_reserve: spice stored underground for Spice Extractors. Barren
 ## worlds hold the most (desert above all); lush worlds very little.
-## energy: base energy/sec once colonized. spice: spice/sec once colonized.
+## energy: base energy/min once colonized. spice: spice/min once colonized.
 const PLANET_TYPES := {
 	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 0.0, "spice": 0.0, "spice_reserve": 200},
 	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 0.0, "spice": 0.0, "spice_reserve": 5000},
 	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 0.0, "spice": 0.0, "spice_reserve": 1200},
-	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 0.0, "spice": 0.08, "spice_reserve": 2000},
+	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 0.0, "spice": 4.8, "spice_reserve": 2000},
 	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy": 0.0, "spice": 0.0},
 	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 0.0, "spice": 0.0, "spice_reserve": 3000},
 }
@@ -182,21 +188,22 @@ static func field_count(planet_diameter_px: float) -> int:
 	return int(round(lerpf(MIN_FIELDS, MAX_FIELDS, t)))
 
 ## Buildings placed on planet fields. Costs are paid over build time like
-## ships. output: food per MINUTE; energy/minerals/spice per SECOND.
+## ships. output: every resource per MINUTE (the tick maths divides by
+## Defs.PER_MIN).
 ## only: planet kinds it can be built on (empty = any).
 const BUILDINGS := {
 	"farm": {"name": "Farm", "pop": 100, "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
-		"desc": "+20 food/min (0.33/s): feeds 2,000 pops (boosted by Hydroponics). Needs 100 pop."},
-	"generator": {"name": "Power Plant", "pop": 100, "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 3.0}, "only": [],
-		"desc": "+3 energy/s. Needs 100 pop."},
-	"mine": {"name": "Mining Complex", "pop": 100, "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 1.8}, "only": [],
-		"desc": "+1.8 minerals/s. Needs 100 pop."},
+		"desc": "+20 food/min: feeds 2,000 pops (boosted by Hydroponics). Needs 100 pop."},
+	"generator": {"name": "Power Plant", "pop": 100, "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 180.0}, "only": [],
+		"desc": "+180 energy/min. Needs 100 pop."},
+	"mine": {"name": "Mining Complex", "pop": 100, "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 108.0}, "only": [],
+		"desc": "+108 minerals/min. Needs 100 pop."},
 	"habitat": {"name": "Habitat", "pop": 0, "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
 		"desc": "+1,500 population cap. Needs no staff."},
 	"battery": {"name": "Defense Battery", "pop": 100, "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
 		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px). Needs 100 pop."},
-	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 0.6}, "only": [],
-		"desc": "+0.6 spice/s from the planet's spice reserve (large on barren worlds, tiny on lush ones). Needs 200 pop."},
+	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 36.0}, "only": [],
+		"desc": "+36 spice/min from the planet's spice reserve (large on barren worlds, tiny on lush ones). Needs 200 pop."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor", "battery"]
 ## Defense Battery: shield added per battery, and its gun.

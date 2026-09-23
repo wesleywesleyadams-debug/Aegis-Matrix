@@ -712,7 +712,7 @@ func _add_found_button() -> void:
 	var n := game.starbase_count(pid)
 	var now_u: float = n * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n)
 	var next_u: float = (n + 1) * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n + 1)
-	b.tooltip_text = "You have %d starbase%s. Starbase #%d raises total starbase upkeep from %.1f to %.1f energy/s (x%.1f each).\nUpkeep climbs steeply past 10 starbases." % [n, "" if n == 1 else "s", n + 1, now_u, next_u, game.starbase_upkeep_multiplier(pid, n + 1)]
+	b.tooltip_text = "You have %d starbase%s. Starbase #%d raises total starbase upkeep from %.0f to %.0f energy/min (x%.1f each).\nUpkeep climbs steeply past 10 starbases." % [n, "" if n == 1 else "s", n + 1, now_u, next_u, game.starbase_upkeep_multiplier(pid, n + 1)]
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(game.start_starbase_placement)
 	_register_action(b)
@@ -736,7 +736,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(198, 62)
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.2f energy/s base (scales with fleet size)\nCost %s, paid over %ds" % [game.ship_name(game.player_id, t), d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.0f energy/min base (scales with fleet size)\nCost %s, paid over %ds" % [game.ship_name(game.player_id, t), d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
 		if d.has("variant"):
 			b.tooltip_text += "\n" + Defs.VARIANTS[d["variant"]]["desc"]
 		var h := HBoxContainer.new()
@@ -863,7 +863,7 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 			txt += "   Cargo %d/%d %s" % [s.cargo, s.cargo_cap(), s.cargo_type]
 		elif s.def["weapon"] != "":
 			txt += "   %s %.0f dmg / %.1fs" % [s.def["weapon"].capitalize(), s.def["damage"] * game.mod(e.owner_id, "damage") * (1.0 + game.mark_level(e.owner_id, s.ship_type) * float(Defs.MARK_STEP["damage"])), s.def["cooldown"]]
-		txt += "   Upkeep %.2f/s" % (s.def["upkeep"] * game.upkeep_multiplier(s.owner_id))
+		txt += "   Upkeep %.1f/min" % (s.def["upkeep"] * game.upkeep_multiplier(s.owner_id))
 		if not s.order_queue.is_empty():
 			txt += "\n%d queued order%s (Shift + right-click to add, T clears)" % [s.order_queue.size(), "" if s.order_queue.size() == 1 else "s"]
 	elif e is Starbase:
@@ -921,10 +921,10 @@ func _planet_text(p: Planet) -> String:
 	if not p.is_habitable():
 		return "Uninhabitable gas giant · %s\nGas Skimmers mine it and haul the minerals to a starbase." % [("DEPLETED, refills in %ds" % int(p.depleted_timer)) if p.depleted_timer > 0.0 else "Mineral reserve %d" % p.amount]
 	if p.owner_id == 0:
-		return "Size %d · Pop cap %s%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), (" · Spice %.2f/s" % t["spice"]) if t["spice"] > 0.0 else ""]
+		return "Size %d · Pop cap %s%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), (" · Spice %.1f/min" % t["spice"]) if t["spice"] > 0.0 else ""]
 	var lines := "Population %s / %s   (+%s/min)" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min)]
-	lines += "\nFood: grown %.2f/s · eaten %.2f/s · net %+.2f/s" % [p.food_made_per_min / 60.0, p.food_eaten_per_min / 60.0, (p.food_made_per_min - p.food_eaten_per_min) / 60.0]
-	lines += "\nEnergy %.1f/s%s" % [p.energy_out, ("   Spice %.2f/s" % p.spice_out) if p.spice_out > 0.0 else ""]
+	lines += "\nFood: grown %.1f/min · eaten %.1f/min · net %+.1f/min" % [p.food_made_per_min, p.food_eaten_per_min, p.food_made_per_min - p.food_eaten_per_min]
+	lines += "\nEnergy %.0f/min%s" % [p.energy_out, ("   Spice %.1f/min" % p.spice_out) if p.spice_out > 0.0 else ""]
 	if p.starving:
 		lines += "\nSTARVING: shrinking %d/min until food recovers" % int(-p.growth_per_min)
 	return lines
@@ -952,7 +952,8 @@ func _update_top_bar() -> void:
 	for k in Defs.RESOURCES:
 		var rate: float = rt.get(k, 0.0)
 		# Every resource reads per second now that food is on the same scale.
-		var rate_txt := "%+.2f/s" % rate if k == "food" else "%+.1f/s" % rate
+		# Every rate reads per minute: steadier than a per-second trickle.
+		var rate_txt := "%+.0f/min" % (rate * Defs.PER_MIN)
 		_res_labels[k].text = "%s %s" % [_fmt(r.get(k, 0.0)), rate_txt]
 		_res_labels[k].add_theme_color_override("font_color", BAD if rate < -0.01 and r.get(k, 0.0) < 50.0 else TEXT)
 		_res_boxes[k].tooltip_text = "%s: %d stockpiled, %s net" % [Defs.RESOURCE_NAMES[k], int(r.get(k, 0.0)), rate_txt]
@@ -966,7 +967,7 @@ OUT OF ENERGY: ship production halted, ships at 25%% speed" if game.energy_starv
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats %.2f food per minute." % Defs.FOOD_PER_POP_PER_MIN
 	_fleet_label.text = "%d ships · upkeep x%.2f" % [game.ship_count(pid), game.upkeep_multiplier(pid)]
 	_fleet_label.tooltip_text = "Each ship's energy upkeep is multiplied by 1 + (ships / %d)^2. Starbases scale separately: x%.1f with %d starbases.
-Total ship+starbase upkeep: %.1f energy/s." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]
+Total ship+starbase upkeep: %.0f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]
 	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	var cur: Dictionary = game.research[pid]
 	if cur.is_empty():

@@ -628,7 +628,8 @@ func _physics_process(delta: float) -> void:
 	if is_over:
 		return
 	for pid in players:
-		pay_over_time(pid, {"energy": upkeep(pid)}, delta)
+		# Upkeep is a per-minute figure (Defs.PER_MIN).
+		pay_over_time(pid, {"energy": upkeep(pid) / Defs.PER_MIN}, delta)
 		_tick_research(pid, delta)
 	# Any other resource hitting zero.
 	for k in ["food", "minerals", "spice"]:

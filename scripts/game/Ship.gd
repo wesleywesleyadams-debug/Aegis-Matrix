@@ -141,8 +141,8 @@ func max_speed() -> float:
 	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
 	return _speed_cache
 
-## How fast this ship fills its hold on `node`, per second. Spice comes in
-## slower than ore, and nebula gas slower still (see Defs.HARVEST_*).
+## How fast this ship fills its hold on `node`, per minute (Defs.PER_MIN).
+## Spice comes in slower than ore, and nebula gas slower still.
 func harvest_rate(node: Node2D) -> float:
 	var base: float = float(def.get("harvest", 0.5)) * Game.instance.mod(owner_id, "harvest")
 	if node is NebulaPocket:
@@ -354,7 +354,7 @@ func _physics_process(delta: float) -> void:
 			else:
 				# Fill the hold at a steady rate; head home once it is full.
 				cargo_type = mine_target.resource
-				_mine_carry += harvest_rate(mine_target) * delta
+				_mine_carry += harvest_rate(mine_target) / Defs.PER_MIN * delta
 				var whole := int(_mine_carry)
 				if whole > 0:
 					_mine_carry -= float(whole)

@@ -238,10 +238,11 @@ func _economy(dt: float) -> void:
 	food_eaten_per_min = pop * Defs.FOOD_PER_POP_PER_MIN
 	energy_out = 0.0 # only Power Plants add energy (see _run_buildings)
 	spice_out = t["spice"] * minf(1.0, pop / 1000.0 + 0.25)
-	g.add_resources(owner_id, {"food": food_made_per_min / 60.0 * dt, "energy": energy_out * dt, "spice": spice_out * dt})
+	# Outputs are per minute; resources move per second.
+	g.add_resources(owner_id, {"food": food_made_per_min / Defs.PER_MIN * dt, "energy": energy_out / Defs.PER_MIN * dt, "spice": spice_out / Defs.PER_MIN * dt})
 	_run_buildings(dt)
 	# Every pop eats from the empire stockpile; spice covers any deficit.
-	var fed := g.pay_over_time(owner_id, {"food": food_eaten_per_min / 60.0}, dt) if pop > 0.0 else 1.0
+	var fed := g.pay_over_time(owner_id, {"food": food_eaten_per_min / Defs.PER_MIN}, dt) if pop > 0.0 else 1.0
 	# A shortage runs from the moment a world cannot be fed (spice counts:
 	# pops living on it keep growing) until it has been fed for
 	# REGROW_SECONDS. While it lasts, growth runs in reverse.
@@ -462,23 +463,23 @@ func _run_buildings(dt: float) -> void:
 			continue
 		for k in Defs.BUILDINGS[b]["output"]:
 			var v: float = Defs.BUILDINGS[b]["output"][k]
+			# Outputs are per minute (Defs.PER_MIN); this loop works per second.
 			if k == "food":
-				# Farms: per-minute figure, boosted by Hydroponics.
-				v = v * g.mod(owner_id, "food") / 60.0
-				food_made_per_min += v * 60.0
+				v *= g.mod(owner_id, "food")
+				food_made_per_min += v
 			elif k == "energy":
 				v *= g.mod(owner_id, "energy")
 				energy_out += v
 			elif k == "spice" and b == "spice_extractor":
 				# Extractors draw from the planet's stored spice until it runs dry.
-				v = minf(v, spice_reserve / maxf(dt, 0.0001))
-				spice_reserve = maxf(0.0, spice_reserve - v * dt)
+				v = minf(v, spice_reserve * Defs.PER_MIN / maxf(dt, 0.0001))
+				spice_reserve = maxf(0.0, spice_reserve - v / Defs.PER_MIN * dt)
 				if spice_reserve <= 0.01:
 					spice_reserve = 0.0
 				spice_out += v
 			elif k == "spice":
 				spice_out += v
-			out[k] = out.get(k, 0.0) + v * dt
+			out[k] = out.get(k, 0.0) + v / Defs.PER_MIN * dt
 	if not out.is_empty():
 		g.add_resources(owner_id, out)
 

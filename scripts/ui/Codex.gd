@@ -473,7 +473,7 @@ func _page_ships() -> void:
 		if d["weapon"] != "":
 			stats += "  ·  %s %d dmg / %.1fs, range %d" % [d["weapon"], int(d["damage"]), d["cooldown"], int(d["range"])]
 		col.add_child(_label(stats, DIM, 16))
-		col.add_child(_label("%s over %ds  ·  upkeep %.2f energy/s" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 16))
+		col.add_child(_label("%s over %ds  ·  upkeep %.0f energy/min" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 16))
 		if d.has("job"):
 			col.add_child(_card_text("Job — %s: %s" % [Defs.JOBS[d["job"]]["name"], Defs.JOBS[d["job"]]["desc"]], Defs.JOBS[d["job"]]["color"]))
 		if SHIP_NOTES.has(t):
@@ -503,7 +503,7 @@ func _page_economy() -> void:
 		var d: Dictionary = Defs.SHIPS[row[1]]
 		var rate: float = float(d["harvest"]) * float(row[4])
 		hrows.append([row[0], row[2], [row[3].capitalize(), Defs.RESOURCE_COLORS[row[3]]],
-			"%.2f/s" % rate, "%d" % int(d["cargo"]), "%ds" % int(float(d["cargo"]) / rate)])
+			"%.0f/min" % rate, "%d" % int(d["cargo"]), "%ds" % int(float(d["cargo"]) / rate * Defs.PER_MIN)])
 	_table(["Ship", "Source", "Yields", "Gather", "Hold", "Fill time"], hrows)
 	_para("Asteroids run dry and vanish (a mineral rock holds about %s per 100 px of width, a spice rock %s), gas giants refill after a pause, and a spice nebula never runs out. The Logistics techs raise hold size, gather rate and speed." % [
 		str(int(Defs.ASTEROID_MINERALS_PER_PX2 * 1000.0)), str(int(Defs.ASTEROID_SPICE_PER_PX2 * 1000.0))])
@@ -516,12 +516,12 @@ func _page_economy() -> void:
 	_table(["Building", "Cost", "Time", "Staff", "Effect"], brows)
 	_rule()
 	_heading("Food")
-	_para("Food is on the same scale as every other resource, and the HUD reads it per second like the rest. One Farm feeds exactly %d pops; past that a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
-	_table(["", "Per second", "Per minute"], [
-		["A pop eats", "%.4f/s" % (Defs.FOOD_PER_POP_PER_MIN / 60.0), "%.2f/min" % Defs.FOOD_PER_POP_PER_MIN],
-		["A Farm grows", "%.2f/s" % (Defs.BUILDINGS["farm"]["output"]["food"] / 60.0), "%d/min" % int(Defs.BUILDINGS["farm"]["output"]["food"])],
-		["1,000 pops eat", "%.2f/s" % (1000.0 * Defs.FOOD_PER_POP_PER_MIN / 60.0), "%d/min" % int(1000.0 * Defs.FOOD_PER_POP_PER_MIN)],
-		["A Farm supports", "%d pops" % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN), ""],
+	_para("Food is on the same scale as every other resource, and like the rest it is counted per minute. One Farm feeds exactly %d pops; past that a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
+	_table(["", "Rate"], [
+		["A pop eats", "%.2f/min" % Defs.FOOD_PER_POP_PER_MIN],
+		["A Farm grows", "%d/min" % int(Defs.BUILDINGS["farm"]["output"]["food"])],
+		["1,000 pops eat", "%d/min" % int(1000.0 * Defs.FOOD_PER_POP_PER_MIN)],
+		["A Farm supports", "%d pops" % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN)],
 	])
 	_para("Spice covers a food shortfall 1:1, and pops living on it keep growing. When neither food nor spice can feed a world it starves: growth runs backwards at the same rate it would have grown, and the shortage only lifts once the world has been fed for %d seconds straight." % int(Defs.REGROW_SECONDS))
 	_rule()
@@ -529,7 +529,7 @@ func _page_economy() -> void:
 	_para("A world with a Defense Battery is no longer a free kill: each one adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries make a colony something a raiding party has to commit to." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
 	_rule()
 	_heading("Upkeep")
-	_para("Every ship costs energy per second, and the total is multiplied as the fleet grows (1 + (ships/%d)^2), so fleets plateau instead of growing forever. Starbases have their own steeper curve, which makes more than a handful expensive. With no energy in the stockpile, starbases stop producing and your ships move and fire at %d%% speed." % [int(Defs.UPKEEP_SCALE_SHIPS), int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
+	_para("Every ship costs energy per minute, and the total is multiplied as the fleet grows (1 + (ships/%d)^2), so fleets plateau instead of growing forever. Starbases have their own steeper curve, which makes more than a handful expensive. With no energy in the stockpile, starbases stop producing and your ships move and fire at %d%% speed." % [int(Defs.UPKEEP_SCALE_SHIPS), int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
 
 func _page_systems() -> void:
 	_heading("Systems")
@@ -579,7 +579,7 @@ func _page_terms() -> void:
 		["Job", "What a ship is for beyond shooting: Swarm, Escort, Deep Sensors, Heat Screen, Field Repair."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
-		["Upkeep", "Energy per second for ships and starbases, rising as your fleet grows."],
+		["Upkeep", "Energy per minute for ships and starbases, rising as your fleet grows."],
 		["Spice", "The rare resource. Buys advanced hulls and techs, and automatically covers a shortfall in anything else."],
 		["Bombard", "Firing on an enemy planet to kill its population; at zero pops its buildings are destroyed and it goes neutral."],
 		["Colonize", "Settling a free world with a Colony Ship, which is used up in the process."],

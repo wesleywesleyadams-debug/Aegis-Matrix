@@ -320,10 +320,10 @@ func refresh() -> void:
 				idle += 1
 		if idle > 0:
 			s += "\n%d building%s IDLE: not enough pop" % [idle, "" if idle == 1 else "s"]
-		s += "\nFood grown %.2f/s, eaten %.2f/s" % [planet.food_made_per_min / 60.0, planet.food_eaten_per_min / 60.0]
-		s += "\nEnergy %.1f/s" % planet.energy_out
+		s += "\nFood grown %.1f/min, eaten %.1f/min" % [planet.food_made_per_min, planet.food_eaten_per_min]
+		s += "\nEnergy %.0f/min" % planet.energy_out
 		if planet.spice_out > 0.0:
-			s += "   Spice %.2f/s" % planet.spice_out
+			s += "   Spice %.1f/min" % planet.spice_out
 		if planet.starving:
 			s += "\nSTARVING: shrinking %d/min until food recovers" % int(-planet.growth_per_min)
 	else:
