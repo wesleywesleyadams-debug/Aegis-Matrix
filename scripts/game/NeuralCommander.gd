@@ -23,7 +23,7 @@ const TECH_GROUPS := {
 	"research_defense": ["deflectors", "phase_shields", "aegis_matrix", "composite_plating", "reactive_armor",
 		"neutronium_armor", "reinforced_frames", "nanite_plating", "adaptive_hulls"],
 	"research_economy": ["hydroponics", "deep_drills", "gas_skimming", "gene_clinics", "arcologies",
-		"ion_thrusters", "spice_navigation"],
+		"ion_thrusters", "spice_navigation", "cutting_lasers", "resonance_drills", "bulk_holds", "fusion_drives"],
 }
 var net: NeuralNet
 var pid: int

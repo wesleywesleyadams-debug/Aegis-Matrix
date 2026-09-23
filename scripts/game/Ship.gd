@@ -62,6 +62,8 @@ var _repairing: Array = []
 var _repair_timer: float = 0.0
 var _cooldown: float = 0.0
 var _mine_timer: float = 0.0
+## Fractional ore gathered between ticks (nodes hold whole units).
+var _mine_carry: float = 0.0
 var _acquire_timer: float = 0.0
 var _flame_timer: float = 0.0
 
@@ -138,6 +140,16 @@ func max_speed() -> float:
 	var storm := IonStorm.SLOW if Game.instance.in_storm(global_position) else 1.0
 	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
 	return _speed_cache
+
+## How fast this ship fills its hold on `node`, per second. Spice comes in
+## slower than ore, and nebula gas slower still (see Defs.HARVEST_*).
+func harvest_rate(node: Node2D) -> float:
+	var base: float = float(def.get("harvest", 0.5)) * Game.instance.mod(owner_id, "harvest")
+	if node is NebulaPocket:
+		return base * Defs.HARVEST_NEBULA_MULT
+	if node.resource == "spice":
+		return base * Defs.HARVEST_SPICE_MULT
+	return base
 
 func cargo_cap() -> int:
 	return int(def.get("cargo", 0) * Game.instance.mod(owner_id, "cargo"))
@@ -328,20 +340,22 @@ func _physics_process(delta: float) -> void:
 				var reach: float = mine_target.radius + radius + 4.0
 				if global_position.distance_to(mine_target.global_position) <= reach + 4.0:
 					state = State.MINING
-					_mine_timer = def["mine_time"] * (NebulaPocket.MINE_TIME_MULT if mine_target is NebulaPocket else 1.0)
-					if mine_target.resource == "spice" and not (mine_target is NebulaPocket):
-						_mine_timer *= Defs.SPICE_MINE_MULT
+					_mine_carry = 0.0
 				else:
 					desired = _arrive(mine_target.global_position, 1.0, reach)
 		State.MINING:
 			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
 				state = State.MINE_GO
 			else:
-				_mine_timer -= delta
-				queue_redraw()
-				if _mine_timer <= 0.0:
-					cargo_type = mine_target.resource
-					cargo += mine_target.extract(cargo_cap() - cargo)
+				# Fill the hold at a steady rate; head home once it is full.
+				cargo_type = mine_target.resource
+				_mine_carry += harvest_rate(mine_target) * delta
+				var whole := int(_mine_carry)
+				if whole > 0:
+					_mine_carry -= float(whole)
+					cargo += mine_target.extract(mini(whole, cargo_cap() - cargo))
+					queue_redraw()
+				if cargo >= cargo_cap():
 					state = State.RETURN
 					queue_redraw()
 		State.COLONIZE:

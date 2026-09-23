@@ -492,22 +492,20 @@ func _page_economy() -> void:
 	_table(["Type", "Habitable", "Fertility", "Spice / gas reserve"], prows)
 	_rule()
 	_heading("Harvesting")
-	_para("Every rate below is a round trip: fly out, fill up, fly home. Distance decides as much as the ship does, so belts near your starbase are worth fighting for. Figures are for a loaded haul at 600 px, the usual range of a home belt.")
+	_para("A harvester parks on a node and fills its hold at a steady rate, then hauls the load to the nearest starbase and comes back. The gather rate never changes with distance — distance only adds flying time, so a forward starbase is worth building for a far belt.")
 	var hrows: Array = []
 	for row in [
 		["Mining Barge", "miner", "Mineral asteroid", "minerals", 1.0],
-		["Mining Barge", "miner", "Spice asteroid", "spice", Defs.SPICE_MINE_MULT],
+		["Mining Barge", "miner", "Spice asteroid", "spice", Defs.HARVEST_SPICE_MULT],
 		["Gas Skimmer", "skimmer", "Gas giant", "minerals", 1.0],
-		["Gas Skimmer", "skimmer", "Spice nebula", "spice", NebulaPocket.MINE_TIME_MULT],
+		["Gas Skimmer", "skimmer", "Spice nebula", "spice", Defs.HARVEST_NEBULA_MULT],
 	]:
 		var d: Dictionary = Defs.SHIPS[row[1]]
-		var load: float = float(NebulaPocket.LOAD) if row[2] == "Spice nebula" else float(d["cargo"])
-		var mine: float = float(d["mine_time"]) * float(row[4])
-		var trip: float = mine + 2.0 * 600.0 / float(d["speed"])
+		var rate: float = float(d["harvest"]) * float(row[4])
 		hrows.append([row[0], row[2], [row[3].capitalize(), Defs.RESOURCE_COLORS[row[3]]],
-			"%d per load" % int(load), "%.1fs" % mine, "%.2f/s" % (load / trip)])
-	_table(["Ship", "Source", "Yields", "Load", "Mine time", "Rate @600px"], hrows)
-	_para("Asteroids run dry and vanish (a mineral rock holds about %s per 100 px of width, a spice rock %s), gas giants refill after a pause, and a spice nebula never runs out. Deep-Core Drills adds +40%% cargo; Ion Thrusters adds +15%% speed, which pays most on long hauls." % [
+			"%.2f/s" % rate, "%d" % int(d["cargo"]), "%ds" % int(float(d["cargo"]) / rate)])
+	_table(["Ship", "Source", "Yields", "Gather", "Hold", "Fill time"], hrows)
+	_para("Asteroids run dry and vanish (a mineral rock holds about %s per 100 px of width, a spice rock %s), gas giants refill after a pause, and a spice nebula never runs out. The Logistics techs raise hold size, gather rate and speed." % [
 		str(int(Defs.ASTEROID_MINERALS_PER_PX2 * 1000.0)), str(int(Defs.ASTEROID_SPICE_PER_PX2 * 1000.0))])
 	_rule()
 	_heading("Buildings")

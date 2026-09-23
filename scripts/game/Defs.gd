@@ -32,14 +32,14 @@ const BASE_SHIPS := {
 		"name": "Mining Barge", "role": "miner",
 		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0,
 		"cost": {"minerals": 50}, "build_time": 6.0, "upkeep": 0.05,
-		"cargo": 10, "mine_time": 7.0,
+		"cargo": 10, "harvest": 0.5,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"skimmer": {
 		"name": "Gas Skimmer", "role": "skimmer", "requires": "gas_skimming",
 		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
 		"cost": {"minerals": 90, "spice": 10}, "build_time": 12.0, "upkeep": 0.1,
-		"cargo": 5, "mine_time": 4.0,
+		"cargo": 5, "harvest": 0.5,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"colony": {
@@ -220,7 +220,15 @@ const TECHS := {
 	"hydroponics": {"name": "Hydroponics", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 400}, "time": 40.0,
 		"effects": {"food": 0.30}, "desc": "+30% food production."},
 	"deep_drills": {"name": "Deep-Core Drills", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 400}, "time": 40.0,
-		"effects": {"cargo": 0.40}, "desc": "Mining barges carry +40% ore."},
+		"effects": {"cargo": 0.40}, "desc": "Harvesters carry +40% per load."},
+	"bulk_holds": {"name": "Bulk Holds", "group": "logistics", "tier": 2, "requires": ["deep_drills"], "cost": {"energy": 1100, "spice": 20}, "time": 75.0,
+		"effects": {"cargo": 0.50}, "desc": "Harvesters carry a further +50% per load."},
+	"cutting_lasers": {"name": "Cutting Lasers", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 45.0,
+		"effects": {"harvest": 0.30}, "desc": "+30% gather rate at every node."},
+	"resonance_drills": {"name": "Resonance Drills", "group": "logistics", "tier": 2, "requires": ["cutting_lasers"], "cost": {"energy": 1200, "spice": 20}, "time": 80.0,
+		"effects": {"harvest": 0.40}, "desc": "A further +40% gather rate at every node."},
+	"fusion_drives": {"name": "Fusion Drives", "group": "logistics", "tier": 2, "requires": ["ion_thrusters"], "cost": {"energy": 1300, "spice": 25}, "time": 85.0,
+		"effects": {"speed": 0.25}, "desc": "A further +25% ship speed."},
 	"gas_skimming": {"name": "Gas Skimming", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 50.0,
 		"effects": {}, "desc": "Unlocks the Gas Skimmer, which mines minerals from gas giants."},
 	"particle_lances": {"name": "Particle Lances", "group": "weapons", "tier": 2, "requires": ["ion_cannons"], "cost": {"energy": 1200, "spice": 30}, "time": 90.0,
@@ -326,9 +334,11 @@ static var SHIPS: Dictionary = _with_variants()
 ## a time by its own research line (Defs.TECHS, "mark_<class>" effects). Each
 ## mark makes that class alone tougher and harder-hitting, so late-game
 ## corvettes are a different animal from the ones built in minute one.
-## Spice is rarer than ore: mining it takes this much longer per load, so
-## a barge on a spice rock earns roughly 0.2 spice/s against 0.5 minerals/s.
-const SPICE_MINE_MULT := 2.6
+## A harvester fills its hold at "harvest" units a second while parked on a
+## node, then hauls the load home. Spice fills slower than ore, nebula gas
+## slower still.
+const HARVEST_SPICE_MULT := 0.4
+const HARVEST_NEBULA_MULT := 0.3
 
 ## Which classes have a mark line (see HULL_MARKS).
 const MARK_LINES := ["corvette", "destroyer", "cruiser"]
