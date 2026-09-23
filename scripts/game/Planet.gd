@@ -136,9 +136,9 @@ func _ready() -> void:
 	operating.fill(false)
 	for i in mini(start_buildings.size(), fields):
 		buildings[i] = start_buildings[i]
-	# A starting world always has at least one Farm and one Power Plant.
+	# A starting world always has a Farm, a Power Plant and a Mining Complex.
 	if owner_id != 0:
-		for must in ["farm", "generator"]:
+		for must in ["farm", "generator", "mine"]:
 			if not buildings.has(must):
 				var slot := buildings.find("")
 				if slot >= 0:
