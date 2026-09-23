@@ -225,8 +225,6 @@ func _physics_process(delta: float) -> void:
 			_repair_timer = 0.5
 			_repairing = Abilities.repair_tick(self, 0.5)
 			queue_redraw()
-	if def.get("job", "") in ["heat_screen", "barrage"] and Abilities.is_active(self):
-		queue_redraw()
 	# Out of energy: weapons recharge (and engines run) at a quarter speed.
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
@@ -385,7 +383,7 @@ func _physics_process(delta: float) -> void:
 					_scan_cd = SCAN_INTERVAL
 		if shoot and global_position.distance_to(shoot.global_position) <= def["range"] + shoot.radius:
 			Game.instance.fire(self, shoot, def["weapon"], def["damage"])
-			_cooldown = def["cooldown"] * randf_range(0.9, 1.1) * Abilities.reload_mult(self)
+			_cooldown = def["cooldown"] * randf_range(0.9, 1.1)
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)
@@ -574,9 +572,8 @@ func _route(final: Vector2) -> Vector2:
 	return _path[0] if not _path.is_empty() else final
 
 ## Job effects, in the job's accent color (Defs.JOBS): the Heat Shield's
-## screen (a shimmer ring, a bright dome while surging), a Tender's green
-## repair beams and emergency flash, a Cruiser's barrage glow, an Escort's
-## guard ring while selected.
+## screen (a slow shimmer ring), a Tender's green repair beams and
+## emergency flash, and an Escort's guard ring while selected.
 func _draw_job() -> void:
 	var jid: String = def.get("job", "")
 	if jid == "":
@@ -586,15 +583,11 @@ func _draw_job() -> void:
 	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
 	match jid:
 		"heat_screen":
-			if Abilities.is_active(self):
-				draw_circle(Vector2.ZERO, Abilities.HEAT_SURGE_RANGE, Color(c, 0.07))
-				draw_arc(Vector2.ZERO, Abilities.HEAT_SURGE_RANGE, 0.0, TAU, 96, Color(c, 0.55 + 0.25 * sin(t * 6.0)), 2.0)
-			else:
-				var n := 48
-				for i in n:
-					if i % 2 == 0:
-						var a := TAU * i / n + t * 0.3
-						draw_arc(Vector2.ZERO, Abilities.HEAT_RANGE, a, a + TAU / n, 3, Color(c, 0.22), 1.5)
+			var n := 48
+			for i in n:
+				if i % 2 == 0:
+					var a := TAU * i / n + t * 0.3
+					draw_arc(Vector2.ZERO, Abilities.HEAT_RANGE, a, a + TAU / n, 3, Color(c, 0.22), 1.5)
 		"field_repair":
 			for o in _repairing:
 				if is_instance_valid(o):
@@ -604,9 +597,6 @@ func _draw_job() -> void:
 			if Abilities.is_active(self):
 				draw_arc(Vector2.ZERO, Abilities.EMERGENCY_RANGE, 0.0, TAU, 96, Color(c, 0.8), 3.0)
 				draw_circle(Vector2.ZERO, Abilities.EMERGENCY_RANGE, Color(c, 0.12))
-		"barrage":
-			if Abilities.is_active(self):
-				draw_circle(Vector2.ZERO, radius + 6.0, Color(c, 0.18 + 0.12 * sin(t * 12.0)))
 		"escort":
 			if selected:
 				draw_arc(Vector2.ZERO, Abilities.ESCORT_RANGE, 0.0, TAU, 64, Color(c, 0.25), 1.0)

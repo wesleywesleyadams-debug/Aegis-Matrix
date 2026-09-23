@@ -9,8 +9,8 @@ const BG := Color("0a0c1a")
 const PANEL := Color("141833")
 const EDGE := Color("2b3a6b")
 const EDGE_LIT := Color("4fb4ff")
-const TEXT := Color("c9d3e8")
-const DIM := Color("7c88ab")
+const TEXT := Color("ffffff")
+const DIM := Color("e8eefc")
 
 const SECTIONS := [
 	["overview", "Overview"],
@@ -22,7 +22,10 @@ const SECTIONS := [
 	["terms", "Terminology"],
 ]
 
-var _body: VBoxContainer
+const COL_GAP := 32.0
+
+var _body: VBoxContainer          ## staging: pages build here, then _flow()
+var _rows: VBoxContainer          ## the laid-out page (see _flow)
 var _nav_buttons := {}
 var _current := "overview"
 ## Opened over a running match (from the pause menu) instead of from the
@@ -73,7 +76,7 @@ func _ready() -> void:
 		b.custom_minimum_size = Vector2(0, 52)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 20)
+		b.add_theme_font_size_override("font_size", 22)
 		b.pressed.connect(func(): _show(s[0]))
 		nav.add_child(b)
 		_nav_buttons[s[0]] = b
@@ -86,10 +89,16 @@ func _ready() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	panel.add_child(scroll)
+	# Two columns so no line runs the full width of the screen. Pages are
+	# still written as one flow; _flow() lays them out (see _show).
+	_rows = VBoxContainer.new()
+	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rows.add_theme_constant_override("separation", 16)
+	scroll.add_child(_rows)
 	_body = VBoxContainer.new()
-	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.visible = false
 	_body.add_theme_constant_override("separation", 12)
-	scroll.add_child(_body)
+	add_child(_body)
 
 	_show("overview")
 
@@ -106,17 +115,88 @@ func _back() -> void:
 
 # ---------------------------------------------------------------- widgets
 
-func _label(text: String, color: Color = TEXT, size: int = 16) -> Label:
+func _text_column(width: float) -> VBoxContainer:
+	var c := VBoxContainer.new()
+	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	c.custom_minimum_size = Vector2(width, 0)
+	c.add_theme_constant_override("separation", 12)
+	return c
+
+## Half the room the content panel has, which is what one text column gets.
+func _half_width() -> float:
+	var avail: float = get_viewport_rect().size.x - 80.0 - 260.0 - 16.0 - 36.0
+	return maxf((avail - COL_GAP) * 0.5, 260.0)
+
+## Lays the page out in two columns. A block is a heading and everything
+## under it, so a section is never split down the middle. Blocks that are
+## too wide for half the panel (wide tables, ship cards) keep the full
+## width to themselves instead of being clipped; the rest are paired up.
+func _flow() -> void:
+	for c in _rows.get_children():
+		_rows.remove_child(c)
+		c.queue_free()
+	var half := _half_width()
+	var blocks: Array = []
+	for child in _body.get_children():
+		if blocks.is_empty() or child.has_meta("block"):
+			blocks.append([child])
+		else:
+			blocks[-1].append(child)
+	var pending: Array = []      # narrow blocks waiting for a partner
+	for b in blocks:
+		if _block_width(b) > half:
+			_flush(pending, half)
+			pending = []
+			var full := _text_column(0.0)
+			_move(b, full)
+			_rows.add_child(full)
+		else:
+			pending.append(b)
+			if pending.size() == 2:
+				_flush(pending, half)
+				pending = []
+	_flush(pending, half)
+
+## Puts one or two narrow blocks side by side in a row.
+func _flush(pending: Array, half: float) -> void:
+	if pending.is_empty():
+		return
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", int(COL_GAP))
+	for b in pending:
+		var col := _text_column(half)
+		_move(b, col)
+		row.add_child(col)
+	if pending.size() == 1:
+		row.add_child(_text_column(half))   # keep the left column at half width
+	_rows.add_child(row)
+
+func _move(block: Array, into: VBoxContainer) -> void:
+	for child in block:
+		_body.remove_child(child)
+		into.add_child(child)
+
+## How wide a block insists on being.
+func _block_width(block: Array) -> float:
+	var w := 0.0
+	for child in block:
+		if child is Control:
+			w = maxf(w, (child as Control).get_combined_minimum_size().x)
+	return w
+
+func _label(text: String, color: Color = TEXT, size: int = 18) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_font_size_override("font_size", size)
 	return l
 
-func _wrap(text: String, color: Color = TEXT, size: int = 15) -> Label:
+func _wrap(text: String, color: Color = TEXT, size: int = 17) -> Label:
 	var l := _label(text, color, size)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(760, 0)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.custom_minimum_size = Vector2(minf(320.0, _half_width() - 24.0), 0)
 	return l
 
 func _panel_style(border: Color = EDGE) -> StyleBoxFlat:
@@ -128,7 +208,8 @@ func _panel_style(border: Color = EDGE) -> StyleBoxFlat:
 	return sb
 
 func _heading(text: String, color: Color = TEXT) -> void:
-	var l := _label(text, color, 24)
+	var l := _label(text, color, 26)
+	l.set_meta("block", true)
 	_body.add_child(l)
 
 func _para(text: String) -> void:
@@ -142,13 +223,13 @@ func _table(cols: Array, rows: Array) -> void:
 	grid.add_theme_constant_override("h_separation", 22)
 	grid.add_theme_constant_override("v_separation", 4)
 	for c in cols:
-		grid.add_child(_label(str(c), EDGE_LIT, 14))
+		grid.add_child(_label(str(c), EDGE_LIT, 16))
 	for row in rows:
 		for cell in row:
 			if cell is Array:
-				grid.add_child(_label(str(cell[0]), cell[1], 15))
+				grid.add_child(_label(str(cell[0]), cell[1], 17))
 			else:
-				grid.add_child(_label(str(cell), TEXT, 15))
+				grid.add_child(_label(str(cell), TEXT, 17))
 	_body.add_child(grid)
 
 ## A small pixel sprite (ships, icons) at `scale_px`.
@@ -193,6 +274,7 @@ func _show(id: String) -> void:
 		"economy": _page_economy()
 		"systems": _page_systems()
 		"terms": _page_terms()
+	_flow()
 
 func _page_overview() -> void:
 	_heading("Star Lords")
@@ -309,7 +391,7 @@ func _page_combat() -> void:
 		jrows.append([[jd["name"], jd["color"]], ", ".join(owners), "Q, %ds" % int(jd.get("cooldown", 0)) if jd.get("active", false) else "passive"])
 	_table(["Job", "Ships", "Use"], jrows)
 	for j in Defs.JOBS:
-		_body.add_child(_wrap("%s: %s" % [Defs.JOBS[j]["name"], Defs.JOBS[j]["desc"]], DIM, 14))
+		_body.add_child(_wrap("%s: %s" % [Defs.JOBS[j]["name"], Defs.JOBS[j]["desc"]], DIM, 16))
 
 func _page_ships() -> void:
 	_heading("Every ship")
@@ -335,12 +417,13 @@ func _page_ships() -> void:
 			d["role"].capitalize(), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), int(d["speed"]), int(d.get("sensor", 260))]
 		if d["weapon"] != "":
 			stats += "  ·  %s %d dmg / %.1fs, range %d" % [d["weapon"], int(d["damage"]), d["cooldown"], int(d["range"])]
-		col.add_child(_label(stats, DIM, 14))
-		col.add_child(_label("%s over %ds  ·  upkeep %.2f energy/s" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 14))
+		col.add_child(_label(stats, DIM, 16))
+		col.add_child(_label("%s over %ds  ·  upkeep %.2f energy/s" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 16))
 		if d.has("job"):
-			col.add_child(_wrap("Job — %s: %s" % [Defs.JOBS[d["job"]]["name"], Defs.JOBS[d["job"]]["desc"]], Defs.JOBS[d["job"]]["color"], 14))
+			col.add_child(_wrap("Job — %s: %s" % [Defs.JOBS[d["job"]]["name"], Defs.JOBS[d["job"]]["desc"]], Defs.JOBS[d["job"]]["color"], 16))
 		if SHIP_NOTES.has(t):
-			col.add_child(_wrap(SHIP_NOTES[t], DIM, 14))
+			col.add_child(_wrap(SHIP_NOTES[t], DIM, 16))
+		card.set_meta("block", true)
 		_body.add_child(card)
 
 func _page_economy() -> void:
@@ -379,7 +462,7 @@ func _page_systems() -> void:
 		card.add_child(col)
 		var star: Dictionary = Defs.STAR_TYPES.get(s.get("star", "yellow"), {})
 		col.add_child(_label(s["name"], star.get("tint", TEXT), 20))
-		col.add_child(_label("%s  ·  %s" % [s["desc"], star.get("label", "")], DIM, 14))
+		col.add_child(_label("%s  ·  %s" % [s["desc"], star.get("label", "")], DIM, 16))
 		col.add_child(_wrap(s.get("arrival", ""), TEXT, 15))
 		var feature: String = s.get("feature", "")
 		if feature != "":
@@ -389,7 +472,8 @@ func _page_systems() -> void:
 				"rings": "Debris ring: an impassable wall of rubble with a few gaps, which makes those gaps chokepoints.",
 				"storms": "Ion storms: sweeping arms slow ships to 40% and halve sensors while they pass.",
 			}.get(feature, feature)
-			col.add_child(_wrap(ftext, EDGE_LIT, 14))
+			col.add_child(_wrap(ftext, EDGE_LIT, 16))
+		card.set_meta("block", true)
 		_body.add_child(card)
 	_rule()
 	_heading("The star")
@@ -410,7 +494,7 @@ func _page_terms() -> void:
 		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
-		["Job", "What a ship is for beyond shooting: Swarm, Escort, Barrage, Deep Sensors, Heat Screen, Field Repair."],
+		["Job", "What a ship is for beyond shooting: Swarm, Escort, Deep Sensors, Heat Screen, Field Repair."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
 		["Upkeep", "Energy per second for ships and starbases, rising as your fleet grows."],
@@ -421,8 +505,9 @@ func _page_terms() -> void:
 	for t in terms:
 		var row := VBoxContainer.new()
 		row.add_theme_constant_override("separation", 0)
-		row.add_child(_label(t[0], EDGE_LIT, 17))
-		row.add_child(_wrap(t[1], DIM, 15))
+		row.add_child(_label(t[0], EDGE_LIT, 19))
+		row.add_child(_wrap(t[1], DIM, 17))
+		row.set_meta("block", true)
 		_body.add_child(row)
 
 ## Dev aid: SL_CODEX_SHOT=<section> opens that page, saves
@@ -488,7 +573,7 @@ const SHIP_NOTES := {
 	"skimmer": "Mines minerals from gas giants, which never run out but refill slowly after being drained, and harvests spice gas inside a spice nebula: right-click a spot in the cloud and it works there, slowly and indefinitely.",
 	"colony": "Settles a free world, and is used up doing it. Colonizing takes a minute in orbit and the new colony starts small, so send it early and guard it: an unescorted colony ship is the cheapest kill on the map.",
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
-	"scout": "Cheap, fast and unarmed: its only job is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
+	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
 	"heatshield": "Lets a fleet fight where others can't: inside a star's radiation and inside a spice nebula, where shields normally drain away.",
 }

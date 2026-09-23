@@ -70,7 +70,7 @@ const BASE_SHIPS := {
 		"name": "Cruiser", "role": "warship", "requires": "cruiser_doctrine",
 		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 28.0, "upkeep": 0.6,
-		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "job": "barrage", "refit": {"minerals": 15, "time": 35.0},
+		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 	},
 	"scout": {
 		"name": "Scout", "role": "scout",
@@ -345,12 +345,10 @@ const JOBS := {
 		"desc": "+6% damage for each other corvette within 150 px (up to +36%). Strong in numbers, weak alone."},
 	"escort": {"name": "Escort", "active": false, "color": Color("7fd8ff"),
 		"desc": "Friendly ships within 130 px take 15% less weapon damage. Guards miners, colony ships and fleets."},
-	"barrage": {"name": "Torpedo Barrage", "active": true, "cooldown": 40.0, "duration": 6.0, "color": Color("ff8a4a"),
-		"desc": "[Q] Reload twice as fast for 6 s. Best when the enemy is already in range."},
 	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
 		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
-	"heat_screen": {"name": "Heat Screen", "active": true, "cooldown": 40.0, "duration": 10.0, "color": Color("ffc24a"),
-		"desc": "Ships within 170 px take 75% less radiation damage and keep their shields in spice nebulae. [Q] Surge: full protection within 240 px for 10 s."},
+	"heat_screen": {"name": "Heat Screen", "active": false, "color": Color("ffc24a"),
+		"desc": "Friendly ships within 170 px take 75% less radiation damage and keep their shields in spice nebulae."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
 		"desc": "Repairs up to 4 ships within 180 px (6 points/s each: hull first, then armor, the only way to restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
 }

@@ -1870,7 +1870,7 @@ func _enter_dev_capture() -> void:
 		var sc := spawn_ship("scout", player_id, star.global_position + Vector2(0, -420))
 		for s in shielded + bare + hurt + [hs, tender, sc]:
 			s.order_stop()
-		get_tree().create_timer(0.5).timeout.connect(func(): print("JOBS beacon: ", Abilities.use(sc), "  surge: ", Abilities.use(hs)))
+		get_tree().create_timer(0.5).timeout.connect(func(): print("JOBS beacon: ", Abilities.use(sc)))
 		get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.2).timeout.connect(func():
 			var f := func(arr): return ", ".join(arr.map(func(s): return "%d/%d" % [int(s.hp), int(s.max_hp)]))
 			print("JOBS shielded corvettes %s | bare corvettes %s | repaired destroyers %s | beacons %d" % [f.call(shielded), f.call(bare), f.call(hurt), get_tree().get_nodes_in_group("beacons").size()]))

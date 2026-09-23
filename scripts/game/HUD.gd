@@ -1174,7 +1174,7 @@ func _refresh_ability_button() -> void:
 		return
 	var j: Dictionary = Defs.JOBS[_ability_ship.def["job"]]
 	var wait := Abilities.ready_in(_ability_ship)
-	var name: String = {"barrage": "Barrage", "beacon": "Drop Beacon", "heat_screen": "Heat Surge", "field_repair": "Emergency Repair"}.get(_ability_ship.def["job"], j["name"])
+	var name: String = {"beacon": "Drop Beacon", "field_repair": "Emergency Repair"}.get(_ability_ship.def["job"], j["name"])
 	_ability_button.text = name if wait <= 0.0 else ("%s: recharging %ds" % [name, int(ceil(wait))])
 	_ability_button.disabled = wait > 0.0
 

@@ -414,12 +414,6 @@ func _use_jobs(pid: int, ships: Array, game: Game) -> void:
 	var home := game.nearest_starbase(pid, Vector2.ZERO)
 	for s in ships:
 		match s.def.get("job", ""):
-			"heat_screen":
-				if Abilities.ready_in(s) <= 0.0:
-					for o in Abilities.allies_near(s, Abilities.HEAT_SURGE_RANGE) + [s]:
-						if game.in_nebula(o.global_position) or game.stars_list.any(func(st): return st.dps_at(st.global_position.distance_to(o.global_position), o.radius) > 0.0):
-							Abilities.use(s)
-							break
 			"field_repair":
 				if Abilities.ready_in(s) <= 0.0:
 					var hurt := Abilities.allies_near(s, Abilities.EMERGENCY_RANGE).filter(func(o): return o.hp < o.max_hp * 0.6)
@@ -433,9 +427,6 @@ func _use_jobs(pid: int, ships: Array, game: Game) -> void:
 					c /= war.size()
 					if s.global_position.distance_to(c) > 160.0 and (s.state == Ship.State.IDLE or s.global_position.distance_to(s.move_goal) > 200.0 or s.move_goal.distance_to(c) > 160.0):
 						s.order_move(c)
-			"barrage":
-				if Abilities.ready_in(s) <= 0.0 and s.state == Ship.State.ATTACK and is_instance_valid(s.target) and s.global_position.distance_to(s.target.global_position) <= s.def["range"] + s.target.radius:
-					Abilities.use(s)
 			"beacon":
 				# Leave a beacon deep in the field (far from home, none nearby).
 				if Abilities.ready_in(s) <= 0.0 and home and s.global_position.distance_to(home.global_position) > 1200.0:

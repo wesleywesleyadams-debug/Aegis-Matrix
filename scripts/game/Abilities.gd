@@ -10,7 +10,6 @@ const SWARM_MAX := 0.36
 const ESCORT_RANGE := 130.0
 const ESCORT_CUT := 0.15
 const HEAT_RANGE := 170.0
-const HEAT_SURGE_RANGE := 240.0
 const HEAT_CUT := 0.75
 const REPAIR_RANGE := 180.0
 const REPAIR_RATE := 6.0
@@ -39,8 +38,6 @@ static func use(s: Ship) -> String:
 		return "Recharging (%ds)" % int(ceil(ready_in(s)))
 	var g := Game.instance
 	match s.def["job"]:
-		"barrage", "heat_screen":
-			s.ability_until = Game.now() + float(j["duration"])
 		"beacon":
 			var b := Beacon.new()
 			b.owner_id = s.owner_id
@@ -75,10 +72,6 @@ static func damage_mult(s: Ship) -> float:
 			n += 1
 	return 1.0 + minf(n * SWARM_PER, SWARM_MAX)
 
-## Reload time multiplier (Torpedo Barrage).
-static func reload_mult(s: Ship) -> float:
-	return 0.5 if s.def.get("job", "") == "barrage" and is_active(s) else 1.0
-
 ## Incoming weapon damage multiplier (an Escort nearby).
 static func incoming_mult(e: SpaceEntity) -> float:
 	for o in Game.instance.job_ships.get("escort", []):
@@ -86,16 +79,13 @@ static func incoming_mult(e: SpaceEntity) -> float:
 			return 1.0 - ESCORT_CUT
 	return 1.0
 
-## Radiation damage multiplier (a Heat Shield Frigate nearby; its Surge
-## blocks it completely).
+## Radiation damage multiplier (a Heat Shield Frigate nearby).
 static func radiation_mult(e: SpaceEntity) -> float:
 	var best := 1.0
 	for o in Game.instance.job_ships.get("heat_screen", []):
 		if o.owner_id != e.owner_id:
 			continue
 		var d2: float = o.global_position.distance_squared_to(e.global_position)
-		if is_active(o) and d2 <= HEAT_SURGE_RANGE * HEAT_SURGE_RANGE:
-			return 0.0
 		if d2 <= HEAT_RANGE * HEAT_RANGE or o == e:
 			best = 1.0 - HEAT_CUT
 	return best
