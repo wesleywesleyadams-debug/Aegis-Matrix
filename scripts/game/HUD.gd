@@ -748,7 +748,6 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		_build_buttons[t] = b
 	_sel_body.add_child(grid)
 	_queue_row.visible = true
-	_sel_body.add_child(_label("Right-click to set the rally point. Click a queued ship to cancel (paid share refunded).", DIM, 12))
 
 func _build_star_panel(s: Star) -> void:
 	var head := HBoxContainer.new()
