@@ -762,12 +762,16 @@ func planet_at(world_pos: Vector2) -> Planet:
 	return null
 
 ## "" if a starbase may be founded at pos, otherwise the reason.
-func starbase_site_problem(pos: Vector2) -> String:
+## Where a construct may be built. Every construct keeps a ring of clear
+## space scaled to its size (Defs.PLACEMENT_RING), and two rings may not
+## overlap, so the same rule covers starbases, depots and Mining Stations.
+func site_problem(kind: String, pos: Vector2) -> String:
 	if not MAP_RECT.grow(-60).has_point(pos):
 		return "Too close to the edge of the system"
-	for sb in get_tree().get_nodes_in_group("starbases"):
-		if sb.global_position.distance_to(pos) < Defs.STARBASE["min_spacing"]:
-			return "Too close to another starbase"
+	var ring := Defs.placement_ring(kind)
+	for n in get_tree().get_nodes_in_group("starbases") + get_tree().get_nodes_in_group("depots") + get_tree().get_nodes_in_group("mining_stations"):
+		if n.global_position.distance_to(pos) < ring + n.radius * Defs.PLACEMENT_RING:
+			return "Too close to another construct"
 	for p in get_tree().get_nodes_in_group("planets"):
 		if p.global_position.distance_to(pos) < p.radius + 40.0:
 			return "Too close to a planet"
@@ -777,6 +781,15 @@ func starbase_site_problem(pos: Vector2) -> String:
 	if is_blocked(pos, 50.0):
 		return "Blocked by the debris ring"
 	return ""
+
+func starbase_site_problem(pos: Vector2) -> String:
+	return site_problem("starbase", pos)
+
+func depot_site_problem(pos: Vector2) -> String:
+	return site_problem("depot", pos)
+
+func station_site_problem(pos: Vector2) -> String:
+	return site_problem("station", pos)
 
 # ---------------------------------------------------------------- spawning
 
@@ -1785,6 +1798,19 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "placering":
+		# Dev: the placement ring is the same rule for every construct.
+		var hb2 := nearest_starbase(player_id, Vector2.ZERO)
+		for kind in ["starbase", "depot", "station"]:
+			print("RINGS %-9s radius=%d ring=%d" % [kind, int(Defs.construct_def(kind)["radius"]), int(Defs.placement_ring(kind))])
+		var base_ring := Defs.placement_ring("starbase")
+		for kind2 in ["starbase", "depot", "station"]:
+			var need: float = base_ring + Defs.placement_ring(kind2)
+			var just_in := hb2.global_position + Vector2(need + 6.0, 0)
+			var just_out := hb2.global_position + Vector2(need - 6.0, 0)
+			print("RINGS %-9s beside starbase: at %dpx ok=%s | at %dpx ok=%s (want true/false)" % [
+				kind2, int(need + 6.0), str(site_problem(kind2, just_in) == ""),
+				int(need - 6.0), str(site_problem(kind2, just_out) == "")])
 	if OS.get_environment("SL_SHOT_OPEN") == "station":
 		# Dev: a Constructor builds a Mining Station beside a far belt, then a
 		# barge unloads there instead of flying home.
@@ -2305,22 +2331,6 @@ func nearest_pocket(p: Vector2, max_dist: float) -> NebulaPocket:
 
 ## "" if a Weapons Depot can go at pos, else why not. Like a starbase site,
 ## but it only needs a little room from other stations.
-func depot_site_problem(pos: Vector2) -> String:
-	if not MAP_RECT.grow(-60).has_point(pos):
-		return "Too close to the edge of the system"
-	for n in get_tree().get_nodes_in_group("depots") + get_tree().get_nodes_in_group("starbases"):
-		if n.global_position.distance_to(pos) < Defs.WEAPONS_DEPOT["min_spacing"] * (0.4 if n is Starbase else 1.0) + 40.0:
-			return "Too close to another station"
-	for p in get_tree().get_nodes_in_group("planets"):
-		if p.global_position.distance_to(pos) < p.radius + 40.0:
-			return "Too close to a planet"
-	for s in get_tree().get_nodes_in_group("stars"):
-		if s.global_position.distance_to(pos) < s.radiation_radius + 40.0:
-			return "Too close to the star"
-	if is_blocked(pos, 40.0):
-		return "Blocked by the debris ring"
-	return ""
-
 ## Where a harvester can unload: a starbase or a Mining Station, whichever
 ## is nearer. Null when the player has neither.
 func nearest_dropoff(pid: int, pos: Vector2) -> SpaceEntity:
@@ -2333,29 +2343,6 @@ func nearest_dropoff(pid: int, pos: Vector2) -> SpaceEntity:
 				best_d = d
 				best = st
 	return best
-
-## Site rules for anything a Constructor builds ("" when the spot is fine).
-func site_problem(kind: String, pos: Vector2) -> String:
-	match kind:
-		"depot": return depot_site_problem(pos)
-		"station": return station_site_problem(pos)
-		_: return starbase_site_problem(pos)
-
-func station_site_problem(pos: Vector2) -> String:
-	if not MAP_RECT.grow(-60).has_point(pos):
-		return "Too close to the edge of the system"
-	for n in get_tree().get_nodes_in_group("mining_stations") + get_tree().get_nodes_in_group("starbases"):
-		if n.global_position.distance_to(pos) < Defs.MINING_STATION["min_spacing"]:
-			return "Too close to another station"
-	for p in get_tree().get_nodes_in_group("planets"):
-		if p.global_position.distance_to(pos) < p.radius + 30.0:
-			return "Too close to a planet"
-	for s in get_tree().get_nodes_in_group("stars"):
-		if s.global_position.distance_to(pos) < s.radiation_radius + 30.0:
-			return "Too close to the star"
-	if is_blocked(pos, 30.0):
-		return "Blocked"
-	return ""
 
 func found_station(pid: int, pos: Vector2) -> MiningStation:
 	var st := MiningStation.new()

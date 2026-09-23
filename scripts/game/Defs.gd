@@ -37,63 +37,63 @@ const BASE_SHIPS := {
 	"miner": {
 		"name": "Mining Barge", "role": "miner",
 		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0,
-		"cost": {"minerals": 50}, "build_time": 6.0, "upkeep": 3.0,
+		"cost": {"minerals": 50}, "build_time": 15.0, "upkeep": 3.0,
 		"cargo": 10, "harvest": 36.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"skimmer": {
 		"name": "Gas Skimmer", "role": "skimmer", "requires": "gas_skimming",
 		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
-		"cost": {"minerals": 90, "spice": 10}, "build_time": 12.0, "upkeep": 6.0,
+		"cost": {"minerals": 90, "spice": 10}, "build_time": 22.0, "upkeep": 6.0,
 		"cargo": 20, "harvest": 18.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"colony": {
 		"name": "Colony Ship", "role": "colony",
 		"hp": 100.0, "armor": 20.0, "shield": 20.0, "speed": 60.0, "radius": 9.0,
-		"cost": {"minerals": 80, "spice": 10}, "build_time": 15.0, "upkeep": 6.0,
+		"cost": {"minerals": 80, "spice": 10}, "build_time": 26.0, "upkeep": 6.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"constructor": {
 		"name": "Constructor", "role": "constructor",
 		"hp": 110.0, "armor": 40.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
-		"cost": {"minerals": 120, "spice": 5}, "build_time": 12.0, "upkeep": 6.0,
+		"cost": {"minerals": 120, "spice": 5}, "build_time": 22.0, "upkeep": 6.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
 		"hp": 70.0, "armor": 20.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
-		"cost": {"minerals": 75}, "build_time": 14.0, "upkeep": 6.0,
+		"cost": {"minerals": 75}, "build_time": 20.0, "upkeep": 6.0,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm", "refit": {"minerals": 5, "time": 15.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
 		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 11.0,
-		"cost": {"minerals": 170, "spice": 5}, "build_time": 17.0, "upkeep": 15.0,
+		"cost": {"minerals": 170, "spice": 5}, "build_time": 32.0, "upkeep": 15.0,
 		"weapon": "laser", "damage": 13.0, "cooldown": 0.9, "range": 190.0, "sensor": 330.0, "job": "escort", "refit": {"minerals": 10, "time": 25.0},
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
 		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
-		"cost": {"minerals": 350, "spice": 25}, "build_time": 28.0, "upkeep": 36.0,
+		"cost": {"minerals": 350, "spice": 25}, "build_time": 50.0, "upkeep": 36.0,
 		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 	},
 	"scout": {
 		"name": "Scout", "role": "scout",
 		"hp": 50.0, "shield": 10.0, "speed": 155.0, "radius": 7.0,
-		"cost": {"minerals": 45}, "build_time": 6.0, "upkeep": 3.0,
+		"cost": {"minerals": 45}, "build_time": 10.0, "upkeep": 3.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 600.0, "job": "beacon",
 	},
 	"heatshield": {
 		"name": "Heat Shield Frigate", "role": "warship", "requires": "deflectors",
 		"hp": 130.0, "armor": 70.0, "shield": 140.0, "speed": 80.0, "radius": 11.0,
-		"cost": {"minerals": 110, "spice": 10}, "build_time": 14.0, "upkeep": 12.0,
+		"cost": {"minerals": 110, "spice": 10}, "build_time": 24.0, "upkeep": 12.0,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
 	},
 	"tender": {
 		"name": "Repair Tender", "role": "support", "requires": "reinforced_frames",
 		"hp": 150.0, "armor": 90.0, "shield": 60.0, "speed": 75.0, "radius": 11.0,
-		"cost": {"minerals": 130, "spice": 10}, "build_time": 16.0, "upkeep": 15.0,
+		"cost": {"minerals": 130, "spice": 10}, "build_time": 28.0, "upkeep": 15.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 300.0, "job": "field_repair",
 	},
 }
@@ -114,7 +114,7 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 const WEAPONS_DEPOT := {
 	"name": "Weapons Depot", "requires": "depots", "hp": 900.0, "armor": 400.0, "shield": 300.0, "radius": 22.0,
 	"cost": {"minerals": 250, "spice": 20}, "build_time": 30.0, "upkeep": 18.0,
-	"capacity": 10, "min_spacing": 250.0,
+	"capacity": 10,
 }
 
 const STARBASE := {
@@ -125,19 +125,23 @@ const STARBASE := {
 	"upkeep": 30.0,
 	# Station reactors and ore refineries.
 	"energy_per_sec": 2.0, "minerals_per_sec": 0.5,
-	"min_spacing": 500.0,
 }
 
 ## Mining Station: a cheap, lightly armed drop-off built on site by a
 ## Constructor. Harvesters unload here instead of flying home, which is what
 ## makes a distant belt worth working. It builds nothing, and losing one
 ## never loses the match.
+## Every construct keeps a clear ring around it, sized by how big it is:
+## radius x PLACEMENT_RING. Two constructs may not overlap rings, so a
+## starbase needs more room than a Mining Station without a special case,
+## and any new construct gets sensible spacing for free.
+const PLACEMENT_RING := 6.0
+
 const MINING_STATION := {
 	"name": "Mining Station", "hp": 900.0, "armor": 300.0, "shield": 300.0, "radius": 16.0,
 	"weapon": "laser", "damage": 8.0, "cooldown": 1.4, "range": 190.0,
 	"cost": {"minerals": 150}, "build_time": 20.0,
 	"upkeep": 9.0,
-	"min_spacing": 220.0,
 }
 
 ## Asteroid reserves scale with rock size: amount = width_px^2 * this.
@@ -507,3 +511,14 @@ static func action_for_key(k: Key) -> String:
 		if key_for(h[0]) == k:
 			return h[0]
 	return ""
+
+## The def for anything a Constructor builds ("starbase", "depot", "station").
+static func construct_def(kind: String) -> Dictionary:
+	match kind:
+		"depot": return WEAPONS_DEPOT
+		"station": return MINING_STATION
+		_: return STARBASE
+
+## How much open space this construct needs around itself (see PLACEMENT_RING).
+static func placement_ring(kind: String) -> float:
+	return float(construct_def(kind)["radius"]) * PLACEMENT_RING

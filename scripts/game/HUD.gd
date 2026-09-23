@@ -1034,18 +1034,22 @@ func _draw_overlay() -> void:
 		_overlay.draw_rect(_drag_rect, Color(0.31, 0.7, 1.0, 0.12))
 		_overlay.draw_rect(_drag_rect, Color(0.31, 0.7, 1.0, 0.9), false, 1.0)
 	var xf := game.get_viewport().get_canvas_transform()
+	# Placing a construct: its hull and the ring of clear space it needs
+	# (Defs.PLACEMENT_RING), green where it fits and red where it does not.
+	var placing := ""
 	if game.placing_starbase:
+		placing = "starbase"
+	elif game.placing_depot:
+		placing = "depot"
+	elif game.placing_station:
+		placing = "station"
+	if placing != "":
 		var wp := game.get_global_mouse_position()
-		var ok := game.starbase_site_problem(wp) == ""
-		var sp: Vector2 = xf * wp
 		var z := game.camera.zoom.x
-		var c := GOOD if ok else BAD
-		_overlay.draw_arc(sp, Defs.STARBASE["radius"] * z, 0, TAU, 48, c, 2.0)
-		_overlay.draw_arc(sp, Defs.STARBASE["min_spacing"] * z, 0, TAU, 96, Color(c, 0.35), 1.0)
-	if game.placing_depot:
-		var wp2 := game.get_global_mouse_position()
-		var c2 := GOOD if game.depot_site_problem(wp2) == "" else BAD
-		_overlay.draw_arc(xf * wp2, Defs.WEAPONS_DEPOT["radius"] * game.camera.zoom.x, 0, TAU, 48, c2, 2.0)
+		var c := GOOD if game.site_problem(placing, wp) == "" else BAD
+		var sp: Vector2 = xf * wp
+		_overlay.draw_arc(sp, float(Defs.construct_def(placing)["radius"]) * z, 0, TAU, 48, c, 2.0)
+		_overlay.draw_arc(sp, Defs.placement_ring(placing) * z, 0, TAU, 96, Color(c, 0.35), 1.0)
 	# Target flashes: a ring with corner brackets, blinking twice.
 	var real_now := Time.get_ticks_msec() / 1000.0
 	for f in _flashes:
