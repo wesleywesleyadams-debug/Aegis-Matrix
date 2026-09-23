@@ -39,7 +39,7 @@ const BASE_SHIPS := {
 		"name": "Gas Skimmer", "role": "skimmer", "requires": "gas_skimming",
 		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
 		"cost": {"minerals": 90, "spice": 10}, "build_time": 12.0, "upkeep": 0.1,
-		"cargo": 5, "harvest": 0.5,
+		"cargo": 20, "harvest": 0.25,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"colony": {

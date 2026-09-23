@@ -7,17 +7,15 @@ extends Node2D
 var resource: String = "spice"
 var amount: int = 1_000_000
 var radius: float = 18.0
-## Nebula spice never runs out, so it comes slowly: each load takes
-## MINE_TIME_MULT times as long and carries at most LOAD spice.
-const MINE_TIME_MULT := 5.0
-const LOAD := 3
+## Nebula spice never runs out, so it comes slowly: harvesters gather at
+## Defs.HARVEST_NEBULA_MULT of their normal rate here.
 
 func _ready() -> void:
 	add_to_group("nebula_pockets")
 	z_index = -1
 
 func extract(n: int) -> int:
-	return mini(n, LOAD)
+	return n
 
 func _process(_delta: float) -> void:
 	queue_redraw()

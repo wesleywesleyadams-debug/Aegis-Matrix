@@ -1866,7 +1866,7 @@ func _enter_dev_capture() -> void:
 			last[0] = sk.cargo
 		get_tree().physics_frame.connect(poll)
 		get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.2).timeout.connect(func():
-			print("SKIM trips home %d (x%d spice), state %s, cargo %d %s, spot %.0f px from home" % [trips[0], NebulaPocket.LOAD, Ship.State.keys()[sk.state], sk.cargo, sk.cargo_type, spot.distance_to(home.global_position)]))
+			print("SKIM trips home %d, state %s, cargo %d %s, spot %.0f px from home" % [trips[0], Ship.State.keys()[sk.state], sk.cargo, sk.cargo_type, spot.distance_to(home.global_position)]))
 	if OS.get_environment("SL_SHOT_OPEN") == "jobs":
 		# Dev: job ships at work. Heat Shield + 3 corvettes inside the sun's
 		# radiation (right) vs 3 unprotected corvettes (left); a Tender beside
