@@ -76,6 +76,8 @@ var focused: bool = false:
 ## Pops currently going unfed, and how long they have been hungry.
 var hungry: float = 0.0
 var starve_timer: float = 0.0
+## Seconds of unbroken, properly fed growth conditions (see Defs.REGROW_SECONDS).
+var fed_timer: float = 0.0
 ## Last computed per-minute food figures and per-second outputs, for the HUD.
 var food_made_per_min: float = 0.0
 var food_eaten_per_min: float = 0.0
@@ -257,8 +259,14 @@ func _economy(dt: float) -> void:
 		# Fed again within the window: nobody dies.
 		hungry = 0.0
 		starve_timer = 0.0
+	# Growth needs real food in the stockpile, not spice covering a deficit,
+	# and it only resumes after REGROW_SECONDS of that.
+	if starving or g.resources[owner_id]["food"] <= 0.0:
+		fed_timer = 0.0
+	else:
+		fed_timer += dt
 	var cap := max_pop()
-	if not starving and pop < cap and not under_siege():
+	if fed_timer >= Defs.REGROW_SECONDS and pop < cap and not under_siege():
 		var pairs := floorf(pop / 2.0)
 		growth_per_min = pairs * Defs.GROWTH_PER_PAIR_PER_MIN * g.mod(owner_id, "growth")
 		pop = minf(cap, pop + growth_per_min / 60.0 * dt)
@@ -322,6 +330,7 @@ func _depopulate(attacker: int) -> void:
 	construction_queue.clear()
 	hungry = 0.0
 	starve_timer = 0.0
+	fed_timer = 0.0
 	shield = 0.0
 	siege_start_pop = 0.0
 	owner_id = 0

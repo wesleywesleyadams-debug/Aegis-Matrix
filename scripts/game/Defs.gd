@@ -164,6 +164,9 @@ const GROWTH_PER_PAIR_PER_MIN := 1.0
 ## die; feeding them before then (food or spice) resets the clock.
 const FOOD_PER_POP_PER_MIN := 1.0
 const STARVE_SECONDS := 60.0
+## Growth stops the moment the food stockpile runs out, and only restarts
+## once there has been food in it continuously for this long.
+const REGROW_SECONDS := 5.0
 ## Food comes only from Farms (see BUILDINGS), scaled by planet fertility.
 ## Planets and pops produce and consume no energy on their own; only Power
 ## Plants (and starbase reactors) make it.
