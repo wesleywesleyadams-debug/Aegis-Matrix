@@ -162,8 +162,6 @@ const HOME_START_POP := 200.0
 const GROWTH_PER_PAIR_PER_MIN := 1.0
 ## Every pop eats 1 food per minute, from food or, failing that, spice.
 const FOOD_PER_POP_PER_MIN := 1.0
-## A world that cannot be fed at all loses this many pops per second.
-const STARVE_POPS_PER_SEC := 1.0
 ## A shortage ends only once the world has been fed continuously for this
 ## long; until then it neither grows nor stops losing pops.
 const REGROW_SECONDS := 5.0

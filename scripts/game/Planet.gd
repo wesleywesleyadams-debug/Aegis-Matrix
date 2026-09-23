@@ -244,7 +244,7 @@ func _economy(dt: float) -> void:
 	var fed := g.pay_over_time(owner_id, {"food": food_eaten_per_min / 60.0}, dt) if pop > 0.0 else 1.0
 	# A shortage runs from the moment a world cannot be fed (spice counts:
 	# pops living on it keep growing) until it has been fed for
-	# REGROW_SECONDS: no growth, and a pop dies every second meanwhile.
+	# REGROW_SECONDS. While it lasts, growth runs in reverse.
 	if fed < 0.999:
 		starving = true
 		fed_timer = 0.0
@@ -252,19 +252,22 @@ func _economy(dt: float) -> void:
 		fed_timer += dt
 		if fed_timer >= Defs.REGROW_SECONDS:
 			starving = false
-	if starving and pop > 0.0:
-		var died := minf(Defs.STARVE_POPS_PER_SEC * dt, pop)
-		pop -= died
-		hungry += died
-		if owner_id == g.player_id and hungry >= 1.0:
-			hungry = 0.0
-			g.alert("Pops are starving on %s." % planet_name, "alert_starved", false, global_position)
+	if starving:
+		hungry = pop
 	else:
 		hungry = 0.0
+	# Growth, or the same curve running backwards while the world starves:
+	# a big population shrinks as fast as it would have grown.
 	var cap := max_pop()
-	if not starving and pop < cap and not under_siege():
-		var pairs := floorf(pop / 2.0)
-		growth_per_min = pairs * Defs.GROWTH_PER_PAIR_PER_MIN * g.mod(owner_id, "growth")
+	var pairs := floorf(pop / 2.0)
+	var rate: float = pairs * Defs.GROWTH_PER_PAIR_PER_MIN * g.mod(owner_id, "growth")
+	if starving:
+		growth_per_min = -rate
+		pop = maxf(0.0, pop + growth_per_min / 60.0 * dt)
+		if owner_id == g.player_id and pop <= 0.0:
+			g.alert("%s has starved to death." % planet_name, "alert_starved", false, global_position)
+	elif pop < cap and not under_siege():
+		growth_per_min = rate
 		pop = minf(cap, pop + growth_per_min / 60.0 * dt)
 	else:
 		growth_per_min = 0.0
