@@ -325,7 +325,7 @@ func refresh() -> void:
 		if planet.spice_out > 0.0:
 			s += "   Spice %.2f/s" % planet.spice_out
 		if planet.starving:
-			s += "\nSTARVING: %d pops die in %ds unless fed" % [int(planet.hungry), int(Defs.STARVE_SECONDS - planet.starve_timer)]
+			s += "\nSTARVING: losing %d pop/s until food recovers" % int(Defs.STARVE_POPS_PER_SEC)
 	else:
 		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
 		if planet.type_def().has("spice_reserve"):

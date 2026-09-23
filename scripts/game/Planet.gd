@@ -75,7 +75,6 @@ var focused: bool = false:
 		queue_redraw()
 ## Pops currently going unfed, and how long they have been hungry.
 var hungry: float = 0.0
-var starve_timer: float = 0.0
 ## Seconds of unbroken, properly fed growth conditions (see Defs.REGROW_SECONDS).
 var fed_timer: float = 0.0
 ## Last computed per-minute food figures and per-second outputs, for the HUD.
@@ -243,30 +242,27 @@ func _economy(dt: float) -> void:
 	_run_buildings(dt)
 	# Every pop eats from the empire stockpile; spice covers any deficit.
 	var fed := g.pay_over_time(owner_id, {"food": food_eaten_per_min / 60.0}, dt) if pop > 0.0 else 1.0
-	starving = fed < 0.999
-	if starving:
-		# The unfed share starts (or keeps) a one-minute countdown.
-		hungry = maxf(hungry, pop * (1.0 - fed))
-		starve_timer += dt
-		if starve_timer >= Defs.STARVE_SECONDS:
-			var died := minf(hungry, pop)
-			pop -= died
-			hungry = 0.0
-			starve_timer = 0.0
-			if owner_id == g.player_id and died >= 1.0:
-				g.alert("%d pops starved on %s." % [int(died), planet_name], "alert_starved", false, global_position)
-	else:
-		# Fed again within the window: nobody dies.
-		hungry = 0.0
-		starve_timer = 0.0
-	# Growth needs real food in the stockpile, not spice covering a deficit,
-	# and it only resumes after REGROW_SECONDS of that.
-	if starving or g.resources[owner_id]["food"] <= 0.0:
+	# A shortage runs from the moment a world cannot be fed (spice counts:
+	# pops living on it keep growing) until it has been fed for
+	# REGROW_SECONDS: no growth, and a pop dies every second meanwhile.
+	if fed < 0.999:
+		starving = true
 		fed_timer = 0.0
 	else:
 		fed_timer += dt
+		if fed_timer >= Defs.REGROW_SECONDS:
+			starving = false
+	if starving and pop > 0.0:
+		var died := minf(Defs.STARVE_POPS_PER_SEC * dt, pop)
+		pop -= died
+		hungry += died
+		if owner_id == g.player_id and hungry >= 1.0:
+			hungry = 0.0
+			g.alert("Pops are starving on %s." % planet_name, "alert_starved", false, global_position)
+	else:
+		hungry = 0.0
 	var cap := max_pop()
-	if fed_timer >= Defs.REGROW_SECONDS and pop < cap and not under_siege():
+	if not starving and pop < cap and not under_siege():
 		var pairs := floorf(pop / 2.0)
 		growth_per_min = pairs * Defs.GROWTH_PER_PAIR_PER_MIN * g.mod(owner_id, "growth")
 		pop = minf(cap, pop + growth_per_min / 60.0 * dt)
@@ -329,7 +325,6 @@ func _depopulate(attacker: int) -> void:
 	construction = {}
 	construction_queue.clear()
 	hungry = 0.0
-	starve_timer = 0.0
 	fed_timer = 0.0
 	shield = 0.0
 	siege_start_pop = 0.0

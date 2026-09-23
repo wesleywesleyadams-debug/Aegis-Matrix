@@ -160,12 +160,12 @@ const START_POP := 100.0
 const HOME_START_POP := 200.0
 ## 1 new pop per minute for every 2 pop (a "pop pair").
 const GROWTH_PER_PAIR_PER_MIN := 1.0
-## Every pop eats 1 food per minute. Pops left unfed for STARVE_SECONDS
-## die; feeding them before then (food or spice) resets the clock.
+## Every pop eats 1 food per minute, from food or, failing that, spice.
 const FOOD_PER_POP_PER_MIN := 1.0
-const STARVE_SECONDS := 60.0
-## Growth stops the moment the food stockpile runs out, and only restarts
-## once there has been food in it continuously for this long.
+## A world that cannot be fed at all loses this many pops per second.
+const STARVE_POPS_PER_SEC := 1.0
+## A shortage ends only once the world has been fed continuously for this
+## long; until then it neither grows nor stops losing pops.
 const REGROW_SECONDS := 5.0
 ## Food comes only from Farms (see BUILDINGS), scaled by planet fertility.
 ## Planets and pops produce and consume no energy on their own; only Power

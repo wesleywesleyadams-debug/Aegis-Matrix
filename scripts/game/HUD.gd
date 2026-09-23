@@ -890,7 +890,7 @@ func _planet_text(p: Planet) -> String:
 	lines += "\nFood: grown %s/min · eaten %s/min · net %+d/min" % [_fmt(p.food_made_per_min), _fmt(p.food_eaten_per_min), int(p.food_made_per_min - p.food_eaten_per_min)]
 	lines += "\nEnergy %.1f/s%s" % [p.energy_out, ("   Spice %.2f/s" % p.spice_out) if p.spice_out > 0.0 else ""]
 	if p.starving:
-		lines += "\nSTARVING: %s pops die in %ds unless fed" % [_fmt(p.hungry), int(Defs.STARVE_SECONDS - p.starve_timer)]
+		lines += "\nSTARVING: losing %d pop/s until food recovers" % int(Defs.STARVE_POPS_PER_SEC)
 	return lines
 
 # ---------------------------------------------------------------- per frame

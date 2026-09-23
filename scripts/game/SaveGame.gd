@@ -55,7 +55,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			"owner": p.owner_id, "pop": p.pop, "buildings": Array(p.buildings),
 			"construction": p.construction, "construction_queue": p.construction_queue,
 			"amount": p.amount, "depleted_timer": p.depleted_timer,
-			"hungry": p.hungry, "starve_timer": p.starve_timer,
+					"hungry": p.hungry, "fed_timer": p.fed_timer,
 			"siege_start_pop": p.siege_start_pop, "since_hit": Game.now() - p.last_hit_time, "shield": p.shield, "spice_reserve": p.spice_reserve, "max_spice_reserve": p.max_spice_reserve,
 		}
 	for a in tree.get_nodes_in_group("asteroids"):
@@ -180,7 +180,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		if p.depleted_timer > 0.0:
 			(p.get_node("Sprite") as Sprite2D).modulate = Color(0.45, 0.45, 0.5)
 		p.hungry = float(d.get("hungry", 0.0))
-		p.starve_timer = float(d.get("starve_timer", 0.0))
+		p.fed_timer = float(d.get("fed_timer", Defs.REGROW_SECONDS))
 		p.siege_start_pop = float(d.get("siege_start_pop", 0.0))
 		p.shield = float(d.get("shield", p.max_shield()))
 		p.spice_reserve = float(d.get("spice_reserve", p.spice_reserve))

@@ -330,7 +330,7 @@ func _page_overview() -> void:
 	_para("Sensors give fog of war. Unexplored space is black; explored space you can't currently see is dimmed and shows only terrain and the last owner you saw on a planet. Enemy ships and shots appear only inside your sensor range, and an enemy starbase stays on your map once you have seen it. Ships in a spice nebula are hidden unless something of yours is close, a Scout is close, or one of its beacons is watching; ion storms halve sensor range. The AI plays under exactly the same rules.")
 	_heading("Resources", EDGE_LIT)
 	_table(["Resource", "Comes from", "Pays for"], [
-		[["Food", Color("8fe060")], "Farms only", "1 per pop per minute; starving pops die"],
+		[["Food", Color("8fe060")], "Farms only", "1 per pop per minute (spice covers a shortfall); an unfed world loses 1 pop/s"],
 		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes, starbase refineries", "Ships, buildings, starbases"],
 		[["Energy", Color("ffd84a")], "Power plants, starbase reactors", "Research, fleet and starbase upkeep, shield regeneration"],
 		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1"],
