@@ -329,6 +329,8 @@ func _physics_process(delta: float) -> void:
 				if global_position.distance_to(mine_target.global_position) <= reach + 4.0:
 					state = State.MINING
 					_mine_timer = def["mine_time"] * (NebulaPocket.MINE_TIME_MULT if mine_target is NebulaPocket else 1.0)
+					if mine_target.resource == "spice" and not (mine_target is NebulaPocket):
+						_mine_timer *= Defs.SPICE_MINE_MULT
 				else:
 					desired = _arrive(mine_target.global_position, 1.0, reach)
 		State.MINING:

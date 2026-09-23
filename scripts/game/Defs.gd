@@ -32,7 +32,7 @@ const BASE_SHIPS := {
 		"name": "Mining Barge", "role": "miner",
 		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0,
 		"cost": {"minerals": 50}, "build_time": 6.0, "upkeep": 0.05,
-		"cargo": 10, "mine_time": 2.5,
+		"cargo": 10, "mine_time": 7.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"skimmer": {
@@ -324,6 +324,10 @@ static var SHIPS: Dictionary = _with_variants()
 ## a time by its own research line (Defs.TECHS, "mark_<class>" effects). Each
 ## mark makes that class alone tougher and harder-hitting, so late-game
 ## corvettes are a different animal from the ones built in minute one.
+## Spice is rarer than ore: mining it takes this much longer per load, so
+## a barge on a spice rock earns roughly 0.2 spice/s against 0.5 minerals/s.
+const SPICE_MINE_MULT := 2.6
+
 ## Which classes have a mark line (see HULL_MARKS).
 const MARK_LINES := ["corvette", "destroyer", "cruiser"]
 

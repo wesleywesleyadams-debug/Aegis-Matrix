@@ -9,7 +9,7 @@ var amount: int = 1_000_000
 var radius: float = 18.0
 ## Nebula spice never runs out, so it comes slowly: each load takes
 ## MINE_TIME_MULT times as long and carries at most LOAD spice.
-const MINE_TIME_MULT := 4.0
+const MINE_TIME_MULT := 5.0
 const LOAD := 3
 
 func _ready() -> void:

@@ -41,7 +41,7 @@ var _defs_tab: Button
 ## Layer icon per defense line (Defs.LAYER_COLORS).
 const LINE_ICONS := {"shields": "icon_layer_shield", "armor": "icon_layer_armor", "hull": "icon_layer_hull"}
 var _build_buttons := {}
-var _queue_row: HBoxContainer
+var _queue_row: HFlowContainer
 var _info_label: Label
 var _refresh: float = 0.0
 var planet_view: PlanetView
@@ -66,6 +66,9 @@ var _panel_keys := {}
 const SPEEDS: Array[float] = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0]
 const TIME_RATE := 0.5
 const NORMAL_SPEED := 2
+## The build queue sits between the selection panel and the minimap.
+const QUEUE_X := 670.0
+const QUEUE_W := 880.0
 
 func _ready() -> void:
 	game = get_parent()
@@ -313,9 +316,14 @@ func _build_selection_panel(root: Control) -> void:
 	_sel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sel_body.add_theme_constant_override("separation", 8)
 	panel.add_child(_sel_body)
-	# A starbase's build queue floats just above the panel.
-	_queue_row = HBoxContainer.new()
-	_queue_row.add_theme_constant_override("separation", 6)
+	# A starbase's build queue sits along the bottom, between the selection
+	# panel and the minimap, and wraps when the queue is long.
+	_queue_row = HFlowContainer.new()
+	_queue_row.add_theme_constant_override("h_separation", 6)
+	_queue_row.add_theme_constant_override("v_separation", 6)
+	_queue_row.alignment = FlowContainer.ALIGNMENT_BEGIN
+	_queue_row.custom_minimum_size = Vector2(QUEUE_W, 0)
+	_queue_row.size = Vector2(QUEUE_W, 0)
 	_queue_row.visible = false
 	root.add_child(_queue_row)
 
@@ -345,19 +353,8 @@ func _build_messages(root: Control) -> void:
 	_messages.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_messages)
 
-func _build_help(root: Control) -> void:
-	var l := _label("LMB select · drag box · RMB move/attack/mine/colonize · Ctrl+RMB attack-move · panel buttons QWE/ASD/ZXC · T stop · Tab warships · B starbase (again: next one) · Space next world · F build · R research · Ctrl+1-9 groups · arrows/edge/MMB pan · wheel zoom · Pause key pauses · - / = game speed · Esc clear selection or menu", DIM, 13)
-	l.anchor_top = 1.0
-	l.anchor_bottom = 1.0
-	l.anchor_right = 1.0
-	l.offset_left = 670
-	l.offset_right = -370
-	l.offset_top = -80
-	l.offset_bottom = -12
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(l)
+func _build_help(_root: Control) -> void:
+	pass   # the controls line lived here; the build queue uses that space now
 
 func _modal(root: Control, title: String, min_width: float = 360.0) -> Array:
 	var dim := ColorRect.new()
@@ -952,8 +949,9 @@ func _fit_selection_panel() -> void:
 	_sel_panel.size.y = 0.0
 	_sel_panel.position.y = _sel_panel.get_parent_area_size().y - 12.0 - _sel_panel.size.y
 	if _queue_row.visible:
-		_queue_row.size = Vector2.ZERO
-		_queue_row.position = Vector2(12.0, _sel_panel.position.y - _queue_row.size.y - 8.0)
+		# Bottom strip between the selection panel and the minimap.
+		_queue_row.size = Vector2(QUEUE_W, 0.0)
+		_queue_row.position = Vector2(QUEUE_X, _queue_row.get_parent_area_size().y - 12.0 - _queue_row.size.y)
 
 func set_drag_rect(r: Rect2) -> void:
 	_drag_rect = r
