@@ -1007,10 +1007,11 @@ func _handle_key(e: InputEventKey) -> void:
 		if placing_starbase or placing_depot:
 			placing_starbase = false
 			placing_depot = false
+		elif hud.research_open():
+			# The research screen sits on top, so it closes first.
+			hud.toggle_research()
 		elif is_instance_valid(focused_planet) or is_instance_valid(focused_asteroid) or is_instance_valid(focused_star):
 			clear_planet_focus()
-		elif hud.research_open():
-			hud.toggle_research()
 		elif not selection.is_empty():
 			# Esc clears the selection first; with nothing selected it opens the
 			# in-match menu.
@@ -1209,9 +1210,9 @@ func _focus_asteroid(a: Asteroid) -> void:
 	if a:
 		a.focused = true
 
+## Opens the planet close-up. The camera stays where the player put it:
+## the close-up grows in place around the planet.
 func _focus_planet(p: Planet) -> void:
-	if p and p != focused_planet:
-		center_on(p.global_position)
 	if is_instance_valid(focused_planet):
 		focused_planet.focused = false
 	focused_planet = p
@@ -1757,6 +1758,32 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "rclose":
+		# Dev: the research screen closes on Esc and on a click outside it.
+		hud.toggle_research()
+		await get_tree().process_frame
+		print("RCLOSE opened=%s" % str(hud.research_open()))
+		var out := InputEventMouseButton.new()
+		out.button_index = MOUSE_BUTTON_LEFT
+		out.pressed = true
+		out.position = Vector2(60, 60)
+		hud._research_modal.gui_input.emit(out)
+		await get_tree().process_frame
+		print("RCLOSE after outside click=%s" % str(hud.research_open()))
+		hud.toggle_research()
+		await get_tree().process_frame
+		var inside := InputEventMouseButton.new()
+		inside.button_index = MOUSE_BUTTON_LEFT
+		inside.pressed = true
+		inside.position = get_viewport().get_visible_rect().size / 2.0
+		var panel: Control = hud._research_modal.get_child(0).get_child(0)
+		print("RCLOSE panel rect=%s center click inside=%s" % [str(panel.get_global_rect()), str(panel.get_global_rect().has_point(inside.position))])
+		var esc := InputEventKey.new()
+		esc.keycode = KEY_ESCAPE
+		esc.pressed = true
+		_handle_key(esc)
+		await get_tree().process_frame
+		print("RCLOSE after esc=%s" % str(hud.research_open()))
 	if OS.get_environment("SL_SHOT_OPEN") == "qmini":
 		# Dev: minimap right-clicks, plain and shift-held, must behave like
 		# right-clicks on the map.

@@ -416,6 +416,12 @@ func _build_research(root: Control) -> void:
 	var parts := _modal(root, "RESEARCH", 1400.0)
 	_research_modal = parts[0]
 	_research_modal.color = Color(0, 0, 0, 0.45)
+	# Clicking the dimmed area outside the panel closes the screen (Esc too).
+	_research_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_research_modal.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			toggle_research()
+			_research_modal.accept_event())
 	var v: VBoxContainer = parts[1]
 	v.add_child(_label("One project at a time. Costs are paid gradually while researching; progress pauses when you can't pay (spice covers energy shortfalls).\nClick a tech to start it; click the active one to cancel it.", DIM, 13))
 	var legend := HBoxContainer.new()
