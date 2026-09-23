@@ -431,7 +431,7 @@ func _build_research(root: Control) -> void:
 	var pages := {}
 
 	# Weapons, Economy and anything ungrouped: columns by tier.
-	for group in ["weapons", "constructs", "worlds", "economy", "general"]:
+	for group in ["weapons", "constructs", "worlds", "logistics", "general"]:
 		var cols := HBoxContainer.new()
 		cols.add_theme_constant_override("separation", 18)
 		cols.custom_minimum_size = PAGE_SIZE
@@ -498,7 +498,7 @@ func _build_research(root: Control) -> void:
 					defs.add_child(_tech_button(id, 300.0))
 	pages["defense"] = defs
 
-	var order := [["warships", "War Ships"], ["weapons", "Weapons"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["economy", "Economy"], ["general", "General"]]
+	var order := [["warships", "War Ships"], ["weapons", "Weapons"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"], ["general", "General"]]
 	var buttons := {}
 	for pair in order:
 		if not pages.has(pair[0]):
