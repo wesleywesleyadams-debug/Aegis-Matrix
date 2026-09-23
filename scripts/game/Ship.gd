@@ -389,13 +389,12 @@ func _physics_process(delta: float) -> void:
 				face_target = null
 		State.BUILD:
 			if global_position.distance_to(build_site) <= 8.0:
-				var is_depot := build_kind == "depot"
-				var problem: String = Game.instance.depot_site_problem(build_site) if is_depot else Game.instance.starbase_site_problem(build_site)
+				var problem: String = Game.instance.site_problem(build_kind, build_site)
 				if problem == "":
-					if is_depot:
-						Game.instance.found_depot(owner_id, build_site, build_variant)
-					else:
-						Game.instance.found_starbase(owner_id, build_site)
+					match build_kind:
+						"depot": Game.instance.found_depot(owner_id, build_site, build_variant)
+						"station": Game.instance.found_station(owner_id, build_site)
+						_: Game.instance.found_starbase(owner_id, build_site)
 					_dead = true
 					died.emit(self)
 					queue_free()
@@ -420,7 +419,8 @@ func _physics_process(delta: float) -> void:
 				elif refit_depot.has_room():
 					refit_depot.dock(self)
 		State.RETURN:
-			var base := Game.instance.nearest_starbase(owner_id, global_position)
+			# Unload at whichever drop-off is closest: starbase or Mining Station.
+			var base := Game.instance.nearest_dropoff(owner_id, global_position)
 			if base == null:
 				state = State.IDLE
 			else:
@@ -748,6 +748,16 @@ func _become(new_type: String) -> void:
 		g.notify("Refit complete: %s." % def["name"], "note_ship", global_position)
 		g.selection_changed.emit()
 	queue_redraw()
+
+## Builds a Mining Station on site; the Constructor is used up doing it.
+func order_build_station(pos: Vector2) -> void:
+	if def["role"] != "constructor":
+		return
+	build_site = pos
+	build_kind = "station"
+	state = State.BUILD
+	move_goal = pos
+	target = null
 
 func order_build_depot(pos: Vector2, v: String = "plasma") -> void:
 	if def["role"] != "constructor":

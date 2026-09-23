@@ -37,6 +37,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"asteroids": {},
 		"starbases": [],
 		"depots": [],
+		"stations": [],
 		"ships": [],
 		"camera": _v(game.camera.global_position),
 	}
@@ -75,6 +76,10 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		if dp.is_alive():
 			data["depots"].append({"owner": dp.owner_id, "pos": _v(dp.global_position), "hp": dp.hp, "armor": dp.armor, "shield": dp.shield,
 				"under_construction": dp.under_construction, "construct_progress": dp.construct_progress, "seen": dp.get_meta("seen", false), "variant": dp.variant})
+	for st in tree.get_nodes_in_group("mining_stations"):
+		if st.is_alive():
+			data["stations"].append({"owner": st.owner_id, "pos": _v(st.global_position), "hp": st.hp, "armor": st.armor, "shield": st.shield,
+				"under_construction": st.under_construction, "construct_progress": st.construct_progress, "seen": st.get_meta("seen", false)})
 	for s in tree.get_nodes_in_group("ships"):
 		if not s.is_alive():
 			continue
@@ -242,9 +247,10 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			a.queue_free()
 
 	# Replace the scene's starting ships and starbases with the saved ones.
-	for n in tree.get_nodes_in_group("ships") + tree.get_nodes_in_group("starbases"):
+	for n in tree.get_nodes_in_group("ships") + tree.get_nodes_in_group("starbases") + tree.get_nodes_in_group("mining_stations"):
 		n.remove_from_group("ships")
 		n.remove_from_group("starbases")
+		n.remove_from_group("mining_stations")
 		n.remove_from_group("entities")
 		n.get_parent().remove_child(n)
 		n.free()
@@ -277,6 +283,17 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		dp.armor = float(d.get("armor", 0.0))
 		dp.shield = float(d.get("shield", 0.0))
 		dp.set_meta("seen", bool(d.get("seen", false)))
+	for d in data.get("stations", []):
+		var st := MiningStation.new()
+		st.owner_id = int(d["owner"])
+		st.under_construction = bool(d.get("under_construction", false))
+		st.construct_progress = float(d.get("construct_progress", 0.0))
+		st.position = _p(d["pos"])
+		game.starbases_root.add_child(st)
+		st.hp = float(d["hp"])
+		st.armor = float(d.get("armor", 0.0))
+		st.shield = float(d.get("shield", 0.0))
+		st.set_meta("seen", bool(d.get("seen", false)))
 	for d in data.get("ships", []):
 		if not Defs.SHIPS.has(d["type"]):
 			continue

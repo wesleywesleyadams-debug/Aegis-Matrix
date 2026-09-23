@@ -63,6 +63,8 @@ var job_ships := {}
 var placing_starbase: bool = false
 ## Placing a Weapons Depot (Constructor, E).
 var placing_depot: bool = false
+## Placing a Mining Station (see start_station_placement).
+var placing_station: bool = false
 
 var _grid := {}
 var _grid_big := {}
@@ -966,10 +968,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _handle_mouse_button(e: InputEventMouseButton) -> void:
 	match e.button_index:
 		MOUSE_BUTTON_LEFT:
-			if placing_starbase or placing_depot:
+			if placing_starbase or placing_depot or placing_station:
 				if e.pressed:
 					if placing_depot:
 						_place_depot(get_global_mouse_position())
+					elif placing_station:
+						_place_station(get_global_mouse_position())
 					else:
 						_place_starbase(get_global_mouse_position())
 				return
@@ -987,9 +991,10 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 				_dragging = false
 		MOUSE_BUTTON_RIGHT:
 			if e.pressed and not is_over:
-				if placing_starbase or placing_depot:
+				if placing_starbase or placing_depot or placing_station:
 					placing_starbase = false
 					placing_depot = false
+					placing_station = false
 				else:
 					_issue_command(get_global_mouse_position(), e.ctrl_pressed, e.shift_pressed)
 		MOUSE_BUTTON_MIDDLE:
@@ -1004,9 +1009,10 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 func _handle_key(e: InputEventKey) -> void:
 	var k := e.keycode
 	if k == KEY_ESCAPE:
-		if placing_starbase or placing_depot:
+		if placing_starbase or placing_depot or placing_station:
 			placing_starbase = false
 			placing_depot = false
+			placing_station = false
 		elif hud.research_open():
 			# The research screen sits on top, so it closes first.
 			hud.toggle_research()
@@ -1112,6 +1118,27 @@ func start_starbase_placement() -> void:
 	placing_starbase = true
 	var n := starbase_count(player_id)
 	message.emit("Left-click open space to found starbase #%d (%s over %ds; each starbase's upkeep becomes x%.1f). Right-click to cancel." % [n + 1, Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"], starbase_upkeep_multiplier(player_id, n + 1)], Color("c3cde4"))
+
+func start_station_placement() -> void:
+	placing_station = true
+	message.emit("Left-click open space for a Mining Station (%s over %ds): harvesters unload there instead of flying home. Right-click to cancel." % [
+		Defs.cost_text(Defs.MINING_STATION["cost"]), int(Defs.MINING_STATION["build_time"])], Color("c3cde4"))
+
+func _place_station(pos: Vector2) -> void:
+	var why := station_site_problem(pos)
+	if why != "":
+		message.emit(why + ".", Color("ff8a5a"))
+		sfx.play_ui("deny")
+		return
+	var builders2: Array = _own_ships_selected().filter(func(s): return s.def["role"] == "constructor")
+	if builders2.is_empty():
+		placing_station = false
+		return
+	builders2.sort_custom(func(a, b): return a.global_position.distance_to(pos) < b.global_position.distance_to(pos))
+	builders2[0].order_build_station(pos)
+	placing_station = false
+	hud.ping(pos, Color("ffd46b"))
+	sfx.play_ui("click")
 
 func _place_starbase(pos: Vector2) -> void:
 	var why := starbase_site_problem(pos)
@@ -1758,6 +1785,31 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "station":
+		# Dev: a Constructor builds a Mining Station beside a far belt, then a
+		# barge unloads there instead of flying home.
+		var hs := nearest_starbase(player_id, Vector2.ZERO)
+		var far := nearest_asteroid(hs.global_position + Vector2(1200, 0), 3000.0, "minerals", null)
+		var spot: Vector2 = (far.global_position + Vector2(-120, 0)) if far else hs.global_position + Vector2(900, 0)
+		var con := spawn_ship("constructor", player_id, spot + Vector2(-60, 0))
+		con.order_build_station(spot)
+		var bg2 := spawn_ship("miner", player_id, spot + Vector2(40, 40))
+		if far:
+			bg2.order_mine(far)
+		print("STATION site problem=%s" % str(station_site_problem(spot)))
+		get_tree().create_timer(26.0).timeout.connect(func():
+			var sts := get_tree().get_nodes_in_group("mining_stations")
+			var st = sts[0] if sts.size() > 0 else null
+			if st:
+				print("STATION built=%s hp=%d/%d open=%s" % [str(not st.under_construction), int(st.hp), int(st.max_hp), str(st.is_open())])
+				if is_instance_valid(bg2):
+					var drop := nearest_dropoff(player_id, bg2.global_position)
+					print("STATION barge state=%s cargo=%d nearest drop-off is station=%s (%.0f px vs starbase %.0f px)" % [
+						Ship.State.keys()[bg2.state], bg2.cargo, str(drop == st),
+						bg2.global_position.distance_to(st.global_position),
+						bg2.global_position.distance_to(hs.global_position)]))
+		get_tree().create_timer(70.0).timeout.connect(func():
+			print("STATION minerals=%d (deliveries land)" % int(resources[player_id]["minerals"])))
 	if OS.get_environment("SL_SHOT_OPEN") == "rclose":
 		# Dev: the research screen closes on Esc and on a click outside it.
 		hud.toggle_research()
@@ -2268,6 +2320,51 @@ func depot_site_problem(pos: Vector2) -> String:
 	if is_blocked(pos, 40.0):
 		return "Blocked by the debris ring"
 	return ""
+
+## Where a harvester can unload: a starbase or a Mining Station, whichever
+## is nearer. Null when the player has neither.
+func nearest_dropoff(pid: int, pos: Vector2) -> SpaceEntity:
+	var best: SpaceEntity = nearest_starbase(pid, pos)
+	var best_d: float = pos.distance_to(best.global_position) if best else INF
+	for st in get_tree().get_nodes_in_group("mining_stations"):
+		if st.owner_id == pid and st.is_open():
+			var d: float = pos.distance_to(st.global_position)
+			if d < best_d:
+				best_d = d
+				best = st
+	return best
+
+## Site rules for anything a Constructor builds ("" when the spot is fine).
+func site_problem(kind: String, pos: Vector2) -> String:
+	match kind:
+		"depot": return depot_site_problem(pos)
+		"station": return station_site_problem(pos)
+		_: return starbase_site_problem(pos)
+
+func station_site_problem(pos: Vector2) -> String:
+	if not MAP_RECT.grow(-60).has_point(pos):
+		return "Too close to the edge of the system"
+	for n in get_tree().get_nodes_in_group("mining_stations") + get_tree().get_nodes_in_group("starbases"):
+		if n.global_position.distance_to(pos) < Defs.MINING_STATION["min_spacing"]:
+			return "Too close to another station"
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.global_position.distance_to(pos) < p.radius + 30.0:
+			return "Too close to a planet"
+	for s in get_tree().get_nodes_in_group("stars"):
+		if s.global_position.distance_to(pos) < s.radiation_radius + 30.0:
+			return "Too close to the star"
+	if is_blocked(pos, 30.0):
+		return "Blocked"
+	return ""
+
+func found_station(pid: int, pos: Vector2) -> MiningStation:
+	var st := MiningStation.new()
+	st.owner_id = pid
+	st.position = pos
+	starbases_root.add_child(st)
+	if pid == player_id:
+		notify("Mining Station construction started.", "note_starbase", pos)
+	return st
 
 func found_depot(pid: int, pos: Vector2, v: String) -> WeaponsDepot:
 	var d := WeaponsDepot.new()

@@ -128,6 +128,18 @@ const STARBASE := {
 	"min_spacing": 500.0,
 }
 
+## Mining Station: a cheap, lightly armed drop-off built on site by a
+## Constructor. Harvesters unload here instead of flying home, which is what
+## makes a distant belt worth working. It builds nothing, and losing one
+## never loses the match.
+const MINING_STATION := {
+	"name": "Mining Station", "hp": 900.0, "armor": 300.0, "shield": 300.0, "radius": 16.0,
+	"weapon": "laser", "damage": 8.0, "cooldown": 1.4, "range": 190.0,
+	"cost": {"minerals": 150}, "build_time": 20.0,
+	"upkeep": 9.0,
+	"min_spacing": 220.0,
+}
+
 ## Asteroid reserves scale with rock size: amount = width_px^2 * this.
 ## Small 16px rock ~410 minerals, large 26px ~1080; spice rocks are scarcer.
 const ASTEROID_MINERALS_PER_PX2 := 1.6

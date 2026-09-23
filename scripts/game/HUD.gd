@@ -673,11 +673,18 @@ func _rebuild_selection() -> void:
 	_sel_body.add_child(grid)
 	if sel.any(func(e): return e is Ship and e.def["role"] == "constructor"):
 		_add_found_button()
+		_add_station_button()
 		_add_depot_button()
 	_add_refit_buttons(sel)
 
 func _entity_icon(e: SpaceEntity, px: int) -> Control:
-	var tex_name: String = "starbase" if e is Starbase else ("ship_depot_" + (e as WeaponsDepot).variant if e is WeaponsDepot else "ship_" + (e as Ship).ship_type)
+	var tex_name := "starbase"
+	if e is WeaponsDepot:
+		tex_name = "ship_depot_" + (e as WeaponsDepot).variant
+	elif e is MiningStation:
+		tex_name = "ship_mining_station"
+	elif e is Ship:
+		tex_name = "ship_" + (e as Ship).ship_type
 	var stack := Control.new()
 	var base := _icon(tex_name, px)
 	var team := _icon(tex_name + "_team", px)
@@ -695,6 +702,7 @@ func _build_ship_controls(s: Ship) -> void:
 			_sel_body.add_child(_label("Right-click an unowned planet to settle it with %d pops." % int(Defs.START_POP), DIM, 13))
 		"constructor":
 			_add_found_button()
+			_add_station_button()
 			_add_depot_button()
 		"miner":
 			_sel_body.add_child(_label("Right-click an asteroid to mine it. Orange-flecked rocks hold spice.", DIM, 13))
@@ -1313,6 +1321,26 @@ func _tech_button(id: String, width: float = 340.0) -> Button:
 
 ## Constructor: one button per depot type. Each depot fits one variant;
 ## E places the last type picked.
+func _add_station_button() -> void:
+	var b := Button.new()
+	b.text = "Build Mining Station"
+	b.custom_minimum_size = Vector2(0, 40)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var cost := CostRow.make(Defs.MINING_STATION["cost"], 13, Defs.MINING_STATION["build_time"])
+	cost.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	cost.offset_left = -230
+	cost.offset_right = -10
+	cost.offset_top = -12
+	cost.offset_bottom = 12
+	cost.alignment = BoxContainer.ALIGNMENT_END
+	b.add_child(cost)
+	b.tooltip_text = "A drop-off for harvesters: they unload here instead of flying home, so a far belt stops costing a long haul. Builds no ships, %d hull / %d armor / %d shields and a token gun." % [
+		int(Defs.MINING_STATION["hp"]), int(Defs.MINING_STATION["armor"]), int(Defs.MINING_STATION["shield"])]
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(game.start_station_placement)
+	_register_action(b)
+	_sel_body.add_child(b)
+
 func _add_depot_button() -> void:
 	var locked := not game.has_tech(game.player_id, str(Defs.WEAPONS_DEPOT["requires"]))
 	if locked:

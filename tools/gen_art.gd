@@ -38,6 +38,7 @@ func _init() -> void:
 		_gen_job_ships()
 		_gen_variants()
 		_gen_depot()
+		_gen_mining_station()
 		_gen_layer_art()
 		quit()
 		return
@@ -45,6 +46,7 @@ func _init() -> void:
 	_gen_job_ships()
 	_gen_variants()
 	_gen_depot()
+	_gen_mining_station()
 	_gen_layer_art()
 	_gen_starbase()
 	_gen_planets()
@@ -1028,6 +1030,31 @@ func _gen_depot() -> void:
 		_save(hull.duplicate() as Image, "ship_depot_" + v)
 		_save(tim, "ship_depot_" + v + "_team")
 
+
+## Mining Station: a small ore silo with a docking collar and a stub gun.
+## Reads as a lesser cousin of the starbase, not a warship.
+func _gen_mining_station() -> void:
+	_ship("mining_station", 26, 26,
+		[[8, 18, 6.0, 6.0], [3, 23, 1.6, 1.6], [11, 15, 2.0, 2.0, 9.0], [18, 22, 2.2, 2.2, 6.0]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 9.0,
+		[0, 0], [], [10, 16])
+	var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_mining_station.png"))
+	var team := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_mining_station_team.png"))
+	var lit: Color = TEAM[TEAM.size() - 1]
+	var mid: Color = TEAM[TEAM.size() - 2]
+	var cy := 13
+	var mark := func(x: int, y: int, col: Color) -> void:
+		if x >= 0 and y >= 0 and x < hull.get_width() and y < hull.get_height() and hull.get_pixel(x, y).a > 0.0 and hull.get_pixel(x, y) != OUTLINE:
+			team.set_pixel(x, y, col)
+	# Ore hopper bands across the silo, and a lit docking collar.
+	for x in range(9, 18):
+		mark.call(x, cy - 4, mid)
+		mark.call(x, cy + 4, mid)
+	for dy in range(-3, 4):
+		mark.call(18, cy + dy, lit)
+		mark.call(19, cy + dy, mid)
+	_save(hull, "ship_mining_station")
+	_save(team, "ship_mining_station_team")
 
 # ---------------------------------------------------------------- layer art
 
