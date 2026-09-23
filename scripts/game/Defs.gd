@@ -338,7 +338,7 @@ static var SHIPS: Dictionary = _with_variants()
 ## node, then hauls the load home. Spice fills slower than ore, nebula gas
 ## slower still.
 const HARVEST_SPICE_MULT := 0.4
-const HARVEST_NEBULA_MULT := 0.3
+const HARVEST_NEBULA_MULT := 0.6
 
 ## Which classes have a mark line (see HULL_MARKS).
 const MARK_LINES := ["corvette", "destroyer", "cruiser"]
