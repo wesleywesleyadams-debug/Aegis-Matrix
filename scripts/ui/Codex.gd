@@ -253,7 +253,20 @@ func _table(cols: Array, rows: Array) -> void:
 				grid.add_child(_cell(str(cell[0]), cell[1]))
 			else:
 				grid.add_child(_cell(str(cell), TEXT))
-	_body.add_child(grid)
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	frame.add_theme_stylebox_override("panel", _table_style())
+	frame.add_child(grid)
+	_body.add_child(frame)
+
+## Tables get a thin border so a grid of numbers reads as a table.
+func _table_style() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.05, 0.12, 0.55)
+	sb.border_color = EDGE
+	sb.set_border_width_all(1)
+	sb.set_content_margin_all(10)
+	return sb
 
 ## One table cell. A long one (a building's effect, say) wraps rather than
 ## stretching its column across the page.
