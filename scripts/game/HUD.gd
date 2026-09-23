@@ -905,6 +905,11 @@ Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id),
 			var first: Button = _queue_row.get_child(0)
 			first.text = "%d%%" % int(100.0 * sb.build_progress / Defs.SHIPS[sb.queue[0]]["build_time"])
 			first.modulate = Color(1, 0.6, 0.55) if sb.build_stalled else Color.WHITE
+			# Readable over the ship icon behind it.
+			first.add_theme_font_size_override("font_size", 16)
+			first.add_theme_color_override("font_color", Color.WHITE)
+			first.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+			first.add_theme_constant_override("outline_size", 6)
 
 func _planet_text(p: Planet) -> String:
 	var t := p.type_def()

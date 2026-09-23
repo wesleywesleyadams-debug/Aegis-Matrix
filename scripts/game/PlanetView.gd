@@ -350,23 +350,40 @@ func refresh() -> void:
 			var dry: bool = planet.is_dry(i)
 			b.text = "DRY" if dry else ("" if running else "IDLE")
 			b.modulate = Color.WHITE if running else Color(1, 1, 1, 0.4)
+			(b.get_node("Art") as TextureRect).modulate = Color.WHITE
+			_progress_text(b, Color("ffd46b") if dry or not running else Color.WHITE, 13)
 			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], "" if running else " (idle: not enough pop)", Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
 		elif job != "":
-			(b.get_node("Art") as TextureRect).texture = Defs.tex("bld_" + job)
+			var art := b.get_node("Art") as TextureRect
+			art.texture = Defs.tex("bld_" + job)
 			var active: bool = planet.construction.get("field", -1) == i
+			# Dim the ghosted building art, not the label on top of it: the
+			# progress figure stays bright and outlined so it reads at a glance.
+			b.modulate = Color.WHITE
 			if active:
 				b.text = "%d%%" % int(100.0 * planet.construction["progress"] / Defs.BUILDINGS[job]["time"])
-				b.modulate = Color(1, 0.6, 0.55, 0.8) if planet.construction_stalled else Color(1, 1, 1, 0.6)
+				art.modulate = Color(1, 1, 1, 0.5)
+				_progress_text(b, Color("ff8a7a") if planet.construction_stalled else Color("ffd46b"), 22)
 			else:
 				b.text = "queued"
-				b.modulate = Color(1, 1, 1, 0.35)
+				art.modulate = Color(1, 1, 1, 0.3)
+				_progress_text(b, Color(1, 1, 1, 0.75), 13)
 			b.tooltip_text = "%s under construction.\nClick to cancel (paid share refunded)." % Defs.BUILDINGS[job]["name"]
 		else:
 			(b.get_node("Art") as TextureRect).texture = null
 			b.text = "+" if mine else ""
 			b.modulate = Color.WHITE if mine else Color(1, 1, 1, 0.4)
+			_progress_text(b, Color(1, 1, 1, 0.8), 16)
 			b.tooltip_text = "Empty field. Click to build." if mine else "Empty field."
 		b.disabled = not mine
+
+## Big, outlined text over a build slot's ghosted art, so "62%" is readable
+## against whatever the building sprite looks like.
+func _progress_text(b: Button, color: Color, size: int = 20) -> void:
+	b.add_theme_font_size_override("font_size", size)
+	b.add_theme_color_override("font_color", color)
+	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	b.add_theme_constant_override("outline_size", 6)
 
 func _on_field_pressed(i: int) -> void:
 	if planet == null or planet.owner_id != game.player_id:
