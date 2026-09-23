@@ -76,7 +76,7 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("ships")
 	def = Defs.SHIPS[ship_type]
-	display_name = def["name"]
+	display_name = Game.instance.ship_name(owner_id, ship_type)
 	refresh_stats()
 	hp = max_hp
 	shield = max_shield
@@ -119,14 +119,15 @@ func _find_mine_target(resource: String) -> Node2D:
 ## Re-derives hull/armor/shield caps from research, keeping current fractions.
 func refresh_stats() -> void:
 	var g := Game.instance
+	display_name = g.ship_name(owner_id, ship_type)
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
 	var ar_frac := armor / max_armor if max_armor > 0.0 else 1.0
 	var sh_frac := shield / max_shield if max_shield > 0.0 else 1.0
-	max_hp = def["hp"] * g.mod(owner_id, "hull")
-	max_shield = def["shield"] * g.mod(owner_id, "shield")
+	max_hp = def["hp"] * g.hull_mod(owner_id, ship_type, "hull")
+	max_shield = def["shield"] * g.hull_mod(owner_id, ship_type, "shield")
 	hp = max_hp * hp_frac
 	shield = max_shield * sh_frac
-	max_armor = def.get("armor", 0.0) * g.mod(owner_id, "armor")
+	max_armor = def.get("armor", 0.0) * g.hull_mod(owner_id, ship_type, "armor")
 	armor = max_armor * ar_frac
 
 func max_speed() -> float:
@@ -382,7 +383,7 @@ func _physics_process(delta: float) -> void:
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
 		if shoot and global_position.distance_to(shoot.global_position) <= def["range"] + shoot.radius:
-			Game.instance.fire(self, shoot, def["weapon"], def["damage"])
+			Game.instance.fire(self, shoot, def["weapon"], def["damage"] * (1.0 + Game.instance.mark_level(owner_id, ship_type) * float(Defs.MARK_STEP["damage"])))
 			_cooldown = def["cooldown"] * randf_range(0.9, 1.1)
 
 	if Game.instance.is_ai(owner_id):
@@ -645,7 +646,7 @@ func _become(new_type: String) -> void:
 	var sh_f := shield / max_shield if max_shield > 0.0 else 1.0
 	ship_type = new_type
 	def = Defs.SHIPS[new_type]
-	display_name = def["name"]
+	display_name = Game.instance.ship_name(owner_id, ship_type)
 	refresh_stats()
 	hp = max_hp * hp_f
 	armor = max_armor * ar_f

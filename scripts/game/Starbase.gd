@@ -162,7 +162,7 @@ func _launch(ship_type: String) -> void:
 	g.stats.count(owner_id, "ships_built")
 	g.stats.count(owner_id, "built_" + ship_type)
 	if owner_id == g.player_id:
-		g.notify("%s ready." % Defs.SHIPS[ship_type]["name"], "note_ship", ship.global_position)
+		g.notify("%s ready." % g.ship_name(owner_id, ship_type), "note_ship", ship.global_position)
 	ship.rotation = dir.angle()
 	if is_instance_valid(rally_target):
 		var rt := rally_target

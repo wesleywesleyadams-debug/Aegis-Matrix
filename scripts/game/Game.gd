@@ -471,6 +471,26 @@ func mod(pid: int, key: String) -> float:
 		m += Defs.TECHS[t]["effects"].get(key, 0.0)
 	return m
 
+## How many marks a warship class has earned for this player, 0-3 (see
+## Defs.HULL_MARKS): Wisp, Specter, Wraith, Phantom.
+func mark_level(pid: int, ship_type: String) -> int:
+	var d: Dictionary = Defs.SHIPS.get(ship_type, {})
+	var base: String = d.get("base", ship_type)
+	if not Defs.MARK_LINES.has(base):
+		return 0
+	var n := 0
+	for t in researched.get(pid, {}):
+		n += int(Defs.TECHS[t]["effects"].get("mark_" + base, 0.0))
+	return n
+
+## Research multiplier for `key` including this class's hull marks.
+func hull_mod(pid: int, ship_type: String, key: String) -> float:
+	return mod(pid, key) * (1.0 + mark_level(pid, ship_type) * float(Defs.MARK_STEP.get(key, 0.0)))
+
+## The class's current name for this player, e.g. "Wraith Corvette".
+func ship_name(pid: int, ship_type: String) -> String:
+	return Defs.marked_name(ship_type, mark_level(pid, ship_type))
+
 func has_tech(pid: int, tech_id: String) -> bool:
 	return researched.get(pid, {}).has(tech_id)
 

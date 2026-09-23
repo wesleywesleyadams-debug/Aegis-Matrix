@@ -401,6 +401,15 @@ func _page_combat() -> void:
 	mrows.append(sbrow)
 	_table(head, mrows)
 	_rule()
+	_rule()
+	_heading("Hull marks", EDGE_LIT)
+	_para("Every warship has two independent axes. Its MARK is raw power and comes from the War Ships research line; its VARIANT is purpose and comes from a Weapons Depot. A Phantom Reaver Corvette is both: the toughest corvette mark, fitted to hunt hull.")
+	var krows: Array = []
+	for i in Defs.HULL_MARKS.size():
+		krows.append([Defs.HULL_MARKS[i], "start" if i == 0 else "research", "+%d%% damage, +%d%% shields, armor and hull" % [
+			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
+	_table(["Mark", "From", "Over a Wisp"], krows)
+	_para("Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments. Marks apply to every ship of that class you already own the moment the research lands.")
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
 	_para("Starbases build generalists only. Once the Depots tech is researched, a Constructor builds a depot (E) for %s over %ds, and every depot is built for ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [

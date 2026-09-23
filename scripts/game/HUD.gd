@@ -405,8 +405,12 @@ func _build_end(root: Control) -> void:
 ## Research screen: four tabs — Weapons, Defense, Economy and General —
 ## each laid out by tier. Defense is a grid of its three lines (shields,
 ## armor, hull). Only one project runs at a time.
+## Every research tab is this size, so the panel never jumps when you
+## switch between War Ships, Weapons, Defense and Economy.
+const PAGE_SIZE := Vector2(1320, 560)
+
 func _build_research(root: Control) -> void:
-	var parts := _modal(root, "RESEARCH", 1100.0)
+	var parts := _modal(root, "RESEARCH", 1400.0)
 	_research_modal = parts[0]
 	_research_modal.color = Color(0, 0, 0, 0.45)
 	var v: VBoxContainer = parts[1]
@@ -427,10 +431,11 @@ func _build_research(root: Control) -> void:
 	var pages := {}
 
 	# Weapons, Economy and anything ungrouped: columns by tier.
-	for group in ["weapons", "economy", "general"]:
+	for group in ["weapons", "constructs", "worlds", "economy", "general"]:
 		var cols := HBoxContainer.new()
 		cols.add_theme_constant_override("separation", 18)
-		cols.visible = group == "weapons"
+		cols.custom_minimum_size = PAGE_SIZE
+		cols.visible = false
 		v.add_child(cols)
 		var any := false
 		for tier in [1, 2, 3]:
@@ -447,11 +452,34 @@ func _build_research(root: Control) -> void:
 		else:
 			cols.queue_free()
 
+	# War Ships: unlocks along the top, then one row per class of the marks
+	# that make that class stronger (Defs.HULL_MARKS).
+	var wars := GridContainer.new()
+	wars.columns = 4
+	wars.custom_minimum_size = PAGE_SIZE
+	wars.add_theme_constant_override("h_separation", 18)
+	wars.add_theme_constant_override("v_separation", 10)
+	wars.visible = false
+	v.add_child(wars)
+	wars.add_child(_label("UNLOCKS", DIM, 14))
+	for id in ["destroyers", "cruisers", "depots"]:
+		wars.add_child(_tech_button(id, 300.0))
+	for cls in Defs.MARK_LINES:
+		var head := VBoxContainer.new()
+		head.alignment = BoxContainer.ALIGNMENT_CENTER
+		head.custom_minimum_size = Vector2(90, 0)
+		head.add_child(_label(Defs.SHIPS[cls]["name"].to_upper(), TEXT, 16))
+		wars.add_child(head)
+		for mk in [2, 3, 4]:
+			wars.add_child(_tech_button("%s_mk%d" % [cls, mk], 300.0))
+	pages["warships"] = wars
+
 	# Defense: one row per layer line, one column per tier.
 	var defs := GridContainer.new()
 	defs.columns = 4
 	defs.add_theme_constant_override("h_separation", 18)
 	defs.add_theme_constant_override("v_separation", 10)
+	defs.custom_minimum_size = PAGE_SIZE
 	defs.visible = false
 	v.add_child(defs)
 	defs.add_child(_label("", DIM, 14))
@@ -470,7 +498,7 @@ func _build_research(root: Control) -> void:
 					defs.add_child(_tech_button(id, 300.0))
 	pages["defense"] = defs
 
-	var order := [["weapons", "Weapons"], ["defense", "Defense"], ["economy", "Economy"], ["general", "General"]]
+	var order := [["warships", "War Ships"], ["weapons", "Weapons"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["economy", "Economy"], ["general", "General"]]
 	var buttons := {}
 	for pair in order:
 		if not pages.has(pair[0]):
@@ -478,9 +506,11 @@ func _build_research(root: Control) -> void:
 		var tb := Button.new()
 		tb.text = pair[1]
 		tb.toggle_mode = true
-		tb.button_pressed = pair[0] == "weapons"
+		tb.button_pressed = pair[0] == "warships"
+		if pair[0] == "warships":
+			pages["warships"].visible = true
 		tb.focus_mode = Control.FOCUS_NONE
-		tb.custom_minimum_size = Vector2(150, 32)
+		tb.custom_minimum_size = Vector2(132, 32)
 		tabs.add_child(tb)
 		buttons[pair[0]] = tb
 	for id in buttons:
@@ -701,7 +731,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var v := VBoxContainer.new()
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.alignment = BoxContainer.ALIGNMENT_CENTER
-		v.add_child(_label(d["name"], Defs.VARIANTS[d["variant"]]["color"] if d.has("variant") else TEXT, 13))
+		v.add_child(_label(game.ship_name(game.player_id, t), Defs.VARIANTS[d["variant"]]["color"] if d.has("variant") else TEXT, 13))
 		v.add_child(CostRow.make(d["cost"], 12, -1.0, 1))
 		h.add_child(v)
 		b.add_child(h)
@@ -796,7 +826,7 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 		if s.is_miner():
 			txt += "   Cargo %d/%d %s" % [s.cargo, s.cargo_cap(), s.cargo_type]
 		elif s.def["weapon"] != "":
-			txt += "   %s %.0f dmg / %.1fs" % [s.def["weapon"].capitalize(), s.def["damage"] * game.mod(e.owner_id, "damage"), s.def["cooldown"]]
+			txt += "   %s %.0f dmg / %.1fs" % [s.def["weapon"].capitalize(), s.def["damage"] * game.mod(e.owner_id, "damage") * (1.0 + game.mark_level(e.owner_id, s.ship_type) * float(Defs.MARK_STEP["damage"])), s.def["cooldown"]]
 		txt += "   Upkeep %.2f/s" % (s.def["upkeep"] * game.upkeep_multiplier(s.owner_id))
 	elif e is Starbase:
 		var sb := e as Starbase
@@ -834,7 +864,7 @@ Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id),
 				qb.focus_mode = Control.FOCUS_NONE
 				qb.icon = Defs.tex("ship_" + sb.queue[i])
 				qb.expand_icon = true
-				qb.tooltip_text = "Cancel " + Defs.SHIPS[sb.queue[i]]["name"]
+				qb.tooltip_text = "Cancel " + game.ship_name(sb.owner_id, sb.queue[i])
 				var idx := i
 				qb.pressed.connect(func(): sb.cancel(idx))
 				_queue_row.add_child(qb)

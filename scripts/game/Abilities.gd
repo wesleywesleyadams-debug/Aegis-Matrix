@@ -5,8 +5,8 @@ extends RefCounted
 ## drawn by Ship._draw_job in the job's accent color.
 
 const SWARM_RANGE := 150.0
-const SWARM_PER := 0.08
-const SWARM_MAX := 0.64
+const SWARM_PER := 0.06
+const SWARM_MAX := 0.36
 const ESCORT_RANGE := 130.0
 const ESCORT_CUT := 0.15
 const HEAT_RANGE := 170.0

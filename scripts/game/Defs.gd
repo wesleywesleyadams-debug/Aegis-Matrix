@@ -215,7 +215,7 @@ const SHIELD_ENERGY_PER_POINT := 0.05
 const TECHS := {
 	"ion_cannons": {"name": "Ion Cannons", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 60.0,
 		"effects": {"damage": 0.20}, "desc": "+20% weapon damage."},
-	"hydroponics": {"name": "Hydroponics", "group": "economy", "tier": 1, "requires": [], "cost": {"energy": 400}, "time": 40.0,
+	"hydroponics": {"name": "Hydroponics", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 400}, "time": 40.0,
 		"effects": {"food": 0.30}, "desc": "+30% food production."},
 	"deep_drills": {"name": "Deep-Core Drills", "group": "economy", "tier": 1, "requires": [], "cost": {"energy": 400}, "time": 40.0,
 		"effects": {"cargo": 0.40}, "desc": "Mining barges carry +40% ore."},
@@ -225,17 +225,38 @@ const TECHS := {
 		"effects": {"damage": 0.25}, "desc": "+25% weapon damage."},
 	"ion_thrusters": {"name": "Ion Thrusters", "group": "economy", "tier": 1, "requires": [], "cost": {"energy": 700}, "time": 60.0,
 		"effects": {"speed": 0.15}, "desc": "+15% ship speed."},
-	"gene_clinics": {"name": "Gene Clinics", "group": "economy", "tier": 2, "requires": ["hydroponics"], "cost": {"energy": 900, "spice": 20}, "time": 75.0,
+	"gene_clinics": {"name": "Gene Clinics", "group": "worlds", "tier": 2, "requires": ["hydroponics"], "cost": {"energy": 900, "spice": 20}, "time": 75.0,
 		"effects": {"growth": 0.50}, "desc": "+50% population growth."},
-	"arcologies": {"name": "Arcologies", "group": "economy", "tier": 2, "requires": ["hydroponics"], "cost": {"energy": 1000, "spice": 20}, "time": 80.0,
+	"arcologies": {"name": "Arcologies", "group": "worlds", "tier": 2, "requires": ["hydroponics"], "cost": {"energy": 1000, "spice": 20}, "time": 80.0,
 		"effects": {"max_pop": 0.30}, "desc": "+30% planet population cap."},
 	# Hull line: the warship classes unlock one after the other.
-	"depots": {"name": "Depots", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 700, "spice": 10}, "time": 60.0,
+	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 700, "spice": 10}, "time": 60.0,
 		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot: Plasma, Breacher, Reaver, Slip and Disruptor."},
-	"destroyers": {"name": "Destroyers", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 45.0,
+	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 45.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
-	"cruisers": {"name": "Cruisers", "group": "weapons", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 1200, "spice": 30}, "time": 85.0,
+	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 1200, "spice": 30}, "time": 85.0,
 		"effects": {"unlock_cruiser": 1.0}, "desc": "Unlocks the Cruiser."},
+	# Hull mark lines: one per warship class, three upgrades each (the class
+	# starts as a Wisp). Each mark lifts only that class, so investing in
+	# corvettes and investing in cruisers are different strategies.
+	"corvette_mk2": {"name": "Specter Corvette", "group": "warships", "class": "corvette", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 55.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Specters: +18% damage, +15% shields, armor and hull."},
+	"corvette_mk3": {"name": "Wraith Corvette", "group": "warships", "class": "corvette", "tier": 2, "requires": ["corvette_mk2"], "cost": {"energy": 1400, "spice": 25}, "time": 90.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Wraiths: another +18% damage, +15% shields, armor and hull."},
+	"corvette_mk4": {"name": "Phantom Corvette", "group": "warships", "class": "corvette", "tier": 3, "requires": ["corvette_mk3"], "cost": {"energy": 2600, "spice": 70}, "time": 130.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Phantoms: a third +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk2": {"name": "Specter Destroyer", "group": "warships", "class": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 900}, "time": 65.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Specters: +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk3": {"name": "Wraith Destroyer", "group": "warships", "class": "destroyer", "tier": 2, "requires": ["destroyer_mk2"], "cost": {"energy": 1800, "spice": 35}, "time": 100.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Wraiths: another +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk4": {"name": "Phantom Destroyer", "group": "warships", "class": "destroyer", "tier": 3, "requires": ["destroyer_mk3"], "cost": {"energy": 3200, "spice": 90}, "time": 140.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Phantoms: a third +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk2": {"name": "Specter Cruiser", "group": "warships", "class": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 1300, "spice": 20}, "time": 80.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Specters: +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk3": {"name": "Wraith Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk2"], "cost": {"energy": 2400, "spice": 60}, "time": 115.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Wraiths: another +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk4": {"name": "Phantom Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk3"], "cost": {"energy": 4000, "spice": 120}, "time": 160.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Phantoms: a third +18% damage, +15% shields, armor and hull."},
 	# Defense lines (research screen's Defenses tab): shields, armor, hull. Each
 	# is three tiers of big, expensive upgrades for every ship and starbase,
 	# so which layer to invest in is a real strategic choice.
@@ -287,6 +308,24 @@ const STAR_TYPES := {
 ## Every buildable ship: the base designs plus their specialist variants
 ## (see VARIANTS), e.g. "slip_corvette".
 static var SHIPS: Dictionary = _with_variants()
+
+## Hull marks: every warship class starts as a Wisp and is upgraded a mark at
+## a time by its own research line (Defs.TECHS, "mark_<class>" effects). Each
+## mark makes that class alone tougher and harder-hitting, so late-game
+## corvettes are a different animal from the ones built in minute one.
+## Which classes have a mark line (see HULL_MARKS).
+const MARK_LINES := ["corvette", "destroyer", "cruiser"]
+
+const HULL_MARKS := ["Wisp", "Specter", "Wraith", "Phantom"]
+## What one mark adds to its class, per step.
+const MARK_STEP := {"damage": 0.18, "hull": 0.15, "armor": 0.15, "shield": 0.15}
+
+## The mark name for a class at `level` (0 = Wisp), e.g. "Specter Corvette".
+static func marked_name(ship_type: String, level: int) -> String:
+	var d: Dictionary = SHIPS.get(ship_type, {})
+	if d.is_empty() or not MARK_LINES.has(d.get("base", ship_type)):
+		return d.get("name", ship_type)
+	return "%s %s" % [HULL_MARKS[clampi(level, 0, HULL_MARKS.size() - 1)], d["name"]]
 
 ## Damage vs the defense layers. Generalists deal their full base damage to
 ## shields, armor and hull alike. Specialists are variants of a generalist:
@@ -347,7 +386,7 @@ static func damage_profile(d: Dictionary) -> Dictionary:
 ## lasts. `color` is the job's accent (sprites and effects share it).
 const JOBS := {
 	"swarm": {"name": "Swarm", "active": false, "color": Color("7fb2ff"),
-		"desc": "+8% damage for each other corvette within 150 px (up to +64%). Strong in numbers, weak alone."},
+		"desc": "+6% damage for each other corvette within 150 px (up to +36%). Strong in numbers, weak alone."},
 	"escort": {"name": "Escort", "active": false, "color": Color("7fd8ff"),
 		"desc": "Friendly ships within 130 px take 15% less weapon damage. Guards miners, colony ships and fleets."},
 	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
