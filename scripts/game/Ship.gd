@@ -186,7 +186,7 @@ func _pop_order() -> void:
 		var args: Array = o[1]
 		var dead := false
 		for a in args:
-			if a is Node and not is_instance_valid(a):
+			if typeof(a) == TYPE_OBJECT and not is_instance_valid(a):
 				dead = true
 		if dead:
 			continue
@@ -199,9 +199,10 @@ func queued_points() -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for o in order_queue:
 		for a in o[1]:
-			if a is Vector2:
+			# typeof first: "is" on a freed instance is an error.
+			if typeof(a) == TYPE_VECTOR2:
 				out.append(a)
-			elif a is Node2D and is_instance_valid(a):
+			elif typeof(a) == TYPE_OBJECT and is_instance_valid(a) and a is Node2D:
 				out.append(a.global_position)
 	return out
 
@@ -283,6 +284,10 @@ func _physics_process(delta: float) -> void:
 			_repair_timer = 0.5
 			_repairing = Abilities.repair_tick(self, 0.5)
 			queue_redraw()
+	# The queued route is drawn in local space, so it has to be redrawn as
+	# the ship moves or it slides along with it.
+	if selected and not order_queue.is_empty():
+		queue_redraw()
 	# Out of energy: weapons recharge (and engines run) at a quarter speed.
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
@@ -646,7 +651,7 @@ func _draw_waypoints() -> void:
 	var pts := queued_points()
 	if pts.is_empty():
 		return
-	var c := Color(1, 1, 1, 0.35)
+	var c := Color(1, 1, 1, 0.45)
 	var from := to_local(move_goal if state != State.IDLE else global_position)
 	for p in pts:
 		var to := to_local(p)

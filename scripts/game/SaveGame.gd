@@ -84,8 +84,51 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			"docked": s.docked, "docked_variant": s.refit_depot.variant if s.docked and is_instance_valid(s.refit_depot) else "",
 			"refit_left": s.refit_left,
 			"order": _order_of(s),
+			"queue": s.order_queue.map(func(o): return _queued_dict(o)).filter(func(d): return not d.is_empty()),
 		})
 	return data
+
+## One shift-queued order, in the same vocabulary as _order_of. Legs whose
+## target cannot be named (a specific enemy ship) are dropped.
+static func _queued_dict(o: Array) -> Dictionary:
+	var m: String = o[0]
+	var a: Array = o[1]
+	match m:
+		"order_move":
+			return {"kind": "move", "at": _v(a[0])}
+		"order_attack_move":
+			return {"kind": "attack_move", "at": _v(a[0])}
+		"order_return":
+			return {"kind": "return"}
+		"order_mine":
+			return {"kind": "mine", "target": String(a[0].name)} if typeof(a[0]) == TYPE_OBJECT and is_instance_valid(a[0]) else {}
+		"order_colonize":
+			return {"kind": "colonize", "target": String(a[0].name)} if typeof(a[0]) == TYPE_OBJECT and is_instance_valid(a[0]) else {}
+		"order_bombard":
+			return {"kind": "bombard", "target": String(a[0].name)} if typeof(a[0]) == TYPE_OBJECT and is_instance_valid(a[0]) else {}
+		"order_refit":
+			return {"kind": "refit", "variant": str(a[0])}
+	return {}
+
+## Turns a saved leg back into [method, args]; [] when its target is gone.
+static func _queued_entry(o: Dictionary, rocks: Dictionary, planets: Dictionary) -> Array:
+	match str(o.get("kind", "")):
+		"move":
+			return ["order_move", [_p(o["at"])]]
+		"attack_move":
+			return ["order_attack_move", [_p(o["at"])]]
+		"return":
+			return ["order_return", []]
+		"mine":
+			var t = rocks.get(o.get("target", ""), planets.get(o.get("target", "")))
+			return ["order_mine", [t]] if t else []
+		"colonize":
+			return ["order_colonize", [planets[o["target"]]]] if planets.has(o.get("target", "")) else []
+		"bombard":
+			return ["order_bombard", [planets[o["target"]]]] if planets.has(o.get("target", "")) else []
+		"refit":
+			return ["order_refit", [str(o.get("variant", "plasma"))]]
+	return []
 
 ## What a ship was doing, in a form that survives a reload.
 static func _order_of(s: Ship) -> Dictionary:
@@ -269,6 +312,11 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			"bombard":
 				if planets.has(o["target"]):
 					s.order_bombard(planets[o["target"]])
+		# Shift-queued legs behind the current order.
+		for q in d.get("queue", []):
+			var entry := _queued_entry(q, rocks, planets)
+			if not entry.is_empty():
+				s.order_queue.append(entry)
 	# Ships that were inside a Weapons Depot go back in where they were.
 	for d in data.get("ships", []):
 		if not bool(d.get("docked", false)):

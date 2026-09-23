@@ -861,6 +861,8 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 		elif s.def["weapon"] != "":
 			txt += "   %s %.0f dmg / %.1fs" % [s.def["weapon"].capitalize(), s.def["damage"] * game.mod(e.owner_id, "damage") * (1.0 + game.mark_level(e.owner_id, s.ship_type) * float(Defs.MARK_STEP["damage"])), s.def["cooldown"]]
 		txt += "   Upkeep %.2f/s" % (s.def["upkeep"] * game.upkeep_multiplier(s.owner_id))
+		if not s.order_queue.is_empty():
+			txt += "\n%d queued order%s (Shift + right-click to add, T clears)" % [s.order_queue.size(), "" if s.order_queue.size() == 1 else "s"]
 	elif e is Starbase:
 		var sb := e as Starbase
 		txt += "

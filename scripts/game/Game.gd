@@ -1756,6 +1756,70 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "qfull":
+		# Dev: a long mixed chain, a save/restore round trip, and the rules
+		# around clearing and overriding a queue.
+		var hq := nearest_starbase(player_id, Vector2.ZERO)
+		var c1 := hq.global_position
+		var rock1 := nearest_asteroid(c1, 2500.0, "minerals", null)
+		var m1 := spawn_ship("miner", player_id, c1 + Vector2(-120, 160))
+		m1.order_move(c1 + Vector2(-260, 220))
+		m1.do_or_queue(true, "order_move", [c1 + Vector2(-80, 320)])
+		if rock1:
+			m1.do_or_queue(true, "order_mine", [rock1])
+		m1.do_or_queue(true, "order_return", [])
+		print("QFULL chain legs=%d kinds=%s" % [m1.order_queue.size(), str(m1.order_queue.map(func(o): return o[0]))])
+		# A plain order wipes the queue; T wipes it too.
+		var m2 := spawn_ship("miner", player_id, c1 + Vector2(120, 160))
+		m2.order_move(c1 + Vector2(200, 200))
+		m2.do_or_queue(true, "order_move", [c1 + Vector2(300, 300)])
+		var before2 := m2.order_queue.size()
+		m2.do_or_queue(false, "order_move", [c1 + Vector2(-200, -200)])
+		print("QFULL plain order clears: %d -> %d" % [before2, m2.order_queue.size()])
+		var m3 := spawn_ship("miner", player_id, c1 + Vector2(160, -160))
+		m3.order_move(c1 + Vector2(240, -200))
+		m3.do_or_queue(true, "order_move", [c1 + Vector2(320, -260)])
+		var before3 := m3.order_queue.size()
+		m3.order_stop()
+		print("QFULL stop clears: %d -> %d, state=%s" % [before3, m3.order_queue.size(), Ship.State.keys()[m3.state]])
+		# A leg whose target dies is skipped rather than stalling the ship.
+		var m4 := spawn_ship("miner", player_id, c1 + Vector2(-160, -160))
+		var doomed := spawn_ship("corvette", 3 - player_id, c1 + Vector2(-400, -400))
+		m4.order_move(c1 + Vector2(-200, -200))
+		m4.do_or_queue(true, "order_attack", [doomed])
+		m4.do_or_queue(true, "order_move", [c1 + Vector2(-300, -100)])
+		doomed.queue_free()
+		# Save/restore round trip on the chain.
+		var snap := SaveGame.capture(self, "qfull")
+		var saved: Array = snap["ships"].map(func(x): return x.get("queue", []).size())
+		print("QFULL saved queues=%s" % str(saved.filter(func(n): return n > 0)))
+		get_tree().create_timer(18.0).timeout.connect(func():
+			if is_instance_valid(m1) and is_instance_valid(m4):
+				print("QFULL t=18 chain state=%s left=%d | dead-target ship state=%s left=%d" % [
+					Ship.State.keys()[m1.state], m1.order_queue.size(),
+					Ship.State.keys()[m4.state], m4.order_queue.size()]))
+	if OS.get_environment("SL_SHOT_OPEN") == "qtest":
+		# Dev: waypoints in a known square around the ship, with the screen
+		# position of each pip printed so a capture can be checked by pixel.
+		var home2 := nearest_starbase(player_id, Vector2.ZERO)
+		var at := home2.global_position + Vector2(0, 420)
+		var t0 := spawn_ship("corvette", player_id, at)
+		t0.order_move(at + Vector2(120, 0))
+		for p in [Vector2(120, 120), Vector2(-120, 120), Vector2(-120, 0)]:
+			t0.do_or_queue(true, "order_move", [at + p])
+		_set_selection([t0], false)
+		center_on(at)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var xf := get_viewport().get_canvas_transform()
+		for p in t0.queued_points():
+			var sp: Vector2 = xf * p
+			print("QTEST pip world=%s screen=%d,%d" % [str(p.round()), int(sp.x), int(sp.y)])
+		print("QTEST ship screen=%s goal=%s legs=%d" % [str((xf * t0.global_position).round()), str((xf * t0.move_goal).round()), t0.order_queue.size()])
+		# Save and reload the queue to prove it survives a round trip.
+		var sd := SaveGame.capture(self, "qtest")
+		var legs: int = sd["ships"].filter(func(x): return x.get("queue", []).size() > 0).size()
+		print("QTEST saved ships with queues=%d, first queue=%s" % [legs, str(sd["ships"].filter(func(x): return x.get("queue", []).size() > 0).map(func(x): return x["queue"].size()))])
 	if OS.get_environment("SL_SHOT_OPEN") == "queue":
 		# Dev: shift-queued orders. A barge gets three waypoints plus a rock
 		# to mine; a corvette gets a patrol. Prints the queue as it drains.
