@@ -1231,6 +1231,9 @@ func _tech_button(id: String, width: float = 340.0) -> Button:
 ## Constructor: one button per depot type. Each depot fits one variant;
 ## E places the last type picked.
 func _add_depot_button() -> void:
+	var locked := not game.has_tech(game.player_id, str(Defs.WEAPONS_DEPOT["requires"]))
+	if locked:
+		_sel_body.add_child(_label("Weapons Depots need the %s tech." % Defs.TECHS[Defs.WEAPONS_DEPOT["requires"]]["name"], Color("ffd84a"), 13))
 	_sel_body.add_child(_label("Build a Weapons Depot — %s over %ds. Each depot refits generalists into one variant:" % [
 		Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), int(Defs.WEAPONS_DEPOT["build_time"])], DIM, 13))
 	var row := HFlowContainer.new()
@@ -1245,6 +1248,7 @@ func _add_depot_button() -> void:
 		b.tooltip_text = "%s
 Refits a generalist into a %s: %s" % [vd["desc"], vd["label"], Defs.VARIANTS[v]["desc"]]
 		b.focus_mode = Control.FOCUS_NONE
+		b.disabled = locked
 		b.pressed.connect(func(): game.start_depot_placement(v))
 		_register_action(b)
 		row.add_child(b)

@@ -106,7 +106,7 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 ## and time (see SHIPS "refit"). A specialist can never be refitted again.
 ## Doesn't count as a starbase (losing it doesn't lose the match).
 const WEAPONS_DEPOT := {
-	"name": "Weapons Depot", "hp": 900.0, "armor": 400.0, "shield": 300.0, "radius": 22.0,
+	"name": "Weapons Depot", "requires": "depots", "hp": 900.0, "armor": 400.0, "shield": 300.0, "radius": 22.0,
 	"cost": {"minerals": 250, "spice": 20}, "build_time": 30.0, "upkeep": 0.3,
 	"capacity": 10, "min_spacing": 250.0,
 }
@@ -230,6 +230,8 @@ const TECHS := {
 	"arcologies": {"name": "Arcologies", "group": "economy", "tier": 2, "requires": ["hydroponics"], "cost": {"energy": 1000, "spice": 20}, "time": 80.0,
 		"effects": {"max_pop": 0.30}, "desc": "+30% planet population cap."},
 	# Hull line: the warship classes unlock one after the other.
+	"depots": {"name": "Depots", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 700, "spice": 10}, "time": 60.0,
+		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot: Plasma, Breacher, Reaver, Slip and Disruptor."},
 	"destroyers": {"name": "Destroyers", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 45.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
 	"cruisers": {"name": "Cruisers", "group": "weapons", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 1200, "spice": 30}, "time": 85.0,

@@ -358,7 +358,7 @@ func _page_combat() -> void:
 	_rule()
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
-	_para("Starbases build generalists only. A Constructor builds a depot (E) for %s over %ds, and every depot is built for ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
+	_para("Starbases build generalists only. Once the Depots tech is researched, a Constructor builds a depot (E) for %s over %ds, and every depot is built for ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
 		Defs.cost_text(wd["cost"]), int(wd["build_time"])])
 	_para("Send generalists in by right-clicking the depot (or with the refit buttons in their panel). They fly in and dock — %d at a time, hidden and safe inside — and are refitted automatically as minerals allow. Each hull has its own cost and time:" % int(wd["capacity"]))
 	var rrows: Array = []

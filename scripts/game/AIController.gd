@@ -488,6 +488,8 @@ func _pick_variant(pid: int, game: Game) -> String:
 ## home, then refit idle generalist corvettes near home into the variant
 ## that suits the enemy defenses seen so far (a few at a time).
 func _manage_depot(pid: int, ships: Array, base: Starbase, game: Game) -> void:
+	if not game.has_tech(pid, str(Defs.WEAPONS_DEPOT["requires"])):
+		return
 	var war := ships.filter(func(s): return s.def["role"] == "warship")
 	var want := _pick_variant(pid, game)
 	var depots: Array = game.get_tree().get_nodes_in_group("depots").filter(func(d): return d.owner_id == pid)

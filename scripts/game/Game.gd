@@ -2062,6 +2062,9 @@ func nearest_depot(pid: int, pos: Vector2, v: String = "") -> WeaponsDepot:
 var placing_depot_variant := "plasma"
 
 func start_depot_placement(v: String = "") -> void:
+	if not has_tech(player_id, str(Defs.WEAPONS_DEPOT["requires"])):
+		message.emit("Weapons Depots need the %s tech." % Defs.TECHS[Defs.WEAPONS_DEPOT["requires"]]["name"], Color("ffb24a"))
+		return
 	if v != "":
 		placing_depot_variant = v
 	placing_depot = true

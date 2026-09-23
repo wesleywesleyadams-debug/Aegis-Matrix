@@ -19,7 +19,7 @@ const DECIDE := 2.0
 
 ## Research grouped the way a commander thinks about it.
 const TECH_GROUPS := {
-	"research_offense": ["destroyers", "ion_cannons", "cruisers", "particle_lances", "dark_matter"],
+	"research_offense": ["destroyers", "depots", "ion_cannons", "cruisers", "particle_lances", "dark_matter"],
 	"research_defense": ["deflectors", "phase_shields", "aegis_matrix", "composite_plating", "reactive_armor",
 		"neutronium_armor", "reinforced_frames", "nanite_plating", "adaptive_hulls"],
 	"research_economy": ["hydroponics", "deep_drills", "gas_skimming", "gene_clinics", "arcologies",
@@ -199,7 +199,9 @@ func _valid(a: String, game: Game, base: Starbase) -> bool:
 		"research_offense", "research_defense", "research_economy":
 			return game.research[pid].is_empty() and game.research_queue[pid].is_empty() and _next_tech(game, a) != ""
 		"depot":
-			# Needs an idle Constructor (it is used up building the depot).
+			# Needs the tech and an idle Constructor (used up building it).
+			if not game.has_tech(pid, str(Defs.WEAPONS_DEPOT["requires"])):
+				return false
 			return game.get_tree().get_nodes_in_group("ships").any(
 				func(s): return s.owner_id == pid and s.def["role"] == "constructor" and s.state == Ship.State.IDLE)
 		"refit":
