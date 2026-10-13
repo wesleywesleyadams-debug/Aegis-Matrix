@@ -90,6 +90,7 @@ func _ready() -> void:
 	root.add_child(_overlay)
 
 	_build_top_bar(root)
+	_build_research_panel(root)
 	_build_speed(root)
 	_build_menu_button(root)
 	_build_selection_panel(root)
@@ -143,7 +144,15 @@ func _fmt(v: float) -> String:
 
 # ---------------------------------------------------------------- layout
 
-const TOP_BAR_WIDTH := 1380
+const TOP_BAR_WIDTH := 1088
+## Breathing room between the top-row panels, so each reads as its own panel.
+const HUD_GAP := 26
+const MENU_W := 170
+const SPEED_W := 330
+const RESEARCH_W := 300
+const SPEED_RIGHT := -12 - MENU_W - HUD_GAP
+const RESEARCH_RIGHT := SPEED_RIGHT - SPEED_W - HUD_GAP
+const TOP_BAR_RIGHT := RESEARCH_RIGHT - RESEARCH_W - HUD_GAP
 
 func _build_top_bar(root: Control) -> void:
 	var bar := PanelContainer.new()
@@ -151,7 +160,7 @@ func _build_top_bar(root: Control) -> void:
 	# the screen free for other panels.
 	bar.anchor_left = 1.0
 	bar.anchor_right = 1.0
-	bar.offset_right = -12 - 170 - 10 - 330 - 10
+	bar.offset_right = TOP_BAR_RIGHT
 	# Fixed width sized for the longest contents, so it never resizes as
 	# numbers or the research status change.
 	bar.offset_left = bar.offset_right - TOP_BAR_WIDTH
@@ -190,9 +199,26 @@ func _build_top_bar(root: Control) -> void:
 	_fleet_label.clip_text = true
 	fleet.add_child(_fleet_label)
 	h.add_child(fleet)
+
+## Research button and match clock, in their own panel between the resource
+## bar and the speed controls.
+func _build_research_panel(root: Control) -> void:
+	var panel := PanelContainer.new()
+	panel.anchor_left = 1.0
+	panel.anchor_right = 1.0
+	panel.offset_right = RESEARCH_RIGHT
+	panel.offset_left = RESEARCH_RIGHT - RESEARCH_W
+	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel.offset_top = 8
+	panel.add_theme_stylebox_override("panel", _panel_style(8))
+	root.add_child(panel)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(h)
 	_research_button = Button.new()
 	_research_button.text = "Research [R]"
-	_research_button.custom_minimum_size = Vector2(222, 0)
+	_research_button.custom_minimum_size = Vector2(206, 0)
 	_research_button.clip_text = true
 	_research_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	for st in ["normal", "hover", "pressed", "focus"]:
@@ -216,7 +242,7 @@ func _build_menu_button(root: Control) -> void:
 	b.focus_mode = Control.FOCUS_NONE
 	b.anchor_left = 1.0
 	b.anchor_right = 1.0
-	b.offset_left = -12 - 170
+	b.offset_left = -12 - MENU_W
 	b.offset_right = -12
 	b.offset_top = 8
 	b.offset_bottom = 8 + 46
@@ -228,8 +254,8 @@ func _build_speed(root: Control) -> void:
 	var panel := PanelContainer.new()
 	panel.anchor_left = 1.0
 	panel.anchor_right = 1.0
-	panel.offset_left = -12 - 170 - 10 - 330
-	panel.offset_right = -12 - 170 - 10
+	panel.offset_left = SPEED_RIGHT - SPEED_W
+	panel.offset_right = SPEED_RIGHT
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel.offset_top = 8
 	panel.add_theme_stylebox_override("panel", _panel_style(8))
