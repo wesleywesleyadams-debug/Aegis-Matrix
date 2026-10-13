@@ -2285,6 +2285,9 @@ func _enter_dev_capture() -> void:
 	if OS.get_environment("SL_SHOT_OPEN") == "research":
 		queue_research(player_id, "ion_cannons")
 		queue_research(player_id, "particle_lances")
+	if OS.get_environment("SL_SHOT_OPEN") == "resbtn":
+		# Dev: the research button while a project is running (green glow).
+		queue_research(player_id, "ion_cannons")
 	await get_tree().create_timer(secs).timeout
 	match OS.get_environment("SL_SHOT_OPEN"):
 		"pause":

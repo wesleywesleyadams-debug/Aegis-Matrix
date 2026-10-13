@@ -21,6 +21,8 @@ var _pings: Array = []
 ## Flashes twice (real time, so it looks the same at any game speed).
 var _flashes: Array = []
 const FLASH_TIME := 0.5
+## Seconds per blink of the research button while nothing is being researched.
+const RESEARCH_BLINK := 1.2
 
 var _res_labels := {}
 var _res_boxes := {}
@@ -211,7 +213,7 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.text = "Research [R]"
 	_research_button.clip_text = true
 	_research_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_research_button.add_theme_font_size_override("font_size", 14)
+	_research_button.add_theme_font_size_override("font_size", 13)
 	_research_button.focus_mode = Control.FOCUS_NONE
 	_research_button.anchor_left = 1.0
 	_research_button.anchor_right = 1.0
@@ -1039,13 +1041,19 @@ OUT OF ENERGY: ship production halted, ships at 25%% speed" if game.energy_starv
 Total ship+starbase upkeep: %.0f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]
 	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	var cur: Dictionary = game.research[pid]
+	# The button pulses in real time, so it looks the same at any game speed:
+	# yellow when nothing is queued, green while researching, red when stalled.
+	var glow := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU / RESEARCH_BLINK)
 	if cur.is_empty():
-		_research_button.text = "No research [R]"
-		_research_button.modulate = Color(1, 0.85, 0.5)
+		_research_button.text = "Research [R]"
+		_research_button.modulate = Color.WHITE.lerp(Color("ffd46b"), glow)
 	else:
 		var t: Dictionary = Defs.TECHS[cur["id"]]
-		_research_button.text = "%s %d%%%s" % [t["name"], int(100.0 * cur["progress"] / t["time"]), " (stalled)" if cur["stalled"] else ""]
-		_research_button.modulate = Color(1, 0.6, 0.55) if cur["stalled"] else Color.WHITE
+		# The glow says whether it is running or stalled, so the label stays
+		# short enough to fit: project name and percentage only.
+		_research_button.text = "%s %d%%" % [t["name"], int(100.0 * cur["progress"] / t["time"])]
+		_research_button.tooltip_text = "%s: %d%% complete.%s" % [t["name"], int(100.0 * cur["progress"] / t["time"]), "\nSTALLED: not enough resources to keep paying for it." if cur["stalled"] else ""]
+		_research_button.modulate = Color.WHITE.lerp(BAD if cur["stalled"] else GOOD, 0.5 + 0.5 * glow)
 	var s := int(Game.now())
 	_clock.text = "%02d:%02d" % [s / 60, s % 60]
 
