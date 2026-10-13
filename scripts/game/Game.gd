@@ -36,6 +36,10 @@ var players: Array[int] = [1, 2]
 var resources := {}
 ## Net change per second over the last second, per player per resource.
 var rates := {}
+## The last RATE_WINDOW one-second samples, so the HUD can show a trend that
+## does not flicker with every delivery: pid -> resource -> Array[float].
+const RATE_WINDOW := 60
+var _rate_hist := {}
 var researched := {}      # pid -> {tech_id: true}
 var research := {}        # pid -> {"id": String, "progress": float, "stalled": bool} or {}
 var research_queue := {}  # pid -> Array of tech ids
@@ -651,7 +655,26 @@ func _physics_process(delta: float) -> void:
 				snap[k] = _rate_acc[pid].get(k, 0.0) / _rate_timer
 			rates[pid] = snap
 			_rate_acc[pid] = {}
+			if not _rate_hist.has(pid):
+				_rate_hist[pid] = {}
+			for k in Defs.RESOURCES:
+				var h: Array = _rate_hist[pid].get(k, [])
+				h.append(float(snap[k]))
+				if h.size() > RATE_WINDOW:
+					h.remove_at(0)
+				_rate_hist[pid][k] = h
 		_rate_timer = 0.0
+
+## Average change per minute over the last RATE_WINDOW seconds. The HUD shows
+## this as a rising or falling arrow, so a single delivery does not flip it.
+func avg_rate(pid: int, key: String) -> float:
+	var h: Array = _rate_hist.get(pid, {}).get(key, [])
+	if h.is_empty():
+		return rates.get(pid, {}).get(key, 0.0) * Defs.PER_MIN
+	var sum := 0.0
+	for v in h:
+		sum += v
+	return sum / h.size() * Defs.PER_MIN
 
 func ships_near(pos: Vector2, r: float) -> Array:
 	var out := []
