@@ -144,14 +144,16 @@ func _fmt(v: float) -> String:
 
 # ---------------------------------------------------------------- layout
 
-const TOP_BAR_WIDTH := 1088
+const TOP_BAR_WIDTH := 980
 ## Breathing room between the top-row panels, so each reads as its own panel.
 const HUD_GAP := 26
 const MENU_W := 170
 const SPEED_W := 330
-const RESEARCH_W := 300
+const RESEARCH_W := 222
+const CLOCK_W := 86
 const SPEED_RIGHT := -12 - MENU_W - HUD_GAP
-const RESEARCH_RIGHT := SPEED_RIGHT - SPEED_W - HUD_GAP
+const CLOCK_RIGHT := SPEED_RIGHT - SPEED_W - HUD_GAP
+const RESEARCH_RIGHT := CLOCK_RIGHT - CLOCK_W - HUD_GAP
 const TOP_BAR_RIGHT := RESEARCH_RIGHT - RESEARCH_W - HUD_GAP
 
 func _build_top_bar(root: Control) -> void:
@@ -203,33 +205,35 @@ func _build_top_bar(root: Control) -> void:
 ## Research button and match clock, in their own panel between the resource
 ## bar and the speed controls.
 func _build_research_panel(root: Control) -> void:
+	# The research button stands on its own, like the Menu button; the match
+	# clock gets its own small panel beside it.
+	_research_button = Button.new()
+	_research_button.text = "Research [R]"
+	_research_button.clip_text = true
+	_research_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_research_button.add_theme_font_size_override("font_size", 14)
+	_research_button.focus_mode = Control.FOCUS_NONE
+	_research_button.anchor_left = 1.0
+	_research_button.anchor_right = 1.0
+	_research_button.offset_right = RESEARCH_RIGHT
+	_research_button.offset_left = RESEARCH_RIGHT - RESEARCH_W
+	_research_button.offset_top = 8
+	_research_button.offset_bottom = 8 + 46
+	_research_button.pressed.connect(toggle_research)
+	root.add_child(_research_button)
+
 	var panel := PanelContainer.new()
 	panel.anchor_left = 1.0
 	panel.anchor_right = 1.0
-	panel.offset_right = RESEARCH_RIGHT
-	panel.offset_left = RESEARCH_RIGHT - RESEARCH_W
+	panel.offset_right = CLOCK_RIGHT
+	panel.offset_left = CLOCK_RIGHT - CLOCK_W
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel.offset_top = 8
 	panel.add_theme_stylebox_override("panel", _panel_style(8))
 	root.add_child(panel)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(h)
-	_research_button = Button.new()
-	_research_button.text = "Research [R]"
-	_research_button.custom_minimum_size = Vector2(206, 0)
-	_research_button.clip_text = true
-	_research_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	for st in ["normal", "hover", "pressed", "focus"]:
-		var rsb := _research_button.get_theme_stylebox(st).duplicate() as StyleBox
-		rsb.content_margin_left = 8
-		rsb.content_margin_right = 8
-		_research_button.add_theme_stylebox_override(st, rsb)
-	_research_button.add_theme_font_size_override("font_size", 14)
-	_research_button.focus_mode = Control.FOCUS_NONE
-	_research_button.pressed.connect(toggle_research)
-	h.add_child(_research_button)
 	_clock = _label("00:00", DIM)
 	_clock.custom_minimum_size = Vector2(50, 0)
 	h.add_child(_clock)
