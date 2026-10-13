@@ -1798,6 +1798,38 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "sbbuild":
+		# Dev: a Constructor founds a starbase. With SL_BROKE=1 the treasury is
+		# emptied so the site stalls, then refilled to prove it resumes.
+		var hb3 := nearest_starbase(player_id, Vector2.ZERO)
+		var spot3 := hb3.global_position + Vector2(620, 240)
+		var con3 := spawn_ship("constructor", player_id, hb3.global_position + Vector2(120, 60))
+		print("SBBUILD site=%s problem='%s'" % [str(spot3.round()), site_problem("starbase", spot3)])
+		con3.order_build_starbase(spot3)
+		_set_selection([con3], false)
+		center_on(spot3)
+		if OS.get_environment("SL_BROKE") != "":
+			resources[player_id]["minerals"] = 0.0
+			resources[player_id]["spice"] = 0.0
+		var seen := {"built": false}
+		for t in [10.0, 25.0, 45.0, 70.0, 95.0]:
+			get_tree().create_timer(t).timeout.connect(func():
+				var sites := get_tree().get_nodes_in_group("starbases").filter(func(s): return s.owner_id == player_id and s != hb3)
+				var site = sites[0] if sites.size() > 0 else null
+				if site == null:
+					print("SBBUILD t=%d no site yet (constructor state=%s)" % [int(t), Ship.State.keys()[con3.state] if is_instance_valid(con3) else "gone"])
+					return
+				print("SBBUILD t=%d progress=%.0f/%ds stalled=%s hp=%d/%d under_construction=%s minerals=%d" % [
+					int(t), site.construct_progress, int(Defs.STARBASE["build_time"]), str(site.build_stalled),
+					int(site.hp), int(site.max_hp), str(site.under_construction), int(resources[player_id]["minerals"])])
+				if not site.under_construction and not seen["built"]:
+					seen["built"] = true
+					print("SBBUILD finished, can_queue corvette='%s'" % site.can_queue("corvette")))
+		if OS.get_environment("SL_BROKE") != "":
+			get_tree().create_timer(30.0).timeout.connect(func():
+				resources[player_id]["minerals"] = 900.0
+				resources[player_id]["spice"] = 200.0
+				print("SBBUILD treasury refilled at t=30"))
 	if OS.get_environment("SL_SHOT_OPEN") == "placering":
 		# Dev: the placement ring is the same rule for every construct.
 		var hb2 := nearest_starbase(player_id, Vector2.ZERO)

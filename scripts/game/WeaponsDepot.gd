@@ -122,6 +122,8 @@ func _construct(delta: float) -> void:
 		per_sec[k] = d["cost"][k] / total
 	var f := g.pay_over_time(owner_id, per_sec, delta)
 	build_stalled = f < 0.999
+	if build_stalled:
+		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f
 	hp = minf(max_hp, hp + max_hp * 0.9 * delta * f / total)
 	_update_look()
@@ -142,6 +144,8 @@ func _update_look() -> void:
 func _draw() -> void:
 	super._draw()
 	if under_construction:
+		if build_stalled:
+			_draw_stall_notice()
 		return
 	# Bay lights: one pip per docked ship, in this depot's variant color.
 	var cap := int(Defs.WEAPONS_DEPOT["capacity"])

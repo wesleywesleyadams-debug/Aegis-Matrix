@@ -142,6 +142,8 @@ func _construct(delta: float) -> void:
 		per_sec[k] = Defs.STARBASE["cost"][k] / total
 	var f := g.pay_over_time(owner_id, per_sec, delta)
 	build_stalled = f < 0.999
+	if build_stalled:
+		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f
 	hp = minf(max_hp, hp + max_hp * 0.9 * delta * f / total)
 	_update_site_look()
@@ -210,6 +212,8 @@ func _draw() -> void:
 		# Scaffold progress arc.
 		var frac: float = construct_progress / Defs.STARBASE["build_time"]
 		draw_arc(Vector2.ZERO, radius + 8.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 48, Color("ffd46b") if not build_stalled else Color("ff6a5a"), 2.0)
+		if build_stalled:
+			_draw_stall_notice()
 	if selected and has_rally:
 		var to := to_local(rally_target.global_position if is_instance_valid(rally_target) else rally_point)
 		draw_dashed_line(Vector2.ZERO, to, Color(Defs.team_color(owner_id), 0.5), 1.0, 4.0)

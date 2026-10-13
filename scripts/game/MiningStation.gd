@@ -89,6 +89,8 @@ func _construct(delta: float) -> void:
 		per_sec[k] = d["cost"][k] / total
 	var f := g.pay_over_time(owner_id, per_sec, delta)
 	build_stalled = f < 0.999
+	if build_stalled:
+		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f
 	hp = minf(max_hp, hp + max_hp * 0.9 * delta * f / total)
 	_update_look()
@@ -110,3 +112,11 @@ func _die() -> void:
 	if owner_id == Game.instance.player_id:
 		Game.instance.alert("%s destroyed." % label(), "alert_starbase_lost", true, global_position)
 	super._die()
+
+func _draw() -> void:
+	super._draw()
+	if under_construction:
+		var frac: float = construct_progress / Defs.MINING_STATION["build_time"]
+		draw_arc(Vector2.ZERO, radius + 7.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 40, Color("ffd46b") if not build_stalled else Color("ff6a5a"), 2.0)
+		if build_stalled:
+			_draw_stall_notice()

@@ -1369,8 +1369,9 @@ Refits a generalist into a %s: %s" % [vd["desc"], vd["label"], Defs.VARIANTS[v][
 		row.add_child(b)
 	_sel_body.add_child(row)
 
-## Refit buttons for the selected generalists that have variants: one per
-## variant, in its color. Specialists can't be refitted again.
+## Generalist warships selected: one line saying how a refit happens. No
+## variant buttons — the depot you send a ship to decides what it becomes,
+## so the choice lives on the map, not in this panel.
 func _add_refit_buttons(sel: Array) -> void:
 	var bases := {}
 	for e in sel:
@@ -1383,31 +1384,7 @@ func _add_refit_buttons(sel: Array) -> void:
 	for b in bases:
 		var r: Dictionary = Defs.SHIPS[b]["refit"]
 		costs.append("%s %d minerals, %ds" % [Defs.SHIPS[b]["name"], int(r["minerals"]), int(r["time"])])
-	_sel_body.add_child(_label("Send to a depot to refit (permanent): " + ", ".join(costs), DIM, 13))
-	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 6)
-	row.add_theme_constant_override("v_separation", 6)
-	var vs: Array = []
-	for base in bases:
-		for v in Defs.VARIANTS_OF[base]:
-			if not vs.has(v):
-				vs.append(v)
-	for v in vs:
-		var vd: Dictionary = Defs.VARIANTS[v]
-		var b := Button.new()
-		b.text = vd["label"]
-		b.custom_minimum_size = Vector2(104, 32)
-		b.add_theme_color_override("font_color", vd["color"])
-		b.tooltip_text = vd["desc"]
-		var depot := game.nearest_depot(game.player_id, Vector2.ZERO, v)
-		b.disabled = depot == null
-		if depot == null:
-			b.tooltip_text = "Needs an %s Depot (build one with a Constructor, E)." % vd["label"]
-		b.focus_mode = Control.FOCUS_NONE
-		b.pressed.connect(func(): game.refit_selected(v))
-		_register_action(b)
-		row.add_child(b)
-	_sel_body.add_child(row)
+	_sel_body.add_child(_label("Right-click a Weapons Depot to refit (permanent, one way): " + ", ".join(costs), DIM, 13))
 
 ## A selected Weapons Depot: which variant it fits and the ships docked
 ## inside, each with a Cancel button. A cancelled ship leaves the way it went

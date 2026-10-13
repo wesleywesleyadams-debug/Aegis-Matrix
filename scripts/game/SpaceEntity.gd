@@ -123,3 +123,15 @@ func _draw() -> void:
 		draw_rect(Rect2(-r, top - row, w, 2), Color(0, 0, 0, 0.7))
 		draw_rect(Rect2(-r, top - row, w * clampf(shield / max_shield, 0, 1), 2), Color("7fd8ff"))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+## A construction site that cannot pay says so on the map, not just in the
+## selection panel: a pulsing amber tag above the scaffold.
+func _draw_stall_notice() -> void:
+	var f := ThemeDB.fallback_font
+	var t := "INSUFFICIENT FUNDS"
+	var size := 11
+	var w: float = f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	var at := Vector2(-w / 2.0, -radius - 16.0)
+	var a: float = 0.55 + 0.45 * sin(Game.now() * 6.0)
+	draw_string_outline(f, at, t, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 4, Color(0, 0, 0, 0.9))
+	draw_string(f, at, t, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(1.0, 0.72, 0.35, a))
