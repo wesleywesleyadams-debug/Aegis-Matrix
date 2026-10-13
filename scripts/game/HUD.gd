@@ -21,8 +21,9 @@ var _pings: Array = []
 ## Flashes twice (real time, so it looks the same at any game speed).
 var _flashes: Array = []
 const FLASH_TIME := 0.5
-## Seconds per blink of the research button while nothing is being researched.
-const RESEARCH_BLINK := 1.2
+## Seconds per blink cycle of the research button: a long hold on the state
+## colour, then a short one back on white.
+const RESEARCH_BLINK := 2.0
 
 var _res_labels := {}
 var _res_boxes := {}
@@ -1041,9 +1042,11 @@ OUT OF ENERGY: ship production halted, ships at 25%% speed" if game.energy_starv
 Total ship+starbase upkeep: %.0f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]
 	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	var cur: Dictionary = game.research[pid]
-	# The button pulses in real time, so it looks the same at any game speed:
+	# The button blinks in real time, so it looks the same at any game speed:
 	# yellow when nothing is queued, green while researching, red when stalled.
-	var glow := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU / RESEARCH_BLINK)
+	# A long hold on the state colour, then a short one back on white.
+	var phase: float = fmod(Time.get_ticks_msec() / 1000.0, RESEARCH_BLINK)
+	var glow := 1.0 if phase < RESEARCH_BLINK * 0.7 else 0.0
 	if cur.is_empty():
 		_research_button.text = "Research [R]"
 		_research_button.modulate = Color.WHITE.lerp(Color("ffd46b"), glow)
@@ -1053,7 +1056,7 @@ Total ship+starbase upkeep: %.0f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 		# short enough to fit: project name and percentage only.
 		_research_button.text = "%s %d%%" % [t["name"], int(100.0 * cur["progress"] / t["time"])]
 		_research_button.tooltip_text = "%s: %d%% complete.%s" % [t["name"], int(100.0 * cur["progress"] / t["time"]), "\nSTALLED: not enough resources to keep paying for it." if cur["stalled"] else ""]
-		_research_button.modulate = Color.WHITE.lerp(BAD if cur["stalled"] else GOOD, 0.5 + 0.5 * glow)
+		_research_button.modulate = Color.WHITE.lerp(BAD if cur["stalled"] else GOOD, 0.35 + 0.65 * glow)
 	var s := int(Game.now())
 	_clock.text = "%02d:%02d" % [s / 60, s % 60]
 
