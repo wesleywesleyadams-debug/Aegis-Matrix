@@ -186,11 +186,37 @@ func _gen_ships() -> void:
 		[[2, 12, 3.5, 3.5], [3, 10, 1.6, 1.6, 5.0], [11, 20, 2.0, 5.5], [0, 3, 2.0, 2.0]],
 		func(x: int, dy: float) -> bool: return absf(dy) > 3.4 and x < 11,
 		[8, 2], [-1.0, 0.0], [6, 14])
-	# Constructor: boxy hull with twin crane booms.
-	_ship("constructor", 18, 15,
-		[[2, 12, 4.0, 4.0], [3, 9, 1.8, 1.8, 5.0], [11, 18, 0.9, 0.9, 3.5], [0, 3, 2.0, 2.0]],
-		func(x: int, dy: float) -> bool: return absf(dy) > 3.5 and x < 10,
-		[8, 2], [-1.0, 0.0], [6])
+	# Constructor: boxy yard hull carrying its tools up front — a hammer head
+	# above the nose and a pickaxe below it, so it never reads as a barge.
+	_ship("constructor", 20, 17,
+		[[2, 13, 4.5, 4.5], [3, 10, 2.0, 2.0, 5.5], [0, 3, 2.2, 2.2]],
+		func(x: int, dy: float) -> bool: return absf(dy) > 4.0 and x < 11,
+		[9, 2], [-1.0, 0.0], [6],
+		func(img: Image, cy: float) -> void:
+			var steel := HULL[3]
+			var lit := HULL[4]
+			var dark := HULL[1]
+			# Hammer: a short shaft off the nose carrying a square head high.
+			for x in range(13, 17):
+				_px(img, x, cy - 4, steel)
+			for x in range(16, 20):
+				for y in range(-7, -3):
+					_px(img, x, cy + y, steel)
+			for y in range(-7, -2):
+				_px(img, 19, cy + y, dark)
+			for x in range(16, 19):
+				_px(img, x, cy - 7, lit)
+			# Pickaxe: a haft below the nose with a swept double point.
+			for y in range(1, 5):
+				_px(img, 15, cy + y, steel)
+			for k in 3:
+				_px(img, 12 + k, cy + 4 - k, steel)
+				_px(img, 12 + k, cy + 5 - k, dark)
+				_px(img, 18 - k, cy + 4 - k, steel)
+				_px(img, 18 - k, cy + 5 - k, dark)
+			_px(img, 11, cy + 5, dark)
+			_px(img, 19, cy + 5, dark)
+			_px(img, 15, cy + 5, lit))
 	# Mining barge: cargo pods and a forward grab claw.
 	_ship("miner", 16, 15,
 		[[2, 11, 3.5, 3.5], [3, 9, 1.5, 1.5, 5.0], [10, 16, 1.5, 0.6, 3.0], [0, 3, 2.0, 2.0]],
