@@ -1798,6 +1798,12 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "ctorpanel":
+		# Dev: the Constructor's build options as square icon buttons.
+		var hb4 := nearest_starbase(player_id, Vector2.ZERO)
+		researched[player_id]["depots"] = true
+		var c4 := spawn_ship("constructor", player_id, hb4.global_position + Vector2(90, 90))
+		_set_selection([c4], false)
 	if OS.get_environment("SL_SHOT_OPEN") == "sbbuild":
 		# Dev: a Constructor founds a starbase. With SL_BROKE=1 the treasury is
 		# emptied so the site stalls, then refilled to prove it resumes.

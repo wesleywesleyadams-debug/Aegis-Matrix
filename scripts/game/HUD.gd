@@ -672,9 +672,7 @@ func _rebuild_selection() -> void:
 		grid.add_child(box)
 	_sel_body.add_child(grid)
 	if sel.any(func(e): return e is Ship and e.def["role"] == "constructor"):
-		_add_found_button()
-		_add_station_button()
-		_add_depot_button()
+		_add_constructor_buttons()
 	_add_refit_buttons(sel)
 
 func _entity_icon(e: SpaceEntity, px: int) -> Control:
@@ -701,36 +699,52 @@ func _build_ship_controls(s: Ship) -> void:
 		"colony":
 			_sel_body.add_child(_label("Right-click an unowned planet to settle it with %d pops." % int(Defs.START_POP), DIM, 13))
 		"constructor":
-			_add_found_button()
-			_add_station_button()
-			_add_depot_button()
+			_add_constructor_buttons()
 		"miner":
 			_sel_body.add_child(_label("Right-click an asteroid to mine it. Orange-flecked rocks hold spice.", DIM, 13))
 		"skimmer":
 			_sel_body.add_child(_label("Right-click a gas giant to mine minerals, or a spot inside a spice nebula to slowly harvest spice gas (never runs out).", DIM, 13))
 
-func _add_found_button() -> void:
+
+## The panel's standard build button, as the starbase has always drawn one:
+## sprite on the left, name and cost stacked beside it, hotkey letter in the
+## corner (stamped by _register_action). Every agent uses this, so a
+## Constructor's starbase/station/depot buttons read like a starbase's hulls.
+const PANEL_BTN := Vector2(198, 62)
+
+func _panel_build_button(tex: String, title: String, cost: Dictionary, seconds: float, tip: String, name_color: Color = TEXT) -> Button:
 	var b := Button.new()
-	b.text = "Found Starbase"
-	b.custom_minimum_size = Vector2(0, 40)
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	var cost := CostRow.make(Defs.STARBASE["cost"], 13, Defs.STARBASE["build_time"])
-	cost.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	cost.offset_left = -230
-	cost.offset_right = -10
-	cost.offset_top = -12
-	cost.offset_bottom = 12
-	cost.alignment = BoxContainer.ALIGNMENT_END
-	b.add_child(cost)
-	var pid := game.player_id
-	var n := game.starbase_count(pid)
-	var now_u: float = n * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n)
-	var next_u: float = (n + 1) * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n + 1)
-	b.tooltip_text = "You have %d starbase%s. Starbase #%d raises total starbase upkeep from %.0f to %.0f energy/min (x%.1f each).\nUpkeep climbs steeply past 10 starbases." % [n, "" if n == 1 else "s", n + 1, now_u, next_u, game.starbase_upkeep_multiplier(pid, n + 1)]
+	b.custom_minimum_size = PANEL_BTN
 	b.focus_mode = Control.FOCUS_NONE
-	b.pressed.connect(game.start_starbase_placement)
-	_register_action(b)
-	_sel_body.add_child(b)
+	b.tooltip_text = "%s — %s over %ds.
+%s" % [title, Defs.cost_text(cost), int(seconds), tip] if seconds > 0.0 else tip
+	var h := HBoxContainer.new()
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.set_anchors_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 6
+	h.add_theme_constant_override("separation", 12)
+	# One icon box whatever the sprite size, so a starbase and a corvette
+	# sit in the same button.
+	var art := _icon(tex, 1)
+	art.custom_minimum_size = Vector2(46, 46)
+	h.add_child(art)
+	var v := VBoxContainer.new()
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(_label(title, name_color, 13))
+	v.add_child(CostRow.make(cost, 12, -1.0, 1))
+	h.add_child(v)
+	b.add_child(h)
+	return b
+
+## The grid every panel of buttons uses, three across like the starbase.
+func _button_grid() -> GridContainer:
+	var g := GridContainer.new()
+	g.columns = 3
+	g.add_theme_constant_override("h_separation", 6)
+	g.add_theme_constant_override("v_separation", 6)
+	return g
+
 
 ## The starbase panel has two pages: the economy ships it builds most of the
 ## time, and the warships behind a button (see _build_starbase_controls).
@@ -774,12 +788,12 @@ func _build_starbase_controls(sb: Starbase) -> void:
 	# key) whichever page is open.
 	while grid.get_child_count() < PAGE_SWITCH_SLOT:
 		var gap := Control.new()
-		gap.custom_minimum_size = Vector2(198, 62)
+		gap.custom_minimum_size = PANEL_BTN
 		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_skip_action()
 		grid.add_child(gap)
 	var flip := Button.new()
-	flip.custom_minimum_size = Vector2(198, 62)
+	flip.custom_minimum_size = PANEL_BTN
 	flip.focus_mode = Control.FOCUS_NONE
 	flip.text = "< Economy" if _sb_page == "war" else "Military >"
 	flip.add_theme_color_override("font_color", GOOD)
@@ -1325,49 +1339,41 @@ func _tech_button(id: String, width: float = 340.0) -> Button:
 
 ## Constructor: one button per depot type. Each depot fits one variant;
 ## E places the last type picked.
-func _add_station_button() -> void:
-	var b := Button.new()
-	b.text = "Build Mining Station"
-	b.custom_minimum_size = Vector2(0, 40)
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	var cost := CostRow.make(Defs.MINING_STATION["cost"], 13, Defs.MINING_STATION["build_time"])
-	cost.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	cost.offset_left = -230
-	cost.offset_right = -10
-	cost.offset_top = -12
-	cost.offset_bottom = 12
-	cost.alignment = BoxContainer.ALIGNMENT_END
-	b.add_child(cost)
-	b.tooltip_text = "A drop-off for harvesters: they unload here instead of flying home, so a far belt stops costing a long haul. Builds no ships, %d hull / %d armor / %d shields and a token gun." % [
-		int(Defs.MINING_STATION["hp"]), int(Defs.MINING_STATION["armor"]), int(Defs.MINING_STATION["shield"])]
-	b.focus_mode = Control.FOCUS_NONE
-	b.pressed.connect(game.start_station_placement)
-	_register_action(b)
-	_sel_body.add_child(b)
 
-func _add_depot_button() -> void:
-	var locked := not game.has_tech(game.player_id, str(Defs.WEAPONS_DEPOT["requires"]))
-	if locked:
-		_sel_body.add_child(_label("Weapons Depots need the %s tech." % Defs.TECHS[Defs.WEAPONS_DEPOT["requires"]]["name"], Color("ffd84a"), 13))
-	_sel_body.add_child(_label("Build a Weapons Depot — %s over %ds. Each depot refits generalists into one variant:" % [
-		Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), int(Defs.WEAPONS_DEPOT["build_time"])], DIM, 13))
-	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", 6)
-	row.add_theme_constant_override("v_separation", 6)
+
+## Everything a Constructor can build, as square icon buttons on one grid:
+## a starbase, a Mining Station, and one depot per variant.
+func _add_constructor_buttons() -> void:
+	var pid := game.player_id
+	var grid := _button_grid()
+	var n := game.starbase_count(pid)
+	var now_u: float = n * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n)
+	var next_u: float = (n + 1) * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n + 1)
+	var sb := _panel_build_button("starbase", "Starbase", Defs.STARBASE["cost"], Defs.STARBASE["build_time"], "Found Starbase — %s over %ds.\nBuilds ships and takes deliveries. You have %d; the next raises total starbase upkeep from %.0f to %.0f energy/min." % [
+		Defs.cost_text(Defs.STARBASE["cost"]), int(Defs.STARBASE["build_time"]), n, now_u, next_u])
+	sb.pressed.connect(game.start_starbase_placement)
+	_register_action(sb)
+	grid.add_child(sb)
+
+	var st := _panel_build_button("ship_mining_station", "Mining Station", Defs.MINING_STATION["cost"], Defs.MINING_STATION["build_time"],
+		"A drop-off: harvesters unload here instead of flying home. Builds no ships, %d hull / %d armor / %d shields and a token gun." % [
+			int(Defs.MINING_STATION["hp"]), int(Defs.MINING_STATION["armor"]), int(Defs.MINING_STATION["shield"])])
+	st.pressed.connect(game.start_station_placement)
+	_register_action(st)
+	grid.add_child(st)
+
+	var locked := not game.has_tech(pid, str(Defs.WEAPONS_DEPOT["requires"]))
 	for v in Defs.VARIANTS:
 		var vd: Dictionary = Defs.VARIANTS[v]
-		var b := Button.new()
-		b.text = "%s Depot" % vd["label"]
-		b.custom_minimum_size = Vector2(132, 34)
-		b.add_theme_color_override("font_color", vd["color"])
-		b.tooltip_text = "%s
-Refits a generalist into a %s: %s" % [vd["desc"], vd["label"], Defs.VARIANTS[v]["desc"]]
-		b.focus_mode = Control.FOCUS_NONE
-		b.disabled = locked
+		var b := _panel_build_button("ship_depot_" + v, "%s Depot" % vd["label"], Defs.WEAPONS_DEPOT["cost"], Defs.WEAPONS_DEPOT["build_time"],
+			"Refits a generalist warship into a %s: %s" % [vd["label"], vd["desc"]], vd["color"])
+		if locked:
+			b.disabled = true
+			b.tooltip_text = "Weapons Depots need the %s tech." % Defs.TECHS[Defs.WEAPONS_DEPOT["requires"]]["name"]
 		b.pressed.connect(func(): game.start_depot_placement(v))
 		_register_action(b)
-		row.add_child(b)
-	_sel_body.add_child(row)
+		grid.add_child(b)
+	_sel_body.add_child(grid)
 
 ## Generalist warships selected: one line saying how a refit happens. No
 ## variant buttons — the depot you send a ship to decides what it becomes,
