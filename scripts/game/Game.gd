@@ -2285,10 +2285,35 @@ func _enter_dev_capture() -> void:
 	if OS.get_environment("SL_SHOT_OPEN") == "research":
 		queue_research(player_id, "ion_cannons")
 		queue_research(player_id, "particle_lances")
+	if OS.get_environment("SL_SHOT_OPEN") == "sbdps":
+		# Dev: park enemy corvettes inside starbase range and report how much
+		# damage the starbase lands, to compare across game speeds.
+		var sb9 := nearest_starbase(player_id, Vector2.ZERO)
+		for i in 3:
+			var e9 := spawn_ship("corvette", 2 if player_id == 1 else 1, sb9.global_position + Vector2(170 + i * 30, 60))
+			e9.order_stop()
+			e9.set_meta("sbtest", true)
+		center_on(sb9.global_position)
 	if OS.get_environment("SL_SHOT_OPEN") == "resbtn":
 		# Dev: the research button while a project is running (green glow).
 		queue_research(player_id, "ion_cannons")
 	await get_tree().create_timer(secs).timeout
+	if OS.get_environment("SL_SHOT_OPEN") == "sbdps":
+		var tot := 0.0
+		var full: float = 3.0 * (Defs.SHIPS["corvette"]["hp"] + Defs.SHIPS["corvette"]["shield"] + Defs.SHIPS["corvette"]["armor"])
+		var alive := 0
+		for e9 in get_tree().get_nodes_in_group("ships"):
+			if e9.has_meta("sbtest"):
+				alive += 1
+				tot += e9.hp + e9.shield + e9.armor
+		print("  survivors %d of 3" % alive)
+		print("SBDPS scale=%s after %.0fs: enemy pools %.0f/%.0f (damage %.0f)" % [OS.get_environment("SL_SHOT"), secs, tot, full, full - tot])
+		var sbx := nearest_starbase(player_id, Vector2.ZERO)
+		var tgt := nearest_enemy(sbx, Defs.STARBASE["range"])
+		for e8 in get_tree().get_nodes_in_group("ships"):
+			if e8.owner_id != player_id:
+				print("  enemy %s at %.0f px, hp %.0f" % [e8.ship_type, e8.global_position.distance_to(sbx.global_position), e8.hp])
+		print("  starbase target: %s" % ("none" if tgt == null else str(tgt.ship_type)))
 	match OS.get_environment("SL_SHOT_OPEN"):
 		"pause":
 			hud.show_pause(true)
