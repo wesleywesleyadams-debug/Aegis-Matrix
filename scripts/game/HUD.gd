@@ -566,7 +566,7 @@ func _refresh_research() -> void:
 		var w: Dictionary = _tech_buttons[id]
 		var line := "%s   [%s" % [t["name"], STATE_LABELS[st]]
 		if st == "active" and cur.get("stalled", false):
-			line += ", STALLED"
+			line += ", STALLED: insufficient funds"
 		if st == "queued":
 			line += " #%d" % (game.research_queue[pid].find(id) + 1)
 		line += "]"
@@ -885,10 +885,10 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 		txt += "
 Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id), Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(sb.owner_id), game.starbase_upkeep_multiplier(sb.owner_id)]
 		if sb.under_construction:
-			txt += "\nConstruction %d%%%s" % [int(100.0 * sb.construct_progress / Defs.STARBASE["build_time"]), "  STALLED: waiting for resources" if sb.build_stalled else ""]
+			txt += "\nConstruction %d%%%s" % [int(100.0 * sb.construct_progress / Defs.STARBASE["build_time"]), "  STALLED: insufficient funds" if sb.build_stalled else ""]
 		elif not sb.queue.is_empty():
 			var d: Dictionary = Defs.SHIPS[sb.queue[0]]
-			txt += "\nBuilding %s %d%%%s" % [d["name"], int(100.0 * sb.build_progress / d["build_time"]), "  STALLED: waiting for resources" if sb.build_stalled else ""]
+			txt += "\nBuilding %s %d%%%s" % [d["name"], int(100.0 * sb.build_progress / d["build_time"]), "  STALLED: insufficient funds" if sb.build_stalled else ""]
 	_info_label.text = txt
 	if e is Starbase and _queue_row.visible:
 		var sb := e as Starbase

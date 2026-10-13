@@ -337,7 +337,7 @@ func refresh() -> void:
 			s += "\nNo construction. Click an empty field to build." if planet.free_fields() > 0 else "\nAll fields in use."
 		else:
 			var cd: Dictionary = Defs.BUILDINGS[planet.construction["id"]]
-			s += "\nBuilding %s: %d%%%s. %d more queued." % [cd["name"], int(100.0 * planet.construction["progress"] / cd["time"]), " (STALLED)" if planet.construction_stalled else "", planet.construction_queue.size()]
+			s += "\nBuilding %s: %d%%%s. %d more queued." % [cd["name"], int(100.0 * planet.construction["progress"] / cd["time"]), " (STALLED: insufficient funds)" if planet.construction_stalled else "", planet.construction_queue.size()]
 	stats = s
 	_details.text = s
 	for i in _field_buttons.size():
