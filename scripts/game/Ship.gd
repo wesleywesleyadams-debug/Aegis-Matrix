@@ -96,8 +96,24 @@ func _apply_visuals() -> void:
 	hull.texture = Defs.tex("ship_" + ship_type)
 	team.texture = Defs.tex("ship_" + ship_type + "_team")
 	team.modulate = Defs.team_color(owner_id)
+	_apply_mark()
 	# Flame sits just behind the stern.
 	flame.position = Vector2(-hull.texture.get_width() / 2.0 - 2.0, 0)
+
+## Hull marks (Defs.HULL_MARKS) show as trim over the hull: a Wisp is bare,
+## a Specter has a bright top rail, a Wraith a keel line and nose studs, a
+## Phantom a full lit rim. One overlay per class covers all of its variants.
+func _apply_mark() -> void:
+	if not has_node("Mark"):
+		return
+	var mk: Sprite2D = get_node("Mark")
+	var cls: String = def.get("base", ship_type)
+	var level := Game.instance.mark_level(owner_id, ship_type) if Game.instance else 0
+	if level <= 0 or not Defs.MARK_LINES.has(cls):
+		mk.visible = false
+		return
+	mk.texture = Defs.tex("ship_mark_%s_%d" % [cls, mini(level, 3)])
+	mk.visible = mk.texture != null
 
 func is_miner() -> bool:
 	return def.get("role", "") in ["miner", "skimmer"]
@@ -122,6 +138,7 @@ func _find_mine_target(resource: String) -> Node2D:
 func refresh_stats() -> void:
 	var g := Game.instance
 	display_name = g.ship_name(owner_id, ship_type)
+	_apply_mark()
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
 	var ar_frac := armor / max_armor if max_armor > 0.0 else 1.0
 	var sh_frac := shield / max_shield if max_shield > 0.0 else 1.0

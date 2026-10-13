@@ -1798,6 +1798,27 @@ func _enter_dev_capture() -> void:
 		print("ESC selection cleared=%s then menu=%s" % [str(cleared), str(hud._pause.visible)])
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
+	if OS.get_environment("SL_SHOT_OPEN") == "marks":
+		# Dev: one row per class, Wisp to Phantom left to right.
+		var c0 := Vector2(-520, -260)
+		for row in [["corvette", 0], ["destroyer", 1], ["cruiser", 2]]:
+			for lvl in 4:
+				var s := spawn_ship(str(row[0]), player_id, c0 + Vector2(lvl * 230, int(row[1]) * 170))
+				s.order_stop()
+				s.set_meta("force_mark", lvl)
+		# Fake each ship's mark level by handing it the overlay directly.
+		await get_tree().process_frame
+		for s in get_tree().get_nodes_in_group("ships"):
+			if not s.has_meta("force_mark"):
+				continue
+			var lvl: int = s.get_meta("force_mark")
+			var mk: Sprite2D = s.get_node("Mark")
+			if lvl <= 0:
+				mk.visible = false
+			else:
+				mk.texture = Defs.tex("ship_mark_%s_%d" % [s.ship_type, lvl])
+				mk.visible = true
+		center_on(c0 + Vector2(345, 170))
 	if OS.get_environment("SL_SHOT_OPEN") == "ctorpanel":
 		# Dev: the Constructor's build options as square icon buttons.
 		var hb4 := nearest_starbase(player_id, Vector2.ZERO)

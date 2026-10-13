@@ -39,6 +39,7 @@ func _init() -> void:
 		_gen_variants()
 		_gen_depot()
 		_gen_mining_station()
+		_gen_hull_marks()
 		_gen_layer_art()
 		quit()
 		return
@@ -47,6 +48,7 @@ func _init() -> void:
 	_gen_variants()
 	_gen_depot()
 	_gen_mining_station()
+	_gen_hull_marks()
 	_gen_layer_art()
 	_gen_starbase()
 	_gen_planets()
@@ -1081,6 +1083,65 @@ func _gen_mining_station() -> void:
 		mark.call(19, cy + dy, mid)
 	_save(hull, "ship_mining_station")
 	_save(team, "ship_mining_station_team")
+
+# ---------------------------------------------------------------- hull marks
+
+## Mark trim (Defs.HULL_MARKS): Wisp hulls are bare, and each mark researched
+## adds a layer of finish — a bright top rail, then a matching keel line and
+## nose studs, then a full rim and lit engine blocks. One overlay per class
+## serves every variant of it, since they share a silhouette.
+const MARK_TRIM := [Color("dbe6ff"), Color("ffc24a"), Color("fff6d8")]
+
+func _gen_hull_marks() -> void:
+	for cls in ["corvette", "destroyer", "cruiser"]:
+		var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s.png" % cls))
+		var w := hull.get_width()
+		var h := hull.get_height()
+		# Column-wise top and bottom edges of the hull, ignoring the outline.
+		var top := {}
+		var bot := {}
+		for x in w:
+			for y in h:
+				var c := hull.get_pixel(x, y)
+				if c.a > 0.0 and c != OUTLINE:
+					if not top.has(x):
+						top[x] = y
+					bot[x] = y
+		var xs: Array = top.keys()
+		xs.sort()
+		if xs.is_empty():
+			continue
+		var nose: int = xs[xs.size() - 1]
+		var stern: int = xs[0]
+		for level in [1, 2, 3]:
+			var img := _img(w - 2, h - 2)
+			var tint: Color = MARK_TRIM[level - 1]
+			for x in xs:
+				var t: float = float(x - stern) / maxf(nose - stern, 1)
+				# Top rail from the first mark on.
+				_px(img, x - 1, top[x] - 1, tint)
+				if level >= 2 and bot[x] - top[x] > 2:
+					_px(img, x - 1, bot[x] - 1, tint)
+				# Phantom: a full rim, so the hull reads lit all round.
+				if level >= 3 and bot[x] - top[x] > 3:
+					# Phantom: the rim reads lit all round, with an inner sheen.
+					_px(img, x - 1, top[x], tint.darkened(0.15))
+					if t > 0.2 and t < 0.9:
+						_px(img, x - 1, bot[x] - 2, Color("ffe9a8"))
+			# Nose studs: one per mark.
+			for k in level:
+				var sx: int = nose - 1 - k * 2
+				if top.has(sx + 1):
+					var mid: int = int(round((top[sx + 1] + bot[sx + 1]) / 2.0))
+					_px(img, sx, mid - 1, tint)
+			# Phantom: lit engine blocks at the stern.
+			if level >= 3:
+				for k in 2:
+					var ex: int = stern + k
+					if top.has(ex):
+						_px(img, ex - 1, top[ex], MARK_TRIM[2])
+						_px(img, ex - 1, bot[ex] - 2, MARK_TRIM[2])
+			_save(img, "ship_mark_%s_%d" % [cls, level])
 
 # ---------------------------------------------------------------- layer art
 
