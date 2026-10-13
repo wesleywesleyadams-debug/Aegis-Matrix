@@ -14,7 +14,7 @@ const MIN_GAP := {"laser": 0.04, "torpedo": 0.08, "shield": 0.05, "boom": 0.06, 
 ## (~-22 dB RMS after the laser's -8 dB). Critical ones (planet / starbase
 ## lost) stay a touch louder. Shift everything with ALERT_TRIM.
 const ALERT_TRIM := 0.0
-const UI_VOLUME := {"victory": -8.0, "defeat": -4.0, "deny": -7.5, "note_save": 3.0, "alert": -2.5, "alert_energy": -6.0, "alert_planet": -9.0, "alert_planet_lost": -10.0,
+const UI_VOLUME := {"victory": -8.0, "defeat": -4.0, "note_tech": 5.0, "deny": -7.5, "note_save": 3.0, "alert": -2.5, "alert_energy": -6.0, "alert_planet": -9.0, "alert_planet_lost": -10.0,
 	"alert_resource": -7.0, "alert_ships": 0.0, "alert_starbase": -12.0, "alert_starbase_lost": -10.5, "alert_starved": -7.5}
 
 var _streams := {}

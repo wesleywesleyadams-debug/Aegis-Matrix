@@ -30,6 +30,8 @@ var _res_boxes := {}
 var _pop_label: Label
 var _fleet_label: Label
 var _research_button: Button
+## Green progress fill laid over the research button while a project runs.
+var _research_fill: ColorRect
 var _clock: Label
 var _sel_body: VBoxContainer
 var _messages: VBoxContainer
@@ -224,6 +226,16 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.offset_bottom = 8 + 46
 	_research_button.pressed.connect(toggle_research)
 	root.add_child(_research_button)
+	# Progress shows as a green bar growing left to right across the button.
+	_research_fill = ColorRect.new()
+	_research_fill.color = Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
+	_research_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_research_fill.visible = false
+	_research_fill.anchor_left = 1.0
+	_research_fill.anchor_right = 1.0
+	_research_fill.offset_top = 10
+	_research_fill.offset_bottom = 8 + 44
+	root.add_child(_research_fill)
 
 	var panel := PanelContainer.new()
 	panel.anchor_left = 1.0
@@ -1050,13 +1062,20 @@ Total ship+starbase upkeep: %.0f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 	if cur.is_empty():
 		_research_button.text = "Research [R]"
 		_research_button.modulate = Color.WHITE.lerp(Color("ffd46b"), glow)
+		_research_fill.visible = false
 	else:
 		var t: Dictionary = Defs.TECHS[cur["id"]]
-		# The glow says whether it is running or stalled, so the label stays
-		# short enough to fit: project name and percentage only.
-		_research_button.text = "%s %d%%" % [t["name"], int(100.0 * cur["progress"] / t["time"])]
-		_research_button.tooltip_text = "%s: %d%% complete.%s" % [t["name"], int(100.0 * cur["progress"] / t["time"]), "\nSTALLED: not enough resources to keep paying for it." if cur["stalled"] else ""]
-		_research_button.modulate = Color.WHITE.lerp(BAD if cur["stalled"] else GOOD, 0.35 + 0.65 * glow)
+		# The label stays short enough to fit: project name and percentage only.
+		var frac: float = clampf(cur["progress"] / t["time"], 0.0, 1.0)
+		_research_button.text = "%s %d%%" % [t["name"], int(100.0 * frac)]
+		_research_button.tooltip_text = "%s: %d%% complete.%s" % [t["name"], int(100.0 * frac), "\nSTALLED: not enough resources to keep paying for it." if cur["stalled"] else ""]
+		# Running: no blink, the green fill carries the progress. Stalled: the
+		# button blinks red and the fill freezes where it stopped.
+		_research_button.modulate = Color.WHITE.lerp(BAD, 0.35 + 0.65 * glow) if cur["stalled"] else Color.WHITE
+		_research_fill.visible = true
+		_research_fill.offset_left = RESEARCH_RIGHT - RESEARCH_W + 2
+		_research_fill.offset_right = RESEARCH_RIGHT - RESEARCH_W + 2 + (RESEARCH_W - 4) * frac
+		_research_fill.color = Color(BAD.r, BAD.g, BAD.b, 0.3) if cur["stalled"] else Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
 	var s := int(Game.now())
 	_clock.text = "%02d:%02d" % [s / 60, s % 60]
 
