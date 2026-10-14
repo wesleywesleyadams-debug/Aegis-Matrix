@@ -344,45 +344,45 @@ const TECHS := {
 	# --- Weapons: every step up the line costs something. The two tier 3
 	# projects are a fork, not a sequence: heavy slow guns or light fast ones.
 	"overcharged_coils": {"name": "Overcharged Coils", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 700}, "time": 55.0,
-		"effects": {"damage": 0.20, "upkeep": 0.15}, "desc": "+20% weapon damage, but every ship costs 15% more energy to run."},
+		"effects": {"damage": 0.20}, "desc": "+20% weapon damage on everything you own."},
 	"burst_cyclers": {"name": "Burst Cyclers", "group": "weapons", "tier": 2, "requires": ["autoloaders"], "cost": {"energy": 1300, "spice": 20}, "time": 85.0,
-		"effects": {"fire_rate": 0.25, "range": -0.10}, "desc": "+25% rate of fire, -10% range: you shoot faster, but you have to be closer."},
+		"effects": {"fire_rate": 0.25}, "desc": "+25% rate of fire. Pays off most on ships that already fire quickly, which means corvettes."},
 	"lance_batteries": {"name": "Lance Batteries", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 2800, "spice": 80}, "time": 135.0,
-		"effects": {"damage": 0.45, "fire_rate": -0.20}, "desc": "+45% damage, -20% rate of fire. Heavy, slow shots: good against armor and starbases, wasteful against swarms."},
+		"effects": {"damage": 0.45}, "desc": "+45% weapon damage. Heavy shots: the fastest way through armor and starbase hulls."},
 	"scatter_arrays": {"name": "Scatter Arrays", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 2800, "spice": 80}, "time": 135.0,
-		"effects": {"fire_rate": 0.40, "damage": -0.15}, "desc": "+40% rate of fire, -15% damage. Fast, light shots: good against swarms, poor against thick armor."},
+		"effects": {"fire_rate": 0.40}, "desc": "+40% rate of fire. More shots in the water: what a swarm of corvettes wants."},
 
 	# --- Constructs: tier 3 forks into a defensive posture or an industrial one.
 	"siege_platforms": {"name": "Siege Platforms", "group": "constructs", "tier": 2, "requires": ["garrison_guns"], "cost": {"energy": 1500, "spice": 25}, "time": 90.0,
-		"effects": {"structure_range": 0.30, "upkeep": 0.10}, "desc": "+30% weapon range on starbases, at 10% more fleet upkeep. A base that shoots first."},
+		"effects": {"structure_range": 0.30}, "desc": "+30% weapon range on starbases: a base that shoots well before anything can shoot back."},
 	"rapid_assembly": {"name": "Rapid Assembly", "group": "constructs", "tier": 2, "requires": ["modular_frames"], "cost": {"energy": 1400, "spice": 20}, "time": 85.0,
 		"effects": {"construct_start": 4.0}, "desc": "New starbases, depots and stations are founded at 40% of their hull instead of 10%, so a forward site can survive being found."},
 	"fortress_doctrine": {"name": "Fortress Doctrine", "group": "constructs", "tier": 3, "requires": ["citadel_protocols"], "cost": {"energy": 2700, "spice": 85}, "time": 130.0,
-		"effects": {"structure": 0.50, "build_speed": -0.15}, "desc": "+50% hull and armor on every construct, but starbases build ships 15% slower. Hold ground rather than flood the map."},
+		"effects": {"structure": 0.50, "structure_damage": 0.25}, "desc": "+50% hull and armor on every construct, and +25% damage from their guns. A base that holds ground on its own."},
 	"shipyard_networks": {"name": "Shipyard Networks", "group": "constructs", "tier": 3, "requires": ["forward_bases"], "cost": {"energy": 2700, "spice": 85}, "time": 130.0,
-		"effects": {"build_speed": 0.45, "structure": -0.10}, "desc": "+45% ship production, -10% construct hull and armor. Flood the map rather than hold ground."},
+		"effects": {"build_speed": 0.45}, "desc": "+45% ship production at every starbase: the fastest way to turn minerals into a fleet."},
 	"orbital_elevators": {"name": "Orbital Elevators", "group": "constructs", "tier": 3, "requires": ["rapid_assembly"], "cost": {"energy": 2500, "spice": 60}, "time": 120.0,
 		"effects": {"construct_speed": 0.50, "upkeep": -0.10}, "desc": "+50% construction and -10% fleet upkeep: the cheap way to spread out."},
 
 	# --- Worlds: feeding a population you chose to grow.
 	"rationing": {"name": "Rationing", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 400}, "time": 40.0,
-		"effects": {"food_per_pop": -0.30, "growth": -0.20}, "desc": "Pops eat 30% less, but grow 20% slower. Survive a thin harvest instead of racing."},
+		"effects": {"food_per_pop": -0.30}, "desc": "Pops eat 30% less. A thin harvest feeds a bigger population, and farms you have not built yet are farms you do not need."},
 	"habitat_modules": {"name": "Habitat Modules", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 550}, "time": 45.0,
 		"effects": {"max_pop": 0.20}, "desc": "+20% population cap on every world."},
 	"gene_forges": {"name": "Gene Forges", "group": "worlds", "tier": 3, "requires": ["gene_clinics"], "cost": {"energy": 2300, "spice": 65}, "time": 120.0,
-		"effects": {"growth": 0.60, "food_per_pop": 0.20}, "desc": "+60% population growth, and pops eat 20% more. Growth you have to feed."},
+		"effects": {"growth": 0.60}, "desc": "+60% population growth: worlds reach their cap, and their output, far sooner."},
 	"planetary_citadels": {"name": "Planetary Citadels", "group": "worlds", "tier": 3, "requires": ["planetary_shields"], "cost": {"energy": 2600, "spice": 80}, "time": 130.0,
-		"effects": {"planet_shield": 0.60, "growth": -0.15}, "desc": "+60% planetary shield, -15% growth: worlds dug in rather than spreading out."},
+		"effects": {"planet_shield": 0.60}, "desc": "+60% planetary shield: a besieged world holds out long enough for the fleet to come home."},
 
 	# --- Logistics: tier 3 is a choice of what a harvester is good at.
 	"convoy_protocols": {"name": "Convoy Protocols", "group": "logistics", "tier": 2, "requires": ["bulk_holds"], "cost": {"energy": 1300, "spice": 20}, "time": 85.0,
-		"effects": {"cargo": 0.45, "speed": -0.12}, "desc": "Harvesters carry +45% per load but fly 12% slower: fewer, heavier runs."},
+		"effects": {"cargo": 0.45}, "desc": "Harvesters carry +45% per load: fewer, heavier runs, which is what a distant belt wants."},
 	"jump_drives": {"name": "Jump Drives", "group": "logistics", "tier": 3, "requires": ["fusion_drives"], "cost": {"energy": 2400, "spice": 60}, "time": 120.0,
-		"effects": {"speed": 0.35, "cargo": -0.15}, "desc": "+35% ship speed, -15% cargo. A fast fleet and a lighter one."},
+		"effects": {"speed": 0.35}, "desc": "+35% speed on every ship: a fleet that arrives before the fight is decided, and harvesters that cover ground."},
 	"mass_drivers": {"name": "Mass Drivers", "group": "logistics", "tier": 3, "requires": ["resonance_drills"], "cost": {"energy": 2400, "spice": 60}, "time": 120.0,
-		"effects": {"harvest": 0.45, "speed": -0.10}, "desc": "+45% gather rate, -10% ship speed. Work a belt hard instead of covering ground."},
+		"effects": {"harvest": 0.45}, "desc": "+45% gather rate at every node: the most ore per barge you can buy."},
 	"logistics_command": {"name": "Logistics Command", "group": "logistics", "tier": 3, "requires": ["convoy_protocols"], "cost": {"energy": 2600, "spice": 70}, "time": 125.0,
-		"effects": {"harvest": 0.25, "cargo": 0.25, "upkeep": 0.15}, "desc": "+25% gather rate and +25% cargo, at 15% more fleet upkeep."},
+		"effects": {"harvest": 0.25, "cargo": 0.25}, "desc": "+25% gather rate and +25% cargo: the whole supply line, a quarter better."},
 
 	# --- Defense: a fourth line, soaking damage before the layers see it.
 	"flak_screens": {"name": "Flak Screens", "group": "defense", "line": "screens", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 50.0,
@@ -390,7 +390,7 @@ const TECHS := {
 	"point_defense": {"name": "Point Defense Net", "group": "defense", "line": "screens", "tier": 2, "requires": ["flak_screens"], "cost": {"energy": 1400, "spice": 25}, "time": 90.0,
 		"effects": {"damage_taken": 0.12}, "desc": "A further 12% off all incoming damage."},
 	"aegis_umbrella": {"name": "Aegis Umbrella", "group": "defense", "line": "screens", "tier": 3, "requires": ["point_defense"], "cost": {"energy": 2600, "spice": 80}, "time": 130.0,
-		"effects": {"damage_taken": 0.18, "fire_rate": -0.10}, "desc": "A further 18% off all incoming damage, but -10% rate of fire: the screens draw from the same power as the guns."},
+		"effects": {"damage_taken": 0.18}, "desc": "A further 18% off all incoming damage, whatever the layer and whatever is carrying it."},
 
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 700, "spice": 10}, "time": 60.0,

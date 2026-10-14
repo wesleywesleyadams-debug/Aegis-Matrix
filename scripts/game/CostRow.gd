@@ -31,9 +31,10 @@ static func make(cost: Dictionary, font_size: int = 13, seconds: float = -1.0, i
 		row.add_child(gap)
 	if seconds >= 0.0:
 		var t := Label.new()
-		t.text = "· %ds" % int(seconds)
+		t.text = "%ds" % int(seconds)
 		t.add_theme_font_size_override("font_size", font_size)
-		t.add_theme_color_override("font_color", HUD.DIM)
+		# Bright enough to read on a panel: the old DIM sank into the card.
+		t.add_theme_color_override("font_color", HUD.MUTED)
 		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(t)
 	return row

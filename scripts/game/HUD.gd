@@ -9,6 +9,9 @@ const EDGE := Color("2b3a6b")
 const EDGE_LIT := Color("4fb4ff")
 const TEXT := Color("c3cde4")
 const DIM := Color("6a7596")
+## Secondary text that still has to be read at a glance â research times,
+## "Needs:" lines, locked cards. DIM is dark enough to disappear on a panel.
+const MUTED := Color("a8b4d4")
 const GOOD := Color("6fe07a")
 const BAD := Color("ff6a5a")
 const STATE_COLORS := {"done": Color("3f8a4a"), "active": Color("4fb4ff"), "queued": Color("3a6fa8"), "available": Color("2b3a6b"), "locked": Color("1a1f33")}
@@ -650,8 +653,8 @@ func _refresh_research() -> void:
 			var sb: StyleBoxFlat = _panel_style(6, STATE_COLORS[st].lightened(0.3 if style == "normal" else 0.55))
 			sb.bg_color = STATE_COLORS[st].darkened(0.3 if style != "hover" else 0.15)
 			w["button"].add_theme_stylebox_override(style, sb)
-		w["label"].add_theme_color_override("font_color", DIM if st == "locked" else (Color.WHITE if st in ["active", "done"] else TEXT))
-		w["desc"].add_theme_color_override("font_color", DIM if st == "locked" else TEXT)
+		w["label"].add_theme_color_override("font_color", MUTED if st == "locked" else (Color.WHITE if st in ["active", "done"] else TEXT))
+		w["desc"].add_theme_color_override("font_color", MUTED if st == "locked" else TEXT)
 		var frac := 0.0
 		if st == "active":
 			frac = cur["progress"] / t["time"]
@@ -1387,7 +1390,7 @@ func _refresh_ability_button() -> void:
 ## and a progress bar along the bottom (see _refresh_research).
 func _tech_button(id: String, width: float = 340.0) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(width, 116)
+	b.custom_minimum_size = Vector2(width, 132)
 	b.clip_contents = true
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(func(): game.request_research(id); _refresh_research())
@@ -1399,7 +1402,7 @@ func _tech_button(id: String, width: float = 340.0) -> Button:
 	box.add_theme_constant_override("separation", 2)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var lab := Label.new()
-	lab.add_theme_font_size_override("font_size", 13)
+	lab.add_theme_font_size_override("font_size", 15)
 	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Defense-line techs lead with their layer's icon, in the layer color.
 	var line: String = Defs.TECHS[id].get("line", "")
@@ -1412,11 +1415,11 @@ func _tech_button(id: String, width: float = 340.0) -> Button:
 		box.add_child(title)
 	else:
 		box.add_child(lab)
-	box.add_child(CostRow.make(Defs.TECHS[id]["cost"], 13, Defs.TECHS[id]["time"]))
+	box.add_child(CostRow.make(Defs.TECHS[id]["cost"], 15, Defs.TECHS[id]["time"]))
 	var desc := Label.new()
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.custom_minimum_size = Vector2(width - 22.0, 0)
-	desc.add_theme_font_size_override("font_size", 12)
+	desc.add_theme_font_size_override("font_size", 14)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(desc)
 	b.add_child(box)
