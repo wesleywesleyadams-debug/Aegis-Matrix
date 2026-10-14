@@ -1509,6 +1509,26 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 			hud.flash_target(planet, "colonize")
 			if ships.is_empty():
 				return
+	# A friendly drop-off: harvesters take their loads there, whether or not
+	# it is the nearest one, and go back to the rock they were working.
+	if (target is Starbase or target is MiningStation) and target.owner_id == player_id and not target.under_construction:
+		var sent := 0
+		for s in ships.duplicate():
+			if s is Ship and (s as Ship).is_miner():
+				# Carrying something: unload it here. Empty: fly here anyway,
+				# so the order never looks like it did nothing.
+				if (s as Ship).cargo > 0:
+					s.do_or_queue(queued, "order_return", [target])
+				else:
+					s.do_or_queue(queued, "order_move", [target.global_position + (s.global_position - target.global_position).normalized() * (target.radius + 18.0)])
+				ships.erase(s)
+				sent += 1
+		if sent > 0:
+			hud.flash_target(target, "")
+			for s in ships:
+				s.do_or_queue(queued, "order_move", [world_pos])
+			return
+
 	# A friendly carrier: send what it can take into its bays to be mended.
 	if target is Ship and target.owner_id == player_id and (target as Ship).is_carrier():
 		var carrier := target as Ship
@@ -2345,6 +2365,20 @@ func _enter_dev_capture() -> void:
 		var rk0 := nearest_asteroid(nearest_starbase(player_id, Vector2.ZERO).global_position, 2000.0)
 		var bg0 := spawn_ship("miner", player_id, rk0.global_position + Vector2(90, 40))
 		bg0.order_mine(rk0)
+		if OS.get_environment("SL_DROPOFF") != "":
+			# Dev: a loaded barge sent to a station that is NOT the nearest
+			# drop-off, to prove a hand-picked one is honoured.
+			var st9 := found_station(player_id, rk0.global_position + Vector2(420, -260))
+			st9.under_construction = false
+			st9.hp = st9.max_hp
+			var hauler := spawn_ship("miner", player_id, rk0.global_position + Vector2(60, -40))
+			hauler.cargo_type = "minerals"
+			hauler.cargo = hauler.cargo_cap()
+			hauler.order_return(st9)
+			get_tree().create_timer(maxf(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.3, 0.5)).timeout.connect(func():
+				print("DROPOFF hauler state=%s cargo=%d dist_to_station=%.0f dist_to_base=%.0f" % [Ship.State.keys()[hauler.state], hauler.cargo,
+					hauler.global_position.distance_to(st9.global_position),
+					hauler.global_position.distance_to(nearest_starbase(player_id, hauler.global_position).global_position)]))
 		# A second barge told to stop: it should find its own work within
 		# Ship.IDLE_RETASK seconds.
 		var idle0 := spawn_ship("miner", player_id, rk0.global_position + Vector2(-260, 180))

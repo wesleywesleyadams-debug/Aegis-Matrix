@@ -103,6 +103,8 @@ var _mine_timer: float = 0.0
 var _mine_carry: float = 0.0
 ## How long a harvester has been doing nothing (see IDLE_RETASK).
 var _idle_for: float = 0.0
+## The drop-off this ship was sent to by hand, if any (see order_return).
+var dropoff: SpaceEntity = null
 ## Told to hold position by its owner (Stop). A held harvester stays held: it
 ## is the one way to park a barge somewhere and have it stay there. Any other
 ## order releases it.
@@ -484,8 +486,10 @@ func order_mine(a: Node2D) -> void:
 		state = State.RETURN if cargo >= cargo_cap() else State.MINE_GO
 	mine_target = a
 
-func order_return() -> void:
+## `at` names the construct to unload at; without it the nearest one wins.
+func order_return(at: SpaceEntity = null) -> void:
 	held = false
+	dropoff = at
 	if is_miner() and cargo > 0:
 		state = State.RETURN
 
@@ -752,8 +756,9 @@ func _physics_process(delta: float) -> void:
 				elif refit_depot.has_room():
 					refit_depot.dock(self)
 		State.RETURN:
-			# Unload at whichever drop-off is closest: starbase or Mining Station.
-			var base := Game.instance.nearest_dropoff(owner_id, global_position)
+			# The one it was sent to, or whichever is closest: starbase or
+			# Mining Station.
+			var base: SpaceEntity = dropoff if is_instance_valid(dropoff) and dropoff.owner_id == owner_id else Game.instance.nearest_dropoff(owner_id, global_position)
 			if base == null:
 				state = State.IDLE
 			else:
@@ -761,6 +766,7 @@ func _physics_process(delta: float) -> void:
 				if global_position.distance_to(base.global_position) <= reach + 4.0:
 					Game.instance.add_resources(owner_id, {cargo_type: float(cargo)})
 					cargo = 0
+					dropoff = null
 					state = State.MINE_GO if is_instance_valid(mine_target) else State.IDLE
 					if state == State.IDLE:
 						move_goal = global_position
