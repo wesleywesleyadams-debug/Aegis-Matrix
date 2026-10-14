@@ -136,50 +136,32 @@ func _half_width() -> float:
 	var avail: float = get_viewport_rect().size.x - 80.0 - 260.0 - 16.0 - 36.0
 	return maxf((avail - COL_GAP) * 0.5, 260.0)
 
-## Lays the page out in two columns. A block is a heading and everything
-## under it, so a section is never split down the middle. Blocks that are
-## too wide for half the panel (wide tables, ship cards) keep the full
-## width to themselves instead of being clipped; the rest are paired up.
+## Lays the page out as a single column of sections, in the order the page
+## built them. Two columns read faster per screen but paired sections of
+## unequal height left heading-sized holes down the page, and a reader had to
+## guess whether the next section was below or across; one column just reads
+## top to bottom. Paragraphs keep their own measure (see _text_width), so the
+## text never runs the full width of the panel.
 func _flow() -> void:
 	for c in _rows.get_children():
 		_rows.remove_child(c)
 		c.queue_free()
-	var half := _half_width()
-	var blocks: Array = []
+	var sections: Array = []
 	for child in _body.get_children():
-		if blocks.is_empty() or child.has_meta("block"):
-			blocks.append([child])
+		if sections.is_empty() or child.has_meta("section"):
+			sections.append([child])
 		else:
-			blocks[-1].append(child)
-	var pending: Array = []      # narrow blocks waiting for a partner
-	for b in blocks:
-		if _block_width(b) > half:
-			_flush(pending, half)
-			pending = []
-			var full := _text_column(0.0)
-			_move(b, full)
-			_rows.add_child(full)
-		else:
-			pending.append(b)
-			if pending.size() == 2:
-				_flush(pending, half)
-				pending = []
-	_flush(pending, half)
-
-## Puts one or two narrow blocks side by side in a row.
-func _flush(pending: Array, half: float) -> void:
-	if pending.is_empty():
-		return
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", int(COL_GAP))
-	for b in pending:
-		var col := _text_column(half)
-		_move(b, col)
-		row.add_child(col)
-	if pending.size() == 1:
-		row.add_child(_text_column(half))   # keep the left column at half width
-	_rows.add_child(row)
+			sections[-1].append(child)
+	for n in sections.size():
+		# A hairline between sections, so the eye finds the next heading.
+		if n > 0:
+			var sep := ColorRect.new()
+			sep.color = EDGE
+			sep.custom_minimum_size = Vector2(0, 2)
+			_rows.add_child(sep)
+		var col := _text_column(0.0)
+		_move(sections[n], col)
+		_rows.add_child(col)
 
 func _move(block: Array, into: VBoxContainer) -> void:
 	for child in block:
@@ -218,8 +200,10 @@ func _card_text(text: String, color: Color) -> Label:
 	return l
 
 ## How wide a paragraph is allowed to get.
+## A readable measure, not the width of the panel: long lines are the fastest
+## way to make a wall of text unreadable.
 func _text_width() -> float:
-	return minf(_half_width() - 16.0, 720.0)
+	return minf(_half_width() * 2.0 - 16.0, 900.0)
 
 func _panel_style(border: Color = EDGE) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -232,6 +216,10 @@ func _panel_style(border: Color = EDGE) -> StyleBoxFlat:
 func _heading(text: String, color: Color = TEXT) -> void:
 	var l := _label(text, color, 26)
 	l.set_meta("block", true)
+	# A heading owns everything under it until the next one: the flow keeps a
+	# section together in one column, so a heading can never end up stranded
+	# at the top of an empty column with its table in the next one.
+	l.set_meta("section", true)
 	_body.add_child(l)
 
 func _para(text: String) -> void:
@@ -409,11 +397,10 @@ func _page_combat() -> void:
 		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender restores it"],
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
-	_rule()
 	_heading("Generalists")
 	_para("Each generalist carries the same total toughness split differently, which is what gives specialists something to specialize against.")
 	var rows: Array = []
-	for t in ["corvette", "destroyer", "cruiser"]:
+	for t in Defs.MARK_LINES:
 		var d: Dictionary = Defs.SHIPS[t]
 		var lean := "hull"
 		if d["shield"] >= d["armor"] and d["shield"] >= d["hp"]:
@@ -426,13 +413,8 @@ func _page_combat() -> void:
 	rows.append(["Starbase", [str(int(sb["shield"])), Defs.LAYER_COLORS["shield"]], [str(int(sb.get("armor", 0))), Defs.LAYER_COLORS["armor"]],
 		[str(int(sb["hp"])), Defs.LAYER_COLORS["hull"]], "hull"])
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
-	_rule()
 	_heading("Specialist variants")
-	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant is cut into the hull as a TRIM style along its edges, in your player color, so the silhouette names the variant and the shot color names the layer it hits.")
-	var trim_plate: Array = [["ship_corvette", "Generalist", TEXT]]
-	for tv in Defs.VARIANTS:
-		trim_plate.append(["ship_%s_corvette" % tv, Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]])
-	_plate(trim_plate, 96.0, true, "The same corvette in all six trims: blocky, rounded, ribbed, toothed, swept and serrated.")
+	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant is cut into the hull as a trim style along its edges, in your player color, so the silhouette names the variant and the shot color names the layer it hits — the Ships page shows all six side by side.")
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], "blocky, as built"]]
 	var marks := {"plasma": "rounded edges", "breacher": "ribbed plates", "reaver": "toothed saw edge",
 		"slip": "swept fins", "disruptor": "serrated notches"}
@@ -450,14 +432,13 @@ func _page_combat() -> void:
 				effect = "x%.1f vs %s" % [vd["vs"][layer], layer]
 		vrows.append([[vd["label"], vd["color"]], effect, "%d%%" % int(vd["damage"] * 100.0), [shots[v], vd["color"]], marks[v]])
 	_table(["Variant", "Effect", "Base damage", "Shots", "Trim"], vrows)
-	_rule()
 	_heading("Which variant against what")
 	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is the same, lower kills faster. Figures come straight from the ships' current stats.")
 	var head: Array = ["Target"]
 	for v in Defs.VARIANTS:
 		head.append(Defs.VARIANTS[v]["label"])
 	var mrows: Array = []
-	for t in ["corvette", "destroyer", "cruiser"]:
+	for t in Defs.MARK_LINES:
 		var row: Array = [Defs.SHIPS[t]["name"]]
 		for v in Defs.VARIANTS:
 			var r := Defs.kill_ratio(Defs.SHIPS[t], v)
@@ -469,8 +450,6 @@ func _page_combat() -> void:
 		sbrow.append(["%.2f" % r2, Defs.LAYER_COLORS["hull"] if r2 < 0.98 else (Defs.LAYER_COLORS["armor"] if r2 > 1.05 else TEXT)])
 	mrows.append(sbrow)
 	_table(head, mrows)
-	_rule()
-	_rule()
 	_heading("Hull marks", EDGE_LIT)
 	_para("A mark is rank, not purpose: it comes from the War Ships research tab and raises damage and every defense layer, while a variant comes from a Weapons Depot and decides what the ship is good against. The two stack. The Ships page lays out class, mark and variant side by side.")
 	_heading("Weapons Depots")
@@ -484,7 +463,6 @@ func _page_combat() -> void:
 		rrows.append([Defs.SHIPS[t]["name"], "%d minerals" % int(r["minerals"]), "%ds" % int(r["time"])])
 	_table(["Hull", "Refit cost", "Refit time"], rrows)
 	_para("A refit with no minerals to pay for it simply waits, and the ship stays inside until you cancel it — cancelling ejects it unchanged, still a generalist. A refitted specialist can never be refitted again. If a depot is destroyed with ships inside, they are thrown clear and lose 60% of their shields, armor and hull in the blast.")
-	_rule()
 	_heading("Defense research")
 	_para("Three lines on the research screen's Defense tab, expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech is time as well as energy.")
 	var lines := {"shields": "shield", "armor": "armor", "hull": "hull"}
@@ -495,7 +473,6 @@ func _page_combat() -> void:
 			if t.get("line", "") == line:
 				lrows.append([[t["name"], Defs.LAYER_COLORS[lines[line]]], "Tier %d" % t["tier"], Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t["desc"]])
 		_table([line.to_upper(), "", "Cost", "Time", "Effect"], lrows)
-	_rule()
 	_heading("Ship jobs")
 	_para("Jobs are what a ship is for beyond its guns. Passive jobs always work; an active one is used with Q or its button in the ship panel.")
 	var jrows: Array = []
@@ -521,14 +498,12 @@ func _page_ships() -> void:
 		[["Mark", EDGE_LIT], "War Ships research", "Every ship of that class, at once", "How dressed the hull is"],
 		[["Variant", Defs.VARIANTS["reaver"]["color"]], "Refit at a Weapons Depot", "Once, permanently", "The trim cut along its edges"],
 	])
-	_rule()
 	_heading("Class — the shape")
 	var cls_plate: Array = []
 	for cls in Defs.MARK_LINES:
 		cls_plate.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
 	_plate(cls_plate, 104.0, true, "One shape per class, for life: a corvette is an A, a destroyer a Y, a cruiser an X, a carrier an H.")
 	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow, a destroyer a tail boom forking into two prongs, a cruiser four wings crossed at a hub, and a carrier two nacelles either side of a hangar spine. You can read a fleet's composition from its silhouettes alone.")
-	_rule()
 	_heading("Mark — the rank")
 	var mrows0: Array = []
 	for i in Defs.HULL_MARKS.size():
@@ -536,7 +511,6 @@ func _page_ships() -> void:
 			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
 	_table(["Mark", "From", "Over a Mk I"], mrows0)
 	_para("A ship is built at Mk I and is dressed a little further at each mark: a lit rail along the spine at Mk II, a keel rail and hull studs at Mk III, a warm-white rim and lit engine blocks at Mk IV. Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments, and a mark applies to every ship of that class you already own the moment the research lands.")
-	_rule()
 	_heading("Variant — the trim")
 	var vplate: Array = [["ship_corvette", "Generalist", TEXT]]
 	for tv in Defs.VARIANTS:
@@ -547,7 +521,6 @@ func _page_ships() -> void:
 		vplate2.append(["ship_%s_carrier" % tv, Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]])
 	_plate(vplate2, 120.0, true, "The trim is cut at the hull's own scale, so it reads the same on a carrier as on a corvette.")
 	_para("A variant is cut into the silhouette as a trim style along its edges, with its outermost pixel in your player color — so the shape names the variant at any zoom, and the shot color names the layer it hits. What each one does to damage is on the Combat page.")
-	_rule()
 	_heading("Every ship")
 	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat).")
 	for t in Defs.BUILD_ORDER:
@@ -594,7 +567,6 @@ func _page_economy() -> void:
 	for p2 in Defs.PLANET_TYPES:
 		wplate.append([p2 + "_s", Defs.PLANET_TYPES[p2]["label"]])
 	_plate(wplate, 64.0, false)
-	_rule()
 	_heading("Harvesting")
 	_plate([["ship_miner", "Mining Barge"], ["asteroid_big_0", "Mineral asteroid"], ["spice_0", "Spice asteroid"],
 		["ship_skimmer", "Gas Skimmer"], ["planet_gas_s", "Gas giant"], ["starbase", "Starbase"]], 76.0, true,
@@ -614,7 +586,6 @@ func _page_economy() -> void:
 	_table(["Ship", "Source", "Yields", "Gather", "Hold", "Fill time"], hrows)
 	_para("Asteroids run dry and vanish (a mineral rock holds about %s per 100 px of width, a spice rock %s), gas giants refill after a pause, and a spice nebula never runs out. The Logistics techs raise hold size, gather rate and speed." % [
 		str(int(Defs.ASTEROID_MINERALS_PER_PX2 * 1000.0)), str(int(Defs.ASTEROID_SPICE_PER_PX2 * 1000.0))])
-	_rule()
 	_heading("Buildings")
 	var bplate: Array = []
 	for b in Defs.BUILDING_ORDER:
@@ -625,7 +596,6 @@ func _page_economy() -> void:
 		var bd: Dictionary = Defs.BUILDINGS[b]
 		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), str(bd["pop"]) + " pop", bd["desc"]])
 	_table(["Building", "Cost", "Time", "Staff", "Effect"], brows)
-	_rule()
 	_heading("Food")
 	_para("Food is on the same scale as every other resource, and like the rest it is counted per minute. One Farm feeds exactly %d pops; past that a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
 	_table(["", "Rate"], [
@@ -635,10 +605,8 @@ func _page_economy() -> void:
 		["A Farm supports", "%d pops" % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN)],
 	])
 	_para("Spice covers a food shortfall 1:1, and pops living on it keep growing. When neither food nor spice can feed a world it starves: growth runs backwards at the same rate it would have grown, and the shortage only lifts once the world has been fed for %d seconds straight." % int(Defs.REGROW_SECONDS))
-	_rule()
 	_heading("Defense Battery")
 	_para("A world with a Defense Battery is no longer a free kill: each one adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries make a colony something a raiding party has to commit to." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
-	_rule()
 	_heading("Upkeep")
 	_para("Every ship costs energy per minute, and the total is multiplied as the fleet grows (1 + (ships/%d)^2), so fleets plateau instead of growing forever. Starbases have their own steeper curve, which makes more than a handful expensive. With no energy in the stockpile, starbases stop producing and your ships move and fire at %d%% speed." % [int(Defs.UPKEEP_SCALE_SHIPS), int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
 
@@ -668,7 +636,6 @@ func _page_systems() -> void:
 			col.add_child(_wrap(ftext, EDGE_LIT, 16))
 		card.set_meta("block", true)
 		_body.add_child(card)
-	_rule()
 	_heading("The star")
 	var splate: Array = []
 	for st in Defs.STAR_TYPES:
@@ -687,8 +654,10 @@ func _page_terms() -> void:
 		["System", "The map: one star (or two), its planets, belts and features. Called a system, not a map."],
 		["Starbase", "Your production station. It builds ships, takes in cargo, defends itself, and losing them all loses the match."],
 		["Weapons Depot", "Constructor-built station where a generalist warship is refitted into a specialist variant, permanently."],
-		["Generalist", "Corvette, Destroyer or Cruiser as built: full damage to every defense layer."],
-		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor."],
+		["Class", "The hull a warship was built as, and keeps for life: Corvette, Destroyer, Cruiser or Carrier. You read it off the silhouette."],
+		["Mark", "How refined a class is, Mk I to Mk IV, bought on the War Ships research tab. It applies to every ship of that class at once."],
+		["Generalist", "Any warship as built, before a refit: full damage to every defense layer."],
+		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor. One refit only, and it is permanent."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
 		["Job", "What a ship is for beyond shooting: Swarm, Escort, Deep Sensors, Heat Screen, Field Repair."],
@@ -731,7 +700,6 @@ func _page_controls() -> void:
 	_table(["Row", "Keys"], krows)
 	_para("The build picker on one of your worlds uses the same letters.")
 	_para("Every key here can be rebound in Options > Hotkeys, with a Reset to defaults button; the letters drawn on the buttons follow your bindings.")
-	_rule()
 	_heading("Build grid")
 	_para("With a starbase selected these letters build ships. With no starbase selected, the same letter selects every ship of that class you own, wherever it is.")
 	var rows: Array = []
@@ -741,7 +709,6 @@ func _page_controls() -> void:
 		var t: String = Defs.BUILD_ORDER[i]
 		rows.append([[OS.get_keycode_string(HUD.panel_keys()[i]), EDGE_LIT], Defs.SHIPS[t]["name"], Defs.cost_text(Defs.SHIPS[t]["cost"])])
 	_table(["Key", "Builds / selects", "Cost"], rows)
-	_rule()
 	_heading("Everything else")
 	_table(["Action", "Key"], [
 		["Select / box select", "Left click / drag"],
