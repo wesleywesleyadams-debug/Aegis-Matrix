@@ -137,6 +137,16 @@ func _ready() -> void:
 	# Sims and training run on their own clock, not the player's pacing.
 	Engine.time_scale = 1.0 if OS.get_environment("SL_SIM") != "" else HUD.TIME_RATE
 	RenderingServer.set_default_clear_color(Color("07060f"))
+	# Dev aid: SL_LOAD=<path to a save> resumes it, so a save/restore can be
+	# checked end to end from the command line.
+	if OS.get_environment("SL_LOAD") != "":
+		GameState.load_save_path = OS.get_environment("SL_LOAD")
+		GameState.load_on_start = true
+		# and says what came back, so a restore can be checked without eyes.
+		get_tree().create_timer(1.0).timeout.connect(func():
+			var ships := get_tree().get_nodes_in_group("ships")
+			print("LOADED %d ships, %d heading for or sitting in a bay" % [ships.size(),
+				ships.filter(func(x): return x.state == Ship.State.DOCKED or x.state == Ship.State.DOCK_GO).size()]))
 	# Resuming a saved match? Its system comes from the save.
 	var save_data := {}
 	if GameState.load_on_start:
@@ -2348,6 +2358,13 @@ func _enter_dev_capture() -> void:
 		center_on(Vector2(-200, 0))
 		# Selected, so the capture shows the hangar panel too.
 		_set_selection([c9], false)
+		# Dev: prove the bays survive a save. Prints what is docked now and
+		# writes a save; reload it with SL_LOAD=<path> to see them come back.
+		get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.3).timeout.connect(func():
+			var in_bays := get_tree().get_nodes_in_group("ships").filter(func(x): return x.state == Ship.State.DOCKED or x.state == Ship.State.DOCK_GO)
+			print("CARRIER docked/inbound %d, bays filled %d" % [in_bays.size(), c9.bay_craft.filter(func(x): return x != null and is_instance_valid(x)).size()])
+			if OS.get_environment("SL_SAVE_TEST") != "":
+				print("CARRIER saved ", SaveGame.write(self, "carrier dock test")))
 	if OS.get_environment("SL_SHOT_OPEN") == "resbtn":
 		# Dev: the research button while a project is running (green glow).
 		queue_research(player_id, "ion_cannons")
