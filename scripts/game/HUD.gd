@@ -159,14 +159,19 @@ func _fmt(v: float) -> String:
 
 # ---------------------------------------------------------------- layout
 
-const TOP_BAR_WIDTH := 980
-## Breathing room between the top-row panels, so each reads as its own panel.
+## The top row: every panel and button shares one top edge, one height and
+## one gap, and the margin to the screen edge is the same on both sides. The
+## resource bar is not given a width; it stretches from the left margin to
+## the research button, which keeps the row even at any window width.
+const TOP_Y := 8
+const TOP_H := 62
 const HUD_GAP := 26
+const HUD_SIDE := 12
 const MENU_W := 170
 const SPEED_W := 330
 const RESEARCH_W := 222
 const CLOCK_W := 86
-const SPEED_RIGHT := -12 - MENU_W - HUD_GAP
+const SPEED_RIGHT := -HUD_SIDE - MENU_W - HUD_GAP
 const CLOCK_RIGHT := SPEED_RIGHT - SPEED_W - HUD_GAP
 const RESEARCH_RIGHT := CLOCK_RIGHT - CLOCK_W - HUD_GAP
 const TOP_BAR_RIGHT := RESEARCH_RIGHT - RESEARCH_W - HUD_GAP
@@ -175,15 +180,13 @@ func _build_top_bar(root: Control) -> void:
 	var bar := PanelContainer.new()
 	# Right-aligned next to the speed controls, keeping the left side of
 	# the screen free for other panels.
-	bar.anchor_left = 1.0
+	bar.anchor_left = 0.0
 	bar.anchor_right = 1.0
+	bar.offset_left = HUD_SIDE
 	bar.offset_right = TOP_BAR_RIGHT
-	# Fixed width sized for the longest contents, so it never resizes as
-	# numbers or the research status change.
-	bar.offset_left = bar.offset_right - TOP_BAR_WIDTH
+	bar.offset_bottom = TOP_Y + TOP_H
 	bar.clip_contents = true
-	bar.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	bar.offset_top = 8
+	bar.offset_top = TOP_Y
 	bar.add_theme_stylebox_override("panel", _panel_style(8))
 	root.add_child(bar)
 	var h := HBoxContainer.new()
@@ -232,8 +235,8 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.anchor_right = 1.0
 	_research_button.offset_right = RESEARCH_RIGHT
 	_research_button.offset_left = RESEARCH_RIGHT - RESEARCH_W
-	_research_button.offset_top = 8
-	_research_button.offset_bottom = 8 + 46
+	_research_button.offset_top = TOP_Y
+	_research_button.offset_bottom = TOP_Y + TOP_H
 	_research_button.pressed.connect(toggle_research)
 	root.add_child(_research_button)
 	# Progress shows as a green bar growing left to right across the button.
@@ -243,8 +246,8 @@ func _build_research_panel(root: Control) -> void:
 	_research_fill.visible = false
 	_research_fill.anchor_left = 1.0
 	_research_fill.anchor_right = 1.0
-	_research_fill.offset_top = 10
-	_research_fill.offset_bottom = 8 + 44
+	_research_fill.offset_top = TOP_Y + 2
+	_research_fill.offset_bottom = TOP_Y + TOP_H - 2
 	root.add_child(_research_fill)
 
 	var panel := PanelContainer.new()
@@ -252,8 +255,8 @@ func _build_research_panel(root: Control) -> void:
 	panel.anchor_right = 1.0
 	panel.offset_right = CLOCK_RIGHT
 	panel.offset_left = CLOCK_RIGHT - CLOCK_W
-	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	panel.offset_top = 8
+	panel.offset_top = TOP_Y
+	panel.offset_bottom = TOP_Y + TOP_H
 	panel.add_theme_stylebox_override("panel", _panel_style(8))
 	root.add_child(panel)
 	var h := HBoxContainer.new()
@@ -271,10 +274,10 @@ func _build_menu_button(root: Control) -> void:
 	b.focus_mode = Control.FOCUS_NONE
 	b.anchor_left = 1.0
 	b.anchor_right = 1.0
-	b.offset_left = -12 - MENU_W
-	b.offset_right = -12
-	b.offset_top = 8
-	b.offset_bottom = 8 + 46
+	b.offset_left = -HUD_SIDE - MENU_W
+	b.offset_right = -HUD_SIDE
+	b.offset_top = TOP_Y
+	b.offset_bottom = TOP_Y + TOP_H
 	b.pressed.connect(func(): show_pause(true))
 	root.add_child(b)
 
@@ -285,15 +288,17 @@ func _build_speed(root: Control) -> void:
 	panel.anchor_right = 1.0
 	panel.offset_left = SPEED_RIGHT - SPEED_W
 	panel.offset_right = SPEED_RIGHT
-	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	panel.offset_top = 8
-	panel.add_theme_stylebox_override("panel", _panel_style(8))
+	panel.offset_top = TOP_Y
+	panel.offset_bottom = TOP_Y + TOP_H
+	panel.add_theme_stylebox_override("panel", _panel_style(6))
 	root.add_child(panel)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(h)
 	_play_button = Button.new()
-	_play_button.custom_minimum_size = Vector2(92, 0)
+	_play_button.custom_minimum_size = Vector2(92, TOP_H - 16)
+	_play_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	for st in ["normal", "hover", "pressed", "focus"]:
 		var sb := _play_button.get_theme_stylebox(st).duplicate() as StyleBox
 		sb.content_margin_left = 8
@@ -304,9 +309,11 @@ func _build_speed(root: Control) -> void:
 	_play_button.pressed.connect(toggle_play)
 	h.add_child(_play_button)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 2)
+	v.add_theme_constant_override("separation", 0)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	h.add_child(v)
-	_speed_label = _label("Speed 1x (normal)", TEXT, 14)
+	_speed_label = _label("Speed 1x (normal)", TEXT, 13)
 	v.add_child(_speed_label)
 	_speed_slider = HSlider.new()
 	_speed_slider.min_value = 0
@@ -314,7 +321,7 @@ func _build_speed(root: Control) -> void:
 	_speed_slider.step = 1
 	_speed_slider.tick_count = SPEEDS.size()
 	_speed_slider.ticks_on_borders = true
-	_speed_slider.custom_minimum_size = Vector2(200, 20)
+	_speed_slider.custom_minimum_size = Vector2(200, 18)
 	_speed_slider.focus_mode = Control.FOCUS_NONE
 	_speed_slider.tooltip_text = "Game speed. Keys: - slower, = faster, Backspace normal."
 	_speed_slider.value = NORMAL_SPEED
