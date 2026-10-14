@@ -289,6 +289,7 @@ func bay_offset_for_slot() -> Vector2:
 func _launch_from_bay() -> void:
 	if is_instance_valid(dock_carrier) and dock_slot >= 0 and dock_slot < dock_carrier.bay_craft.size():
 		dock_carrier.bay_craft[dock_slot] = null
+	Game.instance.sfx.play_at("launch", global_position, -6.0)
 	var away := Vector2.RIGHT.rotated(rotation)
 	global_position += away * (radius + 6.0)
 	move_goal = global_position
@@ -565,6 +566,7 @@ func _physics_process(delta: float) -> void:
 					dock_carrier.bay_craft[slot] = self
 					state = State.DOCKED
 					velocity = Vector2.ZERO
+					Game.instance.sfx.play_at("dock", global_position, -6.0)
 				else:
 					desired = _arrive(berth, 1.0)
 		State.DOCKED:
