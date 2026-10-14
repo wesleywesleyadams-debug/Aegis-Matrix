@@ -4,7 +4,7 @@ extends SpaceEntity
 ## A single ship. Stats come from Defs.SHIPS[ship_type]; sprites are
 ## assets/pixel/ship_<type>.png plus a team-tinted overlay layer.
 
-enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD, REFIT }
+enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD, REFIT, DOCK_GO, DOCKED }
 
 @export_enum("miner", "colony", "constructor", "corvette", "destroyer", "cruiser") var ship_type: String = "corvette":
 	set(v):
@@ -22,6 +22,18 @@ var attack_move_goal: Vector2
 ## to shoot it, and turns onto the bearing first. Big hulls turn slowly (see
 ## _steer), so a cruiser caught beam-on really does have to come about.
 const FIRE_ARC := deg_to_rad(40.0)
+
+## Swings the turrets toward `point` at their own rate and says whether they
+## are on the bearing yet. The sprites are drawn in hull space, so they are
+## offset by the hull's own rotation.
+func _traverse(point: Vector2, delta: float) -> bool:
+	var want: float = (point - global_position).angle()
+	var rate: float = float(def.get("turret_rate", 1.0))
+	_turret_rot = rotate_toward(_turret_rot, want, rate * delta)
+	for t in _turret_sprites:
+		if is_instance_valid(t):
+			t.rotation = _turret_rot - rotation
+	return absf(angle_difference(_turret_rot, want)) <= deg_to_rad(8.0)
 
 ## True when `point` lies inside the forward firing arc.
 func bears_on(point: Vector2) -> bool:
@@ -75,6 +87,17 @@ var _mine_timer: float = 0.0
 var _mine_carry: float = 0.0
 var _acquire_timer: float = 0.0
 var _flame_timer: float = 0.0
+## Carrier turrets traverse on their own, so the hull need not come about.
+## Kept as a global angle; the sprites are drawn relative to the hull.
+var _turret_rot: float = 0.0
+var _turret_sprites: Array[Sprite2D] = []
+## Carrier side: one slot per bay, holding the ship in it (or null).
+var bay_craft: Array = []
+## Docking side: the carrier being flown to, and which bay was reserved.
+var dock_carrier: Ship = null
+var dock_slot: int = -1
+## How fast a bay mends what is in it, as a fraction of the maximum per second.
+const BAY_REPAIR_PER_SEC := 0.10
 ## One Sprite2D per thruster, built from the hull by _rebuild_flames().
 var _flames: Array[Sprite2D] = []
 
@@ -114,6 +137,9 @@ func _apply_visuals() -> void:
 	team.scale = hull.scale
 	_apply_mark()
 	_rebuild_flames(hull.texture, hull.scale)
+	_rebuild_turrets()
+	if def.has("bays") and bay_craft.is_empty():
+		bay_craft.resize(int(def["bays"]))
 
 ## Hull marks (Defs.HULL_MARKS) are built into the hull: a warship is the
 ## shape of its letter, from the H-class's twin nacelles through the Y-class
@@ -203,6 +229,77 @@ func _rebuild_flames(tex: Texture2D, art_scale: Vector2) -> void:
 ## Weapon reach, after the Weapons line ("range").
 func weapon_range() -> float:
 	return float(def["range"]) * (Game.instance.mod(owner_id, "range") if Game.instance else 1.0)
+
+## Turret sprites for a hull that has mounts: positions are fractions of the
+## sprite (x along the hull from the stern, y off the keel), so they sit
+## right whatever the mark's shape.
+func _rebuild_turrets() -> void:
+	for t in _turret_sprites:
+		if is_instance_valid(t):
+			t.queue_free()
+	_turret_sprites.clear()
+	if not def.has("turrets") or not has_node("Hull"):
+		return
+	var hull: Sprite2D = get_node("Hull")
+	if hull.texture == null:
+		return
+	var size := Vector2(hull.texture.get_size()) / Defs.ART_SCALE
+	for m in def["turrets"]:
+		var t := Sprite2D.new()
+		t.texture = Defs.tex("ship_turret")
+		t.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		t.scale = Vector2.ONE / Defs.ART_SCALE
+		t.position = Vector2((float(m[0]) - 0.5) * size.x, float(m[1]) * size.y)
+		add_child(t)
+		_turret_sprites.append(t)
+
+## Where bay `i` sits in the carrier's own frame (see Defs.carrier_bays):
+## the odd slots are the mirrored, lower-side bays.
+func bay_offset(i: int) -> Vector2:
+	var art: Dictionary = Defs.WARSHIP_ART_SIZE.get(ship_type, {})
+	if art.is_empty():
+		return Vector2.ZERO
+	var level: int = Game.instance.mark_level(owner_id, ship_type) if Game.instance else 0
+	var bays: Array = Defs.carrier_bays(level, int(art["w"]), int(art["h"]))
+	if bays.is_empty():
+		return Vector2.ZERO
+	var b: Vector2 = bays[(i / 2) % bays.size()]
+	# Design units run from the stern; the sprite is centred on the hull.
+	var x: float = b.x - art["w"] / 2.0
+	var y: float = b.y * (1.0 if i % 2 == 0 else -1.0)
+	return Vector2(x, y)
+
+## A free bay for `craft`, or -1.
+func free_bay() -> int:
+	for i in bay_craft.size():
+		if bay_craft[i] == null or not is_instance_valid(bay_craft[i]):
+			return i
+	return -1
+
+func is_carrier() -> bool:
+	return def.get("bays", 0) > 0
+
+## Sends this ship to a carrier's bay to be mended.
+func order_dock(c: Ship) -> void:
+	if c == null or not c.is_carrier() or c.owner_id != owner_id:
+		return
+	dock_carrier = c
+	state = State.DOCK_GO
+
+## This ship's own berth on its carrier.
+func bay_offset_for_slot() -> Vector2:
+	return dock_carrier.bay_offset(dock_slot) if is_instance_valid(dock_carrier) and dock_slot >= 0 else Vector2.ZERO
+
+## Mended and pushed back out, facing away from the carrier.
+func _launch_from_bay() -> void:
+	if is_instance_valid(dock_carrier) and dock_slot >= 0 and dock_slot < dock_carrier.bay_craft.size():
+		dock_carrier.bay_craft[dock_slot] = null
+	var away := Vector2.RIGHT.rotated(rotation)
+	global_position += away * (radius + 6.0)
+	move_goal = global_position
+	dock_carrier = null
+	dock_slot = -1
+	state = State.IDLE
 
 func is_miner() -> bool:
 	return def.get("role", "") in ["miner", "skimmer"]
@@ -441,6 +538,40 @@ func _physics_process(delta: float) -> void:
 				if d > keep:
 					desired = _arrive(target.global_position, 1.0)
 				face_target = target
+		State.DOCK_GO:
+			# Fly to the carrier and take the bay reserved on arrival.
+			if not is_instance_valid(dock_carrier) or not dock_carrier.is_alive():
+				dock_carrier = null
+				state = State.IDLE
+			else:
+				var slot := dock_carrier.free_bay()
+				var berth: Vector2 = dock_carrier.global_position
+				if slot >= 0:
+					berth += dock_carrier.bay_offset(slot).rotated(dock_carrier.rotation)
+				if global_position.distance_to(berth) <= radius + 4.0 and slot >= 0:
+					dock_slot = slot
+					dock_carrier.bay_craft[slot] = self
+					state = State.DOCKED
+					velocity = Vector2.ZERO
+				else:
+					desired = _arrive(berth, 1.0)
+		State.DOCKED:
+			# Held in the cradle: hull first, then armor, then launched.
+			if not is_instance_valid(dock_carrier) or not dock_carrier.is_alive():
+				dock_carrier = null
+				dock_slot = -1
+				state = State.IDLE
+			else:
+				global_position = dock_carrier.global_position + bay_offset_for_slot().rotated(dock_carrier.rotation)
+				rotation = dock_carrier.rotation + (PI * 0.5 if dock_slot % 2 == 0 else -PI * 0.5)
+				velocity = Vector2.ZERO
+				var step: float = BAY_REPAIR_PER_SEC * delta
+				if hp < max_hp:
+					hp = minf(max_hp, hp + max_hp * step)
+				elif armor < max_armor:
+					armor = minf(max_armor, armor + max_armor * step)
+				else:
+					_launch_from_bay()
 		State.MINE_GO:
 			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
 				var want: String = mine_target.resource if is_instance_valid(mine_target) else cargo_type
@@ -557,11 +688,21 @@ func _physics_process(delta: float) -> void:
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
-			# In range: come onto the bearing, and fire once it is in the arc.
-			if face_target == null and shoot is SpaceEntity:
-				face_target = shoot
-			if bears_on(shoot.global_position):
-				Game.instance.fire(self, shoot, def["weapon"], def["damage"] * (1.0 + Game.instance.mark_level(owner_id, ship_type) * float(Defs.MARK_STEP["damage"])))
+			var dmg: float = def["damage"] * (1.0 + Game.instance.mark_level(owner_id, ship_type) * float(Defs.MARK_STEP["damage"]))
+			var ready := false
+			if def.has("turrets"):
+				# Turreted: the mounts traverse, the hull carries on. They
+				# turn slowly enough that a corvette circling a carrier can
+				# stay off the bearing.
+				ready = _traverse(shoot.global_position, delta)
+			else:
+				# Fixed guns: come onto the bearing first.
+				if face_target == null and shoot is SpaceEntity:
+					face_target = shoot
+				ready = bears_on(shoot.global_position)
+			if ready:
+				for g in int(def.get("guns", 1)):
+					Game.instance.fire(self, shoot, def["weapon"], dmg)
 				_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
 	if Game.instance.is_ai(owner_id):

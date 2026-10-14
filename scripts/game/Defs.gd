@@ -40,9 +40,11 @@ const START := {"food": 500.0, "minerals": 1000.0, "energy": 1000.0, "spice": 10
 ## a fight rather than an economy ramp.
 const START_DEATHMATCH := {"food": 10000.0, "minerals": 10000.0, "energy": 10000.0, "spice": 10000.0}
 
-## What a player opens the match with.
-static func starting_resources() -> Dictionary:
-	return (START_DEATHMATCH if GameState.deathmatch else START).duplicate()
+## What a player opens the match with. The caller passes the lobby's
+## Deathmatch setting, so this file stays free of autoloads and tools like
+## gen_art.gd can still parse it.
+static func starting_resources(deathmatch: bool) -> Dictionary:
+	return (START_DEATHMATCH if deathmatch else START).duplicate()
 
 const TEAM_COLORS: Array[Color] = [
 	Color("9aa0b0"), # 0: neutral
@@ -102,6 +104,21 @@ const BASE_SHIPS := {
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 50.0, "upkeep": 36.0,
 		"weapon": "torpedo", "damage": 42.0, "cooldown": 2.2, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 	},
+	"carrier": {
+		"name": "Carrier", "role": "warship", "requires": "carriers", "base": "carrier",
+		# About twice a cruiser in every dimension: slower across the map and
+		# far slower to come about, since turn rate falls with radius. It
+		# makes up for it with several mounts instead of one, and the hangar
+		# bays are the real reason to build one.
+		"hp": 520.0, "armor": 720.0, "shield": 300.0, "speed": 38.0, "radius": 32.0,
+		"cost": {"minerals": 700, "spice": 60}, "build_time": 100.0, "upkeep": 72.0,
+		"weapon": "torpedo", "damage": 30.0, "cooldown": 2.0, "range": 260.0, "sensor": 460.0,
+		"guns": 3, "bays": 6,
+		# Turrets traverse on their own, so the hull does not have to come
+		# about to shoot - but slowly, so a corvette that keeps moving can
+		# stay off the bearing and flank it.
+		"turret_rate": 0.9, "turrets": [[0.62, 0.0], [0.38, -0.30], [0.38, 0.30]],
+	},
 	"scout": {
 		"name": "Scout", "role": "scout",
 		"hp": 50.0, "shield": 10.0, "speed": 155.0, "radius": 7.0,
@@ -109,13 +126,13 @@ const BASE_SHIPS := {
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 600.0, "job": "beacon",
 	},
 	"heatshield": {
-		"name": "Heat Shield Frigate", "role": "warship", "requires": "escorts",
+		"name": "Heat Shield Frigate", "role": "warship",
 		"hp": 130.0, "armor": 70.0, "shield": 140.0, "speed": 80.0, "radius": 11.0,
 		"cost": {"minerals": 110, "spice": 10}, "build_time": 24.0, "upkeep": 12.0,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
 	},
 	"tender": {
-		"name": "Repair Tender", "role": "support", "requires": "escorts",
+		"name": "Repair Tender", "role": "support",
 		"hp": 150.0, "armor": 90.0, "shield": 60.0, "speed": 75.0, "radius": 11.0,
 		"cost": {"minerals": 130, "spice": 10}, "build_time": 28.0, "upkeep": 15.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 300.0, "job": "field_repair",
@@ -126,7 +143,7 @@ const BASE_SHIPS := {
 ## support, generalist warships. Specialist variants aren't built here: a
 ## generalist is refitted into one at a Weapons Depot (WEAPONS_DEPOT).
 const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor", "scout", "tender",
-	"corvette", "destroyer", "cruiser", "heatshield"]
+	"corvette", "destroyer", "cruiser", "carrier", "heatshield"]
 
 ## Weapons Depot: built by a Constructor like a starbase (paid over
 ## build_time). Each depot is built for ONE variant (Defs.VARIANTS) and refits
@@ -378,8 +395,14 @@ const TECHS := {
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 700, "spice": 10}, "time": 60.0,
 		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot: Plasma, Breacher, Reaver, Slip and Disruptor."},
-	"escorts": {"name": "Escorts", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 600, "spice": 10}, "time": 50.0,
-		"effects": {"unlock_escort": 1.0}, "desc": "Unlocks the Repair Tender and the Heat Shield Frigate: the ships that keep a fleet alive rather than kill."},
+	"carriers": {"name": "Carriers", "group": "warships", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 1400, "spice": 40}, "time": 95.0,
+		"effects": {"unlock_carrier": 1.0}, "desc": "Unlocks the Carrier: hangar bays that dock damaged corvettes, mend hull then armor, and launch them again."},
+	"carrier_mk2": {"name": "Y-class Carrier", "group": "warships", "class": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 1300, "spice": 25}, "time": 85.0,
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Y-class: +18% damage, +15% shields, armor and hull, and the bays move onto the prongs."},
+	"carrier_mk3": {"name": "X-class Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk2"], "cost": {"energy": 2400, "spice": 60}, "time": 115.0,
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become X-class: another +18% damage, +15% shields, armor and hull, with the bays out along the wings."},
+	"carrier_mk4": {"name": "A-class Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk3"], "cost": {"energy": 4000, "spice": 120}, "time": 160.0,
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become A-class: a third +18% damage, +15% shields, armor and hull, the bays braced along the legs."},
 	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 45.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
 	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 1200, "spice": 30}, "time": 85.0,
@@ -488,7 +511,45 @@ static func mark_suffix(level: int) -> String:
 	return MARK_SUFFIX[clampi(level, 0, MARK_SUFFIX.size() - 1)]
 
 ## Which classes have a mark line (see HULL_MARKS).
-const MARK_LINES := ["corvette", "destroyer", "cruiser"]
+const MARK_LINES := ["corvette", "destroyer", "cruiser", "carrier"]
+
+## The design size of each warship class's art, mirroring WARSHIP_ART in
+## tools/gen_art.gd. The game needs it to place bays and turrets on the hull.
+const WARSHIP_ART_SIZE := {
+	"corvette": {"w": 18, "h": 15},
+	"destroyer": {"w": 28, "h": 19},
+	"cruiser": {"w": 38, "h": 25},
+	"carrier": {"w": 76, "h": 50},
+}
+
+## Where a carrier's hangar bays sit, in design units along its hull (see
+## tools/gen_art.gd): x from the stern, y off the keel, one entry per bay,
+## mirrored top and bottom. The letter decides the layout, because the bays
+## hang off whichever members that mark actually has â the nacelles of an H,
+## the prongs of a Y, the wings of an X, the legs of an A. Art and gameplay
+## both read this, so a docked corvette sits exactly on the drawn cradle.
+static func carrier_bays(mark: int, w: int, h: int) -> Array:
+	var a: float = h * 0.30
+	var out: Array = []
+	match mark:
+		1:
+			# Y: along both prongs, which run aft of the spar.
+			for t in [0.10, 0.24, 0.38]:
+				out.append(Vector2(w * t, a * 0.86))
+		2:
+			# X: along the wings, which sweep out and aft, so each bay sits
+			# further off the keel the further aft it is.
+			for t in [0.14, 0.28, 0.42]:
+				out.append(Vector2(w * t, a * (1.0 - t / 0.55)))
+		3:
+			# A: down the legs, which spread aft from the bow apex.
+			for t in [0.18, 0.36, 0.54]:
+				out.append(Vector2(w * t, a * 1.3 * (1.0 - t / 0.90)))
+		_:
+			# H: evenly down both nacelles, which run the full length.
+			for t in [0.24, 0.44, 0.64]:
+				out.append(Vector2(w * t, a))
+	return out
 
 const HULL_MARKS := ["H-class", "Y-class", "X-class", "A-class"]
 ## What one mark adds to its class, per step.

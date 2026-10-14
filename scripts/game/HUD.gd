@@ -543,7 +543,7 @@ func _build_research(root: Control) -> void:
 	wars.add_child(_label("UNLOCKS", DIM, 14))
 	# Depots lives on the Constructs page; a tech can only own one card, since
 	# _refresh_research keys its widgets by id.
-	for id in ["destroyers", "cruisers", "escorts"]:
+	for id in ["destroyers", "cruisers", "carriers"]:
 		wars.add_child(_tech_button(id, 300.0))
 	for cls in Defs.MARK_LINES:
 		var head := VBoxContainer.new()

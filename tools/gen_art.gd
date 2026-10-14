@@ -1354,6 +1354,7 @@ const WARSHIP_ART := {
 	"corvette": {"w": 18, "h": 15, "glass": 11, "engines": [-1.0, 0.0], "panels": [7]},
 	"destroyer": {"w": 28, "h": 19, "glass": 16, "engines": [-2.0, -1.0, 0.0, 1.0], "panels": [10, 14]},
 	"cruiser": {"w": 38, "h": 25, "glass": 26, "engines": [-4.0, -3.0, -1.0, 0.0, 2.0, 3.0], "panels": [9, 13, 18]},
+	"carrier": {"w": 76, "h": 50, "glass": 52, "engines": [-8.0, -6.0, -2.0, 0.0, 4.0, 6.0], "panels": [18, 26, 36, 52]},
 }
 
 ## Where each mark carries its canopy, as a fraction of the hull's length.
@@ -1430,7 +1431,43 @@ func _mark_parts(mark: int, w: int, h: int) -> Array:
 				[cx + 3, int(w * 0.84), 1.4, 0.5],
 			]
 
+## The carrier's turret: a drum with a twin barrel, drawn pointing +X so the
+## game can simply rotate it to the bearing.
+## Where a carrier's bays sit, in design units. This mirrors
+## Defs.carrier_bays(): the generator cannot import Defs (that file reaches
+## for autoloads, which a --script run has none of), so the layout is
+## written twice and the two must be kept in step.
+func _carrier_bays(mark: int, w: int, h: int) -> Array:
+	var a: float = h * 0.30
+	var out: Array = []
+	match mark:
+		1:
+			for t in [0.10, 0.24, 0.38]:
+				out.append(Vector2(w * t, a * 0.86))
+		2:
+			for t in [0.14, 0.28, 0.42]:
+				out.append(Vector2(w * t, a * (1.0 - t / 0.55)))
+		3:
+			for t in [0.18, 0.36, 0.54]:
+				out.append(Vector2(w * t, a * 1.3 * (1.0 - t / 0.90)))
+		_:
+			for t in [0.24, 0.44, 0.64]:
+				out.append(Vector2(w * t, a))
+	return out
+
+func _gen_turret() -> void:
+	var t := _fine(11, 9, func(p: Vector2) -> Color:
+		var d: float = Vector2(p.x - 4.0, p.y - 4.5).length()
+		if d < 3.4:
+			return HULL[4] if p.y < 4.0 else (HULL[3] if d < 2.6 else HULL[1])
+		# Twin barrels running forward from the drum.
+		if p.x >= 4.0 and p.x < 11.0 and (absf(p.y - 3.1) < 0.7 or absf(p.y - 5.9) < 0.7):
+			return HULL[4] if p.x > 9.5 else HULL[2]
+		return Color(0, 0, 0, 0))
+	_save(t, "ship_turret")
+
 func _gen_hull_marks() -> void:
+	_gen_turret()
 	for cls in WARSHIP_ART:
 		var d: Dictionary = WARSHIP_ART[cls]
 		var w: int = d["w"]
@@ -1443,7 +1480,16 @@ func _gen_hull_marks() -> void:
 			# Engines sit on the members that reach the stern: the nacelles of
 			# an H, the prongs of a Y, the wings of an X, the legs of an A.
 			var thrusters: Array = [-a, -a + 0.8, a - 0.8, a]
-			_ship(cls + MARK_SUFFIX[mark], w, h, _mark_parts(mark, w, h), team_fn,
+			var parts: Array = _mark_parts(mark, w, h)
+			if cls == "carrier":
+				# A cradle per bay, standing off the member it hangs from, so
+				# a docked corvette has something to sit in.
+				for bay in _carrier_bays(mark, w, h):
+					var bx: float = bay.x
+					var by: float = bay.y
+					parts.append([int(bx) - 3, int(bx) + 3, 1.4, 1.4, by])
+					parts.append([int(bx) - 2, int(bx) + 2, 2.6, 2.6, by + 2.4])
+			_ship(cls + MARK_SUFFIX[mark], w, h, parts, team_fn,
 				[_mark_cockpit(mark, w) - 1, 3], thrusters, d["panels"])
 
 # ---------------------------------------------------------------- layer art

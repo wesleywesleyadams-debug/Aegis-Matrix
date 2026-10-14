@@ -122,7 +122,7 @@ func _enter_tree() -> void:
 		seed(hash(OS.get_environment("SL_SEED") if OS.get_environment("SL_SEED") != "" else OS.get_environment("SL_SIM")))
 	player_id = clampi(GameState.human_player_id, 1, 2)
 	for pid in players:
-		resources[pid] = Defs.starting_resources()
+		resources[pid] = Defs.starting_resources(GameState.deathmatch)
 		rates[pid] = {}
 		_rate_acc[pid] = {}
 		researched[pid] = {}
@@ -1469,6 +1469,21 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 			hud.flash_target(planet, "colonize")
 			if ships.is_empty():
 				return
+	# A friendly carrier: send what it can take into its bays to be mended.
+	if target is Ship and target.owner_id == player_id and (target as Ship).is_carrier():
+		var carrier := target as Ship
+		var berthed := 0
+		for s in ships.duplicate():
+			if s is Ship and s != carrier and s.def.get("role", "") == "warship" and not s.is_carrier():
+				s.do_or_queue(queued, "order_dock", [carrier])
+				ships.erase(s)
+				berthed += 1
+			else:
+				s.do_or_queue(queued, "order_move", [world_pos])
+		hud.flash_target(carrier, "")
+		if berthed == 0:
+			message.emit("Carrier bays take warships: send corvettes and the like to be mended.", Color("ff8a5a"))
+		return
 	if target is WeaponsDepot and target.owner_id == player_id and not target.under_construction:
 		var sent := 0
 		for s in ships.duplicate():
@@ -2302,6 +2317,20 @@ func _enter_dev_capture() -> void:
 			e9.order_stop()
 			e9.set_meta("sbtest", true)
 		center_on(sb9.global_position)
+	if OS.get_environment("SL_SHOT_OPEN") == "carrier":
+		# Dev: a carrier of the requested mark with damaged corvettes docking.
+		var lvl9: int = int(OS.get_environment("SL_CARRIER_MARK"))
+		researched[player_id]["carriers"] = true
+		for mk9 in range(2, 2 + lvl9):
+			researched[player_id]["carrier_mk%d" % mk9] = true
+		var c9 := spawn_ship("carrier", player_id, Vector2(-200, 0))
+		c9.order_stop()
+		for i9 in 6:
+			var cv := spawn_ship("corvette", player_id, Vector2(-40 + i9 * 40, -160 + i9 * 60))
+			cv.hp = cv.max_hp * 0.3
+			cv.armor = 0.0
+			cv.order_dock(c9)
+		center_on(Vector2(-200, 0))
 	if OS.get_environment("SL_SHOT_OPEN") == "resbtn":
 		# Dev: the research button while a project is running (green glow).
 		queue_research(player_id, "ion_cannons")
