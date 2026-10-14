@@ -1156,6 +1156,9 @@ func start_starbase_placement() -> void:
 	message.emit("Left-click open space to found starbase #%d (%s over %ds; each starbase's upkeep becomes x%.1f). Right-click to cancel." % [n + 1, Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"], starbase_upkeep_multiplier(player_id, n + 1)], Color("c3cde4"))
 
 func start_station_placement() -> void:
+	if not has_tech(player_id, str(Defs.MINING_STATION["requires"])):
+		message.emit("Mining Stations need the %s tech." % Defs.TECHS[Defs.MINING_STATION["requires"]]["name"], Color("ffb24a"))
+		return
 	placing_station = true
 	message.emit("Left-click open space for a Mining Station (%s over %ds): harvesters unload there instead of flying home. Right-click to cancel." % [
 		Defs.cost_text(Defs.MINING_STATION["cost"]), int(Defs.MINING_STATION["build_time"])], Color("c3cde4"))
@@ -2323,6 +2326,10 @@ func _enter_dev_capture() -> void:
 			hud.open_codex()
 		"research":
 			hud.toggle_research()
+			# Dev: SL_RESEARCH_TAB opens one page, so each can be checked for fit.
+			var want_tab := OS.get_environment("SL_RESEARCH_TAB")
+			if want_tab != "" and hud._research_tabs.has(want_tab):
+				(hud._research_tabs[want_tab] as Button).pressed.emit()
 		"research_def":
 			queue_research(player_id, "composite_plating")
 			hud.toggle_research()

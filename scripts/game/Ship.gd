@@ -191,6 +191,10 @@ func _rebuild_flames(tex: Texture2D, art_scale: Vector2) -> void:
 		add_child(f)
 		_flames.append(f)
 
+## Weapon reach, after the Weapons line ("range").
+func weapon_range() -> float:
+	return float(def["range"]) * (Game.instance.mod(owner_id, "range") if Game.instance else 1.0)
+
 func is_miner() -> bool:
 	return def.get("role", "") in ["miner", "skimmer"]
 
@@ -395,7 +399,7 @@ func _physics_process(delta: float) -> void:
 			if not order_queue.is_empty():
 				_pop_order()
 			elif def["weapon"] != "" and _acquire_timer <= 0.0:
-				var e := Game.instance.nearest_enemy(self, def["range"] + 60.0)
+				var e := Game.instance.nearest_enemy(self, weapon_range() + 60.0)
 				if e:
 					attack_move_goal = global_position
 					target = e
@@ -409,7 +413,7 @@ func _physics_process(delta: float) -> void:
 				state = State.IDLE
 		State.ATTACK_MOVE:
 			if _acquire_timer <= 0.0:
-				var e := Game.instance.nearest_enemy(self, def["range"] + 120.0)
+				var e := Game.instance.nearest_enemy(self, weapon_range() + 120.0)
 				if e:
 					target = e
 					state = State.ATTACK
@@ -424,7 +428,7 @@ func _physics_process(delta: float) -> void:
 				state = State.ATTACK_MOVE
 			else:
 				var d := global_position.distance_to(target.global_position)
-				var keep: float = def["range"] * 0.8
+				var keep: float = weapon_range() * 0.8
 				if d > keep:
 					desired = _arrive(target.global_position, 1.0)
 				face_target = target
@@ -476,7 +480,7 @@ func _physics_process(delta: float) -> void:
 				state = State.IDLE
 				move_goal = global_position
 			else:
-				var keep: float = def["range"] * 0.8 + bombard_target.radius
+				var keep: float = weapon_range() * 0.8 + bombard_target.radius
 				if global_position.distance_to(bombard_target.global_position) > keep:
 					desired = _arrive(bombard_target.global_position, 1.0, keep)
 				face_target = null
@@ -535,17 +539,17 @@ func _physics_process(delta: float) -> void:
 		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
 		if state == State.BOMBARD and is_instance_valid(bombard_target):
 			shoot = bombard_target
-		if shoot == null or global_position.distance_to(shoot.global_position) > def["range"] + shoot.radius:
+		if shoot == null or global_position.distance_to(shoot.global_position) > weapon_range() + shoot.radius:
 			# Nothing locked on: scan for anything in range, but only every
 			# SCAN_INTERVAL when the last scan came up empty.
 			shoot = null
 			if _scan_cd <= 0.0:
-				shoot = Game.instance.nearest_enemy(self, def["range"])
+				shoot = Game.instance.nearest_enemy(self, weapon_range())
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
-		if shoot and global_position.distance_to(shoot.global_position) <= def["range"] + shoot.radius:
+		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
 			Game.instance.fire(self, shoot, def["weapon"], def["damage"] * (1.0 + Game.instance.mark_level(owner_id, ship_type) * float(Defs.MARK_STEP["damage"])))
-			_cooldown = def["cooldown"] * randf_range(0.9, 1.1)
+			_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)

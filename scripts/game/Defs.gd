@@ -166,6 +166,8 @@ const MINING_STATION := {
 	"weapon": "laser", "damage": 8.0, "cooldown": 1.4, "range": 190.0,
 	"cost": {"minerals": 150}, "build_time": 20.0,
 	"upkeep": 9.0,
+	# Gated like the depots are, by its own Constructs tech.
+	"requires": "ore_platforms",
 }
 
 ## Asteroid reserves scale with rock size: amount = width_px^2 * this.
@@ -286,6 +288,44 @@ const TECHS := {
 		"effects": {"growth": 0.50}, "desc": "+50% population growth."},
 	"arcologies": {"name": "Arcologies", "group": "worlds", "tier": 2, "requires": ["hydroponics"], "cost": {"energy": 1000, "spice": 20}, "time": 80.0,
 		"effects": {"max_pop": 0.30}, "desc": "+30% planet population cap."},
+	# --- Weapons: reach and rate of fire, alongside the damage line.
+	"targeting_arrays": {"name": "Targeting Arrays", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 550}, "time": 50.0,
+		"effects": {"range": 0.15}, "desc": "+15% weapon range on every ship and starbase."},
+	"autoloaders": {"name": "Autoloaders", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 650}, "time": 55.0,
+		"effects": {"fire_rate": 0.15}, "desc": "+15% rate of fire."},
+	"beam_focusing": {"name": "Beam Focusing", "group": "weapons", "tier": 2, "requires": ["targeting_arrays"], "cost": {"energy": 1300, "spice": 20}, "time": 85.0,
+		"effects": {"range": 0.20}, "desc": "A further +20% weapon range: shoot first, and from outside their reach."},
+	"heavy_mounts": {"name": "Heavy Mounts", "group": "weapons", "tier": 2, "requires": ["autoloaders"], "cost": {"energy": 1400, "spice": 25}, "time": 90.0,
+		"effects": {"fire_rate": 0.20}, "desc": "A further +20% rate of fire."},
+	"capital_batteries": {"name": "Capital Batteries", "group": "weapons", "tier": 3, "requires": ["particle_lances", "heavy_mounts"], "cost": {"energy": 2600, "spice": 80}, "time": 130.0,
+		"effects": {"damage": 0.25, "range": 0.10}, "desc": "+25% weapon damage and +10% range."},
+
+	# --- Constructs: what you build rather than fly.
+	"ore_platforms": {"name": "Ore Platforms", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 450}, "time": 40.0,
+		"effects": {"unlock_station": 1.0}, "desc": "Unlocks the Mining Station: a cheap drop-off a Constructor can plant beside a far belt."},
+	"orbital_yards": {"name": "Orbital Yards", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 800}, "time": 60.0,
+		"effects": {"build_speed": 0.25}, "desc": "Starbases build ships 25% faster, for the same cost."},
+	"modular_frames": {"name": "Modular Frames", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 50.0,
+		"effects": {"construct_speed": 0.35}, "desc": "Constructors raise starbases, depots and stations 35% faster."},
+	"reinforced_docks": {"name": "Reinforced Docks", "group": "constructs", "tier": 2, "requires": ["modular_frames"], "cost": {"energy": 1500, "spice": 30}, "time": 95.0,
+		"effects": {"structure": 0.30}, "desc": "+30% hull and armor on starbases, depots and mining stations."},
+	"forward_bases": {"name": "Forward Bases", "group": "constructs", "tier": 2, "requires": ["orbital_yards"], "cost": {"energy": 1600, "spice": 30}, "time": 100.0,
+		"effects": {"build_speed": 0.30, "construct_speed": 0.25}, "desc": "A further +30% ship production and +25% construction: plant a yard at the front and keep it fed."},
+	"citadel_protocols": {"name": "Citadel Protocols", "group": "constructs", "tier": 3, "requires": ["reinforced_docks"], "cost": {"energy": 2800, "spice": 90}, "time": 135.0,
+		"effects": {"structure": 0.45, "range": 0.10}, "desc": "A further +45% hull and armor on every construct, and +10% weapon range."},
+
+	# --- Worlds: feeding, growing and holding colonies.
+	"colony_pods": {"name": "Colony Pods", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 450}, "time": 40.0,
+		"effects": {"colony_pop": 1.0}, "desc": "New colonies land with twice the population, so a fresh world is useful sooner."},
+	"orbital_farms": {"name": "Orbital Farms", "group": "worlds", "tier": 2, "requires": ["hydroponics"], "cost": {"energy": 1100, "spice": 15}, "time": 80.0,
+		"effects": {"food": 0.35}, "desc": "A further +35% food production."},
+	"planetary_shields": {"name": "Planetary Shields", "group": "worlds", "tier": 2, "requires": [], "cost": {"energy": 1200, "spice": 25}, "time": 85.0,
+		"effects": {"planet_shield": 0.40}, "desc": "+40% planetary shield, so a world holds out far longer under bombardment."},
+	"terraforming": {"name": "Terraforming", "group": "worlds", "tier": 3, "requires": ["orbital_farms"], "cost": {"energy": 2400, "spice": 70}, "time": 125.0,
+		"effects": {"food": 0.40, "max_pop": 0.20}, "desc": "+40% food and +20% population cap: barren worlds become worth settling."},
+	"deep_vaults": {"name": "Deep Vaults", "group": "worlds", "tier": 3, "requires": ["arcologies"], "cost": {"energy": 2500, "spice": 75}, "time": 130.0,
+		"effects": {"max_pop": 0.40, "growth": 0.25}, "desc": "A further +40% population cap and +25% growth."},
+
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 700, "spice": 10}, "time": 60.0,
 		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot: Plasma, Breacher, Reaver, Slip and Disruptor."},

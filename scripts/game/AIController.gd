@@ -211,7 +211,12 @@ func _pick_tech(options: Array, fleet: int) -> String:
 				# Unlocks (they have no "class") come first, then marks.
 				score = 100.0 if not d.has("class") else 40.0 + minf(fleet, 12) * 2.0 - d["tier"] * 8.0
 			"constructs":
-				score = 70.0
+				# What a construct UNLOCKS is worth far more than what it
+				# improves, now that the line is more than one tech deep.
+				score = 75.0 if d["effects"].keys().any(func(k): return k.begins_with("unlock")) else 48.0 - d["tier"] * 6.0
+			"weapons":
+				# Weapons pay off in proportion to the fleet carrying them.
+				score = 40.0 + minf(fleet, 12) * 1.8 - d["tier"] * 6.0
 			"logistics", "worlds":
 				score = 55.0 - d["tier"] * 5.0
 			"defense":

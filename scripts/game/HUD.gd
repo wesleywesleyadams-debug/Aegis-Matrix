@@ -43,6 +43,8 @@ var _research_modal: ColorRect
 var _tech_buttons := {}
 ## The research screen's Defenses tab button (dev captures press it).
 var _defs_tab: Button
+## group id -> its tab button, so a dev capture can open any page.
+var _research_tabs := {}
 ## Layer icon per defense line (Defs.LAYER_COLORS).
 const LINE_ICONS := {"shields": "icon_layer_shield", "armor": "icon_layer_armor", "hull": "icon_layer_hull"}
 var _build_buttons := {}
@@ -539,8 +541,11 @@ func _build_research(root: Control) -> void:
 	wars.visible = false
 	v.add_child(wars)
 	wars.add_child(_label("UNLOCKS", DIM, 14))
-	for id in ["destroyers", "cruisers", "depots"]:
+	# Depots lives on the Constructs page; a tech can only own one card, since
+	# _refresh_research keys its widgets by id.
+	for id in ["destroyers", "cruisers"]:
 		wars.add_child(_tech_button(id, 300.0))
+	wars.add_child(Control.new())
 	for cls in Defs.MARK_LINES:
 		var head := VBoxContainer.new()
 		head.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -600,6 +605,9 @@ func _build_research(root: Control) -> void:
 			_defs_tab = buttons.get("defense"))
 	_defs_tab = buttons.get("defense")
 	blurb.text = Defs.TECH_GROUP_DESC.get("warships", "")
+	# Dev: every tab is reachable from a capture, so each one can be checked
+	# for fit (SL_RESEARCH_TAB=weapons|constructs|worlds|logistics|defense).
+	_research_tabs = buttons
 	var close := Button.new()
 	close.text = "Close [R]"
 	close.focus_mode = Control.FOCUS_NONE
@@ -1380,7 +1388,7 @@ func _refresh_ability_button() -> void:
 ## and a progress bar along the bottom (see _refresh_research).
 func _tech_button(id: String, width: float = 340.0) -> Button:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(width, 100)
+	b.custom_minimum_size = Vector2(width, 116)
 	b.clip_contents = true
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(func(): game.request_research(id); _refresh_research())
@@ -1447,6 +1455,9 @@ func _add_constructor_buttons() -> void:
 	var st := _panel_build_button("ship_mining_station", "Mining Station", Defs.MINING_STATION["cost"], Defs.MINING_STATION["build_time"],
 		"A drop-off: harvesters unload here instead of flying home. Builds no ships, %d hull / %d armor / %d shields and a token gun." % [
 			int(Defs.MINING_STATION["hp"]), int(Defs.MINING_STATION["armor"]), int(Defs.MINING_STATION["shield"])])
+	if not game.has_tech(pid, str(Defs.MINING_STATION["requires"])):
+		st.disabled = true
+		st.tooltip_text = "Mining Stations need the %s tech." % Defs.TECHS[Defs.MINING_STATION["requires"]]["name"]
 	st.pressed.connect(game.start_station_placement)
 	_register_action(st)
 	grid.add_child(st)

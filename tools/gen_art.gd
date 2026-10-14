@@ -1340,7 +1340,7 @@ const WARSHIP_ART := {
 ## The letter decides the stance: an H-class is a ball cockpit at the centre
 ## of its spar, like a TIE, while an X-class sits its pilot back at the hub
 ## and runs a long nose out between the wings.
-const MARK_COCKPIT := [0.50, 0.56, 0.58, 0.66]
+const MARK_COCKPIT := [0.50, 0.56, 0.52, 0.66]
 
 func _mark_cockpit(mark: int, w: int) -> int:
 	return int(round(w * MARK_COCKPIT[clampi(mark, 0, 3)]))
@@ -1371,16 +1371,15 @@ func _mark_parts(mark: int, w: int, h: int) -> Array:
 				[cx - 3, cx, 1.1, 2.4], [cx, cx + 3, 2.4, 1.1],
 			]
 		2:
-			# X: the X-wing seen from above. A long fuselage tapering to a
-			# pointed nose; one wing each side sweeping out and aft (the upper
-			# and lower pairs overlap from above, as they do on the real
-			# thing); a fat nacelle at each wing root; and one cannon barrel
-			# running forward from each tip, ending level with the cockpit.
+			# X: four wings crossing in a true X at a hub set back toward the
+			# stern, with a long slim nose running forward out of the crossing
+			# and a nacelle on each aft tip. One part, drawn mirrored, sweeps
+			# its offset from +a to -a and so draws both diagonals.
 			return [
-				[1, w, 2.1, 0.45],
-				[1, int(w * 0.55), 2.0, 1.0, a, 0.0],
-				[1, int(w * 0.22), 2.0, 2.0, a * 0.72],
-				[int(w * 0.06), int(w * 0.74), 1.0, 0.8, a],
+				[1, int(w * 0.64), 1.6, 1.0, a, -a],
+				[1, int(w * 0.16), 1.6, 1.6, a * 0.92],
+				[int(w * 0.22), int(w * 0.46), 2.4, 2.2],
+				[int(w * 0.28), w, 2.0, 0.4],
 				ball[0], ball[1],
 			]
 		3:

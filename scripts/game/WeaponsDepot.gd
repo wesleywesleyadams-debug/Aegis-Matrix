@@ -58,8 +58,8 @@ func refresh_stats() -> void:
 	var d: Dictionary = Defs.WEAPONS_DEPOT
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
 	var ar_frac := armor / max_armor if max_armor > 0.0 else 1.0
-	max_hp = d["hp"] * g.mod(owner_id, "hull")
-	max_armor = d["armor"] * g.mod(owner_id, "armor")
+	max_hp = d["hp"] * g.mod(owner_id, "hull") * g.mod(owner_id, "structure")
+	max_armor = d["armor"] * g.mod(owner_id, "armor") * g.mod(owner_id, "structure")
 	max_shield = d["shield"] * g.mod(owner_id, "shield")
 	hp = max_hp * hp_frac
 	armor = max_armor * ar_frac
@@ -120,8 +120,13 @@ func _construct(delta: float) -> void:
 	var per_sec := {}
 	for k in d["cost"]:
 		per_sec[k] = d["cost"][k] / total
-	var f := g.pay_over_time(owner_id, per_sec, delta)
-	build_stalled = f < 0.999
+	# Modular frames (Constructs) raise the pace a site is assembled at; the
+	# cost is paid at the same pace, so the total bill is unchanged.
+	var cs: float = g.mod(owner_id, "construct_speed")
+	for k2 in per_sec:
+		per_sec[k2] *= cs
+	var f := g.pay_over_time(owner_id, per_sec, delta) * cs
+	build_stalled = f < cs - 0.001
 	if build_stalled:
 		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f

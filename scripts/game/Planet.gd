@@ -187,7 +187,7 @@ func colonize(pid: int) -> void:
 	owner_id = pid
 	construction = {}
 	construction_queue.clear()
-	pop = Defs.START_POP
+	pop = Defs.START_POP * Game.instance.mod(owner_id, "colony_pop")
 	colonizing_owner = 0
 	shield = max_shield()
 	colonize_progress = 0.0
@@ -283,7 +283,7 @@ func max_shield() -> float:
 	if owner_id == 0:
 		return 0.0
 	# Each Defense Battery thickens the planetary shield.
-	return (PLANET_SHIELD + count_building("battery") * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "shield")
+	return (PLANET_SHIELD + count_building("battery") * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "shield") * Game.instance.mod(owner_id, "planet_shield")
 
 func is_alive() -> bool:
 	return owner_id != 0 and pop > 0.0 and is_inside_tree()

@@ -48,8 +48,10 @@ func refresh_stats() -> void:
 	var g := Game.instance
 	var ar_frac := armor / max_armor if max_armor > 0.0 else 1.0
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
-	max_hp = Defs.STARBASE["hp"] * g.mod(owner_id, "hull")
-	max_armor = Defs.STARBASE.get("armor", 0.0) * g.mod(owner_id, "armor")
+	# Constructs take the Constructs line's toughness on top of the fleet-wide
+	# hull and armor research.
+	max_hp = Defs.STARBASE["hp"] * g.mod(owner_id, "hull") * g.mod(owner_id, "structure")
+	max_armor = Defs.STARBASE.get("armor", 0.0) * g.mod(owner_id, "armor") * g.mod(owner_id, "structure")
 	armor = max_armor * ar_frac
 	max_shield = Defs.STARBASE["shield"] * g.mod(owner_id, "shield")
 	hp = max_hp * hp_frac
@@ -121,19 +123,24 @@ func _physics_process(delta: float) -> void:
 		var per_sec := {}
 		for k in d["cost"]:
 			per_sec[k] = d["cost"][k] / d["build_time"]
+		# Orbital yards (Constructs) build ships faster; the cost is paid at the
+		# same rate, so a hull costs the same, it just arrives sooner.
+		var rate: float = g.mod(owner_id, "build_speed")
+		for k2 in per_sec:
+			per_sec[k2] *= rate
 		var f := g.pay_over_time(owner_id, per_sec, delta)
 		build_stalled = f < 0.999
-		build_progress += delta * f
+		build_progress += delta * f * rate
 		if build_progress >= d["build_time"]:
 			_launch(queue.pop_front())
 			build_progress = 0.0
 
 	_cooldown -= delta
 	if _cooldown <= 0.0:
-		var e := g.nearest_enemy(self, Defs.STARBASE["range"])
+		var e := g.nearest_enemy(self, Defs.STARBASE["range"] * g.mod(owner_id, "range"))
 		if e:
 			g.fire(self, e, Defs.STARBASE["weapon"], Defs.STARBASE["damage"])
-			_cooldown = Defs.STARBASE["cooldown"]
+			_cooldown = Defs.STARBASE["cooldown"] / g.mod(owner_id, "fire_rate")
 		else:
 			_cooldown = 0.2
 
@@ -143,8 +150,13 @@ func _construct(delta: float) -> void:
 	var per_sec := {}
 	for k in Defs.STARBASE["cost"]:
 		per_sec[k] = Defs.STARBASE["cost"][k] / total
-	var f := g.pay_over_time(owner_id, per_sec, delta)
-	build_stalled = f < 0.999
+	# Modular frames (Constructs) raise the pace a site is assembled at; the
+	# cost is paid at the same pace, so the total bill is unchanged.
+	var cs: float = g.mod(owner_id, "construct_speed")
+	for k2 in per_sec:
+		per_sec[k2] *= cs
+	var f := g.pay_over_time(owner_id, per_sec, delta) * cs
+	build_stalled = f < cs - 0.001
 	if build_stalled:
 		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f
