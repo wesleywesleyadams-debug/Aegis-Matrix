@@ -506,8 +506,15 @@ func _physics_process(delta: float) -> void:
 					attack_move_goal = global_position
 					target = e
 					state = State.ATTACK
-				elif Game.instance.is_ai(owner_id) and max_shield > 0.0 and Game.instance.in_nebula(global_position):
-					_leave_nebula()
+				else:
+					# Nothing flying nearby: an enemy colony already in range is
+					# worth shooting at too, and it will not come to us.
+					var ep := Game.instance.nearest_enemy_planet(owner_id, global_position, weapon_range())
+					if ep != null:
+						attack_move_goal = global_position
+						order_bombard(ep)
+					elif Game.instance.is_ai(owner_id) and max_shield > 0.0 and Game.instance.in_nebula(global_position):
+						_leave_nebula()
 			desired = _arrive(move_goal, 0.0)
 		State.MOVE:
 			desired = _arrive(move_goal, 1.0)
@@ -519,6 +526,11 @@ func _physics_process(delta: float) -> void:
 				if e:
 					target = e
 					state = State.ATTACK
+				else:
+					# An enemy colony on the way counts as something to attack.
+					var ep := Game.instance.nearest_enemy_planet(owner_id, global_position, weapon_range())
+					if ep != null:
+						order_bombard(ep)
 			desired = _arrive(attack_move_goal, 1.0)
 			if global_position.distance_to(attack_move_goal) < 8.0:
 				state = State.IDLE

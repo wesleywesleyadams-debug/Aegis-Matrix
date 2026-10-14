@@ -114,9 +114,9 @@ func _arc_points(radius: float, mid: float, span: float, steps: int) -> PackedVe
 	var from := mid - span / 2.0
 	for i in steps + 1:
 		var a: float = from + span * float(i) / float(steps)
-		# Snapped to whole world pixels: the game is pixel art, and a line on
-		# a fractional coordinate renders as a smear.
-		pts.append(to_local((global_position + Vector2(cos(a), sin(a)) * radius).round()))
+		# Left on fractional coordinates and drawn antialiased: snapping these
+		# to whole pixels made the curves step and look ragged.
+		pts.append(to_local(global_position + Vector2(cos(a), sin(a)) * radius))
 	return pts
 
 func _draw() -> void:
@@ -128,7 +128,7 @@ func _draw() -> void:
 		# A ring rather than corner brackets, so the marker reads the same
 		# whatever the hull under it is doing.
 		var col := Defs.team_color(owner_id)
-		draw_polyline(_arc_points(r, 0.0, TAU, 32), Color(col, 0.85), 1.0, false)
+		draw_polyline(_arc_points(r, 0.0, TAU, 32), Color(col, 0.85), 1.0, true)
 	# The gauges are for damage, not for decoration: an untouched ship shows
 	# nothing above it, selected or not.
 	if not damaged:
@@ -141,14 +141,14 @@ func _draw() -> void:
 		var full: float = gauge[1]
 		if full <= 0.0:
 			continue
-		draw_polyline(_arc_points(ring, up, ARC_SPAN, ARC_STEPS), Color(0, 0, 0, 0.7), 2.0, false)
+		draw_polyline(_arc_points(ring, up, ARC_SPAN, ARC_STEPS), Color(0, 0, 0, 0.7), 2.0, true)
 		var frac: float = clampf(gauge[0] / full, 0.0, 1.0)
 		if frac > 0.0:
 			# Centred on the same start edge, so a part-full gauge grows from
 			# the left rather than from the middle.
 			var span: float = ARC_SPAN * frac
 			var mid: float = up - ARC_SPAN / 2.0 + span / 2.0
-			draw_polyline(_arc_points(ring, mid, span, maxi(2, int(ARC_STEPS * frac))), gauge[2], 2.0, false)
+			draw_polyline(_arc_points(ring, mid, span, maxi(2, int(ARC_STEPS * frac))), gauge[2], 2.0, true)
 		ring += 2.2
 
 ## A construction site that cannot pay says so on the map, not just in the

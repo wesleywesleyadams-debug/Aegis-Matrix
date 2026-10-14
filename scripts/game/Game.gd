@@ -744,6 +744,21 @@ func nearest_asteroid(pos: Vector2, max_dist: float, resource: String = "mineral
 			best = a
 	return best
 
+## The closest enemy colony within `max_dist` of `pos` (surface distance), or
+## null. Planets are not SpaceEntities, so nearest_enemy never sees them;
+## warships use this to open fire on a colony they drift into range of.
+func nearest_enemy_planet(pid: int, pos: Vector2, max_dist: float) -> Planet:
+	var best: Planet = null
+	var best_d := max_dist
+	for p in get_tree().get_nodes_in_group("planets"):
+		if not p.is_enemy_of(pid):
+			continue
+		var d: float = pos.distance_to(p.global_position) - p.radius
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
+
 func nearest_gas_giant(pos: Vector2, max_dist: float, known: Vision = null) -> Planet:
 	var best: Planet = null
 	var best_d := max_dist
