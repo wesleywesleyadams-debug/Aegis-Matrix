@@ -56,6 +56,7 @@ func _ready() -> void:
 		_capture.call_deferred()
 	_username = _resolve_username()
 
+	_setup_deathmatch_toggle()
 	options_button.pressed.connect(OptionsMenu.open)
 	start_button.pressed.connect(_on_start_pressed)
 	back_button.pressed.connect(_on_back_pressed)
@@ -305,6 +306,28 @@ func _on_back_pressed() -> void:
 	GameState.load_on_start = false
 	GameState.load_save_path = ""
 	get_tree().change_scene_to_file("res://scenes/TitleMenu.tscn")
+
+## Deathmatch (Match Settings): both sides open with a pile of every resource,
+## so the match is a fight from the first minute rather than an economy ramp.
+func _setup_deathmatch_toggle() -> void:
+	var box := CheckBox.new()
+	box.tooltip_text = "Every player starts with %d food, minerals, energy and spice, so the match is a fight from the first minute." % int(Defs.START_DEATHMATCH["minerals"])
+	box.button_pressed = GameState.deathmatch
+	box.focus_mode = Control.FOCUS_NONE
+	# The lobby's theme draws no tick, so the label carries the state and the
+	# text turns green when it is on.
+	var paint := func(on: bool) -> void:
+		box.text = "Deathmatch: ON" if on else "Deathmatch: off"
+		box.add_theme_color_override("font_color", Color("6fe07a") if on else Color("c8d2ea"))
+		box.add_theme_color_override("font_hover_color", Color("9fffae") if on else Color.WHITE)
+	paint.call(GameState.deathmatch)
+	box.toggled.connect(func(on: bool) -> void:
+		GameState.deathmatch = on
+		paint.call(on)
+		GameState.save_settings())
+	var vbox: Control = options_button.get_parent()
+	vbox.add_child(box)
+	vbox.move_child(box, options_button.get_index())
 
 ## System dropdown (Match Settings): the five named systems plus Random, with
 ## a one-line description under it.

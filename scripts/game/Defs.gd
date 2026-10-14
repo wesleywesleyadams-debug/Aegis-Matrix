@@ -36,6 +36,13 @@ const RESOURCE_NAMES := {"food": "Food", "minerals": "Minerals", "energy": "Ener
 const RESOURCE_COLORS := {"food": Color("8fe060"), "minerals": Color("3fd6b0"), "energy": Color("ffd46b"), "spice": Color("ff9a2e")}
 
 const START := {"food": 500.0, "minerals": 1000.0, "energy": 1000.0, "spice": 100.0}
+## Deathmatch start (lobby checkbox): enough of everything that the opening is
+## a fight rather than an economy ramp.
+const START_DEATHMATCH := {"food": 10000.0, "minerals": 10000.0, "energy": 10000.0, "spice": 10000.0}
+
+## What a player opens the match with.
+static func starting_resources() -> Dictionary:
+	return (START_DEATHMATCH if GameState.deathmatch else START).duplicate()
 
 const TEAM_COLORS: Array[Color] = [
 	Color("9aa0b0"), # 0: neutral

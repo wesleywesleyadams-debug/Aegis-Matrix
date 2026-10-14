@@ -51,6 +51,9 @@ var human_player_id: int = 1
 var game_mode: String = "single"
 ## AI opponents use the trained neural commander (res://ai/commander.json).
 var neural_ai: bool = false
+## Deathmatch: both sides open with Defs.START_DEATHMATCH of every resource
+## instead of Defs.START, so a match is fought rather than built up to.
+var deathmatch: bool = false
 ## Which star system the next match uses (SystemGen.SYSTEMS id) and, for
 ## generated ones, the seed it was built from (set when the match starts).
 var system_id: String = "orion_reach"
@@ -280,6 +283,7 @@ func save_account_settings() -> void:
 	config.set_value("visuals", "show_grip_points", show_grip_points)
 	config.set_value("visuals", "ui_font", ui_font)
 	config.set_value("lobby", "human_player_id", human_player_id)
+	config.set_value("lobby", "deathmatch", deathmatch)
 	config.set_value("lobby", "player_slots", player_slots)
 	var path := account_settings_path()
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
@@ -335,6 +339,7 @@ func load_account_settings() -> void:
 	if ui_font not in ["console", "default"]:
 		ui_font = "console"
 	human_player_id = config.get_value("lobby", "human_player_id", human_player_id)
+	deathmatch = config.get_value("lobby", "deathmatch", deathmatch)
 	player_slots = config.get_value("lobby", "player_slots", player_slots)
 
 ## Resets every per-account field to this class's own declared defaults --

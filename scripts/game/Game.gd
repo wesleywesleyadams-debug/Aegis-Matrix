@@ -38,7 +38,7 @@ var resources := {}
 var rates := {}
 ## The last RATE_WINDOW one-second samples, so the HUD can show a trend that
 ## does not flicker with every delivery: pid -> resource -> Array[float].
-const RATE_WINDOW := 30
+const RATE_WINDOW := 60
 var _rate_hist := {}
 var researched := {}      # pid -> {tech_id: true}
 var research := {}        # pid -> {"id": String, "progress": float, "stalled": bool} or {}
@@ -122,7 +122,7 @@ func _enter_tree() -> void:
 		seed(hash(OS.get_environment("SL_SEED") if OS.get_environment("SL_SEED") != "" else OS.get_environment("SL_SIM")))
 	player_id = clampi(GameState.human_player_id, 1, 2)
 	for pid in players:
-		resources[pid] = Defs.START.duplicate()
+		resources[pid] = Defs.starting_resources()
 		rates[pid] = {}
 		_rate_acc[pid] = {}
 		researched[pid] = {}
