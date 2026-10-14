@@ -472,18 +472,17 @@ func _page_combat() -> void:
 	_rule()
 	_rule()
 	_heading("Hull marks", EDGE_LIT)
-	_para("Every warship has two independent axes. Its MARK is raw power and comes from the War Ships research line; its VARIANT is purpose and comes from a Weapons Depot. An A-class Reaver Corvette is both: the toughest corvette mark, fitted to hunt hull.")
+	_para("Every warship has two independent axes. Its MARK is raw power and comes from the War Ships research line; its VARIANT is purpose and comes from a Weapons Depot. A Mk IV Reaver Corvette is both: the finest corvette mark, fitted to hunt hull.")
 	var krows: Array = []
 	for i in Defs.HULL_MARKS.size():
 		krows.append([Defs.HULL_MARKS[i], "start" if i == 0 else "research", "+%d%% damage, +%d%% shields, armor and hull" % [
 			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
-	_table(["Mark", "From", "Over an H-class"], krows)
+	_table(["Mark", "From", "Over a Mk I"], krows)
+	var shapes: Array = []
 	for cls in Defs.MARK_LINES:
-		var mplate: Array = []
-		for mi in Defs.HULL_MARKS.size():
-			mplate.append(["ship_%s%s" % [cls, Defs.mark_suffix(mi)], Defs.HULL_MARKS[mi], TEXT if mi == 0 else EDGE_LIT])
-		_plate(mplate, 96.0, true, "%s, mark by mark." % Defs.SHIPS[cls]["name"])
-	_para("A mark is the shape of the ship, not a badge on it: an H-class is two nacelles either side of a central body, a Y-class is a tail boom forking into two bow prongs, an X-class crosses four wings at a hub, and an A-class is a braced delta with its apex at the bow. Refitting to a variant keeps the shape and only changes the markings on it.")
+		shapes.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
+	_plate(shapes, 96.0, true, "One shape per class, for the life of the ship: a corvette is an A, a destroyer a Y, a cruiser an X, a carrier an H. A mark is rank, and shows as chevrons at the bow.")
+	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow, a destroyer a tail boom forking into two prongs, a cruiser four wings crossed at a hub, a carrier two nacelles either side of a hangar spine â and a hull keeps that shape for life. A mark is rank on top of it: the hull is dressed a little further at each one, a lit rail at Mk II, a keel rail and studs at Mk III, a warm-white rim and lit engine blocks at Mk IV, with a chevron at the bow for each mark earned.")
 	_para("Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments. Marks apply to every ship of that class you already own the moment the research lands.")
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT

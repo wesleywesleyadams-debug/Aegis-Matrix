@@ -54,6 +54,7 @@ func _init() -> void:
 		_gen_hull_marks()
 		_gen_job_ships()
 		_gen_variants()
+		_gen_ranks()
 		_gen_depot()
 		_gen_mining_station()
 		_gen_layer_art()
@@ -63,6 +64,7 @@ func _init() -> void:
 	_gen_hull_marks()
 	_gen_job_ships()
 	_gen_variants()
+	_gen_ranks()
 	_gen_depot()
 	_gen_mining_station()
 	_gen_layer_art()
@@ -1164,7 +1166,7 @@ func _gen_variants() -> void:
 	# Every variant exists for every mark, since a refit keeps the hull the
 	# ship was built with and only re-trims it.
 	for base in VARIANT_BASES:
-		for suffix in MARK_SUFFIX:
+		for suffix in [""]:
 			var raw_name := "ship_%s%s" % [base, suffix]
 			var raw := Image.load_from_file(ProjectSettings.globalize_path(OUT + raw_name + ".png"))
 			var raw_team := Image.load_from_file(ProjectSettings.globalize_path(OUT + raw_name + "_team.png"))
@@ -1347,7 +1349,11 @@ func _gen_mining_station() -> void:
 ##   A-class: a bow apex with two legs trailing aft, braced across
 ## Mark 0 keeps the plain class name ("ship_corvette"), so everything that
 ## refers to a class by name gets the H-class hull.
-const MARK_SUFFIX := ["", "_m1", "_m2", "_m3"]
+## Which letterform each class is built in. The shape says what a ship IS,
+## not how upgraded it is: a corvette is always an A, a destroyer a Y, a
+## cruiser an X and a carrier an H, so a silhouette reads as a role right
+## across the map. Research marks are rank, drawn as chevrons (_gen_ranks).
+const CLASS_SHAPE := {"corvette": 3, "destroyer": 1, "cruiser": 2, "carrier": 0}
 
 ## w, h and the detail positions for each warship class.
 const WARSHIP_ART := {
@@ -1455,6 +1461,68 @@ func _carrier_bays(mark: int, w: int, h: int) -> Array:
 				out.append(Vector2(w * t, a))
 	return out
 
+## Rank marks, one overlay per research mark, fitted to each class's own hull.
+## A ship starts plain at Mk I and is progressively dressed as it is refined:
+## Mk II lays a lit rail along the spine and a chevron at the bow, Mk III adds
+## a keel rail, hull studs and a second chevron, Mk IV wraps the whole rim in
+## warm white with lit engine blocks and a third chevron. The trim is cut
+## from the hull's own silhouette, so it fits whatever shape the class is.
+func _gen_ranks() -> void:
+	var tints := [Color("dbe6ff"), Color("ffc24a"), Color("fff6d8")]
+	for cls in WARSHIP_ART:
+		var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s.png" % cls))
+		var w := hull.get_width()
+		var h := hull.get_height()
+		# Column-wise top and bottom edges, ignoring the outline.
+		var top := {}
+		var bot := {}
+		for x in w:
+			for y in h:
+				var c := hull.get_pixel(x, y)
+				if c.a > 0.0 and c != OUTLINE:
+					if not top.has(x):
+						top[x] = y
+					bot[x] = y
+		var xs: Array = top.keys()
+		xs.sort()
+		if xs.is_empty():
+			continue
+		var stern: int = xs[0]
+		var nose: int = xs[xs.size() - 1]
+		for level in [1, 2, 3]:
+			var img := _img(w - 2, h - 2)
+			var tint: Color = tints[level - 1]
+			for x in xs:
+				var deep: bool = bot[x] - top[x] > 2 * S
+				# Mk II and up: a rail along the lit edge.
+				_px(img, x - 1, top[x] - 1, tint)
+				# Mk III and up: the keel too, and studs down the flanks.
+				if level >= 2 and deep:
+					_px(img, x - 1, bot[x] - 1, tint)
+					if (x / S) % 5 == 0:
+						_px(img, x - 1, top[x] + S, tint.darkened(0.2))
+				# Mk IV: the rim reads lit all round, with an inner sheen.
+				if level >= 3 and deep:
+					_px(img, x - 1, top[x], tint.darkened(0.15))
+					var t: float = float(x - stern) / maxf(nose - stern, 1)
+					if t > 0.2 and t < 0.9:
+						_px(img, x - 1, bot[x] - 1 - S, Color("ffe9a8"))
+			# Chevrons at the bow: one per mark, so rank reads at a glance.
+			for k in level:
+				var cx: int = nose - 2 - k * 3 * S
+				for arm in range(0, 3 * S):
+					var mid: int = int(round((top.get(cx, h / 2) + bot.get(cx, h / 2)) / 2.0))
+					_px(img, cx - arm - 1, mid - arm - 1, tint)
+					_px(img, cx - arm - 1, mid + arm - 1, tint)
+			# Mk IV: lit engine blocks at the stern.
+			if level >= 3:
+				for k in 2:
+					var ex: int = stern + k * S
+					if top.has(ex):
+						_px(img, ex - 1, top[ex], tints[2])
+						_px(img, ex - 1, bot[ex] - 1 - S, tints[2])
+			_save(img, "ship_mark_%s_%d" % [cls, level])
+
 func _gen_turret() -> void:
 	var t := _fine(11, 9, func(p: Vector2) -> Color:
 		var d: float = Vector2(p.x - 4.0, p.y - 4.5).length()
@@ -1472,25 +1540,24 @@ func _gen_hull_marks() -> void:
 		var d: Dictionary = WARSHIP_ART[cls]
 		var w: int = d["w"]
 		var h: int = d["h"]
-		for mark in 4:
-			# The team color rides the outer members, which are the parts that
-			# carry the letter, so the shape reads in the owner's color.
-			var a: float = h * 0.30
-			var team_fn := func(_x: int, dy: float) -> bool: return absf(dy) > a - 2.0
-			# Engines sit on the members that reach the stern: the nacelles of
-			# an H, the prongs of a Y, the wings of an X, the legs of an A.
-			var thrusters: Array = [-a, -a + 0.8, a - 0.8, a]
-			var parts: Array = _mark_parts(mark, w, h)
-			if cls == "carrier":
-				# A cradle per bay, standing off the member it hangs from, so
-				# a docked corvette has something to sit in.
-				for bay in _carrier_bays(mark, w, h):
-					var bx: float = bay.x
-					var by: float = bay.y
-					parts.append([int(bx) - 3, int(bx) + 3, 1.4, 1.4, by])
-					parts.append([int(bx) - 2, int(bx) + 2, 2.6, 2.6, by + 2.4])
-			_ship(cls + MARK_SUFFIX[mark], w, h, parts, team_fn,
-				[_mark_cockpit(mark, w) - 1, 3], thrusters, d["panels"])
+		var shape: int = CLASS_SHAPE.get(cls, 0)
+		# The team color rides the outer members, which are the parts that
+		# carry the letter, so the shape reads in the owner's color.
+		var a: float = h * 0.30
+		var team_fn := func(_x: int, dy: float) -> bool: return absf(dy) > a - 2.0
+		var parts: Array = _mark_parts(shape, w, h)
+		if cls == "carrier":
+			# A cradle per bay, standing off the member it hangs from, so a
+			# docked corvette has something to sit in.
+			for bay in _carrier_bays(shape, w, h):
+				var bx: float = bay.x
+				var by: float = bay.y
+				parts.append([int(bx) - 3, int(bx) + 3, 1.4, 1.4, by])
+				parts.append([int(bx) - 2, int(bx) + 2, 2.6, 2.6, by + 2.4])
+		# Engines sit on the members that reach the stern: the nacelles of an
+		# H, the prongs of a Y, the wings of an X, the legs of an A.
+		var thrusters: Array = [-a, -a + 0.8, a - 0.8, a]
+		_ship(cls, w, h, parts, team_fn, [_mark_cockpit(shape, w) - 1, 3], thrusters, d["panels"])
 
 # ---------------------------------------------------------------- layer art
 

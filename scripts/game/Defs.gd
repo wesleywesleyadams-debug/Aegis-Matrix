@@ -397,37 +397,37 @@ const TECHS := {
 		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot: Plasma, Breacher, Reaver, Slip and Disruptor."},
 	"carriers": {"name": "Carriers", "group": "warships", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 1400, "spice": 40}, "time": 95.0,
 		"effects": {"unlock_carrier": 1.0}, "desc": "Unlocks the Carrier: hangar bays that dock damaged corvettes, mend hull then armor, and launch them again."},
-	"carrier_mk2": {"name": "Y-class Carrier", "group": "warships", "class": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 1300, "spice": 25}, "time": 85.0,
-		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Y-class: +18% damage, +15% shields, armor and hull, and the bays move onto the prongs."},
-	"carrier_mk3": {"name": "X-class Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk2"], "cost": {"energy": 6200, "spice": 120}, "time": 205.0,
-		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become X-class: another +18% damage, +15% shields, armor and hull, with the bays out along the wings."},
-	"carrier_mk4": {"name": "A-class Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk3"], "cost": {"energy": 8000, "spice": 200}, "time": 260.0,
-		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become A-class: a third +18% damage, +15% shields, armor and hull, the bays braced along the legs."},
+	"carrier_mk2": {"name": "Mk II Carrier", "group": "warships", "class": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 1300, "spice": 25}, "time": 85.0,
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk II: +18% damage, +15% shields, armor and hull."},
+	"carrier_mk3": {"name": "Mk III Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk2"], "cost": {"energy": 6200, "spice": 120}, "time": 205.0,
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk III: another +18% damage, +15% shields, armor and hull."},
+	"carrier_mk4": {"name": "Mk IV Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk3"], "cost": {"energy": 8000, "spice": 200}, "time": 260.0,
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk IV: a third +18% damage, +15% shields, armor and hull."},
 	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 45.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
 	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 1200, "spice": 30}, "time": 85.0,
 		"effects": {"unlock_cruiser": 1.0}, "desc": "Unlocks the Cruiser."},
 	# Hull mark lines: one per warship class, three upgrades each (the class
-	# starts H-class). Each mark lifts only that class, so investing in
+	# starts Mk I). Each mark lifts only that class, so investing in
 	# corvettes and investing in cruisers are different strategies.
-	"corvette_mk2": {"name": "Y-class Corvette", "group": "warships", "class": "corvette", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 55.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Y-class: +18% damage, +15% shields, armor and hull."},
-	"corvette_mk3": {"name": "X-class Corvette", "group": "warships", "class": "corvette", "tier": 2, "requires": ["corvette_mk2"], "cost": {"energy": 1400, "spice": 25}, "time": 90.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become X-class: another +18% damage, +15% shields, armor and hull."},
-	"corvette_mk4": {"name": "A-class Corvette", "group": "warships", "class": "corvette", "tier": 3, "requires": ["corvette_mk3"], "cost": {"energy": 6800, "spice": 140}, "time": 235.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become A-class: a third +18% damage, +15% shields, armor and hull."},
-	"destroyer_mk2": {"name": "Y-class Destroyer", "group": "warships", "class": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 900}, "time": 65.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Y-class: +18% damage, +15% shields, armor and hull."},
-	"destroyer_mk3": {"name": "X-class Destroyer", "group": "warships", "class": "destroyer", "tier": 2, "requires": ["destroyer_mk2"], "cost": {"energy": 1800, "spice": 35}, "time": 100.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become X-class: another +18% damage, +15% shields, armor and hull."},
-	"destroyer_mk4": {"name": "A-class Destroyer", "group": "warships", "class": "destroyer", "tier": 3, "requires": ["destroyer_mk3"], "cost": {"energy": 8000, "spice": 180}, "time": 250.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become A-class: a third +18% damage, +15% shields, armor and hull."},
-	"cruiser_mk2": {"name": "Y-class Cruiser", "group": "warships", "class": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 1300, "spice": 20}, "time": 80.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Y-class: +18% damage, +15% shields, armor and hull."},
-	"cruiser_mk3": {"name": "X-class Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk2"], "cost": {"energy": 6200, "spice": 120}, "time": 205.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become X-class: another +18% damage, +15% shields, armor and hull."},
-	"cruiser_mk4": {"name": "A-class Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk3"], "cost": {"energy": 8000, "spice": 200}, "time": 260.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become A-class: a third +18% damage, +15% shields, armor and hull."},
+	"corvette_mk2": {"name": "Mk II Corvette", "group": "warships", "class": "corvette", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 55.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk II: +18% damage, +15% shields, armor and hull."},
+	"corvette_mk3": {"name": "Mk III Corvette", "group": "warships", "class": "corvette", "tier": 2, "requires": ["corvette_mk2"], "cost": {"energy": 1400, "spice": 25}, "time": 90.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk III: another +18% damage, +15% shields, armor and hull."},
+	"corvette_mk4": {"name": "Mk IV Corvette", "group": "warships", "class": "corvette", "tier": 3, "requires": ["corvette_mk3"], "cost": {"energy": 6800, "spice": 140}, "time": 235.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk IV: a third +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk2": {"name": "Mk II Destroyer", "group": "warships", "class": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 900}, "time": 65.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk II: +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk3": {"name": "Mk III Destroyer", "group": "warships", "class": "destroyer", "tier": 2, "requires": ["destroyer_mk2"], "cost": {"energy": 1800, "spice": 35}, "time": 100.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk III: another +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk4": {"name": "Mk IV Destroyer", "group": "warships", "class": "destroyer", "tier": 3, "requires": ["destroyer_mk3"], "cost": {"energy": 8000, "spice": 180}, "time": 250.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk IV: a third +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk2": {"name": "Mk II Cruiser", "group": "warships", "class": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 1300, "spice": 20}, "time": 80.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk II: +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk3": {"name": "Mk III Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk2"], "cost": {"energy": 6200, "spice": 120}, "time": 205.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk III: another +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk4": {"name": "Mk IV Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk3"], "cost": {"energy": 8000, "spice": 200}, "time": 260.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk IV: a third +18% damage, +15% shields, armor and hull."},
 	# Defense lines (research screen's Defenses tab): shields, armor, hull. Each
 	# is three tiers of big, expensive upgrades for every ship and starbase,
 	# so which layer to invest in is a real strategic choice.
@@ -467,7 +467,7 @@ static func cost_text(cost: Dictionary) -> String:
 
 ## What each research group is for, shown under the tabs (HUD._build_research).
 const TECH_GROUP_DESC := {
-	"warships": "Unlock each warship class and raise its mark: H-class, Y-class, X-class, A-class. Every class is its own line.",
+	"warships": "Unlock each warship class and raise its mark, Mk I through Mk IV. Every class is its own line, and a mark refines a hull rather than reshaping it.",
 	"weapons": "Weapon output for everything you own, warship and starbase alike.",
 	"defense": "The three layers damage works through — shields, armor, hull — plus screens, which soak a slice of everything first. Pick a line and commit.",
 	"constructs": "Starbases, depots and the other things you build rather than fly.",
@@ -491,7 +491,7 @@ const STAR_TYPES := {
 ## (see VARIANTS), e.g. "slip_corvette".
 static var SHIPS: Dictionary = _with_variants()
 
-## Hull marks: every warship class starts H-class and is upgraded a mark at
+## Hull marks: every warship class starts Mk I and is upgraded a mark at
 ## a time by its own research line (Defs.TECHS, "mark_<class>" effects). Each
 ## mark makes that class alone tougher and harder-hitting, so late-game
 ## corvettes are a different animal from the ones built in minute one.
@@ -500,15 +500,6 @@ static var SHIPS: Dictionary = _with_variants()
 ## slower still.
 const HARVEST_SPICE_MULT := 0.4
 const HARVEST_NEBULA_MULT := 0.6
-
-## The sprite suffix for a mark: mark 0 keeps the plain class name, so a
-## ship's art is "ship_<type>" plus this (see WARSHIP_ART in tools/gen_art.gd).
-## The hull itself is built in the shape of the mark's letter, which is why a
-## mark changes the sprite rather than adding a decal to it.
-const MARK_SUFFIX := ["", "_m1", "_m2", "_m3"]
-
-static func mark_suffix(level: int) -> String:
-	return MARK_SUFFIX[clampi(level, 0, MARK_SUFFIX.size() - 1)]
 
 ## Which classes have a mark line (see HULL_MARKS).
 const MARK_LINES := ["corvette", "destroyer", "cruiser", "carrier"]
@@ -551,11 +542,16 @@ static func carrier_bays(mark: int, w: int, h: int) -> Array:
 				out.append(Vector2(w * t, a))
 	return out
 
-const HULL_MARKS := ["H-class", "Y-class", "X-class", "A-class"]
+## A mark is rank, not shape. Each class is built in one letterform for life
+## (see CLASS_SHAPE in tools/gen_art.gd): a corvette is an A, a destroyer a
+## Y, a cruiser an X, a carrier an H. Research refines a ship within that
+## shape, and shows as chevrons at the nose. A ship starts at Mk I and works
+## up to Mk IV, the finest of its line.
+const HULL_MARKS := ["Mk I", "Mk II", "Mk III", "Mk IV"]
 ## What one mark adds to its class, per step.
 const MARK_STEP := {"damage": 0.18, "hull": 0.15, "armor": 0.15, "shield": 0.15}
 
-## The mark name for a class at `level` (0 = H-class), e.g. "Y-class Corvette".
+## The mark name for a class at `level` (0 = Mk I), e.g. "Mk II Corvette".
 static func marked_name(ship_type: String, level: int) -> String:
 	var d: Dictionary = SHIPS.get(ship_type, {})
 	if d.is_empty() or not MARK_LINES.has(d.get("base", ship_type)):

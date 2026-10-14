@@ -126,8 +126,8 @@ func _apply_visuals() -> void:
 		return
 	var hull: Sprite2D = get_node("Hull")
 	var team: Sprite2D = get_node("Team")
-	# A warship's mark is its hull shape, so the mark picks the sprite.
-	var art: String = "ship_" + ship_type + _mark_suffix()
+	# One hull per class, whatever its rank.
+	var art: String = "ship_" + ship_type
 	hull.texture = Defs.tex(art)
 	team.texture = Defs.tex(art + "_team")
 	team.modulate = Defs.team_color(owner_id)
@@ -141,42 +141,25 @@ func _apply_visuals() -> void:
 	if def.has("bays") and bay_craft.is_empty():
 		bay_craft.resize(int(def["bays"]))
 
-## Hull marks (Defs.HULL_MARKS) are built into the hull: a warship is the
-## shape of its letter, from the H-class's twin nacelles through the Y-class
-## fork and the X-class cross to the A-class's braced delta. Refitting to a
-## variant keeps the shape and only changes the markings on it.
-func _mark_suffix() -> String:
-	var cls: String = def.get("base", ship_type)
-	if not Defs.MARK_LINES.has(cls) or Game.instance == null:
-		return ""
-	return Defs.mark_suffix(Game.instance.mark_level(owner_id, ship_type))
-
+## Hull marks (Defs.HULL_MARKS) are rank: the hull keeps the one shape its
+## class is built in, and research shows as chevrons laid over the nose â
+## one for Mk II, two for Mk III, three for Mk IV.
 func _apply_mark() -> void:
-	# The old overlay node is kept (saves and the scene still carry it) but a
-	# mark is a different hull now, so nothing is drawn over the ship.
-	if has_node("Mark"):
-		(get_node("Mark") as Sprite2D).visible = false
-	_refresh_hull_art()
-
-## Re-points the hull and team sprites at this ship's current mark.
-func _refresh_hull_art() -> void:
-	if not has_node("Hull"):
+	if not has_node("Mark"):
 		return
-	var hull: Sprite2D = get_node("Hull")
-	var team: Sprite2D = get_node("Team")
-	var art: String = "ship_" + ship_type + _mark_suffix()
-	var tex := Defs.tex(art)
-	if tex == null or hull.texture == tex:
+	var mk: Sprite2D = get_node("Mark")
+	var cls: String = def.get("base", ship_type)
+	var level := Game.instance.mark_level(owner_id, ship_type) if Game.instance else 0
+	if level <= 0 or not Defs.MARK_LINES.has(cls):
+		mk.visible = false
 		return
-	hull.texture = tex
-	team.texture = Defs.tex(art + "_team")
-	hull.scale = Vector2.ONE / Defs.ART_SCALE
-	team.scale = hull.scale
-	_rebuild_flames(tex, hull.scale)
+	mk.texture = Defs.tex("ship_mark_%s_%d" % [cls, clampi(level, 1, 3)])
+	mk.scale = Vector2.ONE / Defs.ART_SCALE
+	mk.visible = mk.texture != null
 
 ## One flame per thruster, found from the hull art itself: the stern column
 ## is scanned for runs of solid pixels and a flame is placed behind the
-## middle of each. An H-class gets one per nacelle, a Y-class one per prong,
+## middle of each. A carrier gets one per nacelle, a destroyer one per prong,
 ## a barge one on its keel â and nothing has to be told where its engines
 ## are when the art changes.
 func _rebuild_flames(tex: Texture2D, art_scale: Vector2) -> void:
