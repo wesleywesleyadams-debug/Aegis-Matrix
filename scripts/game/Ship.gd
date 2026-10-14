@@ -18,6 +18,15 @@ var velocity: Vector2 = Vector2.ZERO
 var move_goal: Vector2
 var attack_move_goal: Vector2
 ## Seconds until an idle weapon may scan for targets again (empty scans only).
+## Guns are fixed forward: a ship has to be pointing within this of a target
+## to shoot it, and turns onto the bearing first. Big hulls turn slowly (see
+## _steer), so a cruiser caught beam-on really does have to come about.
+const FIRE_ARC := deg_to_rad(40.0)
+
+## True when `point` lies inside the forward firing arc.
+func bears_on(point: Vector2) -> bool:
+	return absf(angle_difference(rotation, (point - global_position).angle())) <= FIRE_ARC
+
 const SCAN_INTERVAL := 0.2
 var _scan_cd: float = 0.0
 ## max_speed() is asked several times a tick; compute it once per tick.
@@ -548,8 +557,12 @@ func _physics_process(delta: float) -> void:
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
-			Game.instance.fire(self, shoot, def["weapon"], def["damage"] * (1.0 + Game.instance.mark_level(owner_id, ship_type) * float(Defs.MARK_STEP["damage"])))
-			_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+			# In range: come onto the bearing, and fire once it is in the arc.
+			if face_target == null and shoot is SpaceEntity:
+				face_target = shoot
+			if bears_on(shoot.global_position):
+				Game.instance.fire(self, shoot, def["weapon"], def["damage"] * (1.0 + Game.instance.mark_level(owner_id, ship_type) * float(Defs.MARK_STEP["damage"])))
+				_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)
