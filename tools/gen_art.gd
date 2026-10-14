@@ -387,7 +387,7 @@ func _gen_planets() -> void:
 	var land := [Color("1b3320"), Color("2f5a2c"), Color("4f8a3a"), Color("8fb85a")]
 	var cloud := [Color("7e8ca8"), Color("c9d4e6"), Color("ffffff")]
 	noise.seed = 11
-	var terran := _sphere(72, func(n: Vector3, l: float, x: int, y: int) -> Color:
+	var terran := _sphere(72 * S, func(n: Vector3, l: float, x: int, y: int) -> Color:
 		var h := noise.get_noise_3d(n.x, n.y, n.z)
 		var cl := noise.get_noise_3d(n.x * 2.0 + 9.0, n.y * 3.5, n.z * 2.0)
 		if cl > 0.28:
@@ -401,7 +401,7 @@ func _gen_planets() -> void:
 	# Desert world.
 	var sand := [Color("3a1f14"), Color("6e3b1f"), Color("b06a33"), Color("e0a85a"), Color("f5d58f")]
 	noise.seed = 23
-	_save(_sphere(56, func(n: Vector3, l: float, x: int, y: int) -> Color:
+	_save(_sphere(56 * S, func(n: Vector3, l: float, x: int, y: int) -> Color:
 		var h := noise.get_noise_3d(n.x * 1.4, n.y * 1.4, n.z * 1.4)
 		return _ramp_pick(sand, clampf(l + h * 0.35, 0, 1), x, y)
 	, Color("ffd9a0")), "planet_desert")
@@ -409,7 +409,7 @@ func _gen_planets() -> void:
 	# Ice world.
 	var ice := [Color("1e2c4a"), Color("4a6a93"), Color("9ec3e0"), Color("e6f4ff")]
 	noise.seed = 37
-	_save(_sphere(48, func(n: Vector3, l: float, x: int, y: int) -> Color:
+	_save(_sphere(48 * S, func(n: Vector3, l: float, x: int, y: int) -> Color:
 		var h := noise.get_noise_3d(n.x * 2.0, n.y * 2.0, n.z * 2.0)
 		return _ramp_pick(ice, clampf(l + h * 0.25, 0, 1), x, y)
 	), "planet_ice")
@@ -418,7 +418,7 @@ func _gen_planets() -> void:
 	var rock := [Color("120a0e"), Color("2a171a"), Color("4a2a26")]
 	var lava := [Color("a3261f"), Color("ff6a2b"), Color("ffc85a")]
 	noise.seed = 51
-	_save(_sphere(44, func(n: Vector3, l: float, x: int, y: int) -> Color:
+	_save(_sphere(44 * S, func(n: Vector3, l: float, x: int, y: int) -> Color:
 		var h := absf(noise.get_noise_3d(n.x * 1.8, n.y * 1.8, n.z * 1.8))
 		if h < 0.06:
 			return lava[clampi(int((0.06 - h) / 0.02), 0, 2)]
@@ -428,7 +428,7 @@ func _gen_planets() -> void:
 	# Gas giant: banded, with a storm spot.
 	var gas := [Color("2b1a3a"), Color("5a3563"), Color("9a5e7e"), Color("d59a8a"), Color("f2d2b0")]
 	noise.seed = 67
-	_save(_sphere(104, func(n: Vector3, l: float, x: int, y: int) -> Color:
+	_save(_sphere(104 * S, func(n: Vector3, l: float, x: int, y: int) -> Color:
 		var band := sin(n.y * 14.0 + noise.get_noise_3d(n.x, n.y * 0.3, n.z) * 3.0) * 0.5 + 0.5
 		var storm := Vector2(n.x - 0.25, (n.y - 0.3) * 1.8).length() < 0.16
 		var v := clampf(l * 0.75 + band * 0.3 - 0.1, 0, 1)
@@ -440,18 +440,18 @@ func _gen_planets() -> void:
 	# Barren moon.
 	var grey := [Color("1a1a22"), Color("3a3a46"), Color("6a6a78"), Color("a4a4b0")]
 	noise.seed = 79
-	_save(_sphere(28, func(n: Vector3, l: float, x: int, y: int) -> Color:
+	_save(_sphere(28 * S, func(n: Vector3, l: float, x: int, y: int) -> Color:
 		var h := noise.get_noise_3d(n.x * 3.0, n.y * 3.0, n.z * 3.0)
 		return _ramp_pick(grey, clampf(l - (0.25 if h > 0.3 else 0.0), 0, 1), x, y)
 	), "planet_moon")
 
 func _gen_star() -> void:
-	_star_art("star", 160, 34.0, [Color("ff5a1f"), Color("ff9a2e"), Color("ffd35a"), Color("fff3b8"), Color("ffffff")], [Color("5a1a2e"), Color("8a2a2a"), Color("c8522a")])
+	_star_art("star", 160 * S, 34.0 * S, [Color("ff5a1f"), Color("ff9a2e"), Color("ffd35a"), Color("fff3b8"), Color("ffffff")], [Color("5a1a2e"), Color("8a2a2a"), Color("c8522a")])
 	# Other star types (see Star.STAR_TYPES).
-	_star_art("star_red", 120, 24.0, [Color("5a0f12"), Color("a3261f"), Color("e0502a"), Color("ff8a5a"), Color("ffc8a0")], [Color("3a0f1a"), Color("6a1a22"), Color("a3301f")])
-	_star_art("star_white", 150, 30.0, [Color("8a9ab8"), Color("c9d4e6"), Color("e8eef8"), Color("ffffff"), Color("ffffff")], [Color("1a2a4a"), Color("2e4a7a"), Color("6a8ab8")])
-	_star_art("star_orange", 164, 36.0, [Color("c8401a"), Color("ff7a2a"), Color("ffae4a"), Color("ffe0a0"), Color("fff8e0")], [Color("4a1a1a"), Color("7a2e1f"), Color("b8521f")])
-	_star_art("star_blue", 208, 46.0, [Color("1f3a9a"), Color("3a6ad8"), Color("7ab0ff"), Color("c8e0ff"), Color("ffffff")], [Color("101a4a"), Color("1f3a8a"), Color("3a6ad8")])
+	_star_art("star_red", 120 * S, 24.0 * S, [Color("5a0f12"), Color("a3261f"), Color("e0502a"), Color("ff8a5a"), Color("ffc8a0")], [Color("3a0f1a"), Color("6a1a22"), Color("a3301f")])
+	_star_art("star_white", 150 * S, 30.0 * S, [Color("8a9ab8"), Color("c9d4e6"), Color("e8eef8"), Color("ffffff"), Color("ffffff")], [Color("1a2a4a"), Color("2e4a7a"), Color("6a8ab8")])
+	_star_art("star_orange", 164 * S, 36.0 * S, [Color("c8401a"), Color("ff7a2a"), Color("ffae4a"), Color("ffe0a0"), Color("fff8e0")], [Color("4a1a1a"), Color("7a2e1f"), Color("b8521f")])
+	_star_art("star_blue", 208 * S, 46.0 * S, [Color("1f3a9a"), Color("3a6ad8"), Color("7ab0ff"), Color("c8e0ff"), Color("ffffff")], [Color("101a4a"), Color("1f3a8a"), Color("3a6ad8")])
 
 func _star_art(name: String, s: int, core: float, ramp: Array, halo: Array) -> void:
 	var img := _img(s, s)
@@ -463,12 +463,12 @@ func _star_art(name: String, s: int, core: float, ramp: Array, halo: Array) -> v
 			var p := Vector2(x + 0.5 - s / 2.0, y + 0.5 - s / 2.0)
 			var r := p.length()
 			if r <= core:
-				var v := 1.0 - r / core * 0.6 + noise.get_noise_2d(x, y) * 0.25
+				var v := 1.0 - r / core * 0.6 + noise.get_noise_2d(x / float(S), y / float(S)) * 0.25
 				img.set_pixel(x, y, _ramp_pick(ramp, clampf(v, 0, 1), x, y))
 			else:
 				# Corona: sparse dithered glow falling off with distance.
 				var f := 1.0 - (r - core) / (s / 2.0 - core)
-				f += noise.get_noise_2d(x * 0.5, y * 0.5) * 0.2
+				f += noise.get_noise_2d(x * 0.5 / S, y * 0.5 / S) * 0.2
 				if f <= 0.0:
 					continue
 				var t: float = (BAYER[y % 4][x % 4] + 0.5) / 16.0

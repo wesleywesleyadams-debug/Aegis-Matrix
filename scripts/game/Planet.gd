@@ -120,7 +120,10 @@ func reserve_scale() -> float:
 
 func _ready() -> void:
 	$Sprite.texture = Defs.tex(texture_name())
-	radius = $Sprite.texture.get_width() / 2.0
+	# Planet art is drawn at Defs.ART_SCALE; its world radius comes from the
+	# texture divided by that, so worlds keep the size they always had.
+	$Sprite.scale = Vector2.ONE / Defs.ART_SCALE
+	radius = $Sprite.texture.get_width() / Defs.ART_SCALE / 2.0
 	if Engine.is_editor_hint():
 		return
 	add_to_group("planets")

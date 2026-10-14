@@ -32,6 +32,9 @@ func set_type(t: String) -> void:
 	var d: Dictionary = Defs.STAR_TYPES.get(t, Defs.STAR_TYPES["yellow"])
 	star_type = t if Defs.STAR_TYPES.has(t) else "yellow"
 	texture = Defs.tex(d["tex"])
+	# Star art is drawn at Defs.ART_SCALE; the core and zone radii below are
+	# world units, so the sprite shrinks to match them.
+	scale = Vector2.ONE / Defs.ART_SCALE
 	core_radius = d["core"]
 	radiation_radius = d["zone"]
 	max_dps = d["dps"]
