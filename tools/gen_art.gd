@@ -103,6 +103,25 @@ func _dither(value: float, x: int, y: int, steps: int) -> int:
 func _inside(pts: PackedVector2Array, x: int, y: int) -> bool:
 	return Geometry2D.is_point_in_polygon(Vector2(x + 0.5, y + 0.5), pts)
 
+## Point-in-polygon in design space, for art drawn with _fine().
+func _in(pts: PackedVector2Array, p: Vector2) -> bool:
+	return Geometry2D.is_point_in_polygon(p, pts)
+
+## Rasterises a w x h design onto an S-times-larger canvas: `fn` is called once
+## per output pixel with that pixel's position in DESIGN units, so shapes keep
+## their size and only gain resolution. Curves, diagonals and the outline land
+## on the finer grid; stripes and blocks stay where they were.
+func _fine(w: int, h: int, fn: Callable, outline: bool = true) -> Image:
+	var img := _img(w * S, h * S)
+	for y in h * S:
+		for x in w * S:
+			var c: Color = fn.call(Vector2((x + 0.5) / S, (y + 0.5) / S))
+			if c.a > 0.0:
+				img.set_pixel(x, y, c)
+	if outline:
+		_outline(img)
+	return img
+
 func _outline(img: Image, color: Color = OUTLINE) -> void:
 	var src := img.duplicate()
 	for y in img.get_height():
@@ -545,25 +564,28 @@ func _gen_fx() -> void:
 				sheet.set_pixel(f * s + x, y, fire[idx])
 	_save(sheet, "explosion")
 
-	# Laser bolt (tinted by owner in-game) and torpedo.
-	var laser := _img(7 * S, 3 * S)
-	for x in 7 * S:
-		for c in S:
-			laser.set_pixel(x, S + c, Color(1, 1, 1))
-		if x > 1 * S and x < 6 * S:
-			for c in S:
-				laser.set_pixel(x, c, Color(1, 1, 1, 0.45))
-				laser.set_pixel(x, 2 * S + c, Color(1, 1, 1, 0.45))
-	_save(laser, "bolt_laser")
-	var torp := _img(6 * S, 6 * S)
-	for y in 6 * S:
-		for x in 6 * S:
-			var d := Vector2(x - 2.5 * S, y - 2.5 * S).length()
-			if d < 1.4 * S:
-				torp.set_pixel(x, y, Color(1, 1, 1))
-			elif d < 2.8 * S:
-				torp.set_pixel(x, y, Color(1, 1, 1, 0.5))
-	_save(torp, "bolt_torpedo")
+	# Laser bolt (tinted by owner in-game): a hot core with a softer sheath
+	# that tapers to a point at each end, drawn in design units on the fine
+	# grid so the taper is a curve rather than a step. No outline: it glows.
+	_save(_fine(7, 3, func(p: Vector2) -> Color:
+		var t: float = clampf(p.x / 7.0, 0.0, 1.0)
+		# Half-height of the sheath along the bolt: full in the middle, nil
+		# at the tips.
+		var hw: float = 1.5 * sin(t * PI)
+		var dy: float = absf(p.y - 1.5)
+		if dy > hw:
+			return Color(0, 0, 0, 0)
+		if dy < 0.5:
+			return Color(1, 1, 1)
+		return Color(1, 1, 1, 0.45), false), "bolt_laser")
+	# Torpedo: a round warhead with a soft halo.
+	_save(_fine(6, 6, func(p: Vector2) -> Color:
+		var d: float = p.distance_to(Vector2(3.0, 3.0))
+		if d < 1.4:
+			return Color(1, 1, 1)
+		if d < 2.8:
+			return Color(1, 1, 1, 0.5)
+		return Color(0, 0, 0, 0), false), "bolt_torpedo")
 
 	# Engine flame: 2 frames, 6x4 each.
 	var flame := _img(12 * S, 4 * S)
@@ -655,33 +677,29 @@ func _gen_backgrounds() -> void:
 # ---------------------------------------------------------------- ui icons
 
 func _gen_icons() -> void:
-	# Minerals: teal crystal cluster.
-	var m := _img(12, 12)
-	for y in 12:
-		for x in 12:
-			var inside := absf(x - 5.5) * 0.9 + absf(y - 6.0) * 0.45 < 3.3 or (absf(x - 8.5) + absf(y - 7.5) * 0.6 < 2.2)
-			if inside:
-				m.set_pixel(x, y, MINERAL[2] if x < 5 and y < 6 else (MINERAL[1] if x < 7 else MINERAL[0]))
-	_outline(m)
-	_save(m, "icon_minerals")
+	# Minerals: teal crystal cluster, with a darker facet edge.
+	_save(_fine(12, 12, func(p: Vector2) -> Color:
+		var big: float = absf(p.x - 5.5) * 0.9 + absf(p.y - 6.0) * 0.45
+		var small: float = absf(p.x - 8.5) + absf(p.y - 7.5) * 0.6
+		if big < 3.3:
+			if big > 2.9:
+				return MINERAL[0]
+			return MINERAL[2] if p.x < 5.0 and p.y < 6.0 else MINERAL[1]
+		if small < 2.2:
+			return MINERAL[2] if small < 0.8 else MINERAL[0]
+		return Color(0, 0, 0, 0)), "icon_minerals")
 	# Energy: yellow bolt.
-	var e := _img(12, 12)
 	var bolt := _pts([[7, 0], [2, 7], [6, 7], [4, 12], [10, 4], [6, 4], [8, 0]])
-	for y in 12:
-		for x in 12:
-			if _inside(bolt, x, y):
-				e.set_pixel(x, y, ENGINE[2] if x < 6 else ENGINE[1])
-	_outline(e)
-	_save(e, "icon_energy")
+	_save(_fine(12, 12, func(p: Vector2) -> Color:
+		if not _in(bolt, p):
+			return Color(0, 0, 0, 0)
+		return ENGINE[2] if p.x < 6.0 else ENGINE[1]), "icon_energy")
 	# Fleet capacity: tiny chevron ship.
-	var f := _img(12, 12)
 	var chev := _pts([[11, 6], [3, 1], [5, 6], [3, 11]])
-	for y in 12:
-		for x in 12:
-			if _inside(chev, x, y):
-				f.set_pixel(x, y, HULL[4] if y < 6 else HULL[3])
-	_outline(f)
-	_save(f, "icon_fleet")
+	_save(_fine(12, 12, func(p: Vector2) -> Color:
+		if not _in(chev, p):
+			return Color(0, 0, 0, 0)
+		return HULL[4] if p.y < 6.0 else HULL[3]), "icon_fleet")
 
 # ---------------------------------------------------------------- title
 
@@ -734,77 +752,81 @@ func _paste(dst: Image, name: String, cx: int, cy: int, team: Color = Color.WHIT
 	dst.blend_rect(src, Rect2i(Vector2i.ZERO, src.get_size()), Vector2i(cx - src.get_width() / 2, cy - src.get_height() / 2))
 
 func _gen_icons2() -> void:
-	# Food: green sprout.
-	var f := _img(12, 12)
+	# Food: green sprout over a strip of soil.
 	var leaf_l := _pts([[6, 7], [1, 3], [2, 1], [6, 4]])
 	var leaf_r := _pts([[6, 5], [11, 1], [10, 5], [7, 7]])
-	for y in 12:
-		for x in 12:
-			if _inside(leaf_l, x, y) or _inside(leaf_r, x, y):
-				f.set_pixel(x, y, Color("8fe060") if y < 4 else Color("4fa83a"))
-			elif x == 6 and y >= 5:
-				f.set_pixel(x, y, Color("4fa83a"))
-	for x in range(3, 10):
-		f.set_pixel(x, 11, Color("8a5a3a"))
-	_outline(f)
-	_save(f, "icon_food")
+	_save(_fine(12, 12, func(p: Vector2) -> Color:
+		if p.y >= 11.0 and p.x >= 3.0 and p.x < 10.0:
+			return Color("8a5a3a")
+		if _in(leaf_l, p) or _in(leaf_r, p):
+			return Color("8fe060") if p.y < 4.0 else Color("4fa83a")
+		if p.x >= 6.0 and p.x < 7.0 and p.y >= 5.0:
+			return Color("4fa83a")
+		return Color(0, 0, 0, 0)), "icon_food")
 	# Spice: glowing orange grain cluster.
-	var s := _img(12, 12)
-	for y in 12:
-		for x in 12:
-			for c in [Vector2(4, 7), Vector2(8, 6), Vector2(6, 3.5)]:
-				var d := Vector2(x + 0.5, y + 0.5).distance_to(c)
-				if d < 2.6:
-					s.set_pixel(x, y, SPICE[2] if d < 1.0 else (SPICE[1] if x + y < 13 else SPICE[0]))
-	_outline(s)
-	_save(s, "icon_spice")
+	_save(_fine(12, 12, func(p: Vector2) -> Color:
+		for c in [Vector2(4, 7), Vector2(8, 6), Vector2(6, 3.5)]:
+			var d: float = p.distance_to(c)
+			if d < 2.6:
+				return SPICE[2] if d < 1.0 else (SPICE[1] if p.x + p.y < 13.0 else SPICE[0])
+		return Color(0, 0, 0, 0)), "icon_spice")
 
 ## 16x16 building icons for planet fields.
 func _gen_buildings() -> void:
+	# Drawn in 16x16 design units on an S-times-finer grid (see _fine), so the
+	# dome curves properly and each shape carries a little shading of its own.
 	var specs := {
-		"farm": func(x: int, y: int) -> Color:
-			if y >= 3 and y <= 13 and x >= 2 and x <= 13:
-				return Color("8fe060") if (y - 3) % 3 == 0 else (Color("4fa83a") if (y - 3) % 3 == 1 else Color("5a3f2a"))
+		"farm": func(p: Vector2) -> Color:
+			if p.y >= 3.0 and p.y < 14.0 and p.x >= 2.0 and p.x < 14.0:
+				var row: float = fposmod(p.y - 3.0, 3.0)
+				if row < 1.0:
+					# Crop tops catch the light along the near edge of a furrow.
+					return Color("b8f08a") if row < 0.4 else Color("8fe060")
+				return Color("4fa83a") if row < 2.0 else Color("5a3f2a")
 			return Color(0, 0, 0, 0),
-		"generator": func(x: int, y: int) -> Color:
-			if x >= 5 and x <= 10 and y >= 4 and y <= 14:
-				return Color("566184") if x < 8 else Color("363d5c")
-			if absf(x - 7.5) + absf(y - 3.0) < 3.0:
-				return Color("ffd46b")
+		"generator": func(p: Vector2) -> Color:
+			if p.x >= 5.0 and p.x < 11.0 and p.y >= 4.0 and p.y < 15.0:
+				if p.x < 5.5:
+					return Color("8490b3")
+				return Color("566184") if p.x < 8.0 else Color("363d5c")
+			var lamp: float = absf(p.x - 7.5) + absf(p.y - 3.0)
+			if lamp < 3.0:
+				return Color("fff3c8") if lamp < 1.2 else Color("ffd46b")
 			return Color(0, 0, 0, 0),
-		"mine": func(x: int, y: int) -> Color:
-			if y >= 10 and y <= 14 and x >= 1 and x <= 14:
-				return Color("8a7069") if y < 12 else Color("5d4a4f")
-			if x >= 6 and x <= 9 and y >= 2 and y <= 10:
-				return Color("c3cde4") if x < 8 else Color("8490b3")
-			if y == 11 and (x == 4 or x == 11):
+		"mine": func(p: Vector2) -> Color:
+			if p.y >= 10.0 and p.y < 15.0 and p.x >= 1.0 and p.x < 15.0:
+				if p.y < 10.5:
+					return Color("b39a86")
+				return Color("8a7069") if p.y < 12.0 else Color("5d4a4f")
+			if p.x >= 6.0 and p.x < 10.0 and p.y >= 2.0 and p.y < 10.0:
+				if p.x < 6.5:
+					return Color("e6ecf8")
+				return Color("c3cde4") if p.x < 8.0 else Color("8490b3")
+			if p.y >= 11.0 and p.y < 12.0 and ((p.x >= 4.0 and p.x < 5.0) or (p.x >= 11.0 and p.x < 12.0)):
 				return Color("3fd6b0")
 			return Color(0, 0, 0, 0),
-		"habitat": func(x: int, y: int) -> Color:
-			var d := Vector2(x + 0.5 - 8.0, (y + 0.5 - 12.0) * 1.2).length()
-			if y <= 12 and d < 7.0:
-				return Color("a8f0ff") if d < 4.0 and y < 9 else Color("3fa7d6")
-			if y > 12 and y <= 14 and x >= 1 and x <= 14:
-				return Color("566184")
+		"habitat": func(p: Vector2) -> Color:
+			var d: float = Vector2(p.x - 8.0, (p.y - 12.0) * 1.2).length()
+			if p.y <= 12.0 and d < 7.0:
+				if d > 6.4:
+					return Color("1b4f7a")
+				return Color("a8f0ff") if d < 4.0 and p.y < 9.0 else Color("3fa7d6")
+			if p.y > 12.0 and p.y < 15.0 and p.x >= 1.0 and p.x < 15.0:
+				return Color("8490b3") if p.y < 13.0 else Color("566184")
 			return Color(0, 0, 0, 0),
-		"spice_extractor": func(x: int, y: int) -> Color:
-			if (x == 4 or x == 11) and y >= 3 and y <= 14:
+		"spice_extractor": func(p: Vector2) -> Color:
+			if ((p.x >= 4.0 and p.x < 5.0) or (p.x >= 11.0 and p.x < 12.0)) and p.y >= 3.0 and p.y < 15.0:
 				return Color("8490b3")
-			if y == 3 and x >= 4 and x <= 11:
-				return Color("8490b3")
-			if x >= 6 and x <= 9 and y >= 6 and y <= 14:
-				return Color("ff9a2e") if y < 10 else Color("a3461f")
+			if p.y >= 3.0 and p.y < 4.0 and p.x >= 4.0 and p.x < 12.0:
+				return Color("c3cde4") if p.y < 3.5 else Color("8490b3")
+			if p.x >= 6.0 and p.x < 10.0 and p.y >= 6.0 and p.y < 15.0:
+				if p.x < 6.5:
+					return Color("ffd08a")
+				return Color("ff9a2e") if p.y < 10.0 else Color("a3461f")
 			return Color(0, 0, 0, 0),
 	}
 	for name in specs:
-		var img := _img(16, 16)
-		for y in 16:
-			for x in 16:
-				var c: Color = specs[name].call(x, y)
-				if c.a > 0.0:
-					img.set_pixel(x, y, c)
-		_outline(img)
-		_save(img, "bld_" + name)
+		_save(_fine(16, 16, specs[name]), "bld_" + name)
 
 # ---------------------------------------------------------------- job ships
 
@@ -1285,14 +1307,18 @@ func _gen_hull_marks() -> void:
 ## Layer icons (12x12, in Defs.LAYER_COLORS): shields = a bubble dome,
 ## armor = a riveted plate, hull = a ship's frame.
 func _gen_layer_art() -> void:
-	var v := _img(9, 9)
-	for i in 5:
-		for t in 2:
-			var a := Color(1, 1, 1, 1.0 if t == 0 else 0.45)
-			v.set_pixel(3 + i - t, 4 - i, a)
-			v.set_pixel(3 + i - t, 4 + i, a)
-	v.set_pixel(8, 0, Color(1, 1, 1, 0.8))
-	v.set_pixel(8, 8, Color(1, 1, 1, 0.8))
+	# Chevron pointing the way it flies: two arms of constant thickness, so at
+	# S times the resolution the diagonal is clean instead of stepped.
+	var v := _fine(9, 9, func(p: Vector2) -> Color:
+		# Distance from the arm running up-right, and the one running down-right.
+		var d: float = absf((p.x - 4.0) - absf(p.y - 4.5))
+		if p.x < 3.0 or absf(p.y - 4.5) > 4.5:
+			return Color(0, 0, 0, 0)
+		if d < 0.6:
+			return Color(1, 1, 1)
+		if d < 1.3:
+			return Color(1, 1, 1, 0.45)
+		return Color(0, 0, 0, 0), false)
 	# Tip at the front (right side, like the other bolts).
 	v.flip_x()
 	_save(v, "bolt_v")
