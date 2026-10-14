@@ -1357,11 +1357,14 @@ func _mark_parts(mark: int, w: int, h: int) -> Array:
 	var ball: Array = [[cx - 3, cx, 1.6, 3.1], [cx, cx + 3, 3.1, 1.6]]
 	match mark:
 		1:
-			# Y: a trunk running forward to the nose, with two prongs trailing
-			# aft from it and the cockpit at the base of the nose.
+			# Y: a tuning fork. Two straight prongs run aft, parallel to each
+			# other, joined across their forward ends by a spar; the trunk
+			# runs forward from the middle of that spar to the nose, with the
+			# cockpit at its base.
 			return [
-				[1, int(w * 0.58), 0.9, 1.9, a, 0.0],
-				[int(w * 0.34), w, 2.6, 0.5],
+				[1, int(w * 0.54), 1.1, 1.1, a, a],
+				[int(w * 0.48), int(w * 0.56), a + 0.6, a + 0.6],
+				[int(w * 0.50), w, 1.7, 0.8],
 				ball[0], ball[1],
 			]
 		2:
