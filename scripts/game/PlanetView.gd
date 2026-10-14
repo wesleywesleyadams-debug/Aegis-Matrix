@@ -313,13 +313,9 @@ func refresh() -> void:
 			s += "\nSpice reserve: %d%s" % [int(planet.spice_reserve), "  (exhausted)" if planet.spice_reserve <= 0.0 else ""]
 		if planet.under_siege():
 			s += "\nUNDER BOMBARDMENT: growth halted, %d%% of pops left" % int(ceil(100.0 * planet.pop / maxf(planet.siege_start_pop, 1.0)))
-		s += "\nBuildings need %d pop (%d unassigned)" % [planet.pop_required(), int(planet.idle_pop)]
-		var idle := 0
-		for k in planet.fields:
-			if planet.buildings[k] != "" and not planet.operating[k] and not planet.is_dry(k):
-				idle += 1
-		if idle > 0:
-			s += "\n%d building%s IDLE: not enough pop" % [idle, "" if idle == 1 else "s"]
+		# Population is the whole reason to grow a world now: it multiplies
+		# what every building on it produces.
+		s += "\nPopulation bonus: x%.2f on every building here" % planet.pop_output_mult()
 		s += "\nFood grown %.1f/min, eaten %.1f/min" % [planet.food_made_per_min, planet.food_eaten_per_min]
 		s += "\nEnergy %.0f/min" % planet.energy_out
 		if planet.spice_out > 0.0:
@@ -346,13 +342,14 @@ func refresh() -> void:
 		var job := planet.field_job(i)
 		if built != "":
 			(b.get_node("Art") as TextureRect).texture = Defs.tex("bld_" + built)
-			var running: bool = planet.operating[i] if i < planet.operating.size() else true
+			# A finished building always runs; only an extractor whose reserve
+			# is gone goes dark.
 			var dry: bool = planet.is_dry(i)
-			b.text = "DRY" if dry else ("" if running else "IDLE")
-			b.modulate = Color.WHITE if running else Color(1, 1, 1, 0.4)
+			b.text = "DRY" if dry else ""
+			b.modulate = Color(1, 1, 1, 0.4) if dry else Color.WHITE
 			(b.get_node("Art") as TextureRect).modulate = Color.WHITE
-			_progress_text(b, Color("ffd46b") if dry or not running else Color.WHITE, 13)
-			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], "" if running else " (idle: not enough pop)", Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
+			_progress_text(b, Color("ffd46b") if dry else Color.WHITE, 13)
+			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], " (dry: the reserve is gone)" if dry else "", Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
 		elif job != "":
 			var art := b.get_node("Art") as TextureRect
 			art.texture = Defs.tex("bld_" + job)

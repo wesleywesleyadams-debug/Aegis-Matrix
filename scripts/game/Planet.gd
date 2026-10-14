@@ -93,7 +93,6 @@ var construction_queue: Array = []
 var construction_stalled: bool = false
 ## Whether each field's building has enough pop to run, and pop left unassigned.
 var operating: Array[bool] = []
-var idle_pop: float = 0.0
 
 ## Gas giants: mined by Gas Skimmers (duck-types like an Asteroid).
 var resource: String = ""
@@ -463,18 +462,21 @@ func _run_buildings(dt: float) -> void:
 	var t := type_def()
 	var out := {}
 	_staff()
+	# Every pop works, not just the ones that switch a building on.
+	var hands := pop_output_mult()
 	for i in fields:
 		var b: String = buildings[i]
 		if b == "" or not operating[i]:
 			continue
 		for k in Defs.BUILDINGS[b]["output"]:
-			var v: float = Defs.BUILDINGS[b]["output"][k]
+			var v: float = Defs.BUILDINGS[b]["output"][k] * hands
 			# Outputs are per minute (Defs.PER_MIN); this loop works per second.
 			if k == "food":
 				v *= g.mod(owner_id, "food")
 				food_made_per_min += v
 			elif k == "energy":
-				v *= g.mod(owner_id, "energy")
+				# A Molten world's plants run hotter than anyone else's.
+				v *= g.mod(owner_id, "energy") * float(t.get("energy_mult", 1.0))
 				energy_out += v
 			elif k == "spice" and b == "spice_extractor":
 				# Extractors draw from the planet's stored spice until it runs dry.
@@ -508,38 +510,22 @@ func _run_buildings(dt: float) -> void:
 			g.notify("%s completed on %s." % [d["name"], planet_name], "note_building", global_position)
 		construction = {}
 
-## Assigns pop to buildings: food first, then energy, minerals, spice.
-## A building runs only if its full "pop" requirement can be met.
-func _staff() -> void:
-	var left := pop
-	operating.fill(false)
-	for i in fields:
-		var b: String = buildings[i]
-		if b != "" and Defs.BUILDINGS[b].get("pop", 0) == 0:
-			operating[i] = true
-	for res in Defs.STAFFING_PRIORITY:
-		for i in fields:
-			var b: String = buildings[i]
-			if b == "" or operating[i] or not Defs.BUILDINGS[b]["output"].has(res) or is_dry(i):
-				continue
-			var need: float = Defs.BUILDINGS[b]["pop"]
-			if left >= need:
-				operating[i] = true
-				left -= need
-	idle_pop = left
+## What this world's population multiplies its buildings' output by: 1.0 with
+## nobody on it, 4.0 at 30,000 pops. A building you have built always runs;
+## how much it produces is what the population decides.
+func pop_output_mult() -> float:
+	return 1.0 + pop * Defs.OUTPUT_PER_POP
 
-## A Spice Extractor on a world whose reserve is gone: it shuts down,
-## produces nothing and releases its pop.
+## Which buildings are producing. Everything built runs, except a Spice
+## Extractor standing on an exhausted reserve.
+func _staff() -> void:
+	for i in fields:
+		operating[i] = buildings[i] != "" and not is_dry(i)
+
+## A Spice Extractor on a world whose reserve is gone: it shuts down and
+## produces nothing until... nothing. The reserve does not come back.
 func is_dry(field: int) -> bool:
 	return buildings[field] == "spice_extractor" and spice_reserve <= 0.01
-
-## Pop needed to run every building on this planet.
-func pop_required() -> int:
-	var n := 0
-	for b in buildings:
-		if b != "" and not (b == "spice_extractor" and spice_reserve <= 0.01):
-			n += Defs.BUILDINGS[b].get("pop", 0)
-	return n
 
 ## Defense Batteries shoot at enemy ships in orbit, one shot per battery.
 var _battery_cd: float = 0.0

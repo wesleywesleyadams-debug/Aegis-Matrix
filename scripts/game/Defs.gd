@@ -210,25 +210,32 @@ const ENERGY_STARVED_FACTOR := 0.25
 ## fertility is informational for now (farms produce a flat amount).
 ## spice_reserve: spice stored underground for Spice Extractors. Barren
 ## worlds hold the most (desert above all); lush worlds very little.
-## energy: base energy/min once colonized. spice: spice/min once colonized.
+## energy_mult: how much a Power Plant here makes, against the same plant
+## elsewhere. A Molten world runs hot, which is the one thing it is good for:
+## its fertility is the worst in the game.
 const PLANET_TYPES := {
-	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 0.0, "spice_reserve": 200},
-	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 0.0, "spice_reserve": 5000},
-	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 0.0, "spice_reserve": 1200},
-	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 0.0, "spice_reserve": 2000},
-	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy": 0.0},
-	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 0.0, "spice_reserve": 3000},
+	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy_mult": 1.0, "spice_reserve": 200},
+	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy_mult": 1.0, "spice_reserve": 5000},
+	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy_mult": 1.0, "spice_reserve": 1200},
+	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy_mult": 1.15, "spice_reserve": 2000},
+	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy_mult": 1.0},
+	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy_mult": 1.0, "spice_reserve": 3000},
 }
 const POP_PER_SIZE := 1000
 const START_POP := 100.0
-## Worlds owned at match start (home planets) begin with this many pops,
-## enough to staff their starting Farm, Power Plant and Mining Complex.
+## Worlds owned at match start (home planets) begin with this many pops.
 const HOME_START_POP := 300.0
 ## 1 new pop per minute for every 2 pop (a "pop pair").
 const GROWTH_PER_PAIR_PER_MIN := 1.0
 ## Every pop eats FOOD_PER_POP_PER_MIN food a minute, from food or,
 ## failing that, spice. One Farm feeds 2,000 pops.
 const FOOD_PER_POP_PER_MIN := 0.01
+## Hands on the job: every pop raises what this world's Farms, Power Plants,
+## Mining Complexes and Spice Extractors produce by this fraction. 30,000
+## pops is +300%. A building needs no headcount to run at all, so this is the
+## whole reason to grow a world rather than merely hold it.
+const OUTPUT_PER_POP := 0.0001
+
 ## A shortage ends only once the world has been fed continuously for this
 ## long; until then it neither grows nor stops losing pops.
 const REGROW_SECONDS := 5.0
@@ -252,27 +259,23 @@ static func field_count(planet_diameter_px: float) -> int:
 ## Defs.PER_MIN).
 ## only: planet kinds it can be built on (empty = any).
 const BUILDINGS := {
-	"farm": {"name": "Farm", "pop": 100, "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
-		"desc": "+20 food/min: feeds 2,000 pops (boosted by Hydroponics). Needs 100 pop."},
-	"generator": {"name": "Power Plant", "pop": 100, "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 180.0}, "only": [],
-		"desc": "+180 energy/min. Needs 100 pop."},
-	"mine": {"name": "Mining Complex", "pop": 100, "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],
-		"desc": "+20 minerals/min. Needs 100 pop."},
-	"habitat": {"name": "Habitat", "pop": 0, "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
-		"desc": "+1,500 population cap. Needs no staff."},
-	"battery": {"name": "Defense Battery", "pop": 100, "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
-		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px). Needs 100 pop."},
-	"spice_extractor": {"name": "Spice Extractor", "pop": 200, "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 36.0}, "only": [],
-		"desc": "+36 spice/min from the planet's spice reserve (large on barren worlds, tiny on lush ones). Needs 200 pop."},
+	"farm": {"name": "Farm", "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
+		"desc": "+20 food/min at base, more with population: feeds 2,000 pops (boosted by Hydroponics)."},
+	"generator": {"name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 180.0}, "only": [],
+		"desc": "+180 energy/min at base, more with population, and x1.15 on a Molten world."},
+	"mine": {"name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],
+		"desc": "+20 minerals/min at base, more with population."},
+	"habitat": {"name": "Habitat", "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
+		"desc": "+1,500 population cap, and population is what raises every other building's output."},
+	"battery": {"name": "Defense Battery", "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
+		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px)."},
+	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 36.0}, "only": [],
+		"desc": "+36 spice/min at base, more with population, drawn from the planet's spice reserve (large on barren worlds, tiny on lush ones)."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor", "battery"]
 ## Defense Battery: shield added per battery, and its gun.
 const BATTERY_SHIELD := 1200.0
 const BATTERY := {"weapon": "laser", "damage": 18.0, "cooldown": 1.2, "range": 250.0}
-## Buildings only operate with enough pop on the planet ("pop" above).
-## Pop is assigned automatically in this order of output.
-const STAFFING_PRIORITY: Array[String] = ["food", "energy", "minerals", "spice"]
-
 const SHIELD_REGEN_DELAY := 4.0
 const SHIELD_REGEN_PER_SEC := 0.08 # fraction of max shield
 ## Energy spent per shield point regenerated (spice covers shortfalls).

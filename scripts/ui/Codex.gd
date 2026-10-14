@@ -604,8 +604,9 @@ func _page_economy() -> void:
 	var brows: Array = []
 	for b in Defs.BUILDINGS:
 		var bd: Dictionary = Defs.BUILDINGS[b]
-		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), str(bd["pop"]) + " pop", bd["desc"]])
-	_table(["Building", "Cost", "Time", "Staff", "Effect"], brows)
+		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), bd["desc"]])
+	_table(["Building", "Cost", "Time", "Effect"], brows)
+	_para("A building you have finished always runs; there is no staffing to meet. What a world's population decides is how MUCH it produces: every pop adds %s%% to the output of every Farm, Power Plant, Mining Complex and Spice Extractor on it, so a world of 30,000 makes four times what the same buildings make on a bare colony. A Molten world's Power Plants make a further x%.2f, which is the one thing that barren rock is good for." % [str(Defs.OUTPUT_PER_POP * 100.0), Defs.PLANET_TYPES["planet_lava"]["energy_mult"]])
 	_heading("Food")
 	_para("Food is on the same scale as every other resource, and like the rest it is counted per minute. One Farm feeds exactly %d pops; past that a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
 	_table(["", "Rate"], [

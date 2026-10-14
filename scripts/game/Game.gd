@@ -1631,7 +1631,7 @@ func _enter_dev_capture() -> void:
 		dp.buildings[2] = "spice_extractor"
 		if OS.get_environment("SL_DRY") != "":
 			dp.spice_reserve = 10.0
-		get_tree().create_timer(20.0).timeout.connect(func(): print("DESERT reserve ", dp.spice_reserve, " spice_out ", dp.spice_out, " idle_pop ", dp.idle_pop, " spice ", resources[player_id]["spice"]))
+		get_tree().create_timer(20.0).timeout.connect(func(): print("DESERT reserve ", dp.spice_reserve, " spice_out ", dp.spice_out, " pop mult ", dp.pop_output_mult(), " spice ", resources[player_id]["spice"]))
 	if OS.get_environment("SL_SHOT_OPEN") == "rally2":
 		var sb2 := nearest_starbase(player_id, Vector2.ZERO)
 		var enemy_p: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.is_enemy_of(player_id))[0]
