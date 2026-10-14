@@ -38,7 +38,7 @@ func _ready() -> void:
 	add_child(_team)
 	refresh_stats()
 	if under_construction:
-		hp = max_hp * 0.1
+		hp = max_hp * Game.instance.construct_start_frac(owner_id)
 		shield = 0.0
 		armor = 0.0
 	else:

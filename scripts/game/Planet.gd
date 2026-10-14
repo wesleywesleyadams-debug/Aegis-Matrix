@@ -238,7 +238,7 @@ func _economy(dt: float) -> void:
 	var t := type_def()
 	var k := pop / 1000.0
 	food_made_per_min = 0.0 # farms add to this in _run_buildings
-	food_eaten_per_min = pop * Defs.FOOD_PER_POP_PER_MIN
+	food_eaten_per_min = pop * Defs.FOOD_PER_POP_PER_MIN * g.mod(owner_id, "food_per_pop")
 	energy_out = 0.0 # only Power Plants add energy (see _run_buildings)
 	spice_out = t["spice"] * minf(1.0, pop / 1000.0 + 0.25)
 	# Outputs are per minute; resources move per second.

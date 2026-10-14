@@ -109,13 +109,13 @@ const BASE_SHIPS := {
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 600.0, "job": "beacon",
 	},
 	"heatshield": {
-		"name": "Heat Shield Frigate", "role": "warship", "requires": "deflectors",
+		"name": "Heat Shield Frigate", "role": "warship", "requires": "escorts",
 		"hp": 130.0, "armor": 70.0, "shield": 140.0, "speed": 80.0, "radius": 11.0,
 		"cost": {"minerals": 110, "spice": 10}, "build_time": 24.0, "upkeep": 12.0,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
 	},
 	"tender": {
-		"name": "Repair Tender", "role": "support", "requires": "reinforced_frames",
+		"name": "Repair Tender", "role": "support", "requires": "escorts",
 		"hp": 150.0, "armor": 90.0, "shield": 60.0, "speed": 75.0, "radius": 11.0,
 		"cost": {"minerals": 130, "spice": 10}, "build_time": 28.0, "upkeep": 15.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 300.0, "job": "field_repair",
@@ -324,9 +324,62 @@ const TECHS := {
 	"deep_vaults": {"name": "Deep Vaults", "group": "worlds", "tier": 3, "requires": ["arcologies"], "cost": {"energy": 2500, "spice": 75}, "time": 130.0,
 		"effects": {"max_pop": 0.40, "growth": 0.25}, "desc": "A further +40% population cap and +25% growth."},
 
+	# --- Weapons: every step up the line costs something. The two tier 3
+	# projects are a fork, not a sequence: heavy slow guns or light fast ones.
+	"overcharged_coils": {"name": "Overcharged Coils", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 700}, "time": 55.0,
+		"effects": {"damage": 0.20, "upkeep": 0.15}, "desc": "+20% weapon damage, but every ship costs 15% more energy to run."},
+	"burst_cyclers": {"name": "Burst Cyclers", "group": "weapons", "tier": 2, "requires": ["autoloaders"], "cost": {"energy": 1300, "spice": 20}, "time": 85.0,
+		"effects": {"fire_rate": 0.25, "range": -0.10}, "desc": "+25% rate of fire, -10% range: you shoot faster, but you have to be closer."},
+	"lance_batteries": {"name": "Lance Batteries", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 2800, "spice": 80}, "time": 135.0,
+		"effects": {"damage": 0.45, "fire_rate": -0.20}, "desc": "+45% damage, -20% rate of fire. Heavy, slow shots: good against armor and starbases, wasteful against swarms."},
+	"scatter_arrays": {"name": "Scatter Arrays", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 2800, "spice": 80}, "time": 135.0,
+		"effects": {"fire_rate": 0.40, "damage": -0.15}, "desc": "+40% rate of fire, -15% damage. Fast, light shots: good against swarms, poor against thick armor."},
+
+	# --- Constructs: tier 3 forks into a defensive posture or an industrial one.
+	"siege_platforms": {"name": "Siege Platforms", "group": "constructs", "tier": 2, "requires": ["garrison_guns"], "cost": {"energy": 1500, "spice": 25}, "time": 90.0,
+		"effects": {"structure_range": 0.30, "upkeep": 0.10}, "desc": "+30% weapon range on starbases, at 10% more fleet upkeep. A base that shoots first."},
+	"rapid_assembly": {"name": "Rapid Assembly", "group": "constructs", "tier": 2, "requires": ["modular_frames"], "cost": {"energy": 1400, "spice": 20}, "time": 85.0,
+		"effects": {"construct_start": 4.0}, "desc": "New starbases, depots and stations are founded at 40% of their hull instead of 10%, so a forward site can survive being found."},
+	"fortress_doctrine": {"name": "Fortress Doctrine", "group": "constructs", "tier": 3, "requires": ["citadel_protocols"], "cost": {"energy": 2700, "spice": 85}, "time": 130.0,
+		"effects": {"structure": 0.50, "build_speed": -0.15}, "desc": "+50% hull and armor on every construct, but starbases build ships 15% slower. Hold ground rather than flood the map."},
+	"shipyard_networks": {"name": "Shipyard Networks", "group": "constructs", "tier": 3, "requires": ["forward_bases"], "cost": {"energy": 2700, "spice": 85}, "time": 130.0,
+		"effects": {"build_speed": 0.45, "structure": -0.10}, "desc": "+45% ship production, -10% construct hull and armor. Flood the map rather than hold ground."},
+	"orbital_elevators": {"name": "Orbital Elevators", "group": "constructs", "tier": 3, "requires": ["rapid_assembly"], "cost": {"energy": 2500, "spice": 60}, "time": 120.0,
+		"effects": {"construct_speed": 0.50, "upkeep": -0.10}, "desc": "+50% construction and -10% fleet upkeep: the cheap way to spread out."},
+
+	# --- Worlds: feeding a population you chose to grow.
+	"rationing": {"name": "Rationing", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 400}, "time": 40.0,
+		"effects": {"food_per_pop": -0.30, "growth": -0.20}, "desc": "Pops eat 30% less, but grow 20% slower. Survive a thin harvest instead of racing."},
+	"habitat_modules": {"name": "Habitat Modules", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 550}, "time": 45.0,
+		"effects": {"max_pop": 0.20}, "desc": "+20% population cap on every world."},
+	"gene_forges": {"name": "Gene Forges", "group": "worlds", "tier": 3, "requires": ["gene_clinics"], "cost": {"energy": 2300, "spice": 65}, "time": 120.0,
+		"effects": {"growth": 0.60, "food_per_pop": 0.20}, "desc": "+60% population growth, and pops eat 20% more. Growth you have to feed."},
+	"planetary_citadels": {"name": "Planetary Citadels", "group": "worlds", "tier": 3, "requires": ["planetary_shields"], "cost": {"energy": 2600, "spice": 80}, "time": 130.0,
+		"effects": {"planet_shield": 0.60, "growth": -0.15}, "desc": "+60% planetary shield, -15% growth: worlds dug in rather than spreading out."},
+
+	# --- Logistics: tier 3 is a choice of what a harvester is good at.
+	"convoy_protocols": {"name": "Convoy Protocols", "group": "logistics", "tier": 2, "requires": ["bulk_holds"], "cost": {"energy": 1300, "spice": 20}, "time": 85.0,
+		"effects": {"cargo": 0.45, "speed": -0.12}, "desc": "Harvesters carry +45% per load but fly 12% slower: fewer, heavier runs."},
+	"jump_drives": {"name": "Jump Drives", "group": "logistics", "tier": 3, "requires": ["fusion_drives"], "cost": {"energy": 2400, "spice": 60}, "time": 120.0,
+		"effects": {"speed": 0.35, "cargo": -0.15}, "desc": "+35% ship speed, -15% cargo. A fast fleet and a lighter one."},
+	"mass_drivers": {"name": "Mass Drivers", "group": "logistics", "tier": 3, "requires": ["resonance_drills"], "cost": {"energy": 2400, "spice": 60}, "time": 120.0,
+		"effects": {"harvest": 0.45, "speed": -0.10}, "desc": "+45% gather rate, -10% ship speed. Work a belt hard instead of covering ground."},
+	"logistics_command": {"name": "Logistics Command", "group": "logistics", "tier": 3, "requires": ["convoy_protocols"], "cost": {"energy": 2600, "spice": 70}, "time": 125.0,
+		"effects": {"harvest": 0.25, "cargo": 0.25, "upkeep": 0.15}, "desc": "+25% gather rate and +25% cargo, at 15% more fleet upkeep."},
+
+	# --- Defense: a fourth line, soaking damage before the layers see it.
+	"flak_screens": {"name": "Flak Screens", "group": "defense", "line": "screens", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 50.0,
+		"effects": {"damage_taken": 0.10}, "desc": "Everything you own takes 10% less damage, whatever the layer."},
+	"point_defense": {"name": "Point Defense Net", "group": "defense", "line": "screens", "tier": 2, "requires": ["flak_screens"], "cost": {"energy": 1400, "spice": 25}, "time": 90.0,
+		"effects": {"damage_taken": 0.12}, "desc": "A further 12% off all incoming damage."},
+	"aegis_umbrella": {"name": "Aegis Umbrella", "group": "defense", "line": "screens", "tier": 3, "requires": ["point_defense"], "cost": {"energy": 2600, "spice": 80}, "time": 130.0,
+		"effects": {"damage_taken": 0.18, "fire_rate": -0.10}, "desc": "A further 18% off all incoming damage, but -10% rate of fire: the screens draw from the same power as the guns."},
+
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 700, "spice": 10}, "time": 60.0,
 		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot: Plasma, Breacher, Reaver, Slip and Disruptor."},
+	"escorts": {"name": "Escorts", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 600, "spice": 10}, "time": 50.0,
+		"effects": {"unlock_escort": 1.0}, "desc": "Unlocks the Repair Tender and the Heat Shield Frigate: the ships that keep a fleet alive rather than kill."},
 	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 500}, "time": 45.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
 	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 1200, "spice": 30}, "time": 85.0,
@@ -356,7 +409,7 @@ const TECHS := {
 	# is three tiers of big, expensive upgrades for every ship and starbase,
 	# so which layer to invest in is a real strategic choice.
 	"deflectors": {"name": "Deflector Arrays", "group": "defense", "line": "shields", "tier": 1, "requires": [], "cost": {"energy": 1500, "spice": 40}, "time": 120.0,
-		"effects": {"shield": 0.20}, "desc": "+20% shields on all ships and starbases. Unlocks the Heat Shield Frigate."},
+		"effects": {"shield": 0.20}, "desc": "+20% shields on all ships and starbases."},
 	"phase_shields": {"name": "Phase Shields", "group": "defense", "line": "shields", "tier": 2, "requires": ["deflectors"], "cost": {"energy": 3000, "spice": 100}, "time": 180.0,
 		"effects": {"shield": 0.25}, "desc": "+25% shields."},
 	"aegis_matrix": {"name": "Aegis Matrix", "group": "defense", "line": "shields", "tier": 3, "requires": ["phase_shields"], "cost": {"energy": 5000, "spice": 250}, "time": 240.0,
@@ -368,7 +421,7 @@ const TECHS := {
 	"neutronium_armor": {"name": "Neutronium Armor", "group": "defense", "line": "armor", "tier": 3, "requires": ["reactive_armor"], "cost": {"energy": 5000, "spice": 250}, "time": 240.0,
 		"effects": {"armor": 0.35}, "desc": "+35% armor."},
 	"reinforced_frames": {"name": "Reinforced Frames", "group": "defense", "line": "hull", "tier": 1, "requires": [], "cost": {"energy": 1500, "spice": 40}, "time": 120.0,
-		"effects": {"hull": 0.15}, "desc": "+15% hull on all ships and starbases. Unlocks the Repair Tender."},
+		"effects": {"hull": 0.15}, "desc": "+15% hull on all ships and starbases."},
 	"nanite_plating": {"name": "Nanite Plating", "group": "defense", "line": "hull", "tier": 2, "requires": ["reinforced_frames"], "cost": {"energy": 3000, "spice": 100}, "time": 180.0,
 		"effects": {"hull": 0.20}, "desc": "+20% hull."},
 	"adaptive_hulls": {"name": "Adaptive Hulls", "group": "defense", "line": "hull", "tier": 3, "requires": ["nanite_plating"], "cost": {"energy": 5000, "spice": 250}, "time": 240.0,
@@ -393,7 +446,7 @@ static func cost_text(cost: Dictionary) -> String:
 const TECH_GROUP_DESC := {
 	"warships": "Unlock each warship class and raise its mark: H-class, Y-class, X-class, A-class. Every class is its own line.",
 	"weapons": "Weapon output for everything you own, warship and starbase alike.",
-	"defense": "The three defense layers — shields, armor and hull — on every ship and starbase. Pick a layer and commit.",
+	"defense": "The three layers damage works through — shields, armor, hull — plus screens, which soak a slice of everything first. Pick a line and commit.",
 	"constructs": "Starbases, depots and the other things you build rather than fly.",
 	"worlds": "Feeding and growing your colonies: food, population and the cap on both.",
 	"logistics": "Hauling, skimming and fleet movement — how fast your cargo and your ships get there.",

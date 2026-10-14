@@ -46,7 +46,7 @@ var _defs_tab: Button
 ## group id -> its tab button, so a dev capture can open any page.
 var _research_tabs := {}
 ## Layer icon per defense line (Defs.LAYER_COLORS).
-const LINE_ICONS := {"shields": "icon_layer_shield", "armor": "icon_layer_armor", "hull": "icon_layer_hull"}
+const LINE_ICONS := {"shields": "icon_layer_shield", "armor": "icon_layer_armor", "hull": "icon_layer_hull", "screens": "icon_layer_screens"}
 var _build_buttons := {}
 var _queue_row: HFlowContainer
 ## The minimap, so orders can be issued through it (see Minimap._gui_input).
@@ -543,9 +543,8 @@ func _build_research(root: Control) -> void:
 	wars.add_child(_label("UNLOCKS", DIM, 14))
 	# Depots lives on the Constructs page; a tech can only own one card, since
 	# _refresh_research keys its widgets by id.
-	for id in ["destroyers", "cruisers"]:
+	for id in ["destroyers", "cruisers", "escorts"]:
 		wars.add_child(_tech_button(id, 300.0))
-	wars.add_child(Control.new())
 	for cls in Defs.MARK_LINES:
 		var head := VBoxContainer.new()
 		head.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -567,7 +566,7 @@ func _build_research(root: Control) -> void:
 	defs.add_child(_label("", DIM, 14))
 	for tier in [1, 2, 3]:
 		defs.add_child(_label("TIER %d" % tier, DIM, 14))
-	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]]]:
+	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]], ["screens", "SCREENS", Color("c9b6ff")]]:
 		var head := VBoxContainer.new()
 		head.alignment = BoxContainer.ALIGNMENT_CENTER
 		head.custom_minimum_size = Vector2(90, 0)

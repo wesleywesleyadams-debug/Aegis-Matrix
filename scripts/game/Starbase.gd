@@ -39,7 +39,7 @@ func _ready() -> void:
 	add_to_group("starbases")
 	radius = Defs.STARBASE["radius"]
 	refresh_stats()
-	hp = max_hp * (0.1 if under_construction else 1.0)
+	hp = max_hp * (Game.instance.construct_start_frac(owner_id) if under_construction else 1.0)
 	armor = 0.0 if under_construction else max_armor
 	shield = 0.0 if under_construction else max_shield
 	_update_site_look()
@@ -137,7 +137,7 @@ func _physics_process(delta: float) -> void:
 
 	_cooldown -= delta
 	if _cooldown <= 0.0:
-		var e := g.nearest_enemy(self, Defs.STARBASE["range"] * g.mod(owner_id, "range"))
+		var e := g.nearest_enemy(self, Defs.STARBASE["range"] * g.mod(owner_id, "range") * g.mod(owner_id, "structure_range"))
 		if e:
 			g.fire(self, e, Defs.STARBASE["weapon"], Defs.STARBASE["damage"] * g.mod(owner_id, "structure_damage"))
 			_cooldown = Defs.STARBASE["cooldown"] / g.mod(owner_id, "fire_rate")

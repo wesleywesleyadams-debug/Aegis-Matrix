@@ -471,6 +471,11 @@ func upkeep_multiplier(pid: int) -> float:
 	var k := ship_count(pid) / Defs.UPKEEP_SCALE_SHIPS
 	return 1.0 + k * k
 
+## The share of its hull a construct is founded with: a tenth, unless Rapid
+## Assembly (Constructs) has it standing further along before the first shot.
+func construct_start_frac(pid: int) -> float:
+	return clampf(0.1 * mod(pid, "construct_start"), 0.1, 0.9)
+
 ## Summed research bonus for `key` (e.g. "damage") as a multiplier.
 func mod(pid: int, key: String) -> float:
 	var m := 1.0
@@ -522,7 +527,9 @@ func upkeep(pid: int) -> float:
 	for s in get_tree().get_nodes_in_group("ships"):
 		if s.owner_id == pid:
 			u += s.def["upkeep"]
-	u *= upkeep_multiplier(pid)
+	# Research can make a fleet thirstier (overcharged weapons) or cheaper to
+	# run, which is what gives those techs a real cost.
+	u *= upkeep_multiplier(pid) * mod(pid, "upkeep")
 	u += starbase_count(pid) * Defs.STARBASE["upkeep"] * starbase_upkeep_multiplier(pid)
 	for dp in get_tree().get_nodes_in_group("depots"):
 		if dp.owner_id == pid:

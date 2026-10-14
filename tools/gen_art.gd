@@ -1478,6 +1478,18 @@ func _gen_layer_art() -> void:
 		sh.set_pixel(x, 9, Color("3fa7d6"))
 	_outline(sh)
 	_save(sh, "icon_layer_shield")
+	# Screens: two arcs standing off the hull, for the damage soaked before
+	# the layers ever see it.
+	var sc := _fine(12, 12, func(p: Vector2) -> Color:
+		var d: float = Vector2(p.x - 2.0, p.y - 6.0).length()
+		if p.x < 2.0:
+			return Color(0, 0, 0, 0)
+		if d > 4.4 and d < 5.6:
+			return Color("c9b6ff")
+		if d > 7.0 and d < 8.0:
+			return Color("8f74e0")
+		return Color(0, 0, 0, 0), false)
+	_save(sc, "icon_layer_screens")
 	var ar := _img(12, 12)
 	for y in range(1, 11):
 		for x in range(1, 11):
