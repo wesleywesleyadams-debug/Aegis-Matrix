@@ -522,7 +522,7 @@ func _gen_asteroids() -> void:
 func _gen_fx() -> void:
 	# Explosion: 8 frames of 32x32 in one horizontal strip.
 	var frames := 8
-	var s := 32
+	var s := 32 * S
 	var sheet := _img(s * frames, s)
 	var fire := [Color("ffffff"), Color("fff3a0"), Color("ffc03a"), Color("ff7a2a"), Color("c8362a"), Color("5a2a3a"), Color("2a1a2a")]
 	var noise := FastNoiseLite.new()
@@ -530,11 +530,11 @@ func _gen_fx() -> void:
 	noise.frequency = 0.25
 	for f in frames:
 		var t := float(f) / (frames - 1)
-		var radius := 4.0 + t * 12.0
+		var radius := (4.0 + t * 12.0) * S
 		for y in s:
 			for x in s:
 				var p := Vector2(x + 0.5 - s / 2.0, y + 0.5 - s / 2.0)
-				var r := p.length() + noise.get_noise_3d(x, y, f * 6.0) * 3.0
+				var r := p.length() + noise.get_noise_3d(x / float(S), y / float(S), f * 6.0) * 3.0 * S
 				if r > radius:
 					continue
 				# Hot center early, hollow smoky ring late.
@@ -546,45 +546,48 @@ func _gen_fx() -> void:
 	_save(sheet, "explosion")
 
 	# Laser bolt (tinted by owner in-game) and torpedo.
-	var laser := _img(7, 3)
-	for x in 7:
-		laser.set_pixel(x, 1, Color(1, 1, 1))
-		if x > 1 and x < 6:
-			laser.set_pixel(x, 0, Color(1, 1, 1, 0.45))
-			laser.set_pixel(x, 2, Color(1, 1, 1, 0.45))
+	var laser := _img(7 * S, 3 * S)
+	for x in 7 * S:
+		for c in S:
+			laser.set_pixel(x, S + c, Color(1, 1, 1))
+		if x > 1 * S and x < 6 * S:
+			for c in S:
+				laser.set_pixel(x, c, Color(1, 1, 1, 0.45))
+				laser.set_pixel(x, 2 * S + c, Color(1, 1, 1, 0.45))
 	_save(laser, "bolt_laser")
-	var torp := _img(6, 6)
-	for y in 6:
-		for x in 6:
-			var d := Vector2(x - 2.5, y - 2.5).length()
-			if d < 1.4:
+	var torp := _img(6 * S, 6 * S)
+	for y in 6 * S:
+		for x in 6 * S:
+			var d := Vector2(x - 2.5 * S, y - 2.5 * S).length()
+			if d < 1.4 * S:
 				torp.set_pixel(x, y, Color(1, 1, 1))
-			elif d < 2.8:
+			elif d < 2.8 * S:
 				torp.set_pixel(x, y, Color(1, 1, 1, 0.5))
 	_save(torp, "bolt_torpedo")
 
 	# Engine flame: 2 frames, 6x4 each.
-	var flame := _img(12, 4)
+	var flame := _img(12 * S, 4 * S)
 	for f in 2:
-		var length := 6 if f == 0 else 4
+		var length: int = (6 if f == 0 else 4) * S
 		for x in length:
-			var i := 6 - 1 - x + f * 6
+			var i: int = 6 * S - 1 - x + f * 6 * S
 			var c: Color = ENGINE[clampi(2 - int(x * 3 / length), 0, 2)]
-			flame.set_pixel(i, 1, c)
-			flame.set_pixel(i, 2, c)
-			if x < length - 2:
-				flame.set_pixel(i, 0, ENGINE[0])
-				flame.set_pixel(i, 3, ENGINE[0])
+			for w in 2 * S:
+				flame.set_pixel(i, S + w - S / 2, c)
+			if x < length - 2 * S:
+				for w in S:
+					flame.set_pixel(i, w, ENGINE[0])
+					flame.set_pixel(i, 3 * S + w, ENGINE[0])
 	_save(flame, "engine_flame")
 
 	# Shield hit ripple: 12x12 arc.
-	var shield := _img(16, 16)
-	for y in 16:
-		for x in 16:
-			var r := Vector2(x + 0.5 - 8, y + 0.5 - 8).length()
-			if r > 6.0 and r < 7.6 and x > 7:
+	var shield := _img(16 * S, 16 * S)
+	for y in 16 * S:
+		for x in 16 * S:
+			var r := Vector2(x + 0.5 - 8 * S, y + 0.5 - 8 * S).length()
+			if r > 6.0 * S and r < 7.6 * S and x > 7 * S:
 				shield.set_pixel(x, y, Color(1, 1, 1, 0.85))
-			elif r > 5.0 and r <= 6.0 and x > 9:
+			elif r > 5.0 * S and r <= 6.0 * S and x > 9 * S:
 				shield.set_pixel(x, y, Color(1, 1, 1, 0.35))
 	_save(shield, "shield_hit")
 

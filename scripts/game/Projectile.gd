@@ -25,6 +25,8 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
 	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
 	texture = Defs.tex("bolt_" + weapon)
+	# Bolt art is drawn at Defs.ART_SCALE like the rest of the sprites.
+	scale = Vector2.ONE / Defs.ART_SCALE
 	# Shot colors: generalists (and starbases) fire yellow; specialists fire
 	# their variant's color (the layer they hit hardest: light blue shields,
 	# red armor, green hull).

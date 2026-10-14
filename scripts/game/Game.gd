@@ -853,7 +853,7 @@ func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	e.fps = 14.0
 	e.global_position = pos
 	e.rotation = randi_range(0, 3) * PI / 2.0
-	e.scale = Vector2.ONE * clampf(snappedf(scale_mult, 0.5), 0.5, 3.0)
+	e.scale = Vector2.ONE * clampf(snappedf(scale_mult, 0.5), 0.5, 3.0) / Defs.ART_SCALE
 	fx_root.add_child(e)
 	sfx.play_at("boom_big" if scale_mult >= 1.0 else "boom", pos, -6.0)
 
@@ -866,7 +866,7 @@ func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
 	e.modulate = Color("7fd8ff")
 	e.global_position = pos
 	e.rotation = (from_pos - pos).angle()
-	e.scale = Vector2.ONE * maxf(1.0, round(r / 8.0))
+	e.scale = Vector2.ONE * maxf(1.0, round(r / 8.0)) / Defs.ART_SCALE
 	fx_root.add_child(e)
 	sfx.play_at("shield", pos, -12.0)
 

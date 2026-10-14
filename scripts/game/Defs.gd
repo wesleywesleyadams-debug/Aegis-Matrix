@@ -21,7 +21,7 @@ const ART_SCALE := 2.0
 
 ## Sprites drawn at ART_SCALE: anything the game must shrink back down when
 ## it draws it, in the world or in a panel.
-const ART_SCALED := ["ship_", "starbase", "asteroid", "asteroid_big", "debris", "spice_", "planet_", "star"]
+const ART_SCALED := ["ship_", "starbase", "asteroid", "asteroid_big", "debris", "spice_", "planet_", "star", "explosion", "shield_hit", "bolt_", "engine_flame"]
 
 ## How much to divide a sprite by when drawing it: ART_SCALE for the art that
 ## is generated oversized, 1 for everything else.

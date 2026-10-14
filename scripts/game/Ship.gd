@@ -102,6 +102,7 @@ func _apply_visuals() -> void:
 	team.scale = hull.scale
 	_apply_mark()
 	# Flame sits just behind the stern.
+	flame.scale = hull.scale
 	flame.position = Vector2(-hull.texture.get_width() / Defs.ART_SCALE / 2.0 - 2.0, 0)
 
 ## Hull marks (Defs.HULL_MARKS) show as trim over the hull: a Wisp is bare,
