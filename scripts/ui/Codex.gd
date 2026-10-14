@@ -670,7 +670,7 @@ func _page_terms() -> void:
 		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor. One refit only, and it is permanent."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
-		["Job", "What a ship is for beyond shooting: Swarm, Escort, Deep Sensors, Heat Screen, Field Repair."],
+		["Job", "What a ship is for beyond shooting: Swarm, Escort, Deep Sensors, Heat Screen, Field Repair, Hangar Bays."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
 		["Upkeep", "Energy per minute for ships and starbases, rising as your fleet grows."],
