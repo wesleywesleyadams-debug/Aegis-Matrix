@@ -1045,7 +1045,7 @@ func _update_top_bar() -> void:
 	for k in Defs.RESOURCES:
 		var rate: float = rt.get(k, 0.0)
 		# The stockpile, then an arrow for which way it is going. The arrow
-		# follows the last minute's average, so one delivery cannot flip it.
+		# follows the last 30 seconds, so one delivery cannot flip it.
 		var avg: float = game.avg_rate(pid, k)
 		var arrow := "–"
 		var arrow_color := DIM
@@ -1057,7 +1057,7 @@ func _update_top_bar() -> void:
 			arrow_color = BAD
 		_res_labels[k].text = "%s %s" % [_fmt(r.get(k, 0.0)), arrow]
 		_res_labels[k].add_theme_color_override("font_color", arrow_color if arrow != "–" else TEXT)
-		_res_boxes[k].tooltip_text = "%s: %d stockpiled, %+.0f/min on average over the last minute (%+.0f/min right now)." % [
+		_res_boxes[k].tooltip_text = "%s: %d stockpiled, %+.0f/min on average over the last 30 seconds (%+.0f/min right now)." % [
 			Defs.RESOURCE_NAMES[k], int(r.get(k, 0.0)), avg, rate * Defs.PER_MIN]
 	if game.energy_starved(pid):
 		_res_labels["energy"].add_theme_color_override("font_color", BAD)

@@ -38,7 +38,7 @@ var resources := {}
 var rates := {}
 ## The last RATE_WINDOW one-second samples, so the HUD can show a trend that
 ## does not flicker with every delivery: pid -> resource -> Array[float].
-const RATE_WINDOW := 60
+const RATE_WINDOW := 30
 var _rate_hist := {}
 var researched := {}      # pid -> {tech_id: true}
 var research := {}        # pid -> {"id": String, "progress": float, "stalled": bool} or {}
