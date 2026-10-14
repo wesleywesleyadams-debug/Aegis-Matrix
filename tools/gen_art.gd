@@ -616,23 +616,28 @@ func _gen_fx() -> void:
 # ---------------------------------------------------------------- backgrounds
 
 func _gen_backgrounds() -> void:
-	# Far starfield (tileable because stars are placed per-pixel).
-	var s := 512
+	# Far starfield (tileable because stars are placed per-pixel). The tile is
+	# S times larger and holds S^2 times as many stars, so the sky has the same
+	# density per world area but twice the resolution (the shader samples it at
+	# S texels per world pixel).
+	var s := 512 * S
 	var stars := _img(s, s)
 	var tints := [Color("ffffff"), Color("cfe0ff"), Color("ffe6c2"), Color("ffc2c2"), Color("a8c8ff")]
-	for i in 900:
+	for i in 900 * S * S:
 		var x := rng.randi_range(0, s - 1)
 		var y := rng.randi_range(0, s - 1)
 		var c: Color = tints[rng.randi_range(0, tints.size() - 1)]
 		c.a = rng.randf_range(0.25, 0.9)
 		stars.set_pixel(x, y, c)
-	for i in 14:
+	for i in 14 * S * S:
 		var x := rng.randi_range(2, s - 3)
 		var y := rng.randi_range(2, s - 3)
 		var c: Color = tints[rng.randi_range(0, tints.size() - 1)]
 		stars.set_pixel(x, y, Color(1, 1, 1))
+		# The glow arms are a world-pixel long, so they scale with the tile.
 		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			stars.set_pixel(x + d.x, y + d.y, Color(c, 0.6))
+			for k in S:
+				stars.set_pixel(x + d.x * (k + 1), y + d.y * (k + 1), Color(c, 0.6 - 0.2 * k))
 	_save(stars, "bg_stars")
 
 	# Nebula: seamless noise quantized into a few dithered translucent bands.
@@ -640,11 +645,11 @@ func _gen_backgrounds() -> void:
 	noise.seed = 404
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	noise.fractal_octaves = 5
-	noise.frequency = 0.004
+	noise.frequency = 0.004 / S
 	var src := noise.get_seamless_image(s, s)
 	var noise2 := FastNoiseLite.new()
 	noise2.seed = 808
-	noise2.frequency = 0.006
+	noise2.frequency = 0.006 / S
 	var src2 := noise2.get_seamless_image(s, s)
 	var neb := _img(s, s)
 	var purple := [Color("1d1238"), Color("33195a"), Color("5a2a7a"), Color("8a3a8a")]
@@ -703,10 +708,13 @@ func _gen_icons() -> void:
 
 # ---------------------------------------------------------------- title
 
-## 480x270 menu backdrop (shown at 4x), composed from the sprites above.
+## Menu backdrop, laid out in 480x270 design units and rendered at S times
+## that (shown stretched to the window), composed from the sprites above â
+## which are themselves drawn at S, so every paste lands at the same place in
+## the scene as before.
 func _gen_title() -> void:
-	var w := 480
-	var h := 270
+	var w := 480 * S
+	var h := 270 * S
 	var img := _img(w, h)
 	img.fill(Color("07060f"))
 	var stars := Image.load_from_file(OUT + "bg_stars.png")
@@ -714,28 +722,30 @@ func _gen_title() -> void:
 	for y in h:
 		for x in w:
 			var c := img.get_pixel(x, y)
-			var n := neb.get_pixel(x % 512, y % 512)
+			var n := neb.get_pixel(x % neb.get_width(), y % neb.get_height())
 			c = c.lerp(Color(n.r, n.g, n.b), n.a * 0.45)
-			var s := stars.get_pixel((x + 100) % 512, (y + 60) % 512)
+			var s := stars.get_pixel((x + 100) % stars.get_width(), (y + 60) % stars.get_height())
 			c = c.lerp(Color(s.r, s.g, s.b), s.a)
 			img.set_pixel(x, y, c)
-	_paste(img, "planet_gas", 330, 120)
-	_paste(img, "planet_moon", 300, 118)
-	_paste(img, "planet_terran", 40, 190)
-	_paste(img, "starbase", 96, 176, Color("4fb4ff"))
+	_paste(img, "planet_gas", 330 * S, 120 * S)
+	_paste(img, "planet_moon", 300 * S, 118 * S)
+	_paste(img, "planet_terran", 40 * S, 190 * S)
+	_paste(img, "starbase", 96 * S, 176 * S, Color("4fb4ff"))
 	# Two fleets closing on each other.
 	var blue := Color("4fb4ff")
 	var red := Color("ff4f5e")
 	for p in [[150, 120, "cruiser"], [128, 100, "destroyer"], [132, 146, "destroyer"], [110, 88, "corvette"], [112, 160, "corvette"], [96, 124, "corvette"]]:
-		_paste(img, "ship_" + p[2], p[0], p[1], blue)
+		_paste(img, "ship_" + p[2], int(p[0]) * S, int(p[1]) * S, blue)
 	for p in [[300, 60, "destroyer"], [322, 44, "corvette"], [326, 78, "corvette"], [344, 58, "corvette"]]:
-		_paste(img, "ship_" + p[2], p[0], p[1], red, true)
+		_paste(img, "ship_" + p[2], int(p[0]) * S, int(p[1]) * S, red, true)
 	# Crossfire and a kill.
 	for i in 3:
-		for t in 10:
-			img.set_pixel(190 + i * 30 + t, 104 - i * 12 - t / 3, Color("9fd8ff"))
-	var boom := Image.load_from_file(OUT + "explosion.png").get_region(Rect2i(96, 0, 32, 32))
-	img.blend_rect(boom, Rect2i(0, 0, 32, 32), Vector2i(272, 50))
+		for t in 10 * S:
+			for k in S:
+				img.set_pixel((190 + i * 30) * S + t, (104 - i * 12) * S - t / 3 + k, Color("9fd8ff"))
+	var frame := 32 * S
+	var boom := Image.load_from_file(OUT + "explosion.png").get_region(Rect2i(3 * frame, 0, frame, frame))
+	img.blend_rect(boom, Rect2i(0, 0, frame, frame), Vector2i(272 * S, 50 * S))
 	img.save_png(OUT + "title_bg.png")
 
 func _paste(dst: Image, name: String, cx: int, cy: int, team: Color = Color.WHITE, flip: bool = false) -> void:

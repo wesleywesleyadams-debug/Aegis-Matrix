@@ -1,7 +1,9 @@
 shader_type canvas_item;
-// Full-screen parallax space background. Each layer is a tiling 512px
-// texture sampled in world-pixel units, scrolled by a fraction of the
-// camera position and snapped to the current zoom so texels stay square.
+// Full-screen parallax space background. Each layer is a tiling texture
+// sampled in world-pixel units, scrolled by a fraction of the camera
+// position and snapped to the current zoom so texels stay square.
+// The tiles are drawn at art_scale texels per world pixel (see
+// Defs.ART_SCALE), so a tile still spans tile_px / art_scale world pixels.
 
 uniform sampler2D stars : repeat_enable, filter_nearest;
 uniform sampler2D nebula : repeat_enable, filter_nearest;
@@ -14,9 +16,12 @@ uniform float nebula_alpha = 0.35;
 // Per-system look: multiplies the nebula layer's color (1,1,1 = as painted).
 uniform vec3 nebula_tint = vec3(1.0);
 
+uniform float art_scale = 2.0;
+uniform float tile_px = 1024.0;
+
 vec4 layer(sampler2D tex, vec2 px, float factor) {
-	vec2 p = floor(px + cam * factor);
-	return texture(tex, p / 512.0);
+	vec2 p = floor((px + cam * factor) * art_scale);
+	return texture(tex, p / tile_px);
 }
 
 void fragment() {
