@@ -28,7 +28,7 @@ static func _ramp() -> Array:
 	return out
 
 const OUTLINE := Color("0e0d1c")
-const HULL := [Color("20233a"), Color("363d5c"), Color("566184"), Color("8490b3"), Color("c3cde4")]
+const HULL := [Color("191c30"), Color("2c3250"), Color("49527a"), Color("6f7ba6"), Color("a4b0d0"), Color("d7e1f5")]
 const TEAM := [Color(0.45, 0.45, 0.45), Color(0.7, 0.7, 0.7), Color(0.92, 0.92, 0.92), Color(1, 1, 1)]
 const GLASS := [Color("1b4f7a"), Color("3fa7d6"), Color("a8f0ff")]
 const ENGINE := [Color("ff7a3d"), Color("ffd46b"), Color("fff6d0")]
@@ -193,37 +193,37 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 		var v: float = shade[key]
 		var top_i: int = ramp.size() - 1
 		var idx := clampi(int(round(clampf(v, 0.0, 1.0) * (ramp.size() - 3))) + 1, 1, ramp.size() - 2)
-		# Top and bottom edges: a one-pixel highlight and a one-pixel shadow,
-		# which at this resolution is a rim rather than a third of the hull.
+		# Light on form, and nothing else: a lit rim along the top, a sheen
+		# just under it, a dark underside with a line of bounced light at the
+		# very bottom, and a shadow where one part lies over another. No
+		# scribing, no rivets â the shape does the work.
+		# How deep this column's member is here, so a 2px wing is not given
+		# the same four-step treatment as a hull ten pixels deep.
+		var deep := mask.has(Vector2i(x, y + 3 * S)) or mask.has(Vector2i(x, y - 3 * S))
 		if not mask.has(Vector2i(x, y - 1)):
 			idx = top_i
+		elif deep and not mask.has(Vector2i(x, y - 2)):
+			# Sheen: on a deep member the second row still catches the light.
+			idx = mini(idx + 2, top_i - 1)
 		elif not mask.has(Vector2i(x, y + 1)):
+			# Bounced light along the keel, so the underside has an edge
+			# instead of dissolving into the outline.
+			idx = 1 if deep else 0
+		elif deep and not mask.has(Vector2i(x, y + 2)):
 			idx = 0
-		elif (x / S) in panels and x % S == 0:
-			# Plating seam: a single scribed line, not a band.
-			idx = maxi(idx - 2, 0)
 		elif x > nose_x - S and mask.has(Vector2i(x - 1, y)):
 			# Nose cap catches the light.
 			idx = mini(idx + 2, top_i)
 		else:
 			# Contact shadow: where a later part lies over an earlier one, the
-			# pixels just outside the seam darken, which is what makes a wing
-			# read as sitting ON the hull rather than being painted into it.
+			# pixels along the seam darken, which is what makes a wing read as
+			# sitting ON the hull rather than being painted into it.
 			var mine: int = owner[key]
-			var shaded := false
 			for d in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
 				var nb: Vector2i = key + d
 				if mask.has(nb) and owner[nb] > mine:
 					idx = maxi(idx - 2, 0)
-					shaded = true
 					break
-			if not shaded:
-				# Plating: a scribed seam every few pixels along a member, and
-				# a rivet line one pixel in from the lit edge.
-				if x % (6 * S) == 0 and mask.has(Vector2i(x, y - 1)) and mask.has(Vector2i(x, y + 1)):
-					idx = maxi(idx - 1, 0)
-				elif not mask.has(Vector2i(x, y - 2)) and x % (3 * S) == 0:
-					idx = mini(idx + 1, top_i)
 		if team_fn.call(x / S, dy):
 			tim.set_pixel(x + 1, y + 1, TEAM[clampi(idx * TEAM.size() / ramp.size(), 0, TEAM.size() - 1)])
 			img.set_pixel(x + 1, y + 1, HULL[1])
@@ -250,18 +250,6 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 		_px(img, 1, ey + S, HULL[0])
 	# Running lights on the outermost tips, so a silhouette still has a spark
 	# of life at a distance.
-	# The topmost and bottommost hull pixels are the wingtips; light the exact
-	# pixel so the lamp sits ON the tip rather than beside it.
-	var hi := Vector2i(0, 9999)
-	var lo := Vector2i(0, -1)
-	for key2 in mask:
-		if key2.y < hi.y:
-			hi = key2
-		if key2.y > lo.y:
-			lo = key2
-	if lo.y - hi.y > 4 * S:
-		_px(img, hi.x + 1, hi.y + 1, GLASS[2])
-		_px(img, lo.x + 1, lo.y + 1, GLASS[2])
 	# Job details (sensor dishes, shield plates, glow strips...) drawn on top.
 	if extras.is_valid():
 		if fine_extras:
