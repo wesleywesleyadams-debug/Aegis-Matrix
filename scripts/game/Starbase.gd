@@ -139,7 +139,7 @@ func _physics_process(delta: float) -> void:
 	if _cooldown <= 0.0:
 		var e := g.nearest_enemy(self, Defs.STARBASE["range"] * g.mod(owner_id, "range"))
 		if e:
-			g.fire(self, e, Defs.STARBASE["weapon"], Defs.STARBASE["damage"])
+			g.fire(self, e, Defs.STARBASE["weapon"], Defs.STARBASE["damage"] * g.mod(owner_id, "structure_damage"))
 			_cooldown = Defs.STARBASE["cooldown"] / g.mod(owner_id, "fire_rate")
 		else:
 			_cooldown = 0.2

@@ -1455,9 +1455,6 @@ func _add_constructor_buttons() -> void:
 	var st := _panel_build_button("ship_mining_station", "Mining Station", Defs.MINING_STATION["cost"], Defs.MINING_STATION["build_time"],
 		"A drop-off: harvesters unload here instead of flying home. Builds no ships, %d hull / %d armor / %d shields and a token gun." % [
 			int(Defs.MINING_STATION["hp"]), int(Defs.MINING_STATION["armor"]), int(Defs.MINING_STATION["shield"])])
-	if not game.has_tech(pid, str(Defs.MINING_STATION["requires"])):
-		st.disabled = true
-		st.tooltip_text = "Mining Stations need the %s tech." % Defs.TECHS[Defs.MINING_STATION["requires"]]["name"]
 	st.pressed.connect(game.start_station_placement)
 	_register_action(st)
 	grid.add_child(st)

@@ -166,8 +166,6 @@ const MINING_STATION := {
 	"weapon": "laser", "damage": 8.0, "cooldown": 1.4, "range": 190.0,
 	"cost": {"minerals": 150}, "build_time": 20.0,
 	"upkeep": 9.0,
-	# Gated like the depots are, by its own Constructs tech.
-	"requires": "ore_platforms",
 }
 
 ## Asteroid reserves scale with rock size: amount = width_px^2 * this.
@@ -301,13 +299,13 @@ const TECHS := {
 		"effects": {"damage": 0.25, "range": 0.10}, "desc": "+25% weapon damage and +10% range."},
 
 	# --- Constructs: what you build rather than fly.
-	"ore_platforms": {"name": "Ore Platforms", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 450}, "time": 40.0,
-		"effects": {"unlock_station": 1.0}, "desc": "Unlocks the Mining Station: a cheap drop-off a Constructor can plant beside a far belt."},
+	"garrison_guns": {"name": "Garrison Guns", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 650}, "time": 50.0,
+		"effects": {"structure_damage": 0.50}, "desc": "+50% weapon damage from starbases, depots and mining stations. A base defends itself while the fleet is away."},
 	"orbital_yards": {"name": "Orbital Yards", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 800}, "time": 60.0,
 		"effects": {"build_speed": 0.25}, "desc": "Starbases build ships 25% faster, for the same cost."},
 	"modular_frames": {"name": "Modular Frames", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 50.0,
 		"effects": {"construct_speed": 0.35}, "desc": "Constructors raise starbases, depots and stations 35% faster."},
-	"reinforced_docks": {"name": "Reinforced Docks", "group": "constructs", "tier": 2, "requires": ["modular_frames"], "cost": {"energy": 1500, "spice": 30}, "time": 95.0,
+	"reinforced_docks": {"name": "Reinforced Docks", "group": "constructs", "tier": 2, "requires": ["garrison_guns"], "cost": {"energy": 1500, "spice": 30}, "time": 95.0,
 		"effects": {"structure": 0.30}, "desc": "+30% hull and armor on starbases, depots and mining stations."},
 	"forward_bases": {"name": "Forward Bases", "group": "constructs", "tier": 2, "requires": ["orbital_yards"], "cost": {"energy": 1600, "spice": 30}, "time": 100.0,
 		"effects": {"build_speed": 0.30, "construct_speed": 0.25}, "desc": "A further +30% ship production and +25% construction: plant a yard at the front and keep it fed."},
