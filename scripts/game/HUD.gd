@@ -476,7 +476,10 @@ func _build_end(root: Control) -> void:
 ## armor, hull). Only one project runs at a time.
 ## Every research tab is this size, so the panel never jumps when you
 ## switch between War Ships, Weapons, Defense and Economy.
-const PAGE_SIZE := Vector2(1320, 560)
+## Every tab reserves the same box: as tall as the deepest page (War Ships,
+## five rows), so the modal keeps one size and a card never shifts when the
+## player tabs across.
+const PAGE_SIZE := Vector2(1320, 740)
 
 func _build_research(root: Control) -> void:
 	var parts := _modal(root, "RESEARCH", 1400.0)
@@ -509,75 +512,44 @@ func _build_research(root: Control) -> void:
 	v.add_child(blurb)
 	var pages := {}
 
-	# Weapons, Economy and anything ungrouped: columns by tier.
+	# Every tab is the same grid: a row-header column, then one column per
+	# tier. A card is the same size and lands in the same place whichever tab
+	# is open, so the eye does not have to re-find anything when tabbing.
 	for group in ["weapons", "constructs", "worlds", "logistics", "general"]:
-		var cols := HBoxContainer.new()
-		cols.add_theme_constant_override("separation", 18)
-		cols.custom_minimum_size = PAGE_SIZE
-		cols.visible = false
-		v.add_child(cols)
-		var any := false
-		for tier in [1, 2, 3]:
-			var col := VBoxContainer.new()
-			col.add_theme_constant_override("separation", 10)
-			col.add_child(_label("TIER %d" % tier, DIM, 14))
-			for id in Defs.TECHS:
-				if Defs.TECHS[id]["tier"] == tier and Defs.TECHS[id].get("group", "general") == group:
-					col.add_child(_tech_button(id))
-					any = true
-			cols.add_child(col)
-		if any:
-			pages[group] = cols
-		else:
-			cols.queue_free()
+		var rows: Array = []
+		var by_tier := {1: [], 2: [], 3: []}
+		for id in Defs.TECHS:
+			if Defs.TECHS[id].get("group", "general") == group:
+				by_tier[Defs.TECHS[id]["tier"]].append(id)
+		var deepest: int = maxi(by_tier[1].size(), maxi(by_tier[2].size(), by_tier[3].size()))
+		# A group has no natural row names, so the header cells are blank and
+		# the cards still line up with the named rows on the other tabs.
+		for r in deepest:
+			var row: Array = []
+			for tier in [1, 2, 3]:
+				row.append(by_tier[tier][r] if r < by_tier[tier].size() else "")
+			rows.append([null, row])
+		if deepest > 0:
+			pages[group] = _tech_page(v, rows)
 
-	# War Ships: unlocks along the top, then one row per class of the marks
-	# that make that class stronger (Defs.HULL_MARKS).
-	var wars := GridContainer.new()
-	wars.columns = 4
-	wars.custom_minimum_size = PAGE_SIZE
-	wars.add_theme_constant_override("h_separation", 18)
-	wars.add_theme_constant_override("v_separation", 10)
-	wars.visible = false
-	v.add_child(wars)
-	wars.add_child(_label("UNLOCKS", DIM, 14))
+	# War Ships: the unlocks along the top, then one row per class.
 	# Depots lives on the Constructs page; a tech can only own one card, since
 	# _refresh_research keys its widgets by id.
-	for id in ["destroyers", "cruisers", "carriers"]:
-		wars.add_child(_tech_button(id, 300.0))
+	var war_rows: Array = [[_row_head("UNLOCKS", DIM, ""), ["destroyers", "cruisers", "carriers"]]]
 	for cls in Defs.MARK_LINES:
-		var head := VBoxContainer.new()
-		head.alignment = BoxContainer.ALIGNMENT_CENTER
-		head.custom_minimum_size = Vector2(90, 0)
-		head.add_child(_label(Defs.SHIPS[cls]["name"].to_upper(), TEXT, 16))
-		wars.add_child(head)
-		for mk in [2, 3, 4]:
-			wars.add_child(_tech_button("%s_mk%d" % [cls, mk], 300.0))
-	pages["warships"] = wars
+		war_rows.append([_row_head(Defs.SHIPS[cls]["name"].to_upper(), TEXT, ""),
+			["%s_mk2" % cls, "%s_mk3" % cls, "%s_mk4" % cls]])
+	pages["warships"] = _tech_page(v, war_rows)
 
-	# Defense: one row per layer line, one column per tier.
-	var defs := GridContainer.new()
-	defs.columns = 4
-	defs.add_theme_constant_override("h_separation", 18)
-	defs.add_theme_constant_override("v_separation", 10)
-	defs.custom_minimum_size = PAGE_SIZE
-	defs.visible = false
-	v.add_child(defs)
-	defs.add_child(_label("", DIM, 14))
-	for tier in [1, 2, 3]:
-		defs.add_child(_label("TIER %d" % tier, DIM, 14))
+	# Defense: one row per layer line.
+	var def_rows: Array = []
 	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]], ["screens", "SCREENS", Color("c9b6ff")]]:
-		var head := VBoxContainer.new()
-		head.alignment = BoxContainer.ALIGNMENT_CENTER
-		head.custom_minimum_size = Vector2(90, 0)
-		head.add_child(_icon(LINE_ICONS[line[0]], 3))
-		head.add_child(_label(line[1], line[2], 18))
-		defs.add_child(head)
-		for tier in [1, 2, 3]:
-			for id in Defs.TECHS:
-				if Defs.TECHS[id].get("line", "") == line[0] and Defs.TECHS[id]["tier"] == tier:
-					defs.add_child(_tech_button(id, 300.0))
-	pages["defense"] = defs
+		var ids: Array = ["", "", ""]
+		for id in Defs.TECHS:
+			if Defs.TECHS[id].get("line", "") == line[0]:
+				ids[Defs.TECHS[id]["tier"] - 1] = id
+		def_rows.append([_row_head(line[1], line[2], LINE_ICONS[line[0]]), ids])
+	pages["defense"] = _tech_page(v, def_rows)
 
 	var order := [["warships", "War Ships"], ["weapons", "Weapons"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"], ["general", "General"]]
 	var buttons := {}
@@ -1421,7 +1393,53 @@ func _refresh_ability_button() -> void:
 
 ## One research button: name/status line, cost with resource icons, effect,
 ## and a progress bar along the bottom (see _refresh_research).
-func _tech_button(id: String, width: float = 340.0) -> Button:
+## The width every tech card is drawn at, on every tab, and the width of the
+## row-header column beside them.
+const TECH_CARD_W := 300.0
+const TECH_ROW_HEAD_W := 110.0
+
+## One row header: a name, optionally over an icon.
+func _row_head(text: String, color: Color, icon: String) -> Control:
+	var head := VBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.custom_minimum_size = Vector2(TECH_ROW_HEAD_W, 0)
+	if icon != "":
+		head.add_child(_icon(icon, 3))
+	head.add_child(_label(text, color, 16))
+	return head
+
+## One research tab: a header row of tiers, then `rows` of [header, [ids]].
+## An empty id leaves a hole the size of a card, so the grid never reflows.
+func _tech_page(into: Control, rows: Array) -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.custom_minimum_size = PAGE_SIZE
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 10)
+	grid.visible = false
+	into.add_child(grid)
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(TECH_ROW_HEAD_W, 0)
+	grid.add_child(spacer)
+	for tier in [1, 2, 3]:
+		grid.add_child(_label("TIER %d" % tier, DIM, 14))
+	for row in rows:
+		if row[0] == null:
+			var pad := Control.new()
+			pad.custom_minimum_size = Vector2(TECH_ROW_HEAD_W, 0)
+			grid.add_child(pad)
+		else:
+			grid.add_child(row[0])
+		for id in row[1]:
+			if id == "" or not Defs.TECHS.has(id):
+				var hole := Control.new()
+				hole.custom_minimum_size = Vector2(TECH_CARD_W, 0)
+				grid.add_child(hole)
+			else:
+				grid.add_child(_tech_button(id))
+	return grid
+
+func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(width, 132)
 	b.clip_contents = true
