@@ -145,6 +145,13 @@ func _ready() -> void:
 	radius = def["radius"]
 	move_goal = global_position
 	_acquire_timer = randf() * 0.3
+	if Defs.CARGO_TANK.has(ship_type):
+		_cargo_fx = CargoTank.new()
+		_cargo_fx.host = self
+		# Above the hull sprite, and rotating with it: the tank is part of
+		# the ship, not an overlay above it.
+		_cargo_fx.z_index = 1
+		add_child(_cargo_fx)
 	if is_miner() or def.get("role", "") == "skimmer":
 		_harvest_fx = HarvestFx.new()
 		_harvest_fx.host = self
@@ -944,12 +951,23 @@ func _draw() -> void:
 		_draw_waypoints()
 	_draw_job()
 	super._draw()
-	if cargo > 0 and selected:
-		draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
-		draw_rect(Rect2(-radius - 3, radius + 4, 3, 3), Color("3fd6b0"))
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 var _harvest_fx: HarvestFx
+var _cargo_fx: CargoTank
+
+## Paints what is in the hold into the glass tank the hull art leaves empty.
+class CargoTank extends Node2D:
+	var host: Ship
+	var _shown := -1
+
+	func _process(_delta: float) -> void:
+		if is_instance_valid(host) and host.cargo != _shown:
+			_shown = host.cargo
+			queue_redraw()
+
+	func _draw() -> void:
+		if is_instance_valid(host):
+			host.draw_cargo(self)
 
 ## The harvesting beam: a working barge or skimmer pulls a visible stream of
 ## ore off the rock, so a glance says which ships are earning their upkeep.
@@ -1008,6 +1026,32 @@ func draw_harvest(on: CanvasItem) -> void:
 	# A bite of light where the beam meets the rock.
 	var flare: float = 2.0 + 1.5 * absf(sin(t * 4.0))
 	on.draw_circle(at, flare, Color(col, 0.35))
+
+## What is in the hold, painted inside the glass tank the hull art leaves
+## empty: the resource's own colour, filling from the stern forward as the
+## load grows. An empty tank stays dark, so a loaded barge reads as loaded at
+## a glance and an idle one does not.
+func draw_cargo(on: CanvasItem) -> void:
+	var t: Array = Defs.CARGO_TANK.get(ship_type, [])
+	if t.is_empty() or cargo <= 0:
+		return
+	var cap: int = cargo_cap()
+	if cap <= 0:
+		return
+	var frac: float = clampf(float(cargo) / float(cap), 0.0, 1.0)
+	var x0: float = float(t[0]) + 1.0
+	var x1: float = float(t[1]) - 1.0
+	var hw: float = float(t[2]) - 1.0
+	var col: Color = Defs.RESOURCE_COLORS.get(cargo_type, Color("3fd6b0"))
+	# The whole tank takes a wash of the resource's colour, so WHAT is being
+	# hauled reads even with one unit in the hold; the bright band on top of
+	# it is HOW MUCH, filling from the stern forward.
+	on.draw_rect(Rect2(x0, -hw, x1 - x0, hw * 2.0), Color(col, 0.30))
+	var w := maxf((x1 - x0) * frac, 1.0)
+	on.draw_rect(Rect2(x0, -hw, w, hw * 2.0), col)
+	on.draw_rect(Rect2(x0, -hw, w, 1.0), col.lightened(0.45))
+	# A sheen down the glass, so it reads as a window and not a decal.
+	on.draw_rect(Rect2(x1 - 1.0, -hw, 1.0, hw * 2.0), Color(1, 1, 1, 0.22))
 
 ## AI steering around stars' radiation zones. Paths that would cross a zone
 ## bend along its edge; a ship that finds itself inside without a reason

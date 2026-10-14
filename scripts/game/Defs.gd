@@ -525,6 +525,15 @@ const WARSHIP_ART_SIZE := {
 ## cruiser is turned away rather than parked on a cradle it dwarfs.
 const BAY_MAX_RADIUS := 9.0
 
+## The glass hold cut into each harvester's hull (see _cargo_tank in
+## tools/gen_art.gd), as a rect in the ship's own space: x from the stern
+## end to the bow end, then half-height. The game paints the load inside it,
+## so these must match the art.
+const CARGO_TANK := {
+	"miner": [-4.0, 1.5, 2.2],
+	"skimmer": [-6.0, 0.0, 2.2],
+}
+
 ## Where a carrier's hangar bays sit, in design units along its hull (see
 ## tools/gen_art.gd): x from the stern, y off the keel, one entry per bay,
 ## mirrored top and bottom. A carrier is an H for life, so there is one

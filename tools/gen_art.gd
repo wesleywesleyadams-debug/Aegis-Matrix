@@ -340,6 +340,38 @@ func _gen_ships() -> void:
 		[[2, 11, 3.5, 3.5], [3, 9, 1.5, 1.5, 5.0], [10, 16, 1.5, 0.6, 3.0], [0, 3, 2.0, 2.0]],
 		func(x: int, dy: float) -> bool: return absf(dy) > 3.6 and x < 10,
 		[7, 2], [-1.0, 0.0], [6])
+	# The hold: a glass tank amidships. The game paints what is inside it
+	# (see Defs.CARGO_TANK and Ship.draw_cargo), so the art is only the
+	# window and its frame.
+	_cargo_tank("miner", 4.0, 9.5, 2.2)
+	_cargo_tank("skimmer", 4.0, 10.0, 2.2)
+
+## Cuts a glass holding tank into a harvester's hull: a dark window with a
+## lit frame, left empty for the game to fill with whatever is being hauled.
+## The rect is in design units (x from the stern, half-height off the keel)
+## and must match Defs.CARGO_TANK.
+func _cargo_tank(name: String, x0: float, x1: float, hw: float) -> void:
+	for suffix in ["", "_team"]:
+		if suffix == "_team":
+			continue
+		var path := OUT + "ship_%s%s.png" % [name, suffix]
+		var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+		var cy: float = img.get_height() / 2.0
+		var gx0 := int(round(x0 * S))
+		var gx1 := int(round(x1 * S))
+		var gy0 := int(round(cy - hw * S))
+		var gy1 := int(round(cy + hw * S))
+		for x in range(gx0, gx1 + 1):
+			for y in range(gy0, gy1 + 1):
+				if img.get_pixel(x, y).a <= 0.0:
+					continue
+				var edge: bool = x == gx0 or x == gx1 or y == gy0 or y == gy1
+				_px(img, x, y, GLASS[0].darkened(0.45) if not edge else HULL[3])
+		# A highlight down the frame's lit side, so it reads as glass and not
+		# as a hole in the hull.
+		for x in range(gx0 + 1, gx1):
+			_px(img, x, gy0 + 1, GLASS[1].darkened(0.55))
+		_save(img, "ship_%s%s" % [name, suffix])
 
 func _gen_starbase() -> void:
 	# Drawn at S times its design size like the ships, so the ring seams, the
