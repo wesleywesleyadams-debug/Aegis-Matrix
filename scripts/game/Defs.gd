@@ -35,7 +35,7 @@ const RESOURCES: Array[String] = ["food", "minerals", "energy", "spice"]
 const RESOURCE_NAMES := {"food": "Food", "minerals": "Minerals", "energy": "Energy", "spice": "Spice"}
 const RESOURCE_COLORS := {"food": Color("8fe060"), "minerals": Color("3fd6b0"), "energy": Color("ffd46b"), "spice": Color("ff9a2e")}
 
-const START := {"food": 500.0, "minerals": 1000.0, "energy": 110.0, "spice": 100.0}
+const START := {"food": 500.0, "minerals": 1000.0, "energy": 200.0, "spice": 100.0}
 ## Deathmatch start (lobby checkbox): enough of everything that the opening is
 ## a fight rather than an economy ramp.
 const START_DEATHMATCH := {"food": 10000.0, "minerals": 10000.0, "energy": 10000.0, "spice": 10000.0}
