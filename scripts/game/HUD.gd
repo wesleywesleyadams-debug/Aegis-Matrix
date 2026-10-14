@@ -788,7 +788,8 @@ func _add_hangar_panel(s: Ship) -> void:
 	for c in s.bay_craft:
 		if c != null and is_instance_valid(c):
 			used += 1
-	_sel_body.add_child(_label("Hangar bays: %d / %d full.  A damaged corvette docks on its own, is mended hull first and then armor, and launches again." % [used, s.bay_craft.size()], DIM, 13))
+	# The job line above already says what a bay does, so this is just the count.
+	_sel_body.add_child(_label("Hangar bays: %d / %d full." % [used, s.bay_craft.size()], DIM, 13))
 	for c in s.bay_craft:
 		if c == null or not is_instance_valid(c):
 			continue

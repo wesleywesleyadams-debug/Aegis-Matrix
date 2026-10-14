@@ -113,7 +113,7 @@ const BASE_SHIPS := {
 		"hp": 520.0, "armor": 720.0, "shield": 300.0, "speed": 38.0, "radius": 32.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 100.0, "upkeep": 72.0,
 		"weapon": "torpedo", "damage": 30.0, "cooldown": 2.0, "range": 260.0, "sensor": 460.0,
-		"guns": 2, "bays": 6,
+		"guns": 2, "bays": 6, "job": "hangar",
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
 		# stay off the bearing and flank it.
@@ -618,6 +618,8 @@ const JOBS := {
 		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
 	"heat_screen": {"name": "Heat Screen", "active": false, "color": Color("ffc24a"),
 		"desc": "Friendly ships within 170 px take 75% less radiation damage and keep their shields in spice nebulae."},
+	"hangar": {"name": "Hangar Bays", "active": false, "color": Color("ffc24a"),
+		"desc": "Six bays that take corvette-sized hulls: right-click the carrier with them selected (or let them come on their own) and each is mended hull first, then armor, then launched again."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
 		"desc": "Repairs up to 4 ships within 180 px (5 points/s each: hull first, then armor, the only way to restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
 }
