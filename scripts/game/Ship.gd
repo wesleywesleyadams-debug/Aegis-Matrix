@@ -23,6 +23,13 @@ var attack_move_goal: Vector2
 ## _steer), so a cruiser caught beam-on really does have to come about.
 const FIRE_ARC := deg_to_rad(40.0)
 
+## Radius of the biggest hull in the game (the carrier), used to size the
+## separation search. Keep in step with Defs if a larger hull is ever added.
+const MAX_HULL_RADIUS := 34.0
+
+## How well a turreted hull shoots at full speed, against standing still.
+const MOVING_ACCURACY := 0.65
+
 ## Swings the turrets toward `point` at their own rate and says whether they
 ## are on the bearing yet. The sprites are drawn in hull space, so they are
 ## offset by the hull's own rotation.
@@ -526,7 +533,10 @@ func _physics_process(delta: float) -> void:
 				var keep: float = weapon_range() * 0.8
 				if d > keep:
 					desired = _arrive(target.global_position, 1.0)
-				face_target = target
+				# A turreted hull (the carrier) lets its mounts do the aiming and
+				# keeps its own heading; only fixed guns need the nose on target.
+				if not def.has("turrets"):
+					face_target = target
 		State.DOCK_GO:
 			# Fly to the carrier and take the bay reserved on arrival.
 			if not is_instance_valid(dock_carrier) or not dock_carrier.is_alive():
@@ -692,7 +702,16 @@ func _physics_process(delta: float) -> void:
 					face_target = shoot
 				ready = bears_on(shoot.global_position)
 			if ready:
+				# Turrets can shoot on the move, but a moving mount is a worse
+				# one: at full speed roughly a third of the volley goes wide.
+				# Fixed guns are unaffected — they only fire while on the
+				# bearing anyway.
+				var acc := 1.0
+				if def.has("turrets"):
+					acc = lerpf(1.0, MOVING_ACCURACY, clampf(velocity.length() / maxf(max_speed(), 1.0), 0.0, 1.0))
 				for g in int(def.get("guns", 1)):
+					if randf() >= acc:
+						continue
 					Game.instance.fire(self, shoot, def["weapon"], dmg)
 				_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
@@ -701,6 +720,12 @@ func _physics_process(delta: float) -> void:
 	# A ship on its final approach to a bay ignores the crowding force, or it
 	# would be shouldered off the cradle it is trying to sit in.
 	var crowd := Vector2.ZERO if state == State.DOCK_GO or state == State.DOCKED else _separation()
+	# A parked ship takes the spot crowding gives it rather than fighting its
+	# way back: otherwise two hulls that overlap at rest shove each other out
+	# and fly straight back in, forever. Big hulls show it worst, since they
+	# overlap from further away.
+	if state == State.IDLE and crowd != Vector2.ZERO:
+		move_goal = global_position + crowd.limit_length(radius)
 	_steer(desired + crowd, delta, face_target)
 
 ## Desired velocity toward `goal`, slowing inside the braking radius.
@@ -729,7 +754,11 @@ func _separation() -> Vector2:
 	# could hold an overlapping hull (reach = our radius + the largest hull).
 	var push := Vector2.ZERO
 	var g := Game.instance
-	var reach := radius + 16.0
+	# The reach must cover the LARGEST hull out there, not an average one:
+	# if it is shorter than radius + other.radius, two big hulls push apart
+	# until they fall out of each other's reach, drift back together and push
+	# again — parked carriers visibly judder against each other.
+	var reach := radius + MAX_HULL_RADIUS
 	var p := global_position
 	var lo := Vector2i(((p - Vector2(reach, reach)) / Game.CELL).floor())
 	var hi := Vector2i(((p + Vector2(reach, reach)) / Game.CELL).floor())
@@ -740,6 +769,11 @@ func _separation() -> Vector2:
 				continue
 			for other in cell:
 				if other == self or not is_instance_valid(other):
+					continue
+				# A craft on (or lining up for) one of our bays sits inside the
+				# hull by design: shoving it away would have the carrier jitter
+				# in place, each bay pushing from a different side.
+				if other is Ship and other.dock_carrier == self:
 					continue
 				var d: Vector2 = p - other.global_position
 				if absf(d.x) > reach or absf(d.y) > reach:

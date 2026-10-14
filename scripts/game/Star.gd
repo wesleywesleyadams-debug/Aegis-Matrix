@@ -88,23 +88,29 @@ func _process(delta: float) -> void:
 				Game.instance.alert("Your ships are taking radiation damage from %s!" % star_name, "alert_ships", false, e.global_position)
 
 func _draw() -> void:
+	# This node is scaled to 1/ART_SCALE so the doubled-resolution star art
+	# lands at its world size, which shrinks anything drawn here too. The radii
+	# below are world units, so they are multiplied back up to match the zone
+	# that actually burns ships; widths scale with them so the haze still
+	# covers the gap between rings.
+	var k := Defs.ART_SCALE
 	# Radiation zone, always shown: a red haze that thickens toward the core
 	# (matching the damage curve) and a dashed line at its outer edge.
 	var span := radiation_radius - core_radius
 	var steps := 24
 	var w := span / steps
-	for k in steps:
-		var t := 1.0 - (k + 0.5) / steps
-		draw_arc(Vector2.ZERO, core_radius + (k + 0.5) * w, 0.0, TAU, 96, Color(1, 0.3, 0.2, 0.22 * t * t), w + 0.5)
+	for i in steps:
+		var t := 1.0 - (i + 0.5) / steps
+		draw_arc(Vector2.ZERO, (core_radius + (i + 0.5) * w) * k, 0.0, TAU, 96, Color(1, 0.3, 0.2, 0.22 * t * t), (w + 0.5) * k)
 	var edge := Color(1, 0.35, 0.3, 0.75 if focused else 0.4)
 	var dashes := 48
 	for i in dashes:
 		var a0 := TAU * i / dashes
-		draw_arc(Vector2.ZERO, radiation_radius, a0, a0 + TAU / dashes * 0.55, 6, edge, 1.5)
+		draw_arc(Vector2.ZERO, radiation_radius * k, a0, a0 + TAU / dashes * 0.55, 6, edge, 1.5 * k)
 	if not focused:
 		return
 	# Selection ring on the surface.
 	var n := 96
 	for i in n:
 		var a := TAU * i / n
-		draw_rect(Rect2(Vector2.from_angle(a) * (core_radius + 6.0) - Vector2(0.5, 0.5), Vector2(1, 1)), Color(1, 0.85, 0.5))
+		draw_rect(Rect2(Vector2.from_angle(a) * (core_radius + 6.0) * k - Vector2(0.5, 0.5) * k, Vector2(1, 1) * k), Color(1, 0.85, 0.5))

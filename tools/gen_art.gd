@@ -1152,6 +1152,7 @@ const VARIANT_BASES := {
 	"corvette": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 	"destroyer": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 	"cruiser": ["plasma", "breacher", "reaver", "slip", "disruptor"],
+	"carrier": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 }
 
 ## Each variant is told apart by how its hull is TRIMMED along the edges,

@@ -118,6 +118,9 @@ const BASE_SHIPS := {
 		# about to shoot - but slowly, so a corvette that keeps moving can
 		# stay off the bearing and flank it.
 		"turret_rate": 0.5, "turrets": [[0.68, 0.0], [0.32, 0.0]],
+		# Refitting a hull this size is proportionally dearer and slower than
+		# a cruiser's (15 / 35 s) — twice the hull, twice the yard time.
+		"refit": {"minerals": 30, "time": 70.0},
 	},
 	"scout": {
 		"name": "Scout", "role": "scout",
@@ -586,6 +589,7 @@ const VARIANTS_OF := {
 	"corvette": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 	"destroyer": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 	"cruiser": ["plasma", "breacher", "reaver", "slip", "disruptor"],
+	"carrier": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 }
 
 static func _with_variants() -> Dictionary:
