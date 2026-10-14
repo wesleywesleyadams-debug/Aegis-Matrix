@@ -64,6 +64,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	var neb_spot := _nebula_spot(base.global_position, game, v)
 	var war := ships.filter(func(s): return s.def["role"] == "warship")
 	var colonists := ships.filter(func(s): return s.def["role"] == "colony")
+	# What the build picker needs to know about the fleet it is adding to.
+	st["fleet"] = war.size()
+	st["carriers"] = war.filter(func(s): return s.is_carrier()).size()
 	if OS.get_environment("SL_AI_DEBUG") != "" and int(Game.now()) % 20 == 0:
 		print("AIDBG t=%d pid=%d mode=%s queue=%s stalled=%s stall=%s blocked=%s prog=%.1f" % [Game.now(), pid, st.get("mode", ""), str(base.queue), str(base.build_stalled), str(st.get("stall", 0)), str(st.get("blocked", {})), base.build_progress])
 	# Enemies just spotted near home: re-plan now instead of at the next
@@ -180,6 +183,27 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				s.order_attack_move(threat.global_position)
 		return
 
+	# A carrier in the fleet changes what a hurt ship does: rather than keep
+	# fighting at a third of its hull, it puts in to a bay, is mended and
+	# comes back out. Only worth the trip when there is a bay free and the
+	# carrier is not far away.
+	var carriers := war.filter(func(s): return s.is_carrier() and s.free_bay() >= 0)
+	if not carriers.is_empty():
+		for s in war:
+			if s.is_carrier() or s.state == Ship.State.DOCK_GO or s.state == Ship.State.DOCKED:
+				continue
+			if s.hp > s.max_hp * 0.45:
+				continue
+			var best: Ship = null
+			var best_d := 900.0
+			for c in carriers:
+				var d: float = s.global_position.distance_to(c.global_position)
+				if d < best_d:
+					best_d = d
+					best = c
+			if best != null:
+				s.order_dock(best)
+
 	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
 	# Idle warships next to an enemy planet start bombarding it.
 	for s in idle.duplicate():
@@ -234,6 +258,10 @@ func _pick_tech(options: Array, fleet: int) -> String:
 
 func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	var options: Array[String] = ["corvette", "corvette", "destroyer", "destroyer", "cruiser"]
+	# One carrier is worth having once there is a fleet to keep in the fight;
+	# a second one rarely is.
+	if game.has_tech(pid, "carriers") and st.get("fleet", 0) >= 10 and st.get("carriers", 0) < 1:
+		options.append("carrier")
 	options.shuffle()
 	var sb := game.nearest_starbase(pid, Vector2.ZERO)
 	var res: Dictionary = game.resources[pid]
