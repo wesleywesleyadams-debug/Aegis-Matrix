@@ -472,18 +472,7 @@ func _page_combat() -> void:
 	_rule()
 	_rule()
 	_heading("Hull marks", EDGE_LIT)
-	_para("Every warship has two independent axes. Its MARK is raw power and comes from the War Ships research line; its VARIANT is purpose and comes from a Weapons Depot. A Mk IV Reaver Corvette is both: the finest corvette mark, fitted to hunt hull.")
-	var krows: Array = []
-	for i in Defs.HULL_MARKS.size():
-		krows.append([Defs.HULL_MARKS[i], "start" if i == 0 else "research", "+%d%% damage, +%d%% shields, armor and hull" % [
-			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
-	_table(["Mark", "From", "Over a Mk I"], krows)
-	var shapes: Array = []
-	for cls in Defs.MARK_LINES:
-		shapes.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
-	_plate(shapes, 96.0, true, "One shape per class, for the life of the ship: a corvette is an A, a destroyer a Y, a cruiser an X, a carrier an H. A mark is rank, and shows as chevrons at the bow.")
-	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow, a destroyer a tail boom forking into two prongs, a cruiser four wings crossed at a hub, a carrier two nacelles either side of a hangar spine â and a hull keeps that shape for life. A mark is rank on top of it: the hull is dressed a little further at each one, a lit rail at Mk II, a keel rail and studs at Mk III, a warm-white rim and lit engine blocks at Mk IV, and a lit bow cap that whitens at the top mark.")
-	_para("Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments. Marks apply to every ship of that class you already own the moment the research lands.")
+	_para("A mark is rank, not purpose: it comes from the War Ships research tab and raises damage and every defense layer, while a variant comes from a Weapons Depot and decides what the ship is good against. The two stack. The Ships page lays out class, mark and variant side by side.")
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
 	_para("Starbases build generalists only. Once the Depots tech is researched, a Constructor builds a depot (E) for %s over %ds, and every depot is built for ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
@@ -522,6 +511,43 @@ func _page_combat() -> void:
 		_body.add_child(_wrap("%s: %s" % [Defs.JOBS[j]["name"], Defs.JOBS[j]["desc"]], DIM, 16))
 
 func _page_ships() -> void:
+	# Three independent systems decide what a warship is, and players keep
+	# conflating them, so they are laid out side by side here before the
+	# stat cards: what it IS, how GOOD it is, and what it is FOR.
+	_heading("Class, Mark and Variant")
+	_para("Every warship is described by three separate things. Its CLASS is the hull it was built as and never changes. Its MARK is how refined that hull is, bought on the War Ships research tab. Its VARIANT is what it was refitted to specialise in, bought at a Weapons Depot. A Mk IV Reaver Corvette is all three at once: a corvette, taken to the top mark, fitted to hunt hull.")
+	_table(["System", "Comes from", "Changes", "You can tell by"], [
+		[["Class", TEXT], "What you build it as", "Never", "The hull's silhouette"],
+		[["Mark", EDGE_LIT], "War Ships research", "Every ship of that class, at once", "How dressed the hull is"],
+		[["Variant", Defs.VARIANTS["reaver"]["color"]], "Refit at a Weapons Depot", "Once, permanently", "The trim cut along its edges"],
+	])
+	_rule()
+	_heading("Class — the shape")
+	var cls_plate: Array = []
+	for cls in Defs.MARK_LINES:
+		cls_plate.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
+	_plate(cls_plate, 104.0, true, "One shape per class, for life: a corvette is an A, a destroyer a Y, a cruiser an X, a carrier an H.")
+	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow, a destroyer a tail boom forking into two prongs, a cruiser four wings crossed at a hub, and a carrier two nacelles either side of a hangar spine. You can read a fleet's composition from its silhouettes alone.")
+	_rule()
+	_heading("Mark — the rank")
+	var mrows0: Array = []
+	for i in Defs.HULL_MARKS.size():
+		mrows0.append([Defs.HULL_MARKS[i], "start" if i == 0 else "research", "+%d%% damage, +%d%% shields, armor and hull" % [
+			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
+	_table(["Mark", "From", "Over a Mk I"], mrows0)
+	_para("A ship is built at Mk I and is dressed a little further at each mark: a lit rail along the spine at Mk II, a keel rail and hull studs at Mk III, a warm-white rim and lit engine blocks at Mk IV. Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments, and a mark applies to every ship of that class you already own the moment the research lands.")
+	_rule()
+	_heading("Variant — the trim")
+	var vplate: Array = [["ship_corvette", "Generalist", TEXT]]
+	for tv in Defs.VARIANTS:
+		vplate.append(["ship_%s_corvette" % tv, Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]])
+	_plate(vplate, 96.0, true, "The same corvette in all six trims: blocky, rounded, ribbed, toothed, swept and serrated.")
+	var vplate2: Array = [["ship_carrier", "Generalist", TEXT]]
+	for tv in Defs.VARIANTS:
+		vplate2.append(["ship_%s_carrier" % tv, Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]])
+	_plate(vplate2, 120.0, true, "The trim is cut at the hull's own scale, so it reads the same on a carrier as on a corvette.")
+	_para("A variant is cut into the silhouette as a trim style along its edges, with its outermost pixel in your player color — so the shape names the variant at any zoom, and the shot color names the layer it hits. What each one does to damage is on the Combat page.")
+	_rule()
 	_heading("Every ship")
 	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat).")
 	for t in Defs.BUILD_ORDER:

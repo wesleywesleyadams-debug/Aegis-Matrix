@@ -1174,13 +1174,17 @@ func _gen_variants() -> void:
 			# The generalist is the blocky trim, saved back over the plain hull.
 			var g_hull := raw.duplicate() as Image
 			var g_team := raw_team.duplicate() as Image
-			_trim_variant(g_hull, g_team, "blocky")
+			# Trim features are sized to the hull: a carrier is four times a
+			# corvette's length, so a tooth cut at corvette scale would read as
+			# texture on it rather than as a style.
+			var unit: int = maxi(1, int(round(raw.get_width() / float(S) / 20.0)))
+			_trim_variant(g_hull, g_team, "blocky", unit)
 			_save(g_hull, raw_name)
 			_save(g_team, raw_name + "_team")
 			for v in VARIANT_BASES[base]:
 				var vh := raw.duplicate() as Image
 				var vt := raw_team.duplicate() as Image
-				_trim_variant(vh, vt, v)
+				_trim_variant(vh, vt, v, unit)
 				_save(vh, "ship_%s_%s%s" % [v, base, suffix])
 				_save(vt, "ship_%s_%s%s_team" % [v, base, suffix])
 
@@ -1192,7 +1196,9 @@ func _gen_variants() -> void:
 ## have several spans in one column (an X-class crosses two arms), and a
 ## swept edge runs diagonally: both need the trim to follow the real
 ## boundary instead of the outermost pixel.
-func _trim_variant(hull: Image, tim: Image, style: String) -> void:
+## `unit` scales every feature (period and depth) with the hull, so the same
+## style reads the same on a corvette and on a carrier.
+func _trim_variant(hull: Image, tim: Image, style: String, unit: int = 1) -> void:
 	var w := hull.get_width()
 	var h := hull.get_height()
 	for y in h:
@@ -1230,47 +1236,63 @@ func _trim_variant(hull: Image, tim: Image, style: String) -> void:
 			# dir is -1 along an upper edge and +1 along a lower one; a thin
 			# member that is both just gets the upper treatment.
 			var dir: int = -1 if up else 1
-			var step: int = x / S
+			# A "step" is one feature-wide column: the period of every style
+			# below counts in these, so features grow with the hull.
+			var step: int = x / (S * unit)
+			var deep: int = S * unit
 			match style:
 				"blocky":
-					# Blocky: square the edge off by filling single-pixel
-					# notches, so the hull reads as flat plating. The plain
-					# built edge IS the generalist trim, which leaves the
-					# other five styles room to read.
+					# Blocky: square the edge off by filling notches, so the
+					# hull reads as flat plating. The plain built edge IS the
+					# generalist trim, which leaves the other five styles room
+					# to read.
 					if up and solid.call(x - 1, y - 1) and solid.call(x + 1, y - 1):
 						add.call(x, y - 1)
 					if dn and solid.call(x - 1, y + 1) and solid.call(x + 1, y + 1):
 						add.call(x, y + 1)
+					# On a big hull, plating steps out every few columns too,
+					# or the silhouette is just a smooth bar.
+					if unit > 1 and step % 3 == 0:
+						add.call(x, y + dir)
 				"plasma":
 					# Rounded: shave the corners, so nothing on the hull ends
-					# square.
+					# square. On a big hull the shave goes deeper, which is
+					# what makes a carrier's edges read as curves.
 					if up and not solid.call(x - 1, y) and not solid.call(x, y + 1 * -dir):
-						cut.call(x, y)
+						for k in unit:
+							cut.call(x + k, y)
 					if up and (not solid.call(x - 1, y) or not solid.call(x + 1, y)) and not solid.call(x, y - 1):
-						cut.call(x, y)
+						for k in unit:
+							cut.call(x, y + k)
 					if dn and (not solid.call(x - 1, y) or not solid.call(x + 1, y)) and not solid.call(x, y + 1):
-						cut.call(x, y)
+						for k in unit:
+							cut.call(x, y - k)
 				"breacher":
-					# Ribbed: a raised plate every third column.
+					# Ribbed: a raised plate every third step, standing a full
+					# feature proud of the edge.
 					if step % 3 == 0:
-						for k in S:
+						for k in deep:
 							add.call(x, y + dir * (k + 1))
 				"reaver":
-					# Toothed: a saw along every edge.
+					# Toothed: a saw along every edge, one tooth per step.
 					if step % 2 == 0:
-						add.call(x, y + dir)
+						for k in maxi(1, unit):
+							add.call(x, y + dir * (k + 1))
 					else:
-						cut.call(x, y)
+						for k in maxi(1, unit):
+							cut.call(x, y - dir * k)
 				"slip":
 					# Swept: fins that rake further out toward the stern.
 					if step % 4 == 0:
-						var rake: int = 1 + int(round((1.0 - float(x) / maxf(nose, 1)) * S))
+						var rake: int = unit + int(round((1.0 - float(x) / maxf(nose, 1)) * deep))
 						for k in rake:
 							add.call(x, y + dir * (k + 1))
 				"disruptor":
-					# Serrated: notches bitten out of the edge.
+					# Serrated: notches bitten out of the edge. Kept shallower than
+					# the raised styles — a deep bite on a big hull stops reading as
+					# trim and starts reading as battle damage.
 					if step % 3 == 0:
-						for k in S:
+						for k in maxi(1, unit):
 							cut.call(x, y - dir * k)
 	_outline(hull)
 
