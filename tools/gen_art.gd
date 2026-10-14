@@ -1340,7 +1340,7 @@ const WARSHIP_ART := {
 ## The letter decides the stance: an H-class is a ball cockpit at the centre
 ## of its spar, like a TIE, while an X-class sits its pilot back at the hub
 ## and runs a long nose out between the wings.
-const MARK_COCKPIT := [0.50, 0.56, 0.64, 0.66]
+const MARK_COCKPIT := [0.50, 0.56, 0.58, 0.66]
 
 func _mark_cockpit(mark: int, w: int) -> int:
 	return int(round(w * MARK_COCKPIT[clampi(mark, 0, 3)]))
@@ -1361,40 +1361,41 @@ func _mark_parts(mark: int, w: int, h: int) -> Array:
 			# other, joined across their forward ends by a spar; the trunk
 			# runs forward from the middle of that spar to the nose, with the
 			# cockpit at its base.
+			# Slender: thin prongs and a light spar, with the spar deep enough
+			# to actually meet both prongs.
+			var ya: float = a * 0.86
 			return [
-				[1, int(w * 0.54), 1.1, 1.1, a, a],
-				[int(w * 0.48), int(w * 0.56), a + 0.6, a + 0.6],
-				[int(w * 0.50), w, 1.7, 0.8],
-				ball[0], ball[1],
+				[1, int(w * 0.58), 0.8, 0.8, ya, ya],
+				[int(w * 0.50), int(w * 0.50) + 2, ya + 0.9, ya + 0.9],
+				[int(w * 0.50), w, 1.3, 0.5],
+				[cx - 3, cx, 1.1, 2.4], [cx, cx + 3, 2.4, 1.1],
 			]
 		2:
-			# X: a long fuselage with four wings splayed around it, cannons
-			# reaching forward off every tip and engine pods at the root â
-			# the X-wing stance, with the cockpit just behind the nose.
+			# X: the X-wing seen from above. A long fuselage tapering to a
+			# pointed nose; one wing each side sweeping out and aft (the upper
+			# and lower pairs overlap from above, as they do on the real
+			# thing); a fat nacelle at each wing root; and one cannon barrel
+			# running forward from each tip, ending level with the cockpit.
 			return [
-				# Engine pods either side of the keel at the stern.
-				[1, int(w * 0.42), 1.3, 1.5, a * 0.5, a * 0.5],
-				# Fuselage, stern to a pointed nose.
-				[1, w, 2.0, 0.5],
-				# Two wings swept aft-outboard, two swept forward-outboard:
-				# together they cross into an X around the fuselage.
-				[int(w * 0.16), int(w * 0.62), 1.6, 1.1, a, 0.0],
-				[int(w * 0.46), int(w * 0.94), 1.1, 1.6, 0.0, a],
-				# Cannon barrels off all four wingtips, pointing forward.
-				[int(w * 0.80), w, 0.5, 0.4, a],
-				[int(w * 0.08), int(w * 0.46), 0.45, 0.45, a],
+				[1, w, 2.1, 0.45],
+				[1, int(w * 0.55), 2.0, 1.0, a, 0.0],
+				[1, int(w * 0.22), 2.0, 2.0, a * 0.72],
+				[int(w * 0.06), int(w * 0.74), 1.0, 0.8, a],
 				ball[0], ball[1],
 			]
 		3:
 			# A: legs spreading aft from a bow apex, braced across, with the
 			# cockpit sitting in the triangle the brace and the legs enclose,
 			# just under the tip. The apex is the nose.
+			# Broad: heavy legs spread wider than the other marks, but still
+			# thin enough that the triangle under the apex stays open.
+			var aa: float = a * 1.3
 			return [
-				[1, int(w * 0.90), 1.8, 1.1, a, 0.0],
-				[int(w * 0.40), int(w * 0.50), a * 0.72, a * 0.72],
-				[int(w * 0.44), cx, 0.9, 1.3],
-				ball[0], ball[1],
-				[cx + 2, int(w * 0.92), 1.3, 0.4],
+				[1, int(w * 0.90), 2.2, 1.2, aa, 0.0],
+				[int(w * 0.36), int(w * 0.50), aa * 0.74, aa * 0.74],
+				[int(w * 0.42), cx, 1.2, 1.8],
+				[cx - 4, cx, 1.7, 3.2], [cx, cx + 4, 3.2, 1.7],
+				[cx + 3, int(w * 0.94), 1.8, 0.5],
 			]
 		_:
 			# H: two nacelles either side of a slim spar, with a ball cockpit
