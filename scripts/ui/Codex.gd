@@ -482,7 +482,7 @@ func _page_combat() -> void:
 	for cls in Defs.MARK_LINES:
 		shapes.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
 	_plate(shapes, 96.0, true, "One shape per class, for the life of the ship: a corvette is an A, a destroyer a Y, a cruiser an X, a carrier an H. A mark is rank, and shows as chevrons at the bow.")
-	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow, a destroyer a tail boom forking into two prongs, a cruiser four wings crossed at a hub, a carrier two nacelles either side of a hangar spine â and a hull keeps that shape for life. A mark is rank on top of it: the hull is dressed a little further at each one, a lit rail at Mk II, a keel rail and studs at Mk III, a warm-white rim and lit engine blocks at Mk IV, with a chevron at the bow for each mark earned.")
+	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow, a destroyer a tail boom forking into two prongs, a cruiser four wings crossed at a hub, a carrier two nacelles either side of a hangar spine â and a hull keeps that shape for life. A mark is rank on top of it: the hull is dressed a little further at each one, a lit rail at Mk II, a keel rail and studs at Mk III, a warm-white rim and lit engine blocks at Mk IV, and a lit bow cap that whitens at the top mark.")
 	_para("Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments. Marks apply to every ship of that class you already own the moment the research lands.")
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT

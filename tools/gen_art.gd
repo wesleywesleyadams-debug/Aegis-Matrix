@@ -1507,13 +1507,14 @@ func _gen_ranks() -> void:
 					var t: float = float(x - stern) / maxf(nose - stern, 1)
 					if t > 0.2 and t < 0.9:
 						_px(img, x - 1, bot[x] - 1 - S, Color("ffe9a8"))
-			# Chevrons at the bow: one per mark, so rank reads at a glance.
-			for k in level:
-				var cx: int = nose - 2 - k * 3 * S
-				for arm in range(0, 3 * S):
-					var mid: int = int(round((top.get(cx, h / 2) + bot.get(cx, h / 2)) / 2.0))
-					_px(img, cx - arm - 1, mid - arm - 1, tint)
-					_px(img, cx - arm - 1, mid + arm - 1, tint)
+			# No badges: the dressing itself is the rank. A lit bow cap comes
+			# in at Mk III and brightens at Mk IV, so the nose reads first.
+			if level >= 2:
+				for k in 2 * S:
+					var bx: int = nose - k
+					if top.has(bx):
+						var mid: int = int(round((top[bx] + bot[bx]) / 2.0))
+						_px(img, bx - 1, mid - 1, tint if level == 2 else Color("ffffff"))
 			# Mk IV: lit engine blocks at the stern.
 			if level >= 3:
 				for k in 2:
