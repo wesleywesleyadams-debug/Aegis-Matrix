@@ -129,8 +129,12 @@ func _draw() -> void:
 		# whatever the hull under it is doing.
 		var col := Defs.team_color(owner_id)
 		draw_polyline(_arc_points(r, 0.0, TAU, 32), Color(col, 0.85), 1.0, false)
-	# Gauges arc over the top of the hull (world "up" is -Y), filling left
-	# to right as the layer fills.
+	# The gauges are for damage, not for decoration: an untouched ship shows
+	# nothing above it, selected or not.
+	if not damaged:
+		return
+	# They arc over the top of the hull (world "up" is -Y), filling left to
+	# right as the layer fills.
 	var up := -PI / 2.0
 	var ring := r + 1.5
 	for gauge in [[hp, max_hp, Color("58e07a")], [armor, max_armor, ARMOR_COLOR], [shield, max_shield, Color("7fd8ff")]]:
