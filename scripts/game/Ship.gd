@@ -255,8 +255,7 @@ func bay_offset(i: int) -> Vector2:
 	var art: Dictionary = Defs.WARSHIP_ART_SIZE.get(ship_type, {})
 	if art.is_empty():
 		return Vector2.ZERO
-	var level: int = Game.instance.mark_level(owner_id, ship_type) if Game.instance else 0
-	var bays: Array = Defs.carrier_bays(level, int(art["w"]), int(art["h"]))
+	var bays: Array = Defs.carrier_bays(int(art["w"]), int(art["h"]))
 	if bays.is_empty():
 		return Vector2.ZERO
 	var b: Vector2 = bays[(i / 2) % bays.size()]

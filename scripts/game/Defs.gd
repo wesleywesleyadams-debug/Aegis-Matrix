@@ -518,31 +518,15 @@ const WARSHIP_ART_SIZE := {
 
 ## Where a carrier's hangar bays sit, in design units along its hull (see
 ## tools/gen_art.gd): x from the stern, y off the keel, one entry per bay,
-## mirrored top and bottom. The letter decides the layout, because the bays
-## hang off whichever members that mark actually has â the nacelles of an H,
-## the prongs of a Y, the wings of an X, the legs of an A. Art and gameplay
-## both read this, so a docked corvette sits exactly on the drawn cradle.
-static func carrier_bays(mark: int, w: int, h: int) -> Array:
+## mirrored top and bottom. A carrier is an H for life, so there is one
+## layout: the bays hang off the two nacelles. Art and gameplay both read
+## this, so a docked corvette sits exactly on the drawn cradle.
+static func carrier_bays(w: int, h: int) -> Array:
 	var a: float = h * 0.30
 	var out: Array = []
-	match mark:
-		1:
-			# Y: along both prongs, which run aft of the spar.
-			for t in [0.10, 0.24, 0.38]:
-				out.append(Vector2(w * t, a * 0.86))
-		2:
-			# X: along the wings, which sweep out and aft, so each bay sits
-			# further off the keel the further aft it is.
-			for t in [0.14, 0.28, 0.42]:
-				out.append(Vector2(w * t, a * (1.0 - t / 0.55)))
-		3:
-			# A: down the legs, which spread aft from the bow apex.
-			for t in [0.18, 0.36, 0.54]:
-				out.append(Vector2(w * t, a * 1.3 * (1.0 - t / 0.90)))
-		_:
-			# H: evenly down both nacelles, which run the full length.
-			for t in [0.24, 0.44, 0.64]:
-				out.append(Vector2(w * t, a))
+	# Evenly down both nacelles, which run the full length of an H.
+	for t in [0.24, 0.44, 0.64]:
+		out.append(Vector2(w * t, a))
 	return out
 
 ## A mark is rank, not shape. Each class is built in one letterform for life
