@@ -160,7 +160,10 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 	var cy := h * S / 2.0
 	var mask := {}
 	var shade := {}
+	var owner := {}
+	var part_i := -1
 	for part in parts:
+		part_i += 1
 		var off0: float = (part[4] if part.size() > 4 else 0.0) * S
 		# A sixth value sweeps the offset along the part, which is what makes an
 		# arm diverge or two arms cross instead of running parallel.
@@ -175,6 +178,7 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 					if absf(dy) <= hw:
 						var key := Vector2i(x, y)
 						mask[key] = true
+						owner[key] = part_i
 						# Rounded-cylinder shading, lit from above.
 						var n: float = dy / maxf(hw, 0.5)
 						shade[key] = maxf(shade.get(key, -9.0), 0.62 - n * 0.4)
@@ -201,22 +205,63 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 		elif x > nose_x - S and mask.has(Vector2i(x - 1, y)):
 			# Nose cap catches the light.
 			idx = mini(idx + 2, top_i)
+		else:
+			# Contact shadow: where a later part lies over an earlier one, the
+			# pixels just outside the seam darken, which is what makes a wing
+			# read as sitting ON the hull rather than being painted into it.
+			var mine: int = owner[key]
+			var shaded := false
+			for d in [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]:
+				var nb: Vector2i = key + d
+				if mask.has(nb) and owner[nb] > mine:
+					idx = maxi(idx - 2, 0)
+					shaded = true
+					break
+			if not shaded:
+				# Plating: a scribed seam every few pixels along a member, and
+				# a rivet line one pixel in from the lit edge.
+				if x % (6 * S) == 0 and mask.has(Vector2i(x, y - 1)) and mask.has(Vector2i(x, y + 1)):
+					idx = maxi(idx - 1, 0)
+				elif not mask.has(Vector2i(x, y - 2)) and x % (3 * S) == 0:
+					idx = mini(idx + 1, top_i)
 		if team_fn.call(x / S, dy):
 			tim.set_pixel(x + 1, y + 1, TEAM[clampi(idx * TEAM.size() / ramp.size(), 0, TEAM.size() - 1)])
 			img.set_pixel(x + 1, y + 1, HULL[1])
 		else:
 			img.set_pixel(x + 1, y + 1, ramp[idx])
-	# Cockpit glass on the centerline: a canopy block with a lit front edge.
+	# Cockpit glass on the centerline: a canopy block with a lit front edge,
+	# set into a dark frame so it reads as glass rather than a painted patch.
 	for gx in glass[1]:
 		for sx in S:
 			for sy in S:
 				var px: int = (glass[0] + gx) * S + sx + 1
 				var py: int = int(cy) - S + sy * 2
+				_px(img, px, py - 1, HULL[0])
+				_px(img, px, py + 2, HULL[0])
 				img.set_pixel(px, py, GLASS[2] if sy == 0 else (GLASS[0] if gx == 0 else GLASS[1]))
+	# Thrusters: a hot core in a dark housing, with the glow trailing aft.
 	for e in engines:
-		for sx in S:
-			for sy in S:
-				img.set_pixel(1 + sx, int(cy + e * S) + 1 + sy, ENGINE[1] if sx == 0 else ENGINE[0])
+		var ey: int = int(cy + e * S) + 1
+		for sy in S:
+			_px(img, 0, ey + sy, ENGINE[0])
+			for sx in S:
+				img.set_pixel(1 + sx, ey + sy, ENGINE[2] if sx == 0 and sy == 0 else (ENGINE[1] if sx == 0 else ENGINE[0]))
+		_px(img, 1, ey - 1, HULL[0])
+		_px(img, 1, ey + S, HULL[0])
+	# Running lights on the outermost tips, so a silhouette still has a spark
+	# of life at a distance.
+	# The topmost and bottommost hull pixels are the wingtips; light the exact
+	# pixel so the lamp sits ON the tip rather than beside it.
+	var hi := Vector2i(0, 9999)
+	var lo := Vector2i(0, -1)
+	for key2 in mask:
+		if key2.y < hi.y:
+			hi = key2
+		if key2.y > lo.y:
+			lo = key2
+	if lo.y - hi.y > 4 * S:
+		_px(img, hi.x + 1, hi.y + 1, GLASS[2])
+		_px(img, lo.x + 1, lo.y + 1, GLASS[2])
 	# Job details (sensor dishes, shield plates, glow strips...) drawn on top.
 	if extras.is_valid():
 		if fine_extras:
@@ -1307,7 +1352,7 @@ const WARSHIP_ART := {
 ## The letter decides the stance: an H-class is a ball cockpit at the centre
 ## of its spar, like a TIE, while an X-class sits its pilot back at the hub
 ## and runs a long nose out between the wings.
-const MARK_COCKPIT := [0.50, 0.56, 0.44, 0.66]
+const MARK_COCKPIT := [0.50, 0.56, 0.64, 0.66]
 
 func _mark_cockpit(mark: int, w: int) -> int:
 	return int(round(w * MARK_COCKPIT[clampi(mark, 0, 3)]))
@@ -1332,13 +1377,22 @@ func _mark_parts(mark: int, w: int, h: int) -> Array:
 				ball[0], ball[1],
 			]
 		2:
-			# X: four wings crossing at a hub, the pilot set back at the
-			# crossing and a long nose run out ahead of the wings.
+			# X: a long fuselage with four wings splayed around it, cannons
+			# reaching forward off every tip and engine pods at the root â
+			# the X-wing stance, with the cockpit just behind the nose.
 			return [
-				[1, w, 1.7, 1.3, -a, a],
-				[int(w * 0.30), cx + 1, 3.0, 2.6],
+				# Engine pods either side of the keel at the stern.
+				[1, int(w * 0.42), 1.3, 1.5, a * 0.5, a * 0.5],
+				# Fuselage, stern to a pointed nose.
+				[1, w, 2.0, 0.5],
+				# Two wings swept aft-outboard, two swept forward-outboard:
+				# together they cross into an X around the fuselage.
+				[int(w * 0.16), int(w * 0.62), 1.6, 1.1, a, 0.0],
+				[int(w * 0.46), int(w * 0.94), 1.1, 1.6, 0.0, a],
+				# Cannon barrels off all four wingtips, pointing forward.
+				[int(w * 0.80), w, 0.5, 0.4, a],
+				[int(w * 0.08), int(w * 0.46), 0.45, 0.45, a],
 				ball[0], ball[1],
-				[cx + 2, w, 2.1, 0.4],
 			]
 		3:
 			# A: legs spreading aft from a bow apex, braced across, with the
