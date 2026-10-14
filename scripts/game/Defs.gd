@@ -212,12 +212,12 @@ const ENERGY_STARVED_FACTOR := 0.25
 ## worlds hold the most (desert above all); lush worlds very little.
 ## energy: base energy/min once colonized. spice: spice/min once colonized.
 const PLANET_TYPES := {
-	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 0.0, "spice": 0.0, "spice_reserve": 200},
-	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 0.0, "spice": 0.0, "spice_reserve": 5000},
-	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 0.0, "spice": 0.0, "spice_reserve": 1200},
-	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 0.0, "spice": 4.8, "spice_reserve": 2000},
-	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy": 0.0, "spice": 0.0},
-	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 0.0, "spice": 0.0, "spice_reserve": 3000},
+	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy": 0.0, "spice_reserve": 200},
+	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy": 0.0, "spice_reserve": 5000},
+	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy": 0.0, "spice_reserve": 1200},
+	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy": 0.0, "spice_reserve": 2000},
+	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy": 0.0},
+	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy": 0.0, "spice_reserve": 3000},
 }
 const POP_PER_SIZE := 1000
 const START_POP := 100.0

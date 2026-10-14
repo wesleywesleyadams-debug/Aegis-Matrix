@@ -1042,11 +1042,10 @@ Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id),
 			first.add_theme_constant_override("outline_size", 6)
 
 func _planet_text(p: Planet) -> String:
-	var t := p.type_def()
 	if not p.is_habitable():
 		return "Uninhabitable gas giant · %s\nGas Skimmers mine it and haul the minerals to a starbase." % [("DEPLETED, refills in %ds" % int(p.depleted_timer)) if p.depleted_timer > 0.0 else "Mineral reserve %d" % p.amount]
 	if p.owner_id == 0:
-		return "Size %d · Pop cap %s%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), (" · Spice %.1f/min" % t["spice"]) if t["spice"] > 0.0 else ""]
+		return "Size %d · Pop cap %s · Spice reserve %d\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), int(p.spice_reserve)]
 	var lines := "Population %s / %s   (+%s/min)" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min)]
 	lines += "\nFood: grown %.1f/min · eaten %.1f/min · net %+.1f/min" % [p.food_made_per_min, p.food_eaten_per_min, p.food_made_per_min - p.food_eaten_per_min]
 	lines += "\nEnergy %.0f/min%s" % [p.energy_out, ("   Spice %.1f/min" % p.spice_out) if p.spice_out > 0.0 else ""]

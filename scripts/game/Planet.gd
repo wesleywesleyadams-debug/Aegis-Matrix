@@ -240,9 +240,12 @@ func _economy(dt: float) -> void:
 	food_made_per_min = 0.0 # farms add to this in _run_buildings
 	food_eaten_per_min = pop * Defs.FOOD_PER_POP_PER_MIN * g.mod(owner_id, "food_per_pop")
 	energy_out = 0.0 # only Power Plants add energy (see _run_buildings)
-	spice_out = t["spice"] * minf(1.0, pop / 1000.0 + 0.25)
+	# Spice is worked for, never trickled: a Spice Extractor on the reserve, a
+	# barge on a spice rock, a skimmer in a nebula. Buildings add to this in
+	# _run_buildings.
+	spice_out = 0.0
 	# Outputs are per minute; resources move per second.
-	g.add_resources(owner_id, {"food": food_made_per_min / Defs.PER_MIN * dt, "energy": energy_out / Defs.PER_MIN * dt, "spice": spice_out / Defs.PER_MIN * dt})
+	g.add_resources(owner_id, {"food": food_made_per_min / Defs.PER_MIN * dt, "energy": energy_out / Defs.PER_MIN * dt})
 	_run_buildings(dt)
 	# Every pop eats from the empire stockpile; spice covers any deficit.
 	var fed := g.pay_over_time(owner_id, {"food": food_eaten_per_min / Defs.PER_MIN}, dt) if pop > 0.0 else 1.0
