@@ -32,6 +32,13 @@ var _dead: bool = false
 
 func _ready() -> void:
 	add_to_group("entities")
+	_status = StatusOverlay.new()
+	_status.host = self
+	# top_level: the overlay keeps its own transform instead of inheriting the
+	# hull's, which is what makes the gauges immune to the ship turning.
+	_status.top_level = true
+	_status.z_index = 50
+	add_child(_status)
 
 func is_alive() -> bool:
 	return not _dead and is_inside_tree()
@@ -95,31 +102,48 @@ func _regen_shields(delta: float) -> void:
 			shield += gain * f
 			queue_redraw()
 
-## Selection brackets plus hull/shield bars, drawn in world space so they
-## scale with the pixel zoom like everything else.
-## Status arcs: a ring for the selection and three curved gauges above the
-## hull â innermost hull, then armor, then shields.
-##
-## Every point is built in WORLD space and converted with to_local(), rather
-## than leaning on draw_set_transform to undo the node's rotation, so the
-## gauges stay upright and sit above the ship no matter how it is pointing
-## (and no matter what transform anything else left behind).
+## The selection ring and the three curved layer gauges. They are NOT drawn by
+## this node: a canvas item's drawing is cached in its own local space, so
+## anything drawn here turns with the hull between redraws however the points
+## were computed, and a ship only redraws when it is hit or regenerates. They
+## are drawn instead by a child with top_level set, which keeps its own
+## transform: it is moved to the hull's position every frame and its rotation
+## is never touched, so the gauges are always level.
 const ARC_SPAN := deg_to_rad(95.0)
 const ARC_STEPS := 20
 
-## An arc of `radius` around this entity, centred on `mid` world-angle, as
-## local-space points ready for draw_polyline.
-func _arc_points(radius: float, mid: float, span: float, steps: int) -> PackedVector2Array:
+var _status: StatusOverlay
+
+## A level overlay above one entity.
+class StatusOverlay extends Node2D:
+	var host: SpaceEntity
+
+	func _process(_delta: float) -> void:
+		if not is_instance_valid(host):
+			return
+		# Position only. Rotation stays 0 for the life of the node, which is
+		# the whole point of drawing here rather than on the hull.
+		global_position = host.global_position
+		visible = host.visible
+
+	func _draw() -> void:
+		if is_instance_valid(host):
+			host.draw_status(self)
+
+## An arc of `radius` centred on the entity, as points in the overlay's own
+## (unrotated) space, ready for draw_polyline.
+func _arc_points(arc_radius: float, mid: float, span: float, steps: int) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	var from := mid - span / 2.0
 	for i in steps + 1:
 		var a: float = from + span * float(i) / float(steps)
 		# Left on fractional coordinates and drawn antialiased: snapping these
 		# to whole pixels made the curves step and look ragged.
-		pts.append(to_local(global_position + Vector2(cos(a), sin(a)) * radius))
+		pts.append(Vector2(cos(a), sin(a)) * arc_radius)
 	return pts
 
-func _draw() -> void:
+## Draws the gauges into `on` (the overlay), not into this node.
+func draw_status(on: CanvasItem) -> void:
 	var damaged := hp < max_hp or (max_shield > 0.0 and shield < max_shield) or armor < max_armor
 	if not selected and not damaged:
 		return
@@ -128,7 +152,7 @@ func _draw() -> void:
 		# A ring rather than corner brackets, so the marker reads the same
 		# whatever the hull under it is doing.
 		var col := Defs.team_color(owner_id)
-		draw_polyline(_arc_points(r, 0.0, TAU, 32), Color(col, 0.85), 1.0, true)
+		on.draw_polyline(_arc_points(r, 0.0, TAU, 32), Color(col, 0.85), 1.0, true)
 	# The gauges are for damage, not for decoration: an untouched ship shows
 	# nothing above it, selected or not.
 	if not damaged:
@@ -141,15 +165,21 @@ func _draw() -> void:
 		var full: float = gauge[1]
 		if full <= 0.0:
 			continue
-		draw_polyline(_arc_points(ring, up, ARC_SPAN, ARC_STEPS), Color(0, 0, 0, 0.7), 2.0, true)
+		on.draw_polyline(_arc_points(ring, up, ARC_SPAN, ARC_STEPS), Color(0, 0, 0, 0.7), 2.0, true)
 		var frac: float = clampf(gauge[0] / full, 0.0, 1.0)
 		if frac > 0.0:
 			# Centred on the same start edge, so a part-full gauge grows from
 			# the left rather than from the middle.
 			var span: float = ARC_SPAN * frac
 			var mid: float = up - ARC_SPAN / 2.0 + span / 2.0
-			draw_polyline(_arc_points(ring, mid, span, maxi(2, int(ARC_STEPS * frac))), gauge[2], 2.0, true)
+			on.draw_polyline(_arc_points(ring, mid, span, maxi(2, int(ARC_STEPS * frac))), gauge[2], 2.0, true)
 		ring += 2.2
+
+## Everything that moves a layer, or the selection, calls queue_redraw() on
+## the entity; that is forwarded to the overlay that actually draws them.
+func _draw() -> void:
+	if _status != null:
+		_status.queue_redraw()
 
 ## A construction site that cannot pay says so on the map, not just in the
 ## selection panel: a pulsing amber tag above the scaffold.
