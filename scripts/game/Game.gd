@@ -1690,6 +1690,11 @@ func _enter_dev_capture() -> void:
 			spawn_ship(k, player_id, c + Vector2(-260, -40) + off).order_attack_move(c + Vector2(200, 0))
 			spawn_ship(k, foe, c + Vector2(160, -40) + off).order_attack_move(c - Vector2(200, 0))
 		center_on(c)
+		if OS.get_environment("SL_SELECT_FLEET") != "":
+			# Dev: select the whole fleet a few seconds in, so the panel can be
+			# checked once ships have taken damage.
+			get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) * 0.6).timeout.connect(func():
+				_set_selection(get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == player_id and s.is_alive()), false))
 		if OS.get_environment("SL_FLARE_TEST") != "":
 			spawn_ship("corvette", player_id, Vector2(60, 0)).order_stop()
 			resources[player_id]["minerals"] = 2000.0

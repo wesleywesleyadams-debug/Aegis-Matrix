@@ -37,6 +37,8 @@ var _research_button: Button
 var _research_fill: ColorRect
 var _clock: Label
 var _sel_body: VBoxContainer
+## The per-ship condition tiles of a multi-ship selection (see _add_fleet_tiles).
+var _fleet_tiles: Array = []
 var _messages: VBoxContainer
 var _overlay: Control
 var _pause: Control
@@ -714,9 +716,93 @@ func _rebuild_selection() -> void:
 		box.add_child(_label("×%d" % counts[k]))
 		grid.add_child(box)
 	_sel_body.add_child(grid)
+	_add_fleet_tiles(sel)
 	if sel.any(func(e): return e is Ship and e.def["role"] == "constructor"):
 		_add_constructor_buttons()
 	_add_refit_buttons(sel)
+
+## How many ships of a selection get their own condition tile before the rest
+## are summarised. A wall of tiles stops being readable long before the panel
+## runs out of room.
+const FLEET_TILES_MAX := 24
+## The box one of those tiles occupies, sprite and bars together.
+const FLEET_TILE := Vector2(46, 44)
+
+## One selected ship: its sprite with a shield/armor/hull bar under it, so a
+## glance at the panel says which ships in the fleet are hurt. Live: the HUD
+## repaints them on its own refresh tick.
+class FleetTile extends Control:
+	var host: SpaceEntity
+	const BAR_H := 3.0
+	const GAP := 1.0
+	const BARS_H := 3.0 * (BAR_H + GAP)
+
+	func _draw() -> void:
+		if not is_instance_valid(host):
+			return
+		var w := size.x - 4.0
+		var y := size.y - BARS_H
+		for gauge in [[host.shield, host.max_shield, Defs.LAYER_COLORS["shield"]],
+				[host.armor, host.max_armor, Defs.LAYER_COLORS["armor"]],
+				[host.hp, host.max_hp, Defs.LAYER_COLORS["hull"]]]:
+			var full: float = gauge[1]
+			if full <= 0.0:
+				# No such layer on this hull: leave the row empty rather than
+				# draw a bar that can never fill.
+				y += BAR_H + GAP
+				continue
+			draw_rect(Rect2(2.0, y, w, BAR_H), Color(0, 0, 0, 0.75))
+			var frac: float = clampf(gauge[0] / full, 0.0, 1.0)
+			if frac > 0.0:
+				draw_rect(Rect2(2.0, y, w * frac, BAR_H), gauge[2])
+			y += BAR_H + GAP
+
+## A tile per selected ship (up to FLEET_TILES_MAX), so the panel shows the
+## condition of the fleet and not just its composition.
+func _add_fleet_tiles(sel: Array) -> void:
+	_fleet_tiles.clear()
+	var ships: Array = sel.filter(func(e): return e is Ship and e.owner_id == game.player_id)
+	if ships.size() < 2:
+		return
+	# Worst first: the ships that need the player's attention lead.
+	ships.sort_custom(func(a, b): return _condition(a) < _condition(b))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	for e in ships.slice(0, FLEET_TILES_MAX):
+		var tile := FleetTile.new()
+		tile.host = e
+		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Every tile is the same box whatever the hull, so the bars are all
+		# the same length and can be compared down the row at a glance.
+		tile.custom_minimum_size = FLEET_TILE
+		tile.clip_contents = true
+		tile.tooltip_text = (e as Ship).def["name"]
+		var hold := CenterContainer.new()
+		hold.set_anchors_preset(Control.PRESET_FULL_RECT)
+		hold.offset_bottom = -FleetTile.BARS_H - 1.0
+		hold.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# A big hull (an X-class cruiser, a carrier) is drawn at half scale so
+		# it fits the same tile as a corvette instead of spilling over its
+		# neighbours.
+		var art_name := _ship_art((e as Ship).ship_type)
+		var tex := Defs.tex(art_name)
+		var wide: bool = tex != null and tex.get_width() * 2.0 / Defs.art_div(art_name) > FLEET_TILE.x - 4.0
+		hold.add_child(_icon(art_name, 1 if wide else 2))
+		tile.add_child(hold)
+		row.add_child(tile)
+		_fleet_tiles.append(tile)
+	_sel_body.add_child(row)
+	if ships.size() > FLEET_TILES_MAX:
+		_sel_body.add_child(_label("+%d more" % (ships.size() - FLEET_TILES_MAX), DIM, 13))
+
+## A ship's condition as one number (0-1), worst layer first: hull decides,
+## with armor and shields breaking ties.
+func _condition(e: SpaceEntity) -> float:
+	var hull: float = e.hp / maxf(e.max_hp, 1.0)
+	var armor: float = e.armor / maxf(e.max_armor, 1.0) if e.max_armor > 0.0 else 1.0
+	var shield: float = e.shield / maxf(e.max_shield, 1.0) if e.max_shield > 0.0 else 1.0
+	return hull * 100.0 + armor * 10.0 + shield
 
 func _entity_icon(e: SpaceEntity, px: int) -> Control:
 	var tex_name := "starbase"
@@ -928,6 +1014,9 @@ func _build_planet_panel(p: Planet) -> void:
 
 func _update_selection_info() -> void:
 	_refresh_ability_button()
+	for t in _fleet_tiles:
+		if is_instance_valid(t):
+			t.queue_redraw()
 	if _info_label == null:
 		return
 	var sel: Array = game.selection.filter(func(e): return is_instance_valid(e))
