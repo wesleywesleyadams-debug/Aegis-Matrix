@@ -25,9 +25,12 @@ var _spin: float
 
 func _ready() -> void:
 	$Sprite.texture = Defs.tex(variant)
-	radius = $Sprite.texture.get_width() / 2.0
+	# Rock art is drawn at Defs.ART_SCALE, so its world size (and the reserve
+	# that size implies) comes from the texture divided by that.
+	$Sprite.scale = Vector2.ONE / Defs.ART_SCALE
+	radius = $Sprite.texture.get_width() / Defs.ART_SCALE / 2.0
 	resource = "spice" if variant.begins_with("spice") else "minerals"
-	var w: float = $Sprite.texture.get_width()
+	var w: float = $Sprite.texture.get_width() / Defs.ART_SCALE
 	var per_px2: float = Defs.ASTEROID_SPICE_PER_PX2 if resource == "spice" else Defs.ASTEROID_MINERALS_PER_PX2
 	max_amount = int(round(w * w * per_px2 / 10.0)) * 10
 	amount = max_amount

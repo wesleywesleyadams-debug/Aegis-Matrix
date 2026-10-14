@@ -19,6 +19,18 @@ const PER_MIN := 60.0
 ## their world size while carrying twice the detail.
 const ART_SCALE := 2.0
 
+## Sprites drawn at ART_SCALE: anything the game must shrink back down when
+## it draws it, in the world or in a panel.
+const ART_SCALED := ["ship_", "starbase", "asteroid", "asteroid_big", "debris", "spice_"]
+
+## How much to divide a sprite by when drawing it: ART_SCALE for the art that
+## is generated oversized, 1 for everything else.
+static func art_div(name: String) -> float:
+	for p in ART_SCALED:
+		if name.begins_with(p):
+			return ART_SCALE
+	return 1.0
+
 const RESOURCES: Array[String] = ["food", "minerals", "energy", "spice"]
 const RESOURCE_NAMES := {"food": "Food", "minerals": "Minerals", "energy": "Energy", "spice": "Spice"}
 const RESOURCE_COLORS := {"food": Color("8fe060"), "minerals": Color("3fd6b0"), "energy": Color("ffd46b"), "spice": Color("ff9a2e")}

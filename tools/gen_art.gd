@@ -297,7 +297,9 @@ func _gen_ships() -> void:
 		[7, 2], [-1.0, 0.0], [6])
 
 func _gen_starbase() -> void:
-	var s := 56
+	# Drawn at S times its design size like the ships, so the ring seams, the
+	# spokes and the hub shading all resolve on the finer grid.
+	var s := 56 * S
 	var img := _img(s, s)
 	var tim := _img(s, s)
 	var c := Vector2(s / 2.0, s / 2.0)
@@ -310,35 +312,36 @@ func _gen_starbase() -> void:
 			var draw := false
 			var v := lit
 			# Outer habitat ring.
-			if r >= 19.0 and r <= 24.0:
+			if r >= 19.0 * S and r <= 24.0 * S:
 				draw = true
-				v = lit * 0.8 + (1.0 - absf(r - 21.5) / 2.5) * 0.25
+				v = lit * 0.8 + (1.0 - absf(r - 21.5 * S) / (2.5 * S)) * 0.25
 				# Segment seams.
 				if fposmod(ang * 12.0 / TAU, 1.0) < 0.12:
 					v -= 0.3
 			# Spokes.
-			elif r < 19.0 and r > 8.0 and fposmod(ang + PI / 4.0, PI / 2.0) < 0.22:
+			elif r < 19.0 * S and r > 8.0 * S and fposmod(ang + PI / 4.0, PI / 2.0) < 0.22:
 				draw = true
 				v = lit * 0.6
 			# Hub.
-			elif r <= 8.5:
+			elif r <= 8.5 * S:
 				draw = true
-				v = lit * 0.7 + (1.0 - r / 8.5) * 0.4
+				v = lit * 0.7 + (1.0 - r / (8.5 * S)) * 0.4
 			if draw:
 				img.set_pixel(x, y, HULL[_dither(clampf(v, 0, 1), x, y, HULL.size())])
 			# Team-colored beacon pads on the ring at 8 points.
-			if r >= 20.0 and r <= 23.0 and fposmod(ang * 8.0 / TAU + 0.5, 1.0) < 0.22 and fposmod(ang * 8.0 / TAU + 0.5, 1.0) > 0.0:
+			if r >= 20.0 * S and r <= 23.0 * S and fposmod(ang * 8.0 / TAU + 0.5, 1.0) < 0.22 and fposmod(ang * 8.0 / TAU + 0.5, 1.0) > 0.0:
 				tim.set_pixel(x, y, TEAM[_dither(clampf(lit + 0.3, 0, 1), x, y, TEAM.size())])
 			# Hub team core.
-			if r <= 3.5:
-				tim.set_pixel(x, y, TEAM[3 if r < 2 else 2])
+			if r <= 3.5 * S:
+				tim.set_pixel(x, y, TEAM[3 if r < 2 * S else 2])
 	# Docking arms sticking out on the diagonals.
 	for k in 4:
 		var dir := Vector2.from_angle(PI / 4.0 + k * PI / 2.0)
-		for t in range(24, 27):
+		for t in range(24 * S, 27 * S):
 			var q := c + dir * t
-			img.set_pixel(int(q.x), int(q.y), HULL[3])
-			img.set_pixel(int(q.x + 1), int(q.y), HULL[2])
+			for w in S:
+				img.set_pixel(int(q.x), int(q.y) + w, HULL[3])
+				img.set_pixel(int(q.x + 1), int(q.y) + w, HULL[2])
 	_outline(img)
 	_save(img, "starbase")
 	_save(tim, "starbase_team")
@@ -494,11 +497,11 @@ func _rock(size: int, seed_v: int, mineral: bool, glint: Array = MINERAL) -> Ima
 				continue
 			var nrm: Vector2 = p / maxf(rr, 0.01)
 			var l := clampf(0.55 - nrm.dot(-light) * 0.5 + (1.0 - nrm.length()) * 0.2, 0, 1)
-			var crater := noise.get_noise_2d(x * 3.1, y * 3.1)
+			var crater := noise.get_noise_2d(x * 3.1 / S, y * 3.1 / S)
 			if crater > 0.35:
 				l -= 0.25
 			var c: Color = _ramp_pick(ROCK, clampf(l, 0, 1), x, y)
-			if mineral and noise.get_noise_2d(x * 2.3 + 40.0, y * 2.3) > 0.32:
+			if mineral and noise.get_noise_2d(x * 2.3 / S + 40.0, y * 2.3 / S) > 0.32:
 				c = glint[clampi(int(l * 3.0), 0, 2)]
 			img.set_pixel(x, y, c)
 	_outline(img, Color("07060f"))
@@ -506,13 +509,13 @@ func _rock(size: int, seed_v: int, mineral: bool, glint: Array = MINERAL) -> Ima
 
 func _gen_asteroids() -> void:
 	for i in 4:
-		_save(_rock(16, 100 + i, true), "asteroid_%d" % i)
+		_save(_rock(16 * S, 100 + i, true), "asteroid_%d" % i)
 	for i in 2:
-		_save(_rock(26, 200 + i, true), "asteroid_big_%d" % i)
+		_save(_rock(26 * S, 200 + i, true), "asteroid_big_%d" % i)
 	for i in 3:
-		_save(_rock(10, 300 + i, false), "debris_%d" % i)
+		_save(_rock(10 * S, 300 + i, false), "debris_%d" % i)
 	for i in 2:
-		_save(_rock(18, 400 + i, true, SPICE), "spice_%d" % i)
+		_save(_rock(18 * S, 400 + i, true, SPICE), "spice_%d" % i)
 
 # ---------------------------------------------------------------- fx
 

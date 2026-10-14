@@ -30,6 +30,9 @@ var _cooldown: float = 0.0
 
 func _ready() -> void:
 	team_sprite.modulate = Defs.team_color(owner_id)
+	# Art is drawn at Defs.ART_SCALE; shrink it back to its world size.
+	base_sprite.scale = Vector2.ONE / Defs.ART_SCALE
+	team_sprite.scale = base_sprite.scale
 	if Engine.is_editor_hint():
 		return
 	super._ready()

@@ -131,7 +131,7 @@ func _icon(name: String, scale_px: int = 2) -> TextureRect:
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	# Ship art is drawn at Defs.ART_SCALE, so it shows at a matching fraction
 	# of the nominal scale and keeps the size icons had before.
-	var art_div: float = Defs.ART_SCALE if name.begins_with("ship_") else 1.0
+	var art_div: float = Defs.art_div(name)
 	tr.custom_minimum_size = tr.texture.get_size() * scale_px / art_div
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
