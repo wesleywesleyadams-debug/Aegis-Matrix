@@ -113,11 +113,11 @@ const BASE_SHIPS := {
 		"hp": 520.0, "armor": 720.0, "shield": 300.0, "speed": 38.0, "radius": 32.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 100.0, "upkeep": 72.0,
 		"weapon": "torpedo", "damage": 30.0, "cooldown": 2.0, "range": 260.0, "sensor": 460.0,
-		"guns": 3, "bays": 6,
+		"guns": 2, "bays": 6,
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
 		# stay off the bearing and flank it.
-		"turret_rate": 0.9, "turrets": [[0.62, 0.0], [0.38, -0.30], [0.38, 0.30]],
+		"turret_rate": 0.5, "turrets": [[0.68, 0.0], [0.32, 0.0]],
 	},
 	"scout": {
 		"name": "Scout", "role": "scout",

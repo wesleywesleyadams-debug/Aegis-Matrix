@@ -2327,6 +2327,9 @@ func _enter_dev_capture() -> void:
 			cv.hp = cv.max_hp * 0.3
 			cv.armor = 0.0
 			cv.order_dock(c9)
+		# An enemy off the bow so the turrets have something to swing onto.
+		var foe9 := spawn_ship("corvette", 2 if player_id == 1 else 1, Vector2(-200, -220))
+		foe9.order_stop()
 		center_on(Vector2(-200, 0))
 	if OS.get_environment("SL_SHOT_OPEN") == "resbtn":
 		# Dev: the research button while a project is running (green glow).

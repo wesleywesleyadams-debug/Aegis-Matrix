@@ -112,6 +112,7 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("ships")
 	def = Defs.SHIPS[ship_type]
+	_apply_def_visuals()
 	display_name = Game.instance.ship_name(owner_id, ship_type)
 	refresh_stats()
 	hp = max_hp
@@ -137,9 +138,6 @@ func _apply_visuals() -> void:
 	team.scale = hull.scale
 	_apply_mark()
 	_rebuild_flames(hull.texture, hull.scale)
-	_rebuild_turrets()
-	if def.has("bays") and bay_craft.is_empty():
-		bay_craft.resize(int(def["bays"]))
 
 ## Hull marks (Defs.HULL_MARKS) are rank: the hull keeps the one shape its
 ## class is built in, and research shows as chevrons laid over the nose â
@@ -216,6 +214,14 @@ func weapon_range() -> float:
 ## Turret sprites for a hull that has mounts: positions are fractions of the
 ## sprite (x along the hull from the stern, y off the keel), so they sit
 ## right whatever the mark's shape.
+## Fittings that come from the def rather than the sprite: turret mounts and
+## hangar bays. Called once `def` is known, since _ready builds the visuals
+## before it assigns one.
+func _apply_def_visuals() -> void:
+	_rebuild_turrets()
+	if def.has("bays") and bay_craft.size() != int(def["bays"]):
+		bay_craft.resize(int(def["bays"]))
+
 func _rebuild_turrets() -> void:
 	for t in _turret_sprites:
 		if is_instance_valid(t):
@@ -531,7 +537,9 @@ func _physics_process(delta: float) -> void:
 				var berth: Vector2 = dock_carrier.global_position
 				if slot >= 0:
 					berth += dock_carrier.bay_offset(slot).rotated(dock_carrier.rotation)
-				if global_position.distance_to(berth) <= radius + 4.0 and slot >= 0:
+				# Generous: the cradle is a point, and a ship nosing into it is
+				# being pushed off by the crowd-separation force.
+				if global_position.distance_to(berth) <= radius + 10.0 and slot >= 0:
 					dock_slot = slot
 					dock_carrier.bay_craft[slot] = self
 					state = State.DOCKED
@@ -690,7 +698,10 @@ func _physics_process(delta: float) -> void:
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)
-	_steer(desired + _separation(), delta, face_target)
+	# A ship on its final approach to a bay ignores the crowding force, or it
+	# would be shouldered off the cradle it is trying to sit in.
+	var crowd := Vector2.ZERO if state == State.DOCK_GO or state == State.DOCKED else _separation()
+	_steer(desired + crowd, delta, face_target)
 
 ## Desired velocity toward `goal`, slowing inside the braking radius.
 ## `stop_at` leaves a gap (e.g. to hover beside an asteroid).
@@ -970,6 +981,7 @@ func _become(new_type: String) -> void:
 	var sh_f := shield / max_shield if max_shield > 0.0 else 1.0
 	ship_type = new_type
 	def = Defs.SHIPS[new_type]
+	_apply_def_visuals()
 	display_name = Game.instance.ship_name(owner_id, ship_type)
 	refresh_stats()
 	hp = max_hp * hp_f
