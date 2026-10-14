@@ -66,6 +66,8 @@ var _mine_timer: float = 0.0
 var _mine_carry: float = 0.0
 var _acquire_timer: float = 0.0
 var _flame_timer: float = 0.0
+## One Sprite2D per thruster, built from the hull by _rebuild_flames().
+var _flames: Array[Sprite2D] = []
 
 @onready var hull_sprite: Sprite2D = $Hull
 @onready var team_sprite: Sprite2D = $Team
@@ -92,7 +94,6 @@ func _apply_visuals() -> void:
 		return
 	var hull: Sprite2D = get_node("Hull")
 	var team: Sprite2D = get_node("Team")
-	var flame: Sprite2D = get_node("Flame")
 	# A warship's mark is its hull shape, so the mark picks the sprite.
 	var art: String = "ship_" + ship_type + _mark_suffix()
 	hull.texture = Defs.tex(art)
@@ -103,9 +104,7 @@ func _apply_visuals() -> void:
 	hull.scale = Vector2.ONE / Defs.ART_SCALE
 	team.scale = hull.scale
 	_apply_mark()
-	# Flame sits just behind the stern.
-	flame.scale = hull.scale
-	flame.position = Vector2(-hull.texture.get_width() / Defs.ART_SCALE / 2.0 - 2.0, 0)
+	_rebuild_flames(hull.texture, hull.scale)
 
 ## Hull marks (Defs.HULL_MARKS) are built into the hull: a warship is the
 ## shape of its letter, from the H-class's twin nacelles through the Y-class
@@ -138,8 +137,59 @@ func _refresh_hull_art() -> void:
 	team.texture = Defs.tex(art + "_team")
 	hull.scale = Vector2.ONE / Defs.ART_SCALE
 	team.scale = hull.scale
-	var flame: Sprite2D = get_node("Flame")
-	flame.position = Vector2(-tex.get_width() / Defs.ART_SCALE / 2.0 - 2.0, 0)
+	_rebuild_flames(tex, hull.scale)
+
+## One flame per thruster, found from the hull art itself: the stern column
+## is scanned for runs of solid pixels and a flame is placed behind the
+## middle of each. An H-class gets one per nacelle, a Y-class one per prong,
+## a barge one on its keel â and nothing has to be told where its engines
+## are when the art changes.
+func _rebuild_flames(tex: Texture2D, art_scale: Vector2) -> void:
+	for f in _flames:
+		if is_instance_valid(f):
+			f.queue_free()
+	_flames.clear()
+	if not has_node("Flame"):
+		return
+	var tmpl: Sprite2D = get_node("Flame")
+	tmpl.visible = false
+	if tex == null:
+		return
+	var img := tex.get_image()
+	var w := img.get_width()
+	var h := img.get_height()
+	# The first column carrying any hull is the stern; step one in from it so
+	# a run is the member itself rather than its outline.
+	var sx := -1
+	for x in w:
+		for y in h:
+			if img.get_pixel(x, y).a > 0.0:
+				sx = x
+				break
+		if sx >= 0:
+			break
+	if sx < 0:
+		return
+	sx = mini(sx + 1, w - 1)
+	var centers: Array[float] = []
+	var start := -1
+	for y in h:
+		var is_solid: bool = img.get_pixel(sx, y).a > 0.0
+		if is_solid and start < 0:
+			start = y
+		elif not is_solid and start >= 0:
+			centers.append((start + y - 1) / 2.0)
+			start = -1
+	if start >= 0:
+		centers.append((start + h - 1) / 2.0)
+	var back: float = -(w / 2.0) * art_scale.x - 2.0
+	for c in centers:
+		var f: Sprite2D = tmpl.duplicate()
+		f.scale = art_scale
+		f.position = Vector2(back, (c - h / 2.0) * art_scale.y)
+		f.visible = false
+		add_child(f)
+		_flames.append(f)
 
 func is_miner() -> bool:
 	return def.get("role", "") in ["miner", "skimmer"]
@@ -579,10 +629,12 @@ func _steer(desired: Vector2, delta: float, face: SpaceEntity) -> void:
 		rotation = rotate_toward(rotation, face_dir.angle(), turn_rate * delta)
 
 	var thrusting := velocity.length() > 12.0
-	flame_sprite.visible = thrusting
 	if thrusting:
 		_flame_timer += delta
-		flame_sprite.frame = int(_flame_timer * 12.0) % 2
+	var frame := int(_flame_timer * 12.0) % 2
+	for f in _flames:
+		f.visible = thrusting
+		f.frame = frame
 
 func _draw() -> void:
 	if Engine.is_editor_hint():

@@ -1324,13 +1324,12 @@ func _mark_parts(mark: int, w: int, h: int) -> Array:
 	var ball: Array = [[cx - 3, cx, 1.6, 3.1], [cx, cx + 3, 3.1, 1.6]]
 	match mark:
 		1:
-			# Y: a tail boom forking into two prongs, the cockpit at the split
-			# and a short nose poking out between the prongs.
+			# Y: a trunk running forward to the nose, with two prongs trailing
+			# aft from it and the cockpit at the base of the nose.
 			return [
-				[1, cx + 1, 2.6, 2.2],
-				[int(w * 0.45), w, 1.9, 0.9, 0.0, a],
+				[1, int(w * 0.58), 0.9, 1.9, a, 0.0],
+				[int(w * 0.34), w, 2.6, 0.5],
 				ball[0], ball[1],
-				[cx + 2, int(w * 0.86), 1.9, 0.7],
 			]
 		2:
 			# X: four wings crossing at a hub, the pilot set back at the
@@ -1373,8 +1372,11 @@ func _gen_hull_marks() -> void:
 			# carry the letter, so the shape reads in the owner's color.
 			var a: float = h * 0.30
 			var team_fn := func(_x: int, dy: float) -> bool: return absf(dy) > a - 2.0
+			# Engines sit on the members that reach the stern: the nacelles of
+			# an H, the prongs of a Y, the wings of an X, the legs of an A.
+			var thrusters: Array = [-a, -a + 0.8, a - 0.8, a]
 			_ship(cls + MARK_SUFFIX[mark], w, h, _mark_parts(mark, w, h), team_fn,
-				[_mark_cockpit(mark, w) - 1, 3], d["engines"], d["panels"])
+				[_mark_cockpit(mark, w) - 1, 3], thrusters, d["panels"])
 
 # ---------------------------------------------------------------- layer art
 
