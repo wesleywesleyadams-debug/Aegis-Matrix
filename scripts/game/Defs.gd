@@ -380,6 +380,15 @@ static var SHIPS: Dictionary = _with_variants()
 const HARVEST_SPICE_MULT := 0.4
 const HARVEST_NEBULA_MULT := 0.6
 
+## The sprite suffix for a mark: mark 0 keeps the plain class name, so a
+## ship's art is "ship_<type>" plus this (see WARSHIP_ART in tools/gen_art.gd).
+## The hull itself is built in the shape of the mark's letter, which is why a
+## mark changes the sprite rather than adding a decal to it.
+const MARK_SUFFIX := ["", "_m1", "_m2", "_m3"]
+
+static func mark_suffix(level: int) -> String:
+	return MARK_SUFFIX[clampi(level, 0, MARK_SUFFIX.size() - 1)]
+
 ## Which classes have a mark line (see HULL_MARKS).
 const MARK_LINES := ["corvette", "destroyer", "cruiser"]
 

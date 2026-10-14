@@ -93,8 +93,10 @@ func _apply_visuals() -> void:
 	var hull: Sprite2D = get_node("Hull")
 	var team: Sprite2D = get_node("Team")
 	var flame: Sprite2D = get_node("Flame")
-	hull.texture = Defs.tex("ship_" + ship_type)
-	team.texture = Defs.tex("ship_" + ship_type + "_team")
+	# A warship's mark is its hull shape, so the mark picks the sprite.
+	var art: String = "ship_" + ship_type + _mark_suffix()
+	hull.texture = Defs.tex(art)
+	team.texture = Defs.tex(art + "_team")
 	team.modulate = Defs.team_color(owner_id)
 	# The art is drawn at Defs.ART_SCALE and shown at 1/ART_SCALE, so a ship
 	# covers the same world space as before at twice the detail.
@@ -105,22 +107,39 @@ func _apply_visuals() -> void:
 	flame.scale = hull.scale
 	flame.position = Vector2(-hull.texture.get_width() / Defs.ART_SCALE / 2.0 - 2.0, 0)
 
-## Hull marks (Defs.HULL_MARKS) show as a structural frame over the hull in
-## the shape of the mark's letter: an H-class spaceframe, a Y-class fork, an
-## X-class cross, an A-class brace. Every warship wears one from the start,
-## and one overlay per class covers all of that class's variants.
-func _apply_mark() -> void:
-	if not has_node("Mark"):
-		return
-	var mk: Sprite2D = get_node("Mark")
+## Hull marks (Defs.HULL_MARKS) are built into the hull: a warship is the
+## shape of its letter, from the H-class's twin nacelles through the Y-class
+## fork and the X-class cross to the A-class's braced delta. Refitting to a
+## variant keeps the shape and only changes the markings on it.
+func _mark_suffix() -> String:
 	var cls: String = def.get("base", ship_type)
-	var level := Game.instance.mark_level(owner_id, ship_type) if Game.instance else 0
-	if not Defs.MARK_LINES.has(cls):
-		mk.visible = false
+	if not Defs.MARK_LINES.has(cls) or Game.instance == null:
+		return ""
+	return Defs.mark_suffix(Game.instance.mark_level(owner_id, ship_type))
+
+func _apply_mark() -> void:
+	# The old overlay node is kept (saves and the scene still carry it) but a
+	# mark is a different hull now, so nothing is drawn over the ship.
+	if has_node("Mark"):
+		(get_node("Mark") as Sprite2D).visible = false
+	_refresh_hull_art()
+
+## Re-points the hull and team sprites at this ship's current mark.
+func _refresh_hull_art() -> void:
+	if not has_node("Hull"):
 		return
-	mk.texture = Defs.tex("ship_mark_%s_%d" % [cls, clampi(level, 0, 3)])
-	mk.scale = Vector2.ONE / Defs.ART_SCALE
-	mk.visible = mk.texture != null
+	var hull: Sprite2D = get_node("Hull")
+	var team: Sprite2D = get_node("Team")
+	var art: String = "ship_" + ship_type + _mark_suffix()
+	var tex := Defs.tex(art)
+	if tex == null or hull.texture == tex:
+		return
+	hull.texture = tex
+	team.texture = Defs.tex(art + "_team")
+	hull.scale = Vector2.ONE / Defs.ART_SCALE
+	team.scale = hull.scale
+	var flame: Sprite2D = get_node("Flame")
+	flame.position = Vector2(-tex.get_width() / Defs.ART_SCALE / 2.0 - 2.0, 0)
 
 func is_miner() -> bool:
 	return def.get("role", "") in ["miner", "skimmer"]

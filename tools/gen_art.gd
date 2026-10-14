@@ -51,20 +51,20 @@ func _init() -> void:
 	# ART_ONLY=ships regenerates just the ship sprites.
 	if OS.get_environment("ART_ONLY") == "ships":
 		_gen_ships()
+		_gen_hull_marks()
 		_gen_job_ships()
 		_gen_variants()
 		_gen_depot()
 		_gen_mining_station()
-		_gen_hull_marks()
 		_gen_layer_art()
 		quit()
 		return
 	_gen_ships()
+	_gen_hull_marks()
 	_gen_job_ships()
 	_gen_variants()
 	_gen_depot()
 	_gen_mining_station()
-	_gen_hull_marks()
 	_gen_layer_art()
 	_gen_starbase()
 	_gen_planets()
@@ -161,11 +161,15 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 	var mask := {}
 	var shade := {}
 	for part in parts:
-		var off: float = (part[4] if part.size() > 4 else 0.0) * S
-		for sgn in ([1.0, -1.0] if off != 0.0 else [1.0]):
+		var off0: float = (part[4] if part.size() > 4 else 0.0) * S
+		# A sixth value sweeps the offset along the part, which is what makes an
+		# arm diverge or two arms cross instead of running parallel.
+		var off1: float = (part[5] if part.size() > 5 else part[4] if part.size() > 4 else 0.0) * S
+		for sgn in ([1.0, -1.0] if off0 != 0.0 or off1 != 0.0 else [1.0]):
 			for x in range(int(part[0]) * S, int(part[1]) * S):
 				var t: float = (x + 0.5 - part[0] * S) / maxf((part[1] - part[0]) * S, 1.0)
 				var hw: float = lerpf(part[2], part[3], t) * S
+				var off: float = lerpf(off0, off1, t)
 				for y in h * S:
 					var dy: float = y + 0.5 - cy - off * sgn
 					if absf(dy) <= hw:
@@ -237,21 +241,8 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 	_save(tim, "ship_" + name + "_team")
 
 func _gen_ships() -> void:
-	# Corvette: swept-wing interceptor.
-	_ship("corvette", 18, 13,
-		[[3, 18, 2.5, 0.4], [2, 10, 6.5, 1.0], [0, 4, 2.0, 2.0]],
-		func(x: int, dy: float) -> bool: return absf(dy) > 4.0,
-		[11, 3], [-1.0, 0.0], [7])
-	# Destroyer: long gun spine with mid wings.
-	_ship("destroyer", 28, 15,
-		[[2, 28, 2.5, 0.6], [4, 20, 4.0, 2.5], [6, 13, 7.5, 3.0], [0, 5, 3.0, 3.0], [18, 26, 1.0, 0.5, 3.5]],
-		func(x: int, dy: float) -> bool: return absf(dy) > 5.0 or (x >= 14 and x <= 15 and absf(dy) < 3.0),
-		[16, 3], [-2.0, -1.0, 0.0, 1.0], [10, 14])
-	# Cruiser: capital hull, broad hangar wings, twin prow.
-	_ship("cruiser", 38, 23,
-		[[3, 32, 6.0, 4.0], [30, 38, 3.5, 0.6], [6, 17, 11.5, 5.0], [0, 5, 5.0, 5.0], [24, 34, 1.2, 0.6, 5.5], [10, 15, 2.0, 2.0, 9.0]],
-		func(x: int, dy: float) -> bool: return absf(dy) > 8.0 or (x >= 21 and x <= 23),
-		[26, 4], [-4.0, -3.0, -1.0, 0.0, 2.0, 3.0], [9, 13, 18, 28])
+	# The three warship classes are built per mark, in the shape of their
+	# letter, by _gen_hull_marks().
 	# Colony ship: fat habitat drum with a small bridge.
 	_ship("colony", 18, 15,
 		[[2, 14, 4.0, 4.0], [4, 11, 6.5, 6.5], [13, 18, 2.5, 0.6], [0, 3, 2.0, 2.0]],
@@ -1109,14 +1100,17 @@ const VARIANT_BASES := {
 }
 
 func _gen_variants() -> void:
+	# Every variant exists for every mark, since a refit keeps the hull the
+	# ship was built with and only changes its markings.
 	for base in VARIANT_BASES:
-		var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s.png" % base))
-		var team := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s_team.png" % base))
-		for v in VARIANT_BASES[base]:
-			var tim := team.duplicate() as Image
-			_mark_variant(hull, tim, v)
-			_save(hull.duplicate() as Image, "ship_%s_%s" % [v, base])
-			_save(tim, "ship_%s_%s_team" % [v, base])
+		for suffix in MARK_SUFFIX:
+			var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s%s.png" % [base, suffix]))
+			var team := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s%s_team.png" % [base, suffix]))
+			for v in VARIANT_BASES[base]:
+				var tim := team.duplicate() as Image
+				_mark_variant(hull, tim, v)
+				_save(hull.duplicate() as Image, "ship_%s_%s%s" % [v, base, suffix])
+				_save(tim, "ship_%s_%s%s_team" % [v, base, suffix])
 
 ## Variant markings go on the TEAM layer, so they always show the owner's
 ## color. That means the pattern alone has to say which variant it is:
@@ -1257,86 +1251,72 @@ func _gen_mining_station() -> void:
 ## adds a layer of finish — a bright top rail, then a matching keel line and
 ## nose studs, then a full rim and lit engine blocks. One overlay per class
 ## serves every variant of it, since they share a silhouette.
-## One frame colour per mark (H, Y, X, A): plain steel, then pale blue, gold
-## and finally a warm white, so a later mark reads richer at a glance.
-const MARK_FRAME := [Color("9aa8c8"), Color("dbe6ff"), Color("ffc24a"), Color("fff6d8")]
-const MARK_TRIM := [Color("dbe6ff"), Color("ffc24a"), Color("fff6d8")]
+
+## The warship hulls, one silhouette per mark. A mark is not a decal: the
+## ship is BUILT in the shape of its letter, read nose-forward â
+##   H-class: two long nacelles either side of a central body, joined by a
+##            spar amidships (a TIE-fighter stance)
+##   Y-class: a single tail boom forking into two bow prongs
+##   X-class: four wings crossing at a central hub
+##   A-class: a bow apex with two legs trailing aft, braced across
+## Mark 0 keeps the plain class name ("ship_corvette"), so everything that
+## refers to a class by name gets the H-class hull.
+const MARK_SUFFIX := ["", "_m1", "_m2", "_m3"]
+
+## w, h and the detail positions for each warship class.
+const WARSHIP_ART := {
+	"corvette": {"w": 18, "h": 15, "glass": 11, "engines": [-1.0, 0.0], "panels": [7]},
+	"destroyer": {"w": 28, "h": 19, "glass": 16, "engines": [-2.0, -1.0, 0.0, 1.0], "panels": [10, 14]},
+	"cruiser": {"w": 38, "h": 25, "glass": 26, "engines": [-4.0, -3.0, -1.0, 0.0, 2.0, 3.0], "panels": [9, 13, 18]},
+}
+
+## The parts list for one class in one mark's shape (see _ship for the format).
+func _mark_parts(mark: int, w: int, h: int) -> Array:
+	var a: float = h * 0.30         # how far the outer members sit off the keel
+	var nose: float = w - w * 0.12  # where the bow taper starts
+	match mark:
+		1:
+			# Y: a tail boom that forks into two prongs reaching the bow.
+			return [
+				[1, int(w * 0.62), 2.6, 2.2],
+				[int(w * 0.45), w, 1.9, 0.9, 0.0, a],
+				[int(nose) - 2, w, 1.2, 0.4],
+			]
+		2:
+			# X: two arms crossing at a hub amidships.
+			return [
+				[1, w, 1.7, 1.3, -a, a],
+				[int(w * 0.36), int(w * 0.66), 3.0, 2.6],
+				[int(nose) - 2, w, 1.4, 0.5],
+			]
+		3:
+			# A: legs spreading aft from a bow apex, with a crossbrace.
+			return [
+				[1, int(nose), 1.8, 1.1, a, 0.0],
+				[int(w * 0.40), int(w * 0.50), a * 0.72, a * 0.72],
+				[int(w * 0.30), w, 2.4, 0.5],
+			]
+		_:
+			# H: two nacelles either side of a slim body, joined amidships.
+			return [
+				[2, w - 2, 1.5, 1.5, a, a],
+				[int(w * 0.22), int(nose), 2.2, 1.8],
+				[int(w * 0.44), int(w * 0.56), a, a],
+				[int(nose) - 1, w, 1.2, 0.4],
+			]
 
 func _gen_hull_marks() -> void:
-	for cls in ["corvette", "destroyer", "cruiser"]:
-		var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s.png" % cls))
-		var w := hull.get_width()
-		var h := hull.get_height()
-		# Column-wise top and bottom edges of the hull, ignoring the outline.
-		var top := {}
-		var bot := {}
-		for x in w:
-			for y in h:
-				var c := hull.get_pixel(x, y)
-				if c.a > 0.0 and c != OUTLINE:
-					if not top.has(x):
-						top[x] = y
-					bot[x] = y
-		var xs: Array = top.keys()
-		xs.sort()
-		if xs.is_empty():
-			continue
-		var nose: int = xs[xs.size() - 1]
-		var stern: int = xs[0]
-		# The hull's bounding box, which every letter is drawn across: nose to
-		# stern along X, the widest part of the hull along Y.
-		var y_top := h
-		var y_bot := 0
-		for x in xs:
-			y_top = mini(y_top, top[x])
-			y_bot = maxi(y_bot, bot[x])
-		# One overlay per mark, a structural frame in the shape of its letter,
-		# read nose-forward: an H-class spaceframe, a Y-class fork opening at
-		# the bow, an X-class cross, an A-class brace with its apex at the bow.
-		for level in 4:
-			var img := _img(w - 2, h - 2)
-			var tint: Color = MARK_FRAME[level]
-			var core: Color = MARK_FRAME[level].lightened(0.4)
-			# Heavier frames on bigger hulls, so a cruiser does not wear a
-			# hairline and a corvette is not swamped.
-			var th: int = maxi(S, int(round((y_bot - y_top) / 9.0)))
-			var x0 := float(stern + S - 1)
-			var x1 := float(nose - S - 1)
-			var yt := float(y_top + S / 2 - 1)
-			var yb := float(y_bot - S / 2 - 1)
-			var yc := (yt + yb) / 2.0
-			var xm := (x0 + x1) / 2.0
-			# A strut `th` pixels thick with a lit upper edge.
-			var strut := func(a: Vector2, b: Vector2) -> void:
-				for t in th:
-					_line(img, a + Vector2(0, t), b + Vector2(0, t), core if t == 0 else tint)
-			# An upright member (bow-to-stern thickness instead of top-down).
-			var post := func(x: float, a: float, b: float) -> void:
-				for t in th:
-					_line(img, Vector2(x + t, a), Vector2(x + t, b), core if t == 0 else tint)
-			match level:
-				0:
-					# H: a rail down each flank, joined amidships.
-					strut.call(Vector2(x0, yt), Vector2(x1, yt))
-					strut.call(Vector2(x0, yb - th + 1), Vector2(x1, yb - th + 1))
-					post.call(xm, yt, yb)
-				1:
-					# Y: a stem from the stern, forking to both bow corners.
-					strut.call(Vector2(x0, yc), Vector2(xm, yc))
-					strut.call(Vector2(xm, yc), Vector2(x1, yt))
-					strut.call(Vector2(xm, yc), Vector2(x1, yb - th + 1))
-				2:
-					# X: both diagonals, crossing at the middle of the hull.
-					strut.call(Vector2(x0, yt), Vector2(x1, yb - th + 1))
-					strut.call(Vector2(x0, yb - th + 1), Vector2(x1, yt))
-				3:
-					# A: legs spreading aft from a bow apex, with a crossbrace.
-					strut.call(Vector2(x1, yc), Vector2(x0, yt))
-					strut.call(Vector2(x1, yc), Vector2(x0, yb - th + 1))
-					var bar_x := lerpf(x0, x1, 0.42)
-					var spread: float = (yb - yt) * 0.5 * (1.0 - 0.42)
-					post.call(bar_x, yc - spread, yc + spread)
-			_save(img, "ship_mark_%s_%d" % [cls, level])
+	for cls in WARSHIP_ART:
+		var d: Dictionary = WARSHIP_ART[cls]
+		var w: int = d["w"]
+		var h: int = d["h"]
+		for mark in 4:
+			# The team color rides the outer members, which are the parts that
+			# carry the letter, so the shape reads in the owner's color.
+			var a: float = h * 0.30
+			var team_fn := func(_x: int, dy: float) -> bool: return absf(dy) > a - 2.0
+			_ship(cls + MARK_SUFFIX[mark], w, h, _mark_parts(mark, w, h), team_fn,
+				[d["glass"], 3], d["engines"], d["panels"])
 
 # ---------------------------------------------------------------- layer art
 
