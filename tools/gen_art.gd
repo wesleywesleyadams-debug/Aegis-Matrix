@@ -11,6 +11,22 @@ extends SceneTree
 
 const OUT := "res://assets/pixel/"
 
+## Ship sprites are drawn at this multiple of their design size, and the game
+## renders them at 1/S so they keep their old world size with finer detail:
+## the hull shading, panel lines and outline all land on a half-size grid.
+## Must match Defs.ART_SCALE.
+const S := 2
+
+## Nine-step hull ramp: the five base tones with a blended step between each,
+## so a doubled-resolution hull shades as a curve instead of flat bands.
+static func _ramp() -> Array:
+	var out := []
+	for i in HULL.size():
+		out.append(HULL[i])
+		if i < HULL.size() - 1:
+			out.append(HULL[i].lerp(HULL[i + 1], 0.5))
+	return out
+
 const OUTLINE := Color("0e0d1c")
 const HULL := [Color("20233a"), Color("363d5c"), Color("566184"), Color("8490b3"), Color("c3cde4")]
 const TEAM := [Color(0.45, 0.45, 0.45), Color(0.7, 0.7, 0.7), Color(0.92, 0.92, 0.92), Color(1, 1, 1)]
@@ -112,19 +128,26 @@ func _pts(arr: Array) -> PackedVector2Array:
 ## places the part twice (above and below the keel), for claws/pylons.
 ## team_fn(x, dy) says which hull pixels get the owner's color.
 ## glass: [x, w]; engines: stern pixel rows (dy values).
-func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass: Array, engines: Array, panels: Array, extras: Callable = Callable()) -> void:
-	var img := _img(w + 2, h + 2)
-	var tim := _img(w + 2, h + 2)
-	var cy := h / 2.0
+## Draws one ship at S times its design size. Geometry is given in design
+## units and scaled here, so the rounded shading, panel lines and outline are
+## resolved on the finer grid instead of being blown up afterwards.
+## `extras` (hand-placed detail) is drawn in design units on its own layer and
+## scaled up, unless `fine_extras` says the callback already works in S units.
+func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass: Array, engines: Array, panels: Array, extras: Callable = Callable(), fine_extras: bool = false) -> void:
+	var iw := w * S + 2
+	var ih := h * S + 2
+	var img := _img(iw, ih)
+	var tim := _img(iw, ih)
+	var cy := h * S / 2.0
 	var mask := {}
 	var shade := {}
 	for part in parts:
-		var off: float = part[4] if part.size() > 4 else 0.0
+		var off: float = (part[4] if part.size() > 4 else 0.0) * S
 		for sgn in ([1.0, -1.0] if off != 0.0 else [1.0]):
-			for x in range(part[0], part[1]):
-				var t: float = (x + 0.5 - part[0]) / maxf(part[1] - part[0], 1.0)
-				var hw: float = lerpf(part[2], part[3], t)
-				for y in h:
+			for x in range(int(part[0]) * S, int(part[1]) * S):
+				var t: float = (x + 0.5 - part[0] * S) / maxf((part[1] - part[0]) * S, 1.0)
+				var hw: float = lerpf(part[2], part[3], t) * S
+				for y in h * S:
 					var dy: float = y + 0.5 - cy - off * sgn
 					if absf(dy) <= hw:
 						var key := Vector2i(x, y)
@@ -132,32 +155,64 @@ func _ship(name: String, w: int, h: int, parts: Array, team_fn: Callable, glass:
 						# Rounded-cylinder shading, lit from above.
 						var n: float = dy / maxf(hw, 0.5)
 						shade[key] = maxf(shade.get(key, -9.0), 0.62 - n * 0.4)
+	var ramp: Array = _ramp()
+	var nose_x := 0
+	for key in mask:
+		nose_x = maxi(nose_x, key.x)
 	for key in mask:
 		var x: int = key.x
 		var y: int = key.y
-		var dy := y + 0.5 - cy
+		var dy := (y + 0.5 - cy) / S
 		var v: float = shade[key]
-		var idx := clampi(int(v * HULL.size()), 1, HULL.size() - 2)
+		var top_i: int = ramp.size() - 1
+		var idx := clampi(int(round(clampf(v, 0.0, 1.0) * (ramp.size() - 3))) + 1, 1, ramp.size() - 2)
+		# Top and bottom edges: a one-pixel highlight and a one-pixel shadow,
+		# which at this resolution is a rim rather than a third of the hull.
 		if not mask.has(Vector2i(x, y - 1)):
-			idx = HULL.size() - 1
+			idx = top_i
 		elif not mask.has(Vector2i(x, y + 1)):
 			idx = 0
-		elif x in panels:
-			idx = maxi(idx - 1, 1)
-		if team_fn.call(x, dy):
-			tim.set_pixel(x + 1, y + 1, TEAM[clampi(idx - 1, 0, TEAM.size() - 1)])
+		elif (x / S) in panels and x % S == 0:
+			# Plating seam: a single scribed line, not a band.
+			idx = maxi(idx - 2, 0)
+		elif x > nose_x - S and mask.has(Vector2i(x - 1, y)):
+			# Nose cap catches the light.
+			idx = mini(idx + 2, top_i)
+		if team_fn.call(x / S, dy):
+			tim.set_pixel(x + 1, y + 1, TEAM[clampi(idx * TEAM.size() / ramp.size(), 0, TEAM.size() - 1)])
 			img.set_pixel(x + 1, y + 1, HULL[1])
 		else:
-			img.set_pixel(x + 1, y + 1, HULL[idx])
-	# Cockpit glass on the centerline.
+			img.set_pixel(x + 1, y + 1, ramp[idx])
+	# Cockpit glass on the centerline: a canopy block with a lit front edge.
 	for gx in glass[1]:
-		img.set_pixel(glass[0] + gx + 1, int(cy) , GLASS[2])
-		img.set_pixel(glass[0] + gx + 1, int(cy) + 1, GLASS[0] if gx == 0 else GLASS[1])
+		for sx in S:
+			for sy in S:
+				var px: int = (glass[0] + gx) * S + sx + 1
+				var py: int = int(cy) - S + sy * 2
+				img.set_pixel(px, py, GLASS[2] if sy == 0 else (GLASS[0] if gx == 0 else GLASS[1]))
 	for e in engines:
-		img.set_pixel(1, int(cy + e) + 1, ENGINE[1])
+		for sx in S:
+			for sy in S:
+				img.set_pixel(1 + sx, int(cy + e * S) + 1 + sy, ENGINE[1] if sx == 0 else ENGINE[0])
 	# Job details (sensor dishes, shield plates, glow strips...) drawn on top.
 	if extras.is_valid():
-		extras.call(img, cy + 1.0)
+		if fine_extras:
+			extras.call(img, cy + 1.0)
+		else:
+			# Design-unit detail: drawn small, then scaled onto the hull.
+			var lay := _img(w + 2, h + 2)
+			extras.call(lay, h / 2.0 + 1.0)
+			for y in lay.get_height():
+				for x in lay.get_width():
+					var c := lay.get_pixel(x, y)
+					if c.a <= 0.0:
+						continue
+					for sx in S:
+						for sy in S:
+							var px: int = x * S + sx - (S - 1)
+							var py: int = y * S + sy - (S - 1)
+							if px >= 0 and py >= 0 and px < iw and py < ih:
+								img.set_pixel(px, py, c)
 	_outline(img)
 	_save(img, "ship_" + name)
 	_save(tim, "ship_" + name + "_team")
@@ -195,30 +250,46 @@ func _gen_ships() -> void:
 		func(x: int, dy: float) -> bool: return absf(dy) > 4.0 and x < 11,
 		[9, 2], [-1.0, 0.0], [6],
 		func(img: Image, cy: float) -> void:
+			# Drawn at full resolution (fine_extras), so the tools carry their
+			# own shading: a lit top face, a steel body and a shadowed side.
 			var steel := HULL[3]
 			var lit := HULL[4]
 			var dark := HULL[1]
-			# Hammer: a short shaft off the nose carrying a square head high.
-			for x in range(13, 17):
-				_px(img, x, cy - 4, steel)
-			for x in range(16, 20):
-				for y in range(-7, -3):
-					_px(img, x, cy + y, steel)
-			for y in range(-7, -2):
-				_px(img, 19, cy + y, dark)
-			for x in range(16, 19):
-				_px(img, x, cy - 7, lit)
-			# Pickaxe: a haft below the nose with a swept double point.
-			for y in range(1, 5):
-				_px(img, 15, cy + y, steel)
-			for k in 3:
-				_px(img, 12 + k, cy + 4 - k, steel)
-				_px(img, 12 + k, cy + 5 - k, dark)
-				_px(img, 18 - k, cy + 4 - k, steel)
-				_px(img, 18 - k, cy + 5 - k, dark)
-			_px(img, 11, cy + 5, dark)
-			_px(img, 19, cy + 5, dark)
-			_px(img, 15, cy + 5, lit))
+			var mid := HULL[2]
+			# Hammer: a thick shaft off the nose carrying a squared head.
+			for x in range(22, 33):
+				_px(img, x, cy - 9, lit)
+				_px(img, x, cy - 8, steel)
+				_px(img, x, cy - 7, mid)
+			for x in range(31, 39):
+				for y in range(-14, -4):
+					_px(img, x, cy + y, steel if x < 37 else dark)
+			for x in range(31, 38):
+				_px(img, x, cy - 14, lit)
+			for y in range(-13, -5):
+				_px(img, 31, cy + y, lit)
+				_px(img, 38, cy + y, dark)
+			# A claw notch, so it reads as a hammer and not a block.
+			for y in range(-10, -7):
+				_px(img, 37, cy + y, mid)
+				_px(img, 38, cy + y, mid)
+			# Pickaxe: a short haft below the nose carrying a swept blade.
+			for y in range(2, 8):
+				_px(img, 27, cy + y, lit)
+				_px(img, 28, cy + y, steel)
+				_px(img, 29, cy + y, mid)
+			# Blade: thickest where the haft meets it, tapering to a point at
+			# each end, with the tips turned down.
+			for k in 15:
+				var bx: int = 21 + k
+				var d: int = absi(k - 7)
+				var thick: int = 3 - int(d / 3)
+				var drop: int = int(d / 4)
+				for t in thick:
+					var y: float = cy + 9 + drop + t
+					_px(img, bx, y, lit if t == 0 else (steel if t == 1 else dark))
+			for x in range(26, 31):
+				_px(img, x, cy + 8, mid), true)
 	# Mining barge: cargo pods and a forward grab claw.
 	_ship("miner", 16, 15,
 		[[2, 11, 3.5, 3.5], [3, 9, 1.5, 1.5, 5.0], [10, 16, 1.5, 0.6, 3.0], [0, 3, 2.0, 2.0]],
@@ -1120,27 +1191,27 @@ func _gen_hull_marks() -> void:
 				var t: float = float(x - stern) / maxf(nose - stern, 1)
 				# Top rail from the first mark on.
 				_px(img, x - 1, top[x] - 1, tint)
-				if level >= 2 and bot[x] - top[x] > 2:
+				if level >= 2 and bot[x] - top[x] > 2 * S:
 					_px(img, x - 1, bot[x] - 1, tint)
 				# Phantom: a full rim, so the hull reads lit all round.
-				if level >= 3 and bot[x] - top[x] > 3:
+				if level >= 3 and bot[x] - top[x] > 3 * S:
 					# Phantom: the rim reads lit all round, with an inner sheen.
 					_px(img, x - 1, top[x], tint.darkened(0.15))
 					if t > 0.2 and t < 0.9:
-						_px(img, x - 1, bot[x] - 2, Color("ffe9a8"))
+						_px(img, x - 1, bot[x] - 1 - S, Color("ffe9a8"))
 			# Nose studs: one per mark.
 			for k in level:
-				var sx: int = nose - 1 - k * 2
+				var sx: int = nose - 1 - k * 2 * S
 				if top.has(sx + 1):
 					var mid: int = int(round((top[sx + 1] + bot[sx + 1]) / 2.0))
 					_px(img, sx, mid - 1, tint)
 			# Phantom: lit engine blocks at the stern.
 			if level >= 3:
 				for k in 2:
-					var ex: int = stern + k
+					var ex: int = stern + k * S
 					if top.has(ex):
 						_px(img, ex - 1, top[ex], MARK_TRIM[2])
-						_px(img, ex - 1, bot[ex] - 2, MARK_TRIM[2])
+						_px(img, ex - 1, bot[ex] - 1 - S, MARK_TRIM[2])
 			_save(img, "ship_mark_%s_%d" % [cls, level])
 
 # ---------------------------------------------------------------- layer art

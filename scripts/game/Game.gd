@@ -1840,6 +1840,7 @@ func _enter_dev_capture() -> void:
 				mk.visible = false
 			else:
 				mk.texture = Defs.tex("ship_mark_%s_%d" % [s.ship_type, lvl])
+				mk.scale = Vector2.ONE / Defs.ART_SCALE
 				mk.visible = true
 		center_on(c0 + Vector2(345, 170))
 	if OS.get_environment("SL_SHOT_OPEN") == "ctorpanel":

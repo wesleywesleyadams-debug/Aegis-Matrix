@@ -96,9 +96,13 @@ func _apply_visuals() -> void:
 	hull.texture = Defs.tex("ship_" + ship_type)
 	team.texture = Defs.tex("ship_" + ship_type + "_team")
 	team.modulate = Defs.team_color(owner_id)
+	# The art is drawn at Defs.ART_SCALE and shown at 1/ART_SCALE, so a ship
+	# covers the same world space as before at twice the detail.
+	hull.scale = Vector2.ONE / Defs.ART_SCALE
+	team.scale = hull.scale
 	_apply_mark()
 	# Flame sits just behind the stern.
-	flame.position = Vector2(-hull.texture.get_width() / 2.0 - 2.0, 0)
+	flame.position = Vector2(-hull.texture.get_width() / Defs.ART_SCALE / 2.0 - 2.0, 0)
 
 ## Hull marks (Defs.HULL_MARKS) show as trim over the hull: a Wisp is bare,
 ## a Specter has a bright top rail, a Wraith a keel line and nose studs, a
@@ -113,6 +117,7 @@ func _apply_mark() -> void:
 		mk.visible = false
 		return
 	mk.texture = Defs.tex("ship_mark_%s_%d" % [cls, mini(level, 3)])
+	mk.scale = Vector2.ONE / Defs.ART_SCALE
 	mk.visible = mk.texture != null
 
 func is_miner() -> bool:

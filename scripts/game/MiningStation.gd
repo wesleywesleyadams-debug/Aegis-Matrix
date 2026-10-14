@@ -22,12 +22,12 @@ func _ready() -> void:
 	_hull = Sprite2D.new()
 	_hull.texture = Defs.tex("ship_mining_station")
 	_hull.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_hull.scale = Vector2(2, 2)
+	_hull.scale = Vector2.ONE * 2.0 / Defs.ART_SCALE
 	add_child(_hull)
 	_team = Sprite2D.new()
 	_team.texture = Defs.tex("ship_mining_station_team")
 	_team.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_team.scale = Vector2(2, 2)
+	_team.scale = Vector2.ONE * 2.0 / Defs.ART_SCALE
 	_team.modulate = Defs.team_color(owner_id)
 	add_child(_team)
 	refresh_stats()

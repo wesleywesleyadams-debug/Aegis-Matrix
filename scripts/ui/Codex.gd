@@ -284,7 +284,8 @@ func _sprite(name: String, scale_px: int, team: bool = false) -> Control:
 	base.texture = Defs.tex(name)
 	base.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	base.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	base.custom_minimum_size = base.texture.get_size() * scale_px
+	var art_div: float = Defs.ART_SCALE if name.begins_with("ship_") else 1.0
+	base.custom_minimum_size = base.texture.get_size() * scale_px / art_div
 	stack.custom_minimum_size = base.custom_minimum_size
 	stack.add_child(base)
 	if team:

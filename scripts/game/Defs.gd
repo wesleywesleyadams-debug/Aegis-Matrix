@@ -14,6 +14,11 @@ const PIXEL := "res://assets/pixel/"
 ## divides by this once, at the point resources are actually moved.
 const PER_MIN := 60.0
 
+## Ship sprites are drawn at this multiple of their design size (see the S
+## constant in tools/gen_art.gd) and rendered at 1/ART_SCALE, so they keep
+## their world size while carrying twice the detail.
+const ART_SCALE := 2.0
+
 const RESOURCES: Array[String] = ["food", "minerals", "energy", "spice"]
 const RESOURCE_NAMES := {"food": "Food", "minerals": "Minerals", "energy": "Energy", "spice": "Spice"}
 const RESOURCE_COLORS := {"food": Color("8fe060"), "minerals": Color("3fd6b0"), "energy": Color("ffd46b"), "spice": Color("ff9a2e")}
