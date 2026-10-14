@@ -190,7 +190,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	var carriers := war.filter(func(s): return s.is_carrier() and s.free_bay() >= 0)
 	if not carriers.is_empty():
 		for s in war:
-			if s.is_carrier() or s.state == Ship.State.DOCK_GO or s.state == Ship.State.DOCKED:
+			if not s.fits_bay() or s.state == Ship.State.DOCK_GO or s.state == Ship.State.DOCKED:
 				continue
 			if s.hp > s.max_hp * 0.45:
 				continue

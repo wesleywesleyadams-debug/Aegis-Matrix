@@ -274,9 +274,13 @@ func free_bay() -> int:
 func is_carrier() -> bool:
 	return def.get("bays", 0) > 0
 
+## Whether this ship is small enough to sit in a carrier's bay.
+func fits_bay() -> bool:
+	return def.get("role", "") == "warship" and not is_carrier() and float(def["radius"]) <= Defs.BAY_MAX_RADIUS
+
 ## Sends this ship to a carrier's bay to be mended.
 func order_dock(c: Ship) -> void:
-	if c == null or not c.is_carrier() or c.owner_id != owner_id:
+	if c == null or not c.is_carrier() or c.owner_id != owner_id or not fits_bay():
 		return
 	dock_carrier = c
 	state = State.DOCK_GO

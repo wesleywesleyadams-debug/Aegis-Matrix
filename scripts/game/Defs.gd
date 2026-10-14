@@ -516,6 +516,12 @@ const WARSHIP_ART_SIZE := {
 	"carrier": {"w": 76, "h": 50},
 }
 
+## The biggest hull a hangar bay will take. The cradles are drawn for a
+## corvette (radius 8) and everything that describes the carrier - the tech
+## card, the codex, the ship panel - says corvettes, so a destroyer or a
+## cruiser is turned away rather than parked on a cradle it dwarfs.
+const BAY_MAX_RADIUS := 9.0
+
 ## Where a carrier's hangar bays sit, in design units along its hull (see
 ## tools/gen_art.gd): x from the stern, y off the keel, one entry per bay,
 ## mirrored top and bottom. A carrier is an H for life, so there is one

@@ -1499,7 +1499,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 		var carrier := target as Ship
 		var berthed := 0
 		for s in ships.duplicate():
-			if s is Ship and s != carrier and s.def.get("role", "") == "warship" and not s.is_carrier():
+			if s is Ship and s != carrier and (s as Ship).fits_bay():
 				s.do_or_queue(queued, "order_dock", [carrier])
 				ships.erase(s)
 				berthed += 1
@@ -1507,7 +1507,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 				s.do_or_queue(queued, "order_move", [world_pos])
 		hud.flash_target(carrier, "")
 		if berthed == 0:
-			message.emit("Carrier bays take warships: send corvettes and the like to be mended.", Color("ff8a5a"))
+			message.emit("Carrier bays are corvette-sized: bigger hulls will not fit.", Color("ff8a5a"))
 		return
 	if target is WeaponsDepot and target.owner_id == player_id and not target.under_construction:
 		var sent := 0
