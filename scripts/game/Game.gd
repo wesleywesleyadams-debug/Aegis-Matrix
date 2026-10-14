@@ -2338,6 +2338,17 @@ func _enter_dev_capture() -> void:
 		c1.order_stop()
 		var c2 := spawn_ship("corvette", player_id, Vector2(-150, 0))
 		c2.order_stop()
+	if OS.get_environment("SL_SHOT_OPEN") == "rock":
+		# A barge working the rock, so the harvesting beam is in the capture.
+		# It is ordered out HERE rather than in the match below, which only
+		# runs once the capture timer has already elapsed.
+		var rk0 := nearest_asteroid(nearest_starbase(player_id, Vector2.ZERO).global_position, 2000.0)
+		var bg0 := spawn_ship("miner", player_id, rk0.global_position + Vector2(90, 40))
+		bg0.order_mine(rk0)
+		get_tree().create_timer(maxf(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.3, 0.5)).timeout.connect(func():
+			print("ROCK barge state=%s dist=%.0f vel=%.0f on-bearing=%s cargo=%d" % [Ship.State.keys()[bg0.state],
+				bg0.global_position.distance_to(rk0.global_position), bg0.velocity.length(),
+				str(bg0.bears_on(rk0.global_position, Ship.HARVEST_ARC)), bg0.cargo]))
 	if OS.get_environment("SL_SHOT_OPEN") == "gas":
 		researched[player_id]["gas_skimming"] = true
 		resources[player_id]["minerals"] = 2000.0

@@ -22,6 +22,10 @@ var attack_move_goal: Vector2
 ## to shoot it, and turns onto the bearing first. Big hulls turn slowly (see
 ## _steer), so a cruiser caught beam-on really does have to come about.
 const FIRE_ARC := deg_to_rad(40.0)
+## A harvester's beam comes out of its nose too, so it has to come about
+## before it can work a rock. Wider than a gun's arc: this is a chore, not a
+## duel, and a barge that fidgets on station looks broken.
+const HARVEST_ARC := deg_to_rad(35.0)
 
 ## Radius of the biggest hull in the game (the carrier), used to size the
 ## separation search. Keep in step with Defs if a larger hull is ever added.
@@ -43,8 +47,8 @@ func _traverse(point: Vector2, delta: float) -> bool:
 	return absf(angle_difference(_turret_rot, want)) <= deg_to_rad(8.0)
 
 ## True when `point` lies inside the forward firing arc.
-func bears_on(point: Vector2) -> bool:
-	return absf(angle_difference(rotation, (point - global_position).angle())) <= FIRE_ARC
+func bears_on(point: Vector2, arc: float = FIRE_ARC) -> bool:
+	return absf(angle_difference(rotation, (point - global_position).angle())) <= arc
 
 const SCAN_INTERVAL := 0.2
 var _scan_cd: float = 0.0
@@ -128,6 +132,15 @@ func _ready() -> void:
 	radius = def["radius"]
 	move_goal = global_position
 	_acquire_timer = randf() * 0.3
+	if is_miner() or def.get("role", "") == "skimmer":
+		_harvest_fx = HarvestFx.new()
+		_harvest_fx.host = self
+		# top_level, like the status gauges: the beam is a line between two
+		# points in the world, so it must not inherit the hull's rotation, and
+		# it has to repaint every frame to animate.
+		_harvest_fx.top_level = true
+		_harvest_fx.z_index = -1
+		add_child(_harvest_fx)
 
 func _apply_visuals() -> void:
 	if not is_node_ready() and not has_node("Hull"):
@@ -499,6 +512,9 @@ func _physics_process(delta: float) -> void:
 
 	var desired := Vector2.ZERO
 	var face_target: SpaceEntity = null
+	# What the hull should come about to point at, for things that are not
+	# entities (a rock, a gas giant, a patch of nebula).
+	var face_at: Node2D = null
 
 	match state:
 		State.IDLE:
@@ -597,7 +613,9 @@ func _physics_process(delta: float) -> void:
 				if mine_target == null:
 					state = State.RETURN if cargo > 0 else State.IDLE
 			else:
-				var reach: float = mine_target.radius + radius + 4.0
+				# Stands off far enough that the harvesting beam is a beam and not
+				# a smudge between two touching sprites.
+				var reach: float = mine_target.radius + radius + 16.0
 				if global_position.distance_to(mine_target.global_position) <= reach + 4.0:
 					state = State.MINING
 					_mine_carry = 0.0
@@ -607,17 +625,23 @@ func _physics_process(delta: float) -> void:
 			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
 				state = State.MINE_GO
 			else:
-				# Fill the hold at a steady rate; head home once it is full.
-				cargo_type = mine_target.resource
-				_mine_carry += harvest_rate(mine_target) / Defs.PER_MIN * delta
-				var whole := int(_mine_carry)
-				if whole > 0:
-					_mine_carry -= float(whole)
-					cargo += mine_target.extract(mini(whole, cargo_cap() - cargo))
-					queue_redraw()
-				if cargo >= cargo_cap():
-					state = State.RETURN
-					queue_redraw()
+				# Come about onto the rock first: the beam comes out of the
+				# nose, so nothing is harvested until the nose is on it.
+				face_at = mine_target
+				if not bears_on(mine_target.global_position, HARVEST_ARC):
+					_mine_carry = 0.0
+				else:
+					# Fill the hold at a steady rate; head home once full.
+					cargo_type = mine_target.resource
+					_mine_carry += harvest_rate(mine_target) / Defs.PER_MIN * delta
+					var whole := int(_mine_carry)
+					if whole > 0:
+						_mine_carry -= float(whole)
+						cargo += mine_target.extract(mini(whole, cargo_cap() - cargo))
+						queue_redraw()
+					if cargo >= cargo_cap():
+						state = State.RETURN
+						queue_redraw()
 		State.COLONIZE:
 			if not is_instance_valid(colonize_target) or colonize_target.owner_id != 0 or not colonize_target.is_habitable():
 				state = State.IDLE
@@ -743,7 +767,7 @@ func _physics_process(delta: float) -> void:
 	# overlap from further away.
 	if state == State.IDLE and crowd != Vector2.ZERO:
 		move_goal = global_position + crowd.limit_length(radius)
-	_steer(desired + crowd, delta, face_target)
+	_steer(desired + crowd, delta, face_target if face_target != null else face_at)
 
 ## Desired velocity toward `goal`, slowing inside the braking radius.
 ## `stop_at` leaves a gap (e.g. to hover beside an asteroid).
@@ -766,7 +790,18 @@ func _arrive(goal: Vector2, urgency: float, stop_at: float = 0.0) -> Vector2:
 		slow = clampf(dist / 30.0, 0.0, 0.5)
 	return to.normalized() * speed * slow
 
+## Whether this ship is holding a spot rather than going somewhere: only
+## ships at rest push each other apart.
+func _parked() -> bool:
+	return (state == State.IDLE or state == State.MINING) and velocity.length() < 12.0
+
+## Ships do not collide: they fly over and under each other, and nothing is
+## ever shouldered off course. The only crowding left is between ships that
+## are both PARKED, which keeps a resting fleet spread out instead of stacked
+## on one pixel — and even that is gentle.
 func _separation() -> Vector2:
+	if not _parked():
+		return Vector2.ZERO
 	# Reads the fine grid directly (no temporary array), only the cells that
 	# could hold an overlapping hull (reach = our radius + the largest hull).
 	var push := Vector2.ZERO
@@ -792,18 +827,21 @@ func _separation() -> Vector2:
 				# in place, each bay pushing from a different side.
 				if other is Ship and other.dock_carrier == self:
 					continue
+				# A ship on the move is passed through, not pushed against.
+				if other is Ship and not (other as Ship)._parked():
+					continue
 				var d: Vector2 = p - other.global_position
 				if absf(d.x) > reach or absf(d.y) > reach:
 					continue
 				var min_d: float = radius + other.radius
 				var len := d.length()
 				if len < min_d and len > 0.01:
-					push += d / len * (min_d - len) * 6.0
+					push += d / len * (min_d - len) * 2.0
 				elif len <= 0.01:
-					push += Vector2.from_angle(randf() * TAU) * 10.0
+					push += Vector2.from_angle(randf() * TAU) * 6.0
 	return push
 
-func _steer(desired: Vector2, delta: float, face: SpaceEntity) -> void:
+func _steer(desired: Vector2, delta: float, face: Node2D) -> void:
 	var speed: float = max_speed()
 	var accel := speed * 2.2
 	velocity = velocity.move_toward(desired.limit_length(speed), accel * delta)
@@ -844,17 +882,72 @@ func _draw() -> void:
 		return
 	if selected and not order_queue.is_empty():
 		_draw_waypoints()
-	if state == State.MINING and is_instance_valid(mine_target):
-		# Flickering tractor beam to the asteroid.
-		var to := to_local(mine_target.global_position)
-		var a := 0.5 + 0.4 * sin(Game.now() * 20.0)
-		draw_line(Vector2(radius * 0.6, 0), to, Color(0.45, 1.0, 0.85, a), 1.0)
 	_draw_job()
 	super._draw()
 	if cargo > 0 and selected:
 		draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
 		draw_rect(Rect2(-radius - 3, radius + 4, 3, 3), Color("3fd6b0"))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+var _harvest_fx: HarvestFx
+
+## The harvesting beam: a working barge or skimmer pulls a visible stream of
+## ore off the rock, so a glance says which ships are earning their upkeep.
+## Drawn by a top_level child, which keeps the beam straight whatever the hull
+## is doing and lets it animate every frame instead of once per unit mined.
+class HarvestFx extends Node2D:
+	var host: Ship
+
+	func _process(_delta: float) -> void:
+		if not is_instance_valid(host):
+			return
+		global_position = host.global_position
+		var working: bool = host.state == Ship.State.MINING and is_instance_valid(host.mine_target)
+		visible = working and host.visible
+		if working:
+			queue_redraw()
+
+	func _draw() -> void:
+		if is_instance_valid(host):
+			host.draw_harvest(self)
+
+## Motes travelling up the beam, per second of flight.
+const HARVEST_MOTES := 5
+const HARVEST_MOTE_SPEED := 0.7
+
+## Draws the beam into `on` (the overlay), in world-aligned local space.
+func draw_harvest(on: CanvasItem) -> void:
+	if not is_instance_valid(mine_target) or not bears_on(mine_target.global_position, HARVEST_ARC):
+		return
+	var to: Vector2 = mine_target.global_position - global_position
+	var dist := to.length()
+	if dist < 1.0:
+		return
+	var dir := to / dist
+	var col: Color = Defs.RESOURCE_COLORS.get(mine_target.resource, Color("3fd6b0"))
+	# From the hull's nose to the target's surface, not its centre: a gas
+	# giant's centre is a long way inside it.
+	var from := dir * radius
+	var at: Vector2 = to - dir * float(mine_target.radius)
+	if (at - from).dot(dir) <= 0.0:
+		at = to
+	var t := Game.now()
+	# The beam: a wide soft column with a bright core, breathing slowly.
+	var pulse := 0.55 + 0.25 * sin(t * 6.0)
+	on.draw_line(from, at, Color(col, 0.18 * pulse), 4.0)
+	on.draw_line(from, at, Color(col, 0.75 * pulse), 1.0)
+	# Ore coming up the beam, each mote fading in at the rock and out at the
+	# hull so the stream has a direction.
+	var span := at - from
+	var side := Vector2(-dir.y, dir.x)
+	for i in HARVEST_MOTES:
+		var k: float = fmod(t * HARVEST_MOTE_SPEED + float(i) / float(HARVEST_MOTES), 1.0)
+		var p: Vector2 = at - span * k + side * sin(k * TAU + float(i)) * 1.5
+		var a: float = sin(k * PI)
+		on.draw_rect(Rect2(p - Vector2(1, 1), Vector2(2, 2)), Color(col, a))
+	# A bite of light where the beam meets the rock.
+	var flare: float = 2.0 + 1.5 * absf(sin(t * 4.0))
+	on.draw_circle(at, flare, Color(col, 0.35))
 
 ## AI steering around stars' radiation zones. Paths that would cross a zone
 ## bend along its edge; a ship that finds itself inside without a reason
