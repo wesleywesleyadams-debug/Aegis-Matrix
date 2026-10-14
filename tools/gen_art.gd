@@ -1099,72 +1099,124 @@ const VARIANT_BASES := {
 	"cruiser": ["plasma", "breacher", "reaver", "slip", "disruptor"],
 }
 
+## Each variant is told apart by how its hull is TRIMMED along the edges,
+## not by a marking painted on it: a generalist is blocky, a Plasma hull is
+## rounded, a Breacher ribbed, a Reaver toothed, a Slip swept and a
+## Disruptor serrated. The trim is cut into the silhouette itself and its
+## outermost pixel is team-colored, so the shape reads at any zoom and in
+## the owner's color.
+const TRIM_STYLES := ["blocky", "plasma", "breacher", "reaver", "slip", "disruptor"]
+
 func _gen_variants() -> void:
 	# Every variant exists for every mark, since a refit keeps the hull the
-	# ship was built with and only changes its markings.
+	# ship was built with and only re-trims it.
 	for base in VARIANT_BASES:
 		for suffix in MARK_SUFFIX:
-			var hull := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s%s.png" % [base, suffix]))
-			var team := Image.load_from_file(ProjectSettings.globalize_path(OUT + "ship_%s%s_team.png" % [base, suffix]))
+			var raw_name := "ship_%s%s" % [base, suffix]
+			var raw := Image.load_from_file(ProjectSettings.globalize_path(OUT + raw_name + ".png"))
+			var raw_team := Image.load_from_file(ProjectSettings.globalize_path(OUT + raw_name + "_team.png"))
+			# The generalist is the blocky trim, saved back over the plain hull.
+			var g_hull := raw.duplicate() as Image
+			var g_team := raw_team.duplicate() as Image
+			_trim_variant(g_hull, g_team, "blocky")
+			_save(g_hull, raw_name)
+			_save(g_team, raw_name + "_team")
 			for v in VARIANT_BASES[base]:
-				var tim := team.duplicate() as Image
-				_mark_variant(hull, tim, v)
-				_save(hull.duplicate() as Image, "ship_%s_%s%s" % [v, base, suffix])
-				_save(tim, "ship_%s_%s%s_team" % [v, base, suffix])
+				var vh := raw.duplicate() as Image
+				var vt := raw_team.duplicate() as Image
+				_trim_variant(vh, vt, v)
+				_save(vh, "ship_%s_%s%s" % [v, base, suffix])
+				_save(vt, "ship_%s_%s%s_team" % [v, base, suffix])
 
-## Variant markings go on the TEAM layer, so they always show the owner's
-## color. That means the pattern alone has to say which variant it is:
-##   plasma     - one solid line down the spine
-##   breacher  - two ribs across the hull
-##   reaver    - saw teeth along both edges
-##   slip      - two long stripes either side of the spine
-##   disruptor - a row of V chevrons
-func _mark_variant(hull: Image, tim: Image, v: String) -> void:
+## Re-cuts a hull's outline in one variant's trim style. The image comes in
+## outlined; the outline is stripped, every edge pixel is reworked and the
+## outline is drawn again, so the new silhouette is the real one.
+##
+## The pass walks EDGE PIXELS rather than column extremes, because a hull can
+## have several spans in one column (an X-class crosses two arms), and a
+## swept edge runs diagonally: both need the trim to follow the real
+## boundary instead of the outermost pixel.
+func _trim_variant(hull: Image, tim: Image, style: String) -> void:
 	var w := hull.get_width()
 	var h := hull.get_height()
-	var cy := h / 2
-	var lit: Color = TEAM[TEAM.size() - 1]
-	var mid: Color = TEAM[TEAM.size() - 2]
-	var is_hull := func(x: int, y: int) -> bool:
-		return x >= 0 and y >= 0 and x < w and y < h and hull.get_pixel(x, y).a > 0.0 and hull.get_pixel(x, y) != OUTLINE
-	var mark := func(x: int, y: int, c: Color) -> void:
-		if is_hull.call(x, y):
-			tim.set_pixel(x, y, c)
-	var tail := int(w * 0.66)
-	match v:
-		"plasma":
-			for x in range(2, tail):
-				mark.call(x, cy, lit)
-		"breacher":
-			# Two ribs across the hull, from edge to edge.
-			for k in 2:
-				var x := int(w * (0.30 + k * 0.16))
-				for y in h:
-					if absi(y - cy) <= 1:
-						continue
-					mark.call(x, y, lit)
-					mark.call(x + 1, y, mid)
-		"reaver":
-			for x in w:
-				if x % 2 == 1:
-					continue
-				for dir in [1, -1]:
-					var y := 0 if dir == 1 else h - 1
-					while y >= 0 and y < h and hull.get_pixel(x, y).a == 0.0:
-						y += dir
-					var inner: int = y + dir
-					if absi(inner - cy) >= 2:
-						mark.call(x, inner, lit)
-		"slip":
-			for s in [-2, 2]:
-				for x in range(2, tail):
-					mark.call(x, cy + s, lit)
-		"disruptor":
-			for x0 in range(3, tail - 2, 5):
-				for k in 3:
-					for s in [-1, 1]:
-						mark.call(x0 + k, cy + s * (2 - k), lit)
-				mark.call(x0 + 2, cy, mid)
+	for y in h:
+		for x in w:
+			if hull.get_pixel(x, y) == OUTLINE:
+				hull.set_pixel(x, y, Color(0, 0, 0, 0))
+	var src := hull.duplicate() as Image
+	var solid := func(x: int, y: int) -> bool:
+		return x >= 0 and y >= 0 and x < w and y < h and src.get_pixel(x, y).a > 0.0
+	# Trim grows outward in the hull's own light tone and carries the owner's
+	# color on the team layer, so the style reads at a distance.
+	var add := func(x: int, y: int) -> void:
+		if x < 0 or y < 0 or x >= w or y >= h or src.get_pixel(x, y).a > 0.0:
+			return
+		hull.set_pixel(x, y, HULL[HULL.size() - 2])
+		tim.set_pixel(x, y, TEAM[TEAM.size() - 1])
+	var cut := func(x: int, y: int) -> void:
+		if x < 0 or y < 0 or x >= w or y >= h:
+			return
+		hull.set_pixel(x, y, Color(0, 0, 0, 0))
+		tim.set_pixel(x, y, Color(0, 0, 0, 0))
+	var nose := 0
+	for y in h:
+		for x in w:
+			if solid.call(x, y):
+				nose = maxi(nose, x)
+	for y in h:
+		for x in w:
+			if not solid.call(x, y):
+				continue
+			var up: bool = not solid.call(x, y - 1)
+			var dn: bool = not solid.call(x, y + 1)
+			if not up and not dn:
+				continue
+			# dir is -1 along an upper edge and +1 along a lower one; a thin
+			# member that is both just gets the upper treatment.
+			var dir: int = -1 if up else 1
+			var step: int = x / S
+			match style:
+				"blocky":
+					# Blocky: square the edge off by filling single-pixel
+					# notches, so the hull reads as flat plating. The plain
+					# built edge IS the generalist trim, which leaves the
+					# other five styles room to read.
+					if up and solid.call(x - 1, y - 1) and solid.call(x + 1, y - 1):
+						add.call(x, y - 1)
+					if dn and solid.call(x - 1, y + 1) and solid.call(x + 1, y + 1):
+						add.call(x, y + 1)
+				"plasma":
+					# Rounded: shave the corners, so nothing on the hull ends
+					# square.
+					if up and not solid.call(x - 1, y) and not solid.call(x, y + 1 * -dir):
+						cut.call(x, y)
+					if up and (not solid.call(x - 1, y) or not solid.call(x + 1, y)) and not solid.call(x, y - 1):
+						cut.call(x, y)
+					if dn and (not solid.call(x - 1, y) or not solid.call(x + 1, y)) and not solid.call(x, y + 1):
+						cut.call(x, y)
+				"breacher":
+					# Ribbed: a raised plate every third column.
+					if step % 3 == 0:
+						for k in S:
+							add.call(x, y + dir * (k + 1))
+				"reaver":
+					# Toothed: a saw along every edge.
+					if step % 2 == 0:
+						add.call(x, y + dir)
+					else:
+						cut.call(x, y)
+				"slip":
+					# Swept: fins that rake further out toward the stern.
+					if step % 4 == 0:
+						var rake: int = 1 + int(round((1.0 - float(x) / maxf(nose, 1)) * S))
+						for k in rake:
+							add.call(x, y + dir * (k + 1))
+				"disruptor":
+					# Serrated: notches bitten out of the edge.
+					if step % 3 == 0:
+						for k in S:
+							cut.call(x, y - dir * k)
+	_outline(hull)
 
 ## Weapons Depots: a hub with docking arms and weapon racks. The racks and
 ## the variant marking are drawn on the TEAM layer, so a depot always wears
