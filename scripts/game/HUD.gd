@@ -137,6 +137,13 @@ func _icon(name: String, scale_px: int = 2) -> TextureRect:
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return tr
 
+## The sprite for a ship type as THIS player would build it: a warship's mark
+## is its hull shape, so the panel shows the hull you would actually get.
+func _ship_art(ship_type: String) -> String:
+	if game == null:
+		return "ship_" + ship_type
+	return "ship_" + ship_type + Defs.mark_suffix(game.mark_level(game.player_id, ship_type))
+
 func _panel_style(margin: int = 10, border: Color = EDGE) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(BG, 0.94)
@@ -717,7 +724,7 @@ func _rebuild_selection() -> void:
 	grid.add_theme_constant_override("h_separation", 18)
 	for k in counts:
 		var box := HBoxContainer.new()
-		box.add_child(_icon("starbase" if k == "starbase" else "ship_" + k, 2))
+		box.add_child(_icon("starbase" if k == "starbase" else _ship_art(k), 2))
 		box.add_child(_label("×%d" % counts[k]))
 		grid.add_child(box)
 	_sel_body.add_child(grid)
@@ -732,7 +739,8 @@ func _entity_icon(e: SpaceEntity, px: int) -> Control:
 	elif e is MiningStation:
 		tex_name = "ship_mining_station"
 	elif e is Ship:
-		tex_name = "ship_" + (e as Ship).ship_type
+		var sh := e as Ship
+		tex_name = "ship_" + sh.ship_type + Defs.mark_suffix(game.mark_level(sh.owner_id, sh.ship_type))
 	var stack := Control.new()
 	var base := _icon(tex_name, px)
 	var team := _icon(tex_name + "_team", px)
@@ -822,7 +830,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		h.set_anchors_preset(Control.PRESET_FULL_RECT)
 		h.offset_left = 6
 		h.add_theme_constant_override("separation", 12)
-		h.add_child(_icon("ship_" + t, 2))
+		h.add_child(_icon(_ship_art(t), 2))
 		var v := VBoxContainer.new()
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -978,7 +986,7 @@ Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id),
 				qb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 				qb.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 				qb.focus_mode = Control.FOCUS_NONE
-				qb.icon = Defs.tex("ship_" + sb.queue[i])
+				qb.icon = Defs.tex(_ship_art(sb.queue[i]))
 				qb.expand_icon = true
 				qb.tooltip_text = "Cancel " + game.ship_name(sb.owner_id, sb.queue[i])
 				var idx := i
