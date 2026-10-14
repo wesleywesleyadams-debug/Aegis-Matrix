@@ -766,6 +766,7 @@ func _entity_icon(e: SpaceEntity, px: int) -> Control:
 func _build_ship_controls(s: Ship) -> void:
 	_add_job_panel(s)
 	_add_refit_buttons([s])
+	_add_hangar_panel(s)
 	match s.def["role"]:
 		"colony":
 			_sel_body.add_child(_label("Right-click an unowned planet to settle it with %d pops." % int(Defs.START_POP), DIM, 13))
@@ -776,6 +777,30 @@ func _build_ship_controls(s: Ship) -> void:
 		"skimmer":
 			_sel_body.add_child(_label("Right-click a gas giant to mine minerals, or a spot inside a spice nebula to slowly harvest spice gas (never runs out).", DIM, 13))
 
+
+## A selected carrier: what is sitting in its bays and how far along it is.
+## A depot shows the same thing for refits, and a hangar is the one other
+## place a ship disappears inside something of yours.
+func _add_hangar_panel(s: Ship) -> void:
+	if int(s.def.get("bays", 0)) <= 0:
+		return
+	var used := 0
+	for c in s.bay_craft:
+		if c != null and is_instance_valid(c):
+			used += 1
+	_sel_body.add_child(_label("Hangar bays: %d / %d full.  A damaged corvette docks on its own, is mended hull first and then armor, and launches again." % [used, s.bay_craft.size()], DIM, 13))
+	for c in s.bay_craft:
+		if c == null or not is_instance_valid(c):
+			continue
+		var craft: Ship = c
+		# Whichever layer is being worked on, since hull comes first.
+		var layer := "hull"
+		var frac: float = craft.hp / maxf(craft.max_hp, 1.0)
+		if craft.hp >= craft.max_hp:
+			layer = "armor"
+			frac = craft.armor / maxf(craft.max_armor, 1.0)
+		_sel_body.add_child(_label("  %s  -  %s %d%%" % [craft.def["name"], layer, int(100.0 * frac)],
+			Defs.LAYER_COLORS[layer], 13))
 
 ## The panel's standard build button, as the starbase has always drawn one:
 ## sprite on the left, name and cost stacked beside it, hotkey letter in the

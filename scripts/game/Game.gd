@@ -2346,6 +2346,8 @@ func _enter_dev_capture() -> void:
 		var foe9 := spawn_ship("corvette", 2 if player_id == 1 else 1, Vector2(-200, -220))
 		foe9.order_stop()
 		center_on(Vector2(-200, 0))
+		# Selected, so the capture shows the hangar panel too.
+		_set_selection([c9], false)
 	if OS.get_environment("SL_SHOT_OPEN") == "resbtn":
 		# Dev: the research button while a project is running (green glow).
 		queue_research(player_id, "ion_cannons")

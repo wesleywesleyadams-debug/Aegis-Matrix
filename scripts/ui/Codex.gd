@@ -545,6 +545,16 @@ func _page_ships() -> void:
 			d["role"].capitalize(), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), int(d["speed"]), int(d.get("sensor", 260))]
 		if d["weapon"] != "":
 			stats += "  ·  %s %d dmg / %.1fs, range %d" % [d["weapon"], int(d["damage"]), d["cooldown"], int(d["range"])]
+			if int(d.get("guns", 1)) > 1:
+				stats += "  ·  %d guns" % int(d["guns"])
+		var fittings: Array = []
+		if d.has("turrets"):
+			fittings.append("%d turrets, traversing %d°/s" % [d["turrets"].size(), int(rad_to_deg(float(d.get("turret_rate", 1.0))))])
+		if int(d.get("bays", 0)) > 0:
+			fittings.append("%d hangar bays" % int(d["bays"]))
+		if not fittings.is_empty():
+			stats += "
+" + "  ·  ".join(fittings)
 		col.add_child(_label(stats, DIM, 16))
 		col.add_child(_label("%s over %ds  ·  upkeep %.0f energy/min" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 16))
 		if d.has("job"):
@@ -740,4 +750,8 @@ const SHIP_NOTES := {
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
 	"heatshield": "Lets a fleet fight where others can't: inside a star's radiation and inside a spice nebula, where shields normally drain away.",
+	"corvette": "The cheap body of a fleet, and the only hull a carrier can dock. Alone it is weak; its Swarm job pays for every other corvette nearby, so corvettes are bought by the dozen.",
+	"destroyer": "A shield boat with an Escort job that shelters everything around it, which is what makes it the hull you park beside miners, colony ships and the fleet's soft middle.",
+	"cruiser": "Armor and a torpedo that outranges everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
+	"carrier": "A mobile repair yard that shoots back. Its bays dock damaged corvettes, mend hull then armor and launch them again, and its two turrets traverse on their own, so the hull never has to come about to fire — but slowly enough that a corvette which keeps moving can stay off the bearing and flank it. Turrets fire on the move at reduced accuracy.",
 }
