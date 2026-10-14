@@ -298,6 +298,67 @@ func _sprite(name: String, scale_px: int, team: bool = false) -> Control:
 		stack.add_child(tm)
 	return stack
 
+## An illustration plate: a labelled strip of sprites, so a page SHOWS what a
+## shape, a trim or a world looks like instead of only describing it.
+## items: [[sprite_name, caption, caption_color (optional)], ...]
+func _plate(items: Array, box: float = 72.0, team: bool = true, note: String = "") -> void:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _panel_style())
+	card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	card.add_child(col)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(row)
+	for it in items:
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 2)
+		cell.alignment = BoxContainer.ALIGNMENT_CENTER
+		var art := _fit_sprite(it[0], box, team)
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		cell.add_child(art)
+		var cap := _label(it[1], it[2] if it.size() > 2 else DIM, 15)
+		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell.add_child(cap)
+		row.add_child(cell)
+	if note != "":
+		col.add_child(_card_text(note, DIM))
+	card.set_meta("block", true)
+	_body.add_child(card)
+
+## A sprite sized to fit `box` pixels on its longest side: small art is
+## scaled up by a whole number so it stays crisp, oversized art (a planet or
+## a star next to a corvette) is scaled down to fit.
+func _fit_sprite(name: String, box: float, team: bool = false) -> Control:
+	var tex := Defs.tex(name)
+	if tex == null:
+		return Control.new()
+	var art := Vector2(tex.get_size()) / Defs.art_div(name)
+	var k: float = box / maxf(art.x, art.y)
+	if k >= 1.0:
+		k = floorf(k)
+	var stack := Control.new()
+	var base := TextureRect.new()
+	base.texture = tex
+	base.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	base.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	base.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	base.custom_minimum_size = Vector2(box, art.y * k)
+	stack.custom_minimum_size = base.custom_minimum_size
+	stack.add_child(base)
+	if team and Defs.tex(name + "_team") != null:
+		var tm := TextureRect.new()
+		tm.texture = Defs.tex(name + "_team")
+		tm.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		tm.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tm.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tm.custom_minimum_size = base.custom_minimum_size
+		tm.modulate = Defs.team_color(1)
+		stack.add_child(tm)
+	return stack
+
 func _rule() -> void:
 	var r := ColorRect.new()
 	r.color = EDGE
@@ -325,6 +386,9 @@ func _show(id: String) -> void:
 func _page_overview() -> void:
 	_heading("Star Lords")
 	_para("A match is won by destroying every enemy starbase. Starbases build ships and receive the cargo your miners haul in; lose your last one and the match is over.")
+	_plate([["starbase", "Starbase", EDGE_LIT], ["planet_terran_s", "Worlds"], ["ship_miner", "Harvesters"],
+		["ship_corvette", "Warships"], ["asteroid_0", "Belts"]], 68.0, true,
+		"Lose your last starbase and the match is over, so everything else exists to protect one or take one.")
 	_heading("The loop", EDGE_LIT)
 	_para("Mine the belts and gas giants, settle free worlds, build farms and power plants so your population and fleet can grow, research what your strategy needs, and take the fight to the enemy before their economy outgrows yours.")
 	_heading("What you can see", EDGE_LIT)
@@ -364,10 +428,14 @@ func _page_combat() -> void:
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
 	_rule()
 	_heading("Specialist variants")
-	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist; hull markings are in your player color, so the pattern names the variant and the shot color names the layer it hits.")
-	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], "none"]]
-	var marks := {"plasma": "one line down the spine", "breacher": "two ribs across the hull", "reaver": "saw teeth along both edges",
-		"slip": "two stripes either side of the spine", "disruptor": "a row of V chevrons"}
+	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant is cut into the hull as a TRIM style along its edges, in your player color, so the silhouette names the variant and the shot color names the layer it hits.")
+	var trim_plate: Array = [["ship_corvette", "Generalist", TEXT]]
+	for tv in Defs.VARIANTS:
+		trim_plate.append(["ship_%s_corvette" % tv, Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]])
+	_plate(trim_plate, 96.0, true, "The same corvette in all six trims: blocky, rounded, ribbed, toothed, swept and serrated.")
+	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], "blocky, as built"]]
+	var marks := {"plasma": "rounded edges", "breacher": "ribbed plates", "reaver": "toothed saw edge",
+		"slip": "swept fins", "disruptor": "serrated notches"}
 	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
 		"slip": "orange V-shot", "disruptor": "purple V-shot"}
 	for v in Defs.VARIANTS:
@@ -381,7 +449,7 @@ func _page_combat() -> void:
 			for layer in vd["vs"]:
 				effect = "x%.1f vs %s" % [vd["vs"][layer], layer]
 		vrows.append([[vd["label"], vd["color"]], effect, "%d%%" % int(vd["damage"] * 100.0), [shots[v], vd["color"]], marks[v]])
-	_table(["Variant", "Effect", "Base damage", "Shots", "Markings"], vrows)
+	_table(["Variant", "Effect", "Base damage", "Shots", "Trim"], vrows)
 	_rule()
 	_heading("Which variant against what")
 	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is the same, lower kills faster. Figures come straight from the ships' current stats.")
@@ -410,6 +478,11 @@ func _page_combat() -> void:
 		krows.append([Defs.HULL_MARKS[i], "start" if i == 0 else "research", "+%d%% damage, +%d%% shields, armor and hull" % [
 			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
 	_table(["Mark", "From", "Over an H-class"], krows)
+	for cls in Defs.MARK_LINES:
+		var mplate: Array = []
+		for mi in Defs.HULL_MARKS.size():
+			mplate.append(["ship_%s%s" % [cls, Defs.mark_suffix(mi)], Defs.HULL_MARKS[mi], TEXT if mi == 0 else EDGE_LIT])
+		_plate(mplate, 96.0, true, "%s, mark by mark." % Defs.SHIPS[cls]["name"])
 	_para("A mark is the shape of the ship, not a badge on it: an H-class is two nacelles either side of a central body, a Y-class is a tail boom forking into two bow prongs, an X-class crosses four wings at a hub, and an A-class is a braced delta with its apex at the bow. Refitting to a variant keeps the shape and only changes the markings on it.")
 	_para("Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments. Marks apply to every ship of that class you already own the moment the research lands.")
 	_heading("Weapons Depots")
@@ -492,8 +565,15 @@ func _page_economy() -> void:
 		prows.append([pd["label"], "yes" if pd.get("habitable", true) else "no (gas giant)",
 			"%.2f" % pd["fertility"], str(pd.get("spice_reserve", pd.get("gas_reserve", 0)))])
 	_table(["Type", "Habitable", "Fertility", "Spice / gas reserve"], prows)
+	var wplate: Array = []
+	for p2 in Defs.PLANET_TYPES:
+		wplate.append([p2 + "_s", Defs.PLANET_TYPES[p2]["label"]])
+	_plate(wplate, 64.0, false)
 	_rule()
 	_heading("Harvesting")
+	_plate([["ship_miner", "Mining Barge"], ["asteroid_big_0", "Mineral asteroid"], ["spice_0", "Spice asteroid"],
+		["ship_skimmer", "Gas Skimmer"], ["planet_gas_s", "Gas giant"], ["starbase", "Starbase"]], 76.0, true,
+		"A barge works rock, a skimmer works gas giants and spice nebulae; both haul their loads to a starbase or a Mining Station.")
 	_para("A harvester parks on a node and fills its hold at a steady rate, then hauls the load to the nearest starbase and comes back. The gather rate never changes with distance — distance only adds flying time, so a forward starbase is worth building for a far belt.")
 	var hrows: Array = []
 	for row in [
@@ -511,6 +591,10 @@ func _page_economy() -> void:
 		str(int(Defs.ASTEROID_MINERALS_PER_PX2 * 1000.0)), str(int(Defs.ASTEROID_SPICE_PER_PX2 * 1000.0))])
 	_rule()
 	_heading("Buildings")
+	var bplate: Array = []
+	for b in Defs.BUILDING_ORDER:
+		bplate.append(["bld_" + b, Defs.BUILDINGS[b]["name"]])
+	_plate(bplate, 56.0, false)
 	var brows: Array = []
 	for b in Defs.BUILDINGS:
 		var bd: Dictionary = Defs.BUILDINGS[b]
@@ -561,6 +645,10 @@ func _page_systems() -> void:
 		_body.add_child(card)
 	_rule()
 	_heading("The star")
+	var splate: Array = []
+	for st in Defs.STAR_TYPES:
+		splate.append([Defs.STAR_TYPES[st]["tex"], Defs.STAR_TYPES[st]["label"], Defs.STAR_TYPES[st]["tint"]])
+	_plate(splate, 88.0, false)
 	var srows: Array = []
 	for st in Defs.STAR_TYPES:
 		var sd: Dictionary = Defs.STAR_TYPES[st]

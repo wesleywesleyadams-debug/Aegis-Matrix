@@ -1303,39 +1303,64 @@ const WARSHIP_ART := {
 	"cruiser": {"w": 38, "h": 25, "glass": 26, "engines": [-4.0, -3.0, -1.0, 0.0, 2.0, 3.0], "panels": [9, 13, 18]},
 }
 
-## The parts list for one class in one mark's shape (see _ship for the format).
+## Where each mark carries its canopy, as a fraction of the hull's length.
+## The letter decides the stance: an H-class is a ball cockpit at the centre
+## of its spar, like a TIE, while an X-class sits its pilot back at the hub
+## and runs a long nose out between the wings.
+const MARK_COCKPIT := [0.50, 0.56, 0.44, 0.66]
+
+func _mark_cockpit(mark: int, w: int) -> int:
+	return int(round(w * MARK_COCKPIT[clampi(mark, 0, 3)]))
+
+## The parts list for one class in one mark's shape (see _ship for the
+## format). Whatever the letter, every hull carries a cockpit and a nose so
+## it still reads as a ship: the H-class a round ball at the centre, the
+## others a pod with a prow of their own length ahead of it.
 func _mark_parts(mark: int, w: int, h: int) -> Array:
 	var a: float = h * 0.30         # how far the outer members sit off the keel
-	var nose: float = w - w * 0.12  # where the bow taper starts
+	var cx: int = _mark_cockpit(mark, w)
+	# A round cockpit: two short tapers back to back, so it reads as a ball
+	# rather than a box.
+	var ball: Array = [[cx - 3, cx, 1.6, 3.1], [cx, cx + 3, 3.1, 1.6]]
 	match mark:
 		1:
-			# Y: a tail boom that forks into two prongs reaching the bow.
+			# Y: a tail boom forking into two prongs, the cockpit at the split
+			# and a short nose poking out between the prongs.
 			return [
-				[1, int(w * 0.62), 2.6, 2.2],
+				[1, cx + 1, 2.6, 2.2],
 				[int(w * 0.45), w, 1.9, 0.9, 0.0, a],
-				[int(nose) - 2, w, 1.2, 0.4],
+				ball[0], ball[1],
+				[cx + 2, int(w * 0.86), 1.9, 0.7],
 			]
 		2:
-			# X: two arms crossing at a hub amidships.
+			# X: four wings crossing at a hub, the pilot set back at the
+			# crossing and a long nose run out ahead of the wings.
 			return [
 				[1, w, 1.7, 1.3, -a, a],
-				[int(w * 0.36), int(w * 0.66), 3.0, 2.6],
-				[int(nose) - 2, w, 1.4, 0.5],
+				[int(w * 0.30), cx + 1, 3.0, 2.6],
+				ball[0], ball[1],
+				[cx + 2, w, 2.1, 0.4],
 			]
 		3:
-			# A: legs spreading aft from a bow apex, with a crossbrace.
+			# A: legs spreading aft from a bow apex, braced across, with the
+			# cockpit sitting in the triangle the brace and the legs enclose,
+			# just under the tip. The apex is the nose.
 			return [
-				[1, int(nose), 1.8, 1.1, a, 0.0],
+				[1, int(w * 0.90), 1.8, 1.1, a, 0.0],
 				[int(w * 0.40), int(w * 0.50), a * 0.72, a * 0.72],
-				[int(w * 0.30), w, 2.4, 0.5],
+				[int(w * 0.44), cx, 0.9, 1.3],
+				ball[0], ball[1],
+				[cx + 2, int(w * 0.92), 1.3, 0.4],
 			]
 		_:
-			# H: two nacelles either side of a slim body, joined amidships.
+			# H: two nacelles either side of a slim spar, with a ball cockpit
+			# at the centre and only a stub of a nose, TIE-fashion.
 			return [
 				[2, w - 2, 1.5, 1.5, a, a],
-				[int(w * 0.22), int(nose), 2.2, 1.8],
+				[int(w * 0.24), int(w * 0.76), 1.8, 1.8],
 				[int(w * 0.44), int(w * 0.56), a, a],
-				[int(nose) - 1, w, 1.2, 0.4],
+				ball[0], ball[1],
+				[cx + 3, int(w * 0.84), 1.4, 0.5],
 			]
 
 func _gen_hull_marks() -> void:
@@ -1349,7 +1374,7 @@ func _gen_hull_marks() -> void:
 			var a: float = h * 0.30
 			var team_fn := func(_x: int, dy: float) -> bool: return absf(dy) > a - 2.0
 			_ship(cls + MARK_SUFFIX[mark], w, h, _mark_parts(mark, w, h), team_fn,
-				[d["glass"], 3], d["engines"], d["panels"])
+				[_mark_cockpit(mark, w) - 1, 3], d["engines"], d["panels"])
 
 # ---------------------------------------------------------------- layer art
 
