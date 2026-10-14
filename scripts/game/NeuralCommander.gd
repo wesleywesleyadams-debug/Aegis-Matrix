@@ -112,7 +112,7 @@ func _next_tech(game: Game, group: String) -> String:
 	for id in TECH_GROUPS[group]:
 		if game.tech_state(pid, id) != "available":
 			continue
-		var c: float = Defs.TECHS[id]["cost"].get("energy", 0.0) + Defs.TECHS[id]["cost"].get("spice", 0.0) * 10.0
+		var c: float = Defs.TECHS[id]["cost"].get("energy", 0.0) + Defs.TECHS[id]["cost"].get("spice", 0.0) * 1.2
 		if c < best_cost:
 			best_cost = c
 			best = id
@@ -168,8 +168,8 @@ func features(game: Game, base: Starbase) -> PackedFloat32Array:
 	var idle := mine.filter(func(s): return s.state == Ship.State.IDLE).size()
 	return PackedFloat32Array([
 		minf(Game.now() / 1800.0, 2.0),
-		log(1.0 + r["minerals"]) / 8.0, log(1.0 + r["energy"]) / 8.0, log(1.0 + r["spice"]) / 6.0, log(1.0 + r["food"]) / 10.0,
-		clampf(rates.get("energy", 0.0) / 10.0, -1.0, 1.0), clampf(rates.get("minerals", 0.0) / 10.0, -1.0, 1.0),
+		log(1.0 + r["minerals"]) / 8.0, log(1.0 + r["energy"]) / 6.0, log(1.0 + r["spice"]) / 6.0, log(1.0 + r["food"]) / 10.0,
+		clampf(rates.get("energy", 0.0) / 1.5, -1.0, 1.0), clampf(rates.get("minerals", 0.0) / 10.0, -1.0, 1.0),
 		clampf(rates.get("food", 0.0) / 3000.0, -1.0, 1.0), clampf(rates.get("spice", 0.0) / 3.0, -1.0, 1.0),
 		tanh(_power(mine) / 5000.0), tanh(theirs_power / 5000.0),
 		worlds / 6.0, foe_worlds / 6.0, free / 8.0,

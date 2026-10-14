@@ -556,7 +556,7 @@ func _page_ships() -> void:
 			stats += "
 " + "  ·  ".join(fittings)
 		col.add_child(_label(stats, DIM, 16))
-		col.add_child(_label("%s over %ds  ·  upkeep %.0f energy/min" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 16))
+		col.add_child(_label("%s over %ds  ·  upkeep %.2f energy/min" % [Defs.cost_text(d["cost"]), int(d["build_time"]), d["upkeep"]], DIM, 16))
 		if d.has("job"):
 			col.add_child(_card_text("Job — %s: %s" % [Defs.JOBS[d["job"]]["name"], Defs.JOBS[d["job"]]["desc"]], Defs.JOBS[d["job"]]["color"]))
 		if SHIP_NOTES.has(t):

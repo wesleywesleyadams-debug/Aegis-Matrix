@@ -861,7 +861,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(198, 62)
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.0f energy/min base (scales with fleet size)\nCost %s, paid over %ds" % [game.ship_name(game.player_id, t), d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.2f energy/min base (scales with fleet size)\nCost %s, paid over %ds" % [game.ship_name(game.player_id, t), d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
 		if d.has("variant"):
 			b.tooltip_text += "\n" + Defs.VARIANTS[d["variant"]]["desc"]
 		var h := HBoxContainer.new()
@@ -994,7 +994,7 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 	elif e is Starbase:
 		var sb := e as Starbase
 		txt += "
-Starbases %d · upkeep %.1f/s each (x%.1f)" % [game.starbase_count(sb.owner_id), Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(sb.owner_id), game.starbase_upkeep_multiplier(sb.owner_id)]
+Starbases %d · upkeep %.2f/min each (x%.1f)" % [game.starbase_count(sb.owner_id), Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(sb.owner_id), game.starbase_upkeep_multiplier(sb.owner_id)]
 		if sb.under_construction:
 			txt += "\nConstruction %d%%%s" % [int(100.0 * sb.construct_progress / Defs.STARBASE["build_time"]), "  STALLED: insufficient funds" if sb.build_stalled else ""]
 		elif not sb.queue.is_empty():
@@ -1100,7 +1100,7 @@ OUT OF ENERGY: ship production halted, ships at 25%% speed" if game.energy_starv
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats %.2f food per minute." % Defs.FOOD_PER_POP_PER_MIN
 	_fleet_label.text = "%d ships · upkeep x%.2f" % [game.ship_count(pid), game.upkeep_multiplier(pid)]
 	_fleet_label.tooltip_text = "Each ship's energy upkeep is multiplied by 1 + (ships / %d)^2. Starbases scale separately: x%.1f with %d starbases.
-Total ship+starbase upkeep: %.0f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]
+Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]
 	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	var cur: Dictionary = game.research[pid]
 	# The button blinks in real time, so it looks the same at any game speed:
@@ -1481,7 +1481,7 @@ func _add_constructor_buttons() -> void:
 	var n := game.starbase_count(pid)
 	var now_u: float = n * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n)
 	var next_u: float = (n + 1) * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n + 1)
-	var sb := _panel_build_button("starbase", "Starbase", Defs.STARBASE["cost"], Defs.STARBASE["build_time"], "Found Starbase — %s over %ds.\nBuilds ships and takes deliveries. You have %d; the next raises total starbase upkeep from %.0f to %.0f energy/min." % [
+	var sb := _panel_build_button("starbase", "Starbase", Defs.STARBASE["cost"], Defs.STARBASE["build_time"], "Found Starbase — %s over %ds.\nBuilds ships and takes deliveries. You have %d; the next raises total starbase upkeep from %.1f to %.1f energy/min." % [
 		Defs.cost_text(Defs.STARBASE["cost"]), int(Defs.STARBASE["build_time"]), n, now_u, next_u])
 	sb.pressed.connect(game.start_starbase_placement)
 	_register_action(sb)

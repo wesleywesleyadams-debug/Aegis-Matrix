@@ -80,7 +80,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	var mode: String = st.get("mode", "expand")
 
 	# Research: keep one tech going if energy isn't collapsing.
-	if game.research[pid].is_empty() and game.research_queue[pid].is_empty() and res["energy"] > 150.0:
+	if game.research[pid].is_empty() and game.research_queue[pid].is_empty() and res["energy"] > 17.0:
 		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available")
 		# Skip pure-spice techs unless spice is plentiful.
 		options = options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
@@ -155,7 +155,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			var cycle := ["generator", "mine", "farm", "habitat"]
 			pick = cycle[(p.fields - p.free_fields()) % cycle.size()]
 			# Energy falling: power plants first.
-			if game.rates[pid].get("energy", 0.0) < 0.5 and res["energy"] < 300.0:
+			if game.rates[pid].get("energy", 0.0) < 0.06 and res["energy"] < 35.0:
 				pick = "generator"
 			if res["spice"] < 150.0 and p.spice_reserve > 500.0 and p.count_building("spice_extractor") == 0:
 				pick = "spice_extractor"
@@ -249,7 +249,7 @@ func _pick_tech(options: Array, fleet: int) -> String:
 				score = 45.0 - d["tier"] * 5.0
 		# Cheap things first when scores are close, and a little noise so two
 		# AIs on the same map don't research in lockstep.
-		score -= (d["cost"].get("energy", 0.0) / 400.0 + d["cost"].get("spice", 0.0) / 20.0)
+		score -= (d["cost"].get("energy", 0.0) / 45.0 + d["cost"].get("spice", 0.0) / 20.0)
 		score += randf() * 6.0
 		if score > best_score:
 			best_score = score
@@ -266,7 +266,7 @@ func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	var sb := game.nearest_starbase(pid, Vector2.ZERO)
 	var res: Dictionary = game.resources[pid]
 	# Stop growing the fleet once upkeep would outrun income.
-	if game.rates[pid].get("energy", 0.0) < 0.5 and res["energy"] < 200.0:
+	if game.rates[pid].get("energy", 0.0) < 0.06 and res["energy"] < 22.0:
 		return ""
 	for t in options:
 		if st.get("corvettes_only", false) and Defs.SHIPS[t].get("base", t) != "corvette":
@@ -391,7 +391,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 					break
 	var res: Dictionary = game.resources[pid]
 	var rates: Dictionary = game.rates[pid]
-	var energy_starved: bool = res["energy"] < 60.0 and rates.get("energy", 0.0) < 0.0
+	var energy_starved: bool = res["energy"] < 7.0 and rates.get("energy", 0.0) < 0.0
 	var spice_starved: bool = res["spice"] < 10.0 and rates.get("spice", 0.0) <= 0.0
 	# Out of spice alone isn't a crisis: corvettes cost none (see _pick_warship).
 	st["corvettes_only"] = spice_starved

@@ -166,6 +166,21 @@ func _ready() -> void:
 	for sb in get_tree().get_nodes_in_group("starbases"):
 		(sb as Starbase).died.connect(_on_starbase_died)
 	add_child(stats)
+	# Dev aid: SL_ECON prints the energy ledger at intervals, which is how the
+	# economy's sources and sinks are checked against each other. It sits here
+	# rather than with the screenshot hooks so it runs in a sim too.
+	if OS.get_environment("SL_ECON") != "":
+		for t9 in [60.0, 180.0, 360.0, 600.0]:
+			get_tree().create_timer(t9).timeout.connect(func():
+				var mine9 := get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)
+				var made := 0.0
+				var pops := 0.0
+				for p9 in mine9:
+					made += p9.energy_out
+					pops += p9.pop
+				print("ECON t=%ds energy %.0f (%+.2f/s)  plants %.1f/min from %d worlds, %d pops  upkeep %.1f/min  ships %d" % [
+					int(Game.now()), resources[player_id]["energy"], rates[player_id].get("energy", 0.0), made, mine9.size(), int(pops),
+					upkeep(player_id), ship_count(player_id)]))
 	# Balance harness (SL_SIM): the AI plays both sides.
 	if OS.get_environment("SL_SIM") != "":
 		ai.setup([1, 2])
