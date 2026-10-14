@@ -171,7 +171,9 @@ func _place() -> void:
 	var a := _slot_layer.modulate.a if planet.fields > 0 else k
 	var ring_r := d / 2.0 + 26.0
 	var dir := Vector2(-1, -1).normalized()
-	var br := 58.0
+	# The bubble is sized to what it has to hold: a long name or a big world's
+	# "Size 30 · 30/30 built" used to run out through the ring.
+	var br := _bubble_radius()
 	var bubble := center + dir * (ring_r + 70.0 + br)
 	var vp := get_viewport_rect().size
 	bubble = bubble.clamp(Vector2(br + 8, br + 80), vp - Vector2(br + 8, br + 8))
@@ -213,6 +215,17 @@ func _place() -> void:
 const SPICE_BAR_TOP := 10.0
 const SPICE_BAR_H := 34.0
 const SPICE_BAR_GAP := 28.0
+
+## Radius the name bubble needs for the text inside it, with the widest line
+## kept clear of the ring. Never smaller than it used to be, so a short name
+## still gets the same bubble.
+func _bubble_radius() -> float:
+	var font := ThemeDB.fallback_font
+	var wide: float = font.get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	for line in _subtitle.text.split("
+"):
+		wide = maxf(wide, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x)
+	return clampf(wide / 2.0 + 16.0, 58.0, 130.0)
 
 ## Borderless outlined text that floats over the map.
 func _float_label(size: int, align: HorizontalAlignment) -> Label:
