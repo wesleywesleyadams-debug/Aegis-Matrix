@@ -103,6 +103,10 @@ var _mine_timer: float = 0.0
 var _mine_carry: float = 0.0
 ## How long a harvester has been doing nothing (see IDLE_RETASK).
 var _idle_for: float = 0.0
+## Told to hold position by its owner (Stop). A held harvester stays held: it
+## is the one way to park a barge somewhere and have it stay there. Any other
+## order releases it.
+var held: bool = false
 var _acquire_timer: float = 0.0
 var _flame_timer: float = 0.0
 ## Carrier turrets traverse on their own, so the hull need not come about.
@@ -300,6 +304,7 @@ func fits_bay() -> bool:
 
 ## Sends this ship to a carrier's bay to be mended.
 func order_dock(c: Ship) -> void:
+	held = false
 	if c == null or not c.is_carrier() or c.owner_id != owner_id or not fits_bay():
 		return
 	dock_carrier = c
@@ -446,11 +451,13 @@ func queued_points() -> PackedVector2Array:
 	return out
 
 func order_move(pos: Vector2) -> void:
+	held = false
 	state = State.MOVE
 	move_goal = pos
 	target = null
 
 func order_attack_move(pos: Vector2) -> void:
+	held = false
 	if is_miner():
 		order_move(pos)
 		return
@@ -460,12 +467,14 @@ func order_attack_move(pos: Vector2) -> void:
 	target = null
 
 func order_attack(e: SpaceEntity) -> void:
+	held = false
 	if is_miner():
 		return
 	state = State.ATTACK
 	target = e
 
 func order_mine(a: Node2D) -> void:
+	held = false
 	if not can_mine(a):
 		order_move(a.global_position)
 		return
@@ -476,10 +485,12 @@ func order_mine(a: Node2D) -> void:
 	mine_target = a
 
 func order_return() -> void:
+	held = false
 	if is_miner() and cargo > 0:
 		state = State.RETURN
 
 func order_colonize(p: Planet) -> void:
+	held = false
 	if def["role"] != "colony":
 		order_move(p.global_position)
 		return
@@ -489,6 +500,7 @@ func order_colonize(p: Planet) -> void:
 ## Warships: close to weapons range of an enemy planet and fire on it until
 ## its population is gone.
 func order_bombard(p: Planet) -> void:
+	held = false
 	if def["weapon"] == "":
 		order_move(p.global_position)
 		return
@@ -497,6 +509,7 @@ func order_bombard(p: Planet) -> void:
 	state = State.BOMBARD
 
 func order_build_starbase(pos: Vector2) -> void:
+	held = false
 	if def["role"] != "constructor":
 		return
 	build_site = pos
@@ -504,6 +517,9 @@ func order_build_starbase(pos: Vector2) -> void:
 	state = State.BUILD
 
 func order_stop() -> void:
+	# Deliberate: this is the player (or the AI) saying stay put, which turns
+	# off the idle re-tasking below.
+	held = true
 	order_queue.clear()
 	state = State.IDLE
 	target = null
@@ -546,8 +562,9 @@ func _physics_process(delta: float) -> void:
 		State.IDLE:
 			if not order_queue.is_empty():
 				_pop_order()
-			elif is_miner():
-				# A harvester with nothing to do goes back to work.
+			elif is_miner() and not held:
+				# A harvester with nothing to do goes back to work, unless its
+				# owner parked it on purpose.
 				_idle_for += delta
 				if _idle_for >= IDLE_RETASK:
 					_idle_for = 0.0
@@ -1128,6 +1145,7 @@ func can_refit(v: String) -> bool:
 
 ## Fly to a Weapons Depot of variant v (`at` picks one) and refit there.
 func order_refit(v: String, at: WeaponsDepot = null) -> void:
+	held = false
 	if not can_refit(v):
 		return
 	refit_variant = v
@@ -1180,6 +1198,7 @@ func _become(new_type: String) -> void:
 
 ## Builds a Mining Station on site; the Constructor is used up doing it.
 func order_build_station(pos: Vector2) -> void:
+	held = false
 	if def["role"] != "constructor":
 		return
 	build_site = pos
@@ -1189,6 +1208,7 @@ func order_build_station(pos: Vector2) -> void:
 	target = null
 
 func order_build_depot(pos: Vector2, v: String = "plasma") -> void:
+	held = false
 	if def["role"] != "constructor":
 		return
 	build_site = pos

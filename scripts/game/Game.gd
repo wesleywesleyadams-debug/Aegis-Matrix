@@ -2348,13 +2348,15 @@ func _enter_dev_capture() -> void:
 		# A second barge told to stop: it should find its own work within
 		# Ship.IDLE_RETASK seconds.
 		var idle0 := spawn_ship("miner", player_id, rk0.global_position + Vector2(-260, 180))
-		idle0.order_stop()
+		var held0 := spawn_ship("miner", player_id, rk0.global_position + Vector2(-320, 240))
+		held0.order_stop()
 		get_tree().create_timer(maxf(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.3, 0.5)).timeout.connect(func():
 			print("ROCK barge state=%s dist=%.0f vel=%.0f on-bearing=%s cargo=%d" % [Ship.State.keys()[bg0.state],
 				bg0.global_position.distance_to(rk0.global_position), bg0.velocity.length(),
 				str(bg0.bears_on(rk0.global_position, Ship.HARVEST_ARC)), bg0.cargo])
-			print("ROCK idle barge state=%s target=%s" % [Ship.State.keys()[idle0.state],
-				"none" if not is_instance_valid(idle0.mine_target) else str(idle0.mine_target.name)]))
+			print("ROCK idle barge state=%s target=%s | held barge state=%s held=%s" % [Ship.State.keys()[idle0.state],
+				"none" if not is_instance_valid(idle0.mine_target) else str(idle0.mine_target.name),
+				Ship.State.keys()[held0.state], str(held0.held)]))
 	if OS.get_environment("SL_SHOT_OPEN") == "gas":
 		researched[player_id]["gas_skimming"] = true
 		resources[player_id]["minerals"] = 2000.0

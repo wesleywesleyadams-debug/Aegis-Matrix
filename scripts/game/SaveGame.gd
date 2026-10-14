@@ -86,6 +86,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		data["ships"].append({
 			"type": s.ship_type, "owner": s.owner_id, "pos": _v(s.global_position), "rot": s.rotation,
 			"hp": s.hp, "shield": s.shield, "armor": s.armor, "cargo": s.cargo, "cargo_type": s.cargo_type,
+			"held": s.held,
 			"docked": s.docked, "docked_variant": s.refit_depot.variant if s.docked and is_instance_valid(s.refit_depot) else "",
 			"refit_left": s.refit_left,
 			"order": _order_of(s),
@@ -310,6 +311,8 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		s.shield = float(d["shield"])
 		s.cargo = int(d.get("cargo", 0))
 		s.cargo_type = str(d.get("cargo_type", "minerals"))
+		# After the order below, which would otherwise release the hold.
+		var was_held: bool = bool(d.get("held", false))
 		var o: Dictionary = d.get("order", {})
 		match o.get("kind", "idle"):
 			"move": s.order_move(_p(o["at"]))
@@ -338,6 +341,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			"dock":
 				# Deferred: the carrier may not have been spawned yet.
 				dock_later.append([s, _p(o["at"])])
+		s.held = was_held
 		# Shift-queued legs behind the current order.
 		for q in d.get("queue", []):
 			var entry := _queued_entry(q, rocks, planets)
