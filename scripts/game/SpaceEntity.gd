@@ -97,33 +97,39 @@ func _regen_shields(delta: float) -> void:
 
 ## Selection brackets plus hull/shield bars, drawn in world space so they
 ## scale with the pixel zoom like everything else.
+## Status arcs: a ring for the selection and three curved gauges above the
+## hull, hull innermost, then armor, then shields. Everything here is drawn
+## in an unrotated frame (the node's own rotation is undone first), so the
+## gauges stay level and sit above the ship however it is pointing.
+const ARC_SPAN := deg_to_rad(95.0)
+const ARC_STEPS := 24
+
 func _draw() -> void:
 	var damaged := hp < max_hp or (max_shield > 0.0 and shield < max_shield) or armor < max_armor
 	if not selected and not damaged:
 		return
 	var r := radius + 3.0
-	var col := Defs.team_color(owner_id) if selected else Color(1, 1, 1, 0.0)
 	# Rotation-independent: undo the node's rotation for the overlay.
 	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
 	if selected:
-		var l := maxf(3.0, r * 0.45)
-		for c in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
-			var corner: Vector2 = c * r
-			draw_line(corner, corner - Vector2(c.x * l, 0), col, 1.0)
-			draw_line(corner, corner - Vector2(0, c.y * l), col, 1.0)
-	var w := r * 2.0
-	var top := -r - 5.0
-	draw_rect(Rect2(-r, top, w, 2), Color(0, 0, 0, 0.7))
-	draw_rect(Rect2(-r, top, w * clampf(hp / max_hp, 0, 1), 2), Color("58e07a"))
-	# Bars, bottom to top: hull (green), armor (red), shields (light blue).
-	var row := 3.0
-	if max_armor > 0.0:
-		draw_rect(Rect2(-r, top - row, w, 2), Color(0, 0, 0, 0.7))
-		draw_rect(Rect2(-r, top - row, w * clampf(armor / max_armor, 0, 1), 2), ARMOR_COLOR)
-		row += 3.0
-	if max_shield > 0.0:
-		draw_rect(Rect2(-r, top - row, w, 2), Color(0, 0, 0, 0.7))
-		draw_rect(Rect2(-r, top - row, w * clampf(shield / max_shield, 0, 1), 2), Color("7fd8ff"))
+		# A ring rather than corner brackets, so it reads as the same shape
+		# whatever the hull underneath is doing.
+		var col := Defs.team_color(owner_id)
+		draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, Color(col, 0.85), 1.0, true)
+	# The gauges arc over the top of the hull, filling left to right.
+	var mid := -PI / 2.0
+	var from := mid - ARC_SPAN / 2.0
+	var to := mid + ARC_SPAN / 2.0
+	var ring := r + 1.5
+	for gauge in [[hp, max_hp, Color("58e07a")], [armor, max_armor, ARMOR_COLOR], [shield, max_shield, Color("7fd8ff")]]:
+		var full: float = gauge[1]
+		if full <= 0.0:
+			continue
+		draw_arc(Vector2.ZERO, ring, from, to, ARC_STEPS, Color(0, 0, 0, 0.7), 1.6, true)
+		var frac: float = clampf(gauge[0] / full, 0.0, 1.0)
+		if frac > 0.0:
+			draw_arc(Vector2.ZERO, ring, from, from + (to - from) * frac, ARC_STEPS, gauge[2], 1.6, true)
+		ring += 2.2
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 ## A construction site that cannot pay says so on the map, not just in the
