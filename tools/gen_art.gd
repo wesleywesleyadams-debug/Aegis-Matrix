@@ -1233,6 +1233,7 @@ func _gen_depot() -> void:
 	var lit: Color = TEAM[TEAM.size() - 1]
 	var mid: Color = TEAM[TEAM.size() - 2]
 	for v in VARIANT_BASES["corvette"]:
+		var vh := hull.duplicate() as Image
 		var tim := team.duplicate() as Image
 		var cy := 17
 		var mark := func(x: int, y: int, col: Color) -> void:
@@ -1245,30 +1246,10 @@ func _gen_depot() -> void:
 			mark.call(x, cy + 9, lit)
 			mark.call(x + 1, cy - 9, mid)
 			mark.call(x + 1, cy + 9, mid)
-		# The variant's marking, across the hub.
-		if v == "plasma":
-			for x in range(12, 24):
-				mark.call(x, cy, lit)
-		elif v == "breacher":
-			for x in [14, 20]:
-				for dy in range(-5, 6):
-					mark.call(x, cy + dy, lit)
-		elif v == "reaver":
-			for k in 6:
-				var x := 11 + k * 2
-				mark.call(x, cy - 6, lit)
-				mark.call(x, cy + 6, lit)
-		elif v == "slip":
-			for s in [-3, 3]:
-				for x in range(12, 24):
-					mark.call(x, cy + s, lit)
-		else:
-			for x0 in [12, 17, 22]:
-				for k in 3:
-					for s in [-1, 1]:
-						mark.call(x0 + k, cy + s * (2 - k), lit)
-				mark.call(x0 + 2, cy, mid)
-		_save(hull.duplicate() as Image, "ship_depot_" + v)
+		# The depot wears the trim of the variant it fits, in the same
+		# language as the ships it refits.
+		_trim_variant(vh, tim, v)
+		_save(vh, "ship_depot_" + v)
 		_save(tim, "ship_depot_" + v + "_team")
 
 
