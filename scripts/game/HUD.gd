@@ -1352,13 +1352,25 @@ class StatChart extends Control:
 		draw_string(font, Vector2(size.x - 44, size.y - 4), "%d min" % int(t_max / 60.0), HORIZONTAL_ALIGNMENT_RIGHT, 40, 11, Color("6a7596"))
 		var pad := Vector2(6, 18)
 		var area := size - pad * 2.0
-		for sd in sides:
+		# The enemy first, so where the two lines sit on top of each other it is
+		# the player's own that shows.
+		var order := sides.duplicate()
+		order.reverse()
+		for sd in order:
 			var pts := PackedVector2Array()
 			for s in samples:
 				var x: float = pad.x + area.x * float(s["t"]) / t_max
 				var y: float = pad.y + area.y * (1.0 - float(s[str(sd[0])][field]) / v_max)
 				pts.append(Vector2(x, y))
 			draw_polyline(pts, sd[1], 2.0, true)
+		# A key, so a chart read on its own still says whose line is whose.
+		var kx := size.x - 8.0
+		for i in sides.size():
+			var label: String = "you" if i == 0 else "enemy"
+			var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+			kx -= w
+			draw_string(font, Vector2(kx, 13), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, sides[i][1])
+			kx -= 12.0
 
 # ---------------------------------------------------------------- jobs
 
