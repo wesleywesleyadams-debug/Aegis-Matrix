@@ -185,14 +185,34 @@ func _place() -> void:
 	_title.position = bubble + Vector2(-br, -20)
 	_subtitle.size = Vector2(br * 2.0, 18)
 	_subtitle.position = bubble + Vector2(-br, 6)
+	# The spice bar hangs under the bubble (see _draw_deco), so the details
+	# have to clear it: a wide gap when they sit beside the bubble, and a
+	# start below it when they sit underneath.
 	_details.size = Vector2(340, 0)
-	_details.position = Vector2(bubble.x - br - 350, bubble.y - 10)
+	_details.position = Vector2(bubble.x - br - SPICE_BAR_GAP - 340.0, bubble.y - 10)
 	if _details.position.x < 8:
-		# No room on the left: float the details under the bubble instead.
-		_details.position = Vector2(maxf(8.0, bubble.x - 170), bubble.y + br + 8)
+		# No room on the left: float the details under the bubble, clear of
+		# the bar and its figure.
+		_details.position = Vector2(maxf(8.0, bubble.x - 170), bubble.y + br + SPICE_BAR_H + 12.0)
 		_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	else:
 		_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# Where the spice bar can go. A label's drawn width is not its box width
+	# (a long line overruns it), so rather than trust the gap, the two rects
+	# are compared and the bar is dropped below the text if they touch.
+	var bar := Rect2(bubble + Vector2(-br - 2.0, br + SPICE_BAR_TOP - 2.0), Vector2(br * 2.0 + 4.0, SPICE_BAR_H))
+	var text := Rect2(_details.position, Vector2(maxf(_details.size.x, _details.get_combined_minimum_size().x),
+		maxf(_details.size.y, _details.get_combined_minimum_size().y))).grow(6.0)
+	if bar.intersects(text):
+		bar.position.y = text.position.y + text.size.y + 6.0
+	_ring["spice_y"] = bar.position.y + 2.0
+
+## The spice reserve bar under the name bubble: how far below the bubble it
+## starts, how much room it takes (bar plus its figure), and the gap anything
+## beside the bubble keeps from it.
+const SPICE_BAR_TOP := 10.0
+const SPICE_BAR_H := 34.0
+const SPICE_BAR_GAP := 28.0
 
 ## Borderless outlined text that floats over the map.
 func _float_label(size: int, align: HorizontalAlignment) -> Label:
@@ -219,7 +239,7 @@ func _draw_deco() -> void:
 	if is_instance_valid(planet) and planet.max_spice_reserve > 0.0:
 		var sc: Color = Defs.RESOURCE_COLORS["spice"]
 		var w: float = _ring["br"] * 2.0
-		var tl: Vector2 = _ring["bubble"] + Vector2(-_ring["br"], _ring["br"] + 10.0)
+		var tl := Vector2(_ring["bubble"].x - _ring["br"], _ring.get("spice_y", _ring["bubble"].y + _ring["br"] + SPICE_BAR_TOP))
 		var frac := clampf(planet.spice_reserve / planet.max_spice_reserve, 0.0, 1.0)
 		_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(0, 0, 0, 0.7 * _ring["alpha"]))
 		_deco.draw_rect(Rect2(tl, Vector2(w * frac, 8)), Color(sc, _ring["alpha"]))
