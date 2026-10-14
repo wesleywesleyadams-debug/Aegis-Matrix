@@ -12,7 +12,7 @@ const ESCORT_CUT := 0.15
 const HEAT_RANGE := 170.0
 const HEAT_CUT := 0.75
 const REPAIR_RANGE := 180.0
-const REPAIR_RATE := 6.0
+const REPAIR_RATE := 5.0
 const REPAIR_MAX_TARGETS := 4
 ## Ships count as out of combat this long after their last hit.
 const REPAIR_CALM := 4.0

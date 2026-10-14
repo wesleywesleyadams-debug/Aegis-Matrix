@@ -625,7 +625,7 @@ const JOBS := {
 	"heat_screen": {"name": "Heat Screen", "active": false, "color": Color("ffc24a"),
 		"desc": "Friendly ships within 170 px take 75% less radiation damage and keep their shields in spice nebulae."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
-		"desc": "Repairs up to 4 ships within 180 px (6 points/s each: hull first, then armor, the only way to restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
+		"desc": "Repairs up to 4 ships within 180 px (5 points/s each: hull first, then armor, the only way to restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
 }
 
 ## Visual language for the defense layers: bars, research lines, and the
