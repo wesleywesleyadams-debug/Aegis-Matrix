@@ -287,26 +287,26 @@ const TECHS := {
 	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 1200, "spice": 30}, "time": 85.0,
 		"effects": {"unlock_cruiser": 1.0}, "desc": "Unlocks the Cruiser."},
 	# Hull mark lines: one per warship class, three upgrades each (the class
-	# starts as a Wisp). Each mark lifts only that class, so investing in
+	# starts H-class). Each mark lifts only that class, so investing in
 	# corvettes and investing in cruisers are different strategies.
-	"corvette_mk2": {"name": "Specter Corvette", "group": "warships", "class": "corvette", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 55.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Specters: +18% damage, +15% shields, armor and hull."},
-	"corvette_mk3": {"name": "Wraith Corvette", "group": "warships", "class": "corvette", "tier": 2, "requires": ["corvette_mk2"], "cost": {"energy": 1400, "spice": 25}, "time": 90.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Wraiths: another +18% damage, +15% shields, armor and hull."},
-	"corvette_mk4": {"name": "Phantom Corvette", "group": "warships", "class": "corvette", "tier": 3, "requires": ["corvette_mk3"], "cost": {"energy": 2600, "spice": 70}, "time": 130.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Phantoms: a third +18% damage, +15% shields, armor and hull."},
-	"destroyer_mk2": {"name": "Specter Destroyer", "group": "warships", "class": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 900}, "time": 65.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Specters: +18% damage, +15% shields, armor and hull."},
-	"destroyer_mk3": {"name": "Wraith Destroyer", "group": "warships", "class": "destroyer", "tier": 2, "requires": ["destroyer_mk2"], "cost": {"energy": 1800, "spice": 35}, "time": 100.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Wraiths: another +18% damage, +15% shields, armor and hull."},
-	"destroyer_mk4": {"name": "Phantom Destroyer", "group": "warships", "class": "destroyer", "tier": 3, "requires": ["destroyer_mk3"], "cost": {"energy": 3200, "spice": 90}, "time": 140.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Phantoms: a third +18% damage, +15% shields, armor and hull."},
-	"cruiser_mk2": {"name": "Specter Cruiser", "group": "warships", "class": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 1300, "spice": 20}, "time": 80.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Specters: +18% damage, +15% shields, armor and hull."},
-	"cruiser_mk3": {"name": "Wraith Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk2"], "cost": {"energy": 2400, "spice": 60}, "time": 115.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Wraiths: another +18% damage, +15% shields, armor and hull."},
-	"cruiser_mk4": {"name": "Phantom Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk3"], "cost": {"energy": 4000, "spice": 120}, "time": 160.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Phantoms: a third +18% damage, +15% shields, armor and hull."},
+	"corvette_mk2": {"name": "Y-class Corvette", "group": "warships", "class": "corvette", "tier": 1, "requires": [], "cost": {"energy": 600}, "time": 55.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Y-class: +18% damage, +15% shields, armor and hull."},
+	"corvette_mk3": {"name": "X-class Corvette", "group": "warships", "class": "corvette", "tier": 2, "requires": ["corvette_mk2"], "cost": {"energy": 1400, "spice": 25}, "time": 90.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become X-class: another +18% damage, +15% shields, armor and hull."},
+	"corvette_mk4": {"name": "A-class Corvette", "group": "warships", "class": "corvette", "tier": 3, "requires": ["corvette_mk3"], "cost": {"energy": 2600, "spice": 70}, "time": 130.0,
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become A-class: a third +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk2": {"name": "Y-class Destroyer", "group": "warships", "class": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 900}, "time": 65.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Y-class: +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk3": {"name": "X-class Destroyer", "group": "warships", "class": "destroyer", "tier": 2, "requires": ["destroyer_mk2"], "cost": {"energy": 1800, "spice": 35}, "time": 100.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become X-class: another +18% damage, +15% shields, armor and hull."},
+	"destroyer_mk4": {"name": "A-class Destroyer", "group": "warships", "class": "destroyer", "tier": 3, "requires": ["destroyer_mk3"], "cost": {"energy": 3200, "spice": 90}, "time": 140.0,
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become A-class: a third +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk2": {"name": "Y-class Cruiser", "group": "warships", "class": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 1300, "spice": 20}, "time": 80.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Y-class: +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk3": {"name": "X-class Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk2"], "cost": {"energy": 2400, "spice": 60}, "time": 115.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become X-class: another +18% damage, +15% shields, armor and hull."},
+	"cruiser_mk4": {"name": "A-class Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk3"], "cost": {"energy": 4000, "spice": 120}, "time": 160.0,
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become A-class: a third +18% damage, +15% shields, armor and hull."},
 	# Defense lines (research screen's Defenses tab): shields, armor, hull. Each
 	# is three tiers of big, expensive upgrades for every ship and starbase,
 	# so which layer to invest in is a real strategic choice.
@@ -346,7 +346,7 @@ static func cost_text(cost: Dictionary) -> String:
 
 ## What each research group is for, shown under the tabs (HUD._build_research).
 const TECH_GROUP_DESC := {
-	"warships": "Unlock each warship class and raise its mark: Wisp, Specter, Wraith, Phantom. Every class is its own line.",
+	"warships": "Unlock each warship class and raise its mark: H-class, Y-class, X-class, A-class. Every class is its own line.",
 	"weapons": "Weapon output for everything you own, warship and starbase alike.",
 	"defense": "The three defense layers — shields, armor and hull — on every ship and starbase. Pick a layer and commit.",
 	"constructs": "Starbases, depots and the other things you build rather than fly.",
@@ -370,7 +370,7 @@ const STAR_TYPES := {
 ## (see VARIANTS), e.g. "slip_corvette".
 static var SHIPS: Dictionary = _with_variants()
 
-## Hull marks: every warship class starts as a Wisp and is upgraded a mark at
+## Hull marks: every warship class starts H-class and is upgraded a mark at
 ## a time by its own research line (Defs.TECHS, "mark_<class>" effects). Each
 ## mark makes that class alone tougher and harder-hitting, so late-game
 ## corvettes are a different animal from the ones built in minute one.
@@ -383,11 +383,11 @@ const HARVEST_NEBULA_MULT := 0.6
 ## Which classes have a mark line (see HULL_MARKS).
 const MARK_LINES := ["corvette", "destroyer", "cruiser"]
 
-const HULL_MARKS := ["Wisp", "Specter", "Wraith", "Phantom"]
+const HULL_MARKS := ["H-class", "Y-class", "X-class", "A-class"]
 ## What one mark adds to its class, per step.
 const MARK_STEP := {"damage": 0.18, "hull": 0.15, "armor": 0.15, "shield": 0.15}
 
-## The mark name for a class at `level` (0 = Wisp), e.g. "Specter Corvette".
+## The mark name for a class at `level` (0 = H-class), e.g. "Y-class Corvette".
 static func marked_name(ship_type: String, level: int) -> String:
 	var d: Dictionary = SHIPS.get(ship_type, {})
 	if d.is_empty() or not MARK_LINES.has(d.get("base", ship_type)):

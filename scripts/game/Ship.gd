@@ -105,19 +105,20 @@ func _apply_visuals() -> void:
 	flame.scale = hull.scale
 	flame.position = Vector2(-hull.texture.get_width() / Defs.ART_SCALE / 2.0 - 2.0, 0)
 
-## Hull marks (Defs.HULL_MARKS) show as trim over the hull: a Wisp is bare,
-## a Specter has a bright top rail, a Wraith a keel line and nose studs, a
-## Phantom a full lit rim. One overlay per class covers all of its variants.
+## Hull marks (Defs.HULL_MARKS) show as a structural frame over the hull in
+## the shape of the mark's letter: an H-class spaceframe, a Y-class fork, an
+## X-class cross, an A-class brace. Every warship wears one from the start,
+## and one overlay per class covers all of that class's variants.
 func _apply_mark() -> void:
 	if not has_node("Mark"):
 		return
 	var mk: Sprite2D = get_node("Mark")
 	var cls: String = def.get("base", ship_type)
 	var level := Game.instance.mark_level(owner_id, ship_type) if Game.instance else 0
-	if level <= 0 or not Defs.MARK_LINES.has(cls):
+	if not Defs.MARK_LINES.has(cls):
 		mk.visible = false
 		return
-	mk.texture = Defs.tex("ship_mark_%s_%d" % [cls, mini(level, 3)])
+	mk.texture = Defs.tex("ship_mark_%s_%d" % [cls, clampi(level, 0, 3)])
 	mk.scale = Vector2.ONE / Defs.ART_SCALE
 	mk.visible = mk.texture != null
 

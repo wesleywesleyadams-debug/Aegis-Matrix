@@ -479,7 +479,7 @@ func mod(pid: int, key: String) -> float:
 	return m
 
 ## How many marks a warship class has earned for this player, 0-3 (see
-## Defs.HULL_MARKS): Wisp, Specter, Wraith, Phantom.
+## Defs.HULL_MARKS): H-class, Y-class, X-class, A-class.
 func mark_level(pid: int, ship_type: String) -> int:
 	var d: Dictionary = Defs.SHIPS.get(ship_type, {})
 	var base: String = d.get("base", ship_type)
@@ -494,7 +494,7 @@ func mark_level(pid: int, ship_type: String) -> int:
 func hull_mod(pid: int, ship_type: String, key: String) -> float:
 	return mod(pid, key) * (1.0 + mark_level(pid, ship_type) * float(Defs.MARK_STEP.get(key, 0.0)))
 
-## The class's current name for this player, e.g. "Wraith Corvette".
+## The class's current name for this player, e.g. "X-class Corvette".
 func ship_name(pid: int, ship_type: String) -> String:
 	return Defs.marked_name(ship_type, mark_level(pid, ship_type))
 
@@ -1822,7 +1822,7 @@ func _enter_dev_capture() -> void:
 		hud.show_pause(false)
 		print("SBCYCLE main=%.0f,%.0f second=%.0f,%.0f -> %s then %s then %s" % [home2.global_position.x, home2.global_position.y, second.global_position.x, second.global_position.y, a, b, c2])
 	if OS.get_environment("SL_SHOT_OPEN") == "marks":
-		# Dev: one row per class, Wisp to Phantom left to right.
+		# Dev: one row per class, H-class to A-class left to right.
 		var c0 := Vector2(-520, -260)
 		for row in [["corvette", 0], ["destroyer", 1], ["cruiser", 2]]:
 			for lvl in 4:
@@ -1836,12 +1836,9 @@ func _enter_dev_capture() -> void:
 				continue
 			var lvl: int = s.get_meta("force_mark")
 			var mk: Sprite2D = s.get_node("Mark")
-			if lvl <= 0:
-				mk.visible = false
-			else:
-				mk.texture = Defs.tex("ship_mark_%s_%d" % [s.ship_type, lvl])
-				mk.scale = Vector2.ONE / Defs.ART_SCALE
-				mk.visible = true
+			mk.texture = Defs.tex("ship_mark_%s_%d" % [s.ship_type, lvl])
+			mk.scale = Vector2.ONE / Defs.ART_SCALE
+			mk.visible = true
 		center_on(c0 + Vector2(345, 170))
 	if OS.get_environment("SL_SHOT_OPEN") == "ctorpanel":
 		# Dev: the Constructor's build options as square icon buttons.

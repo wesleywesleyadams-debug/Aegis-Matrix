@@ -1257,6 +1257,9 @@ func _gen_mining_station() -> void:
 ## adds a layer of finish — a bright top rail, then a matching keel line and
 ## nose studs, then a full rim and lit engine blocks. One overlay per class
 ## serves every variant of it, since they share a silhouette.
+## One frame colour per mark (H, Y, X, A): plain steel, then pale blue, gold
+## and finally a warm white, so a later mark reads richer at a glance.
+const MARK_FRAME := [Color("9aa8c8"), Color("dbe6ff"), Color("ffc24a"), Color("fff6d8")]
 const MARK_TRIM := [Color("dbe6ff"), Color("ffc24a"), Color("fff6d8")]
 
 func _gen_hull_marks() -> void:
@@ -1280,34 +1283,59 @@ func _gen_hull_marks() -> void:
 			continue
 		var nose: int = xs[xs.size() - 1]
 		var stern: int = xs[0]
-		for level in [1, 2, 3]:
+		# The hull's bounding box, which every letter is drawn across: nose to
+		# stern along X, the widest part of the hull along Y.
+		var y_top := h
+		var y_bot := 0
+		for x in xs:
+			y_top = mini(y_top, top[x])
+			y_bot = maxi(y_bot, bot[x])
+		# One overlay per mark, a structural frame in the shape of its letter,
+		# read nose-forward: an H-class spaceframe, a Y-class fork opening at
+		# the bow, an X-class cross, an A-class brace with its apex at the bow.
+		for level in 4:
 			var img := _img(w - 2, h - 2)
-			var tint: Color = MARK_TRIM[level - 1]
-			for x in xs:
-				var t: float = float(x - stern) / maxf(nose - stern, 1)
-				# Top rail from the first mark on.
-				_px(img, x - 1, top[x] - 1, tint)
-				if level >= 2 and bot[x] - top[x] > 2 * S:
-					_px(img, x - 1, bot[x] - 1, tint)
-				# Phantom: a full rim, so the hull reads lit all round.
-				if level >= 3 and bot[x] - top[x] > 3 * S:
-					# Phantom: the rim reads lit all round, with an inner sheen.
-					_px(img, x - 1, top[x], tint.darkened(0.15))
-					if t > 0.2 and t < 0.9:
-						_px(img, x - 1, bot[x] - 1 - S, Color("ffe9a8"))
-			# Nose studs: one per mark.
-			for k in level:
-				var sx: int = nose - 1 - k * 2 * S
-				if top.has(sx + 1):
-					var mid: int = int(round((top[sx + 1] + bot[sx + 1]) / 2.0))
-					_px(img, sx, mid - 1, tint)
-			# Phantom: lit engine blocks at the stern.
-			if level >= 3:
-				for k in 2:
-					var ex: int = stern + k * S
-					if top.has(ex):
-						_px(img, ex - 1, top[ex], MARK_TRIM[2])
-						_px(img, ex - 1, bot[ex] - 1 - S, MARK_TRIM[2])
+			var tint: Color = MARK_FRAME[level]
+			var core: Color = MARK_FRAME[level].lightened(0.4)
+			# Heavier frames on bigger hulls, so a cruiser does not wear a
+			# hairline and a corvette is not swamped.
+			var th: int = maxi(S, int(round((y_bot - y_top) / 9.0)))
+			var x0 := float(stern + S - 1)
+			var x1 := float(nose - S - 1)
+			var yt := float(y_top + S / 2 - 1)
+			var yb := float(y_bot - S / 2 - 1)
+			var yc := (yt + yb) / 2.0
+			var xm := (x0 + x1) / 2.0
+			# A strut `th` pixels thick with a lit upper edge.
+			var strut := func(a: Vector2, b: Vector2) -> void:
+				for t in th:
+					_line(img, a + Vector2(0, t), b + Vector2(0, t), core if t == 0 else tint)
+			# An upright member (bow-to-stern thickness instead of top-down).
+			var post := func(x: float, a: float, b: float) -> void:
+				for t in th:
+					_line(img, Vector2(x + t, a), Vector2(x + t, b), core if t == 0 else tint)
+			match level:
+				0:
+					# H: a rail down each flank, joined amidships.
+					strut.call(Vector2(x0, yt), Vector2(x1, yt))
+					strut.call(Vector2(x0, yb - th + 1), Vector2(x1, yb - th + 1))
+					post.call(xm, yt, yb)
+				1:
+					# Y: a stem from the stern, forking to both bow corners.
+					strut.call(Vector2(x0, yc), Vector2(xm, yc))
+					strut.call(Vector2(xm, yc), Vector2(x1, yt))
+					strut.call(Vector2(xm, yc), Vector2(x1, yb - th + 1))
+				2:
+					# X: both diagonals, crossing at the middle of the hull.
+					strut.call(Vector2(x0, yt), Vector2(x1, yb - th + 1))
+					strut.call(Vector2(x0, yb - th + 1), Vector2(x1, yt))
+				3:
+					# A: legs spreading aft from a bow apex, with a crossbrace.
+					strut.call(Vector2(x1, yc), Vector2(x0, yt))
+					strut.call(Vector2(x1, yc), Vector2(x0, yb - th + 1))
+					var bar_x := lerpf(x0, x1, 0.42)
+					var spread: float = (yb - yt) * 0.5 * (1.0 - 0.42)
+					post.call(bar_x, yc - spread, yc + spread)
 			_save(img, "ship_mark_%s_%d" % [cls, level])
 
 # ---------------------------------------------------------------- layer art

@@ -404,12 +404,13 @@ func _page_combat() -> void:
 	_rule()
 	_rule()
 	_heading("Hull marks", EDGE_LIT)
-	_para("Every warship has two independent axes. Its MARK is raw power and comes from the War Ships research line; its VARIANT is purpose and comes from a Weapons Depot. A Phantom Reaver Corvette is both: the toughest corvette mark, fitted to hunt hull.")
+	_para("Every warship has two independent axes. Its MARK is raw power and comes from the War Ships research line; its VARIANT is purpose and comes from a Weapons Depot. An A-class Reaver Corvette is both: the toughest corvette mark, fitted to hunt hull.")
 	var krows: Array = []
 	for i in Defs.HULL_MARKS.size():
 		krows.append([Defs.HULL_MARKS[i], "start" if i == 0 else "research", "+%d%% damage, +%d%% shields, armor and hull" % [
 			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
-	_table(["Mark", "From", "Over a Wisp"], krows)
+	_table(["Mark", "From", "Over an H-class"], krows)
+	_para("You can read a ship's mark off its spaceframe: an H-class wears rails down both flanks with a crossbar amidships, a Y-class forks open at the bow, an X-class crosses corner to corner, and an A-class braces back from a bow apex. The frame also brightens with each mark, from plain steel to warm white.")
 	_para("Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments. Marks apply to every ship of that class you already own the moment the research lands.")
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
