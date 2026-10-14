@@ -848,6 +848,26 @@ func _gen_buildings() -> void:
 			if p.y > 12.0 and p.y < 15.0 and p.x >= 1.0 and p.x < 15.0:
 				return Color("8490b3") if p.y < 13.0 else Color("566184")
 			return Color(0, 0, 0, 0),
+		"battery": func(p: Vector2) -> Color:
+			# A turret: a splayed mount, a round drum and a barrel raised to
+			# the sky, with a lit muzzle.
+			var barrel := Vector2(p.x - 8.5, p.y - 8.0)
+			# Distance from the barrel's axis, which runs up and to the right.
+			var dir := Vector2(0.82, -0.57)
+			var along: float = barrel.dot(dir)
+			var across: float = absf(barrel.x * dir.y - barrel.y * dir.x)
+			if along > 0.0 and along < 7.2 and across < 1.1:
+				if along > 6.2:
+					return Color("ffd46b")
+				return Color("c3cde4") if across < 0.45 else Color("566184")
+			var drum: float = Vector2(p.x - 8.0, (p.y - 9.0) * 1.05).length()
+			if drum < 3.4:
+				return Color("8490b3") if drum > 2.6 else (Color("c3cde4") if p.y < 9.0 else Color("566184"))
+			if p.y >= 11.5 and p.y < 15.0:
+				var spread: float = 3.0 + (p.y - 11.5) * 1.6
+				if absf(p.x - 8.0) < spread:
+					return Color("363d5c") if p.y > 13.5 else Color("566184")
+			return Color(0, 0, 0, 0),
 		"spice_extractor": func(p: Vector2) -> Color:
 			if ((p.x >= 4.0 and p.x < 5.0) or (p.x >= 11.0 and p.x < 12.0)) and p.y >= 3.0 and p.y < 15.0:
 				return Color("8490b3")
