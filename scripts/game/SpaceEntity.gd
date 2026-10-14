@@ -98,39 +98,54 @@ func _regen_shields(delta: float) -> void:
 ## Selection brackets plus hull/shield bars, drawn in world space so they
 ## scale with the pixel zoom like everything else.
 ## Status arcs: a ring for the selection and three curved gauges above the
-## hull, hull innermost, then armor, then shields. Everything here is drawn
-## in an unrotated frame (the node's own rotation is undone first), so the
-## gauges stay level and sit above the ship however it is pointing.
+## hull â innermost hull, then armor, then shields.
+##
+## Every point is built in WORLD space and converted with to_local(), rather
+## than leaning on draw_set_transform to undo the node's rotation, so the
+## gauges stay upright and sit above the ship no matter how it is pointing
+## (and no matter what transform anything else left behind).
 const ARC_SPAN := deg_to_rad(95.0)
-const ARC_STEPS := 24
+const ARC_STEPS := 20
+
+## An arc of `radius` around this entity, centred on `mid` world-angle, as
+## local-space points ready for draw_polyline.
+func _arc_points(radius: float, mid: float, span: float, steps: int) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var from := mid - span / 2.0
+	for i in steps + 1:
+		var a: float = from + span * float(i) / float(steps)
+		# Snapped to whole world pixels: the game is pixel art, and a line on
+		# a fractional coordinate renders as a smear.
+		pts.append(to_local((global_position + Vector2(cos(a), sin(a)) * radius).round()))
+	return pts
 
 func _draw() -> void:
 	var damaged := hp < max_hp or (max_shield > 0.0 and shield < max_shield) or armor < max_armor
 	if not selected and not damaged:
 		return
 	var r := radius + 3.0
-	# Rotation-independent: undo the node's rotation for the overlay.
-	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
 	if selected:
-		# A ring rather than corner brackets, so it reads as the same shape
-		# whatever the hull underneath is doing.
+		# A ring rather than corner brackets, so the marker reads the same
+		# whatever the hull under it is doing.
 		var col := Defs.team_color(owner_id)
-		draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, Color(col, 0.85), 1.0, true)
-	# The gauges arc over the top of the hull, filling left to right.
-	var mid := -PI / 2.0
-	var from := mid - ARC_SPAN / 2.0
-	var to := mid + ARC_SPAN / 2.0
+		draw_polyline(_arc_points(r, 0.0, TAU, 32), Color(col, 0.85), 1.0, false)
+	# Gauges arc over the top of the hull (world "up" is -Y), filling left
+	# to right as the layer fills.
+	var up := -PI / 2.0
 	var ring := r + 1.5
 	for gauge in [[hp, max_hp, Color("58e07a")], [armor, max_armor, ARMOR_COLOR], [shield, max_shield, Color("7fd8ff")]]:
 		var full: float = gauge[1]
 		if full <= 0.0:
 			continue
-		draw_arc(Vector2.ZERO, ring, from, to, ARC_STEPS, Color(0, 0, 0, 0.7), 1.6, true)
+		draw_polyline(_arc_points(ring, up, ARC_SPAN, ARC_STEPS), Color(0, 0, 0, 0.7), 2.0, false)
 		var frac: float = clampf(gauge[0] / full, 0.0, 1.0)
 		if frac > 0.0:
-			draw_arc(Vector2.ZERO, ring, from, from + (to - from) * frac, ARC_STEPS, gauge[2], 1.6, true)
+			# Centred on the same start edge, so a part-full gauge grows from
+			# the left rather than from the middle.
+			var span: float = ARC_SPAN * frac
+			var mid: float = up - ARC_SPAN / 2.0 + span / 2.0
+			draw_polyline(_arc_points(ring, mid, span, maxi(2, int(ARC_STEPS * frac))), gauge[2], 2.0, false)
 		ring += 2.2
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 ## A construction site that cannot pay says so on the map, not just in the
 ## selection panel: a pulsing amber tag above the scaffold.
