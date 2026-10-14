@@ -26,6 +26,11 @@ const FIRE_ARC := deg_to_rad(40.0)
 ## before it can work a rock. Wider than a gun's arc: this is a chore, not a
 ## duel, and a barge that fidgets on station looks broken.
 const HARVEST_ARC := deg_to_rad(35.0)
+## A barge or skimmer left idle this long finds its own work again: it takes
+## its load home if it has one, else puts in to the nearest resource it can
+## reach. An idle harvester is pure loss, and chasing them around the map is
+## not the part of this game anyone wants to play.
+const IDLE_RETASK := 5.0
 
 ## Radius of the biggest hull in the game (the carrier), used to size the
 ## separation search. Keep in step with Defs if a larger hull is ever added.
@@ -96,6 +101,8 @@ var _cooldown: float = 0.0
 var _mine_timer: float = 0.0
 ## Fractional ore gathered between ticks (nodes hold whole units).
 var _mine_carry: float = 0.0
+## How long a harvester has been doing nothing (see IDLE_RETASK).
+var _idle_for: float = 0.0
 var _acquire_timer: float = 0.0
 var _flame_timer: float = 0.0
 ## Carrier turrets traverse on their own, so the hull need not come about.
@@ -333,6 +340,22 @@ func _find_mine_target(resource: String) -> Node2D:
 		return Game.instance.nearest_gas_giant(global_position, 3000.0)
 	return Game.instance.nearest_asteroid(global_position, 900.0, resource)
 
+## The closest thing this harvester can work, whatever it yields: a barge
+## weighs mineral rocks against spice rocks, a skimmer gas giants against
+## nebulae, and the nearer one wins. Distance is what decides, because a
+## shorter run is more of everything per minute.
+func _nearest_resource() -> Node2D:
+	var best: Node2D = null
+	var best_d := INF
+	for t in [_find_mine_target("minerals"), _find_mine_target("spice")]:
+		if t == null:
+			continue
+		var d: float = global_position.distance_to(t.global_position)
+		if d < best_d:
+			best_d = d
+			best = t
+	return best
+
 ## Re-derives hull/armor/shield caps from research, keeping current fractions.
 func refresh_stats() -> void:
 	var g := Game.instance
@@ -516,10 +539,24 @@ func _physics_process(delta: float) -> void:
 	# entities (a rock, a gas giant, a patch of nebula).
 	var face_at: Node2D = null
 
+	if state != State.IDLE:
+		_idle_for = 0.0
+
 	match state:
 		State.IDLE:
 			if not order_queue.is_empty():
 				_pop_order()
+			elif is_miner():
+				# A harvester with nothing to do goes back to work.
+				_idle_for += delta
+				if _idle_for >= IDLE_RETASK:
+					_idle_for = 0.0
+					if cargo > 0:
+						order_return()
+					else:
+						var job := _nearest_resource()
+						if job != null:
+							order_mine(job)
 			elif def["weapon"] != "" and _acquire_timer <= 0.0:
 				var e := Game.instance.nearest_enemy(self, weapon_range() + 60.0)
 				if e:
