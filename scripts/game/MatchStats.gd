@@ -36,25 +36,35 @@ func finish() -> void:
 	_stopped = true
 	samples.append(sample(Game.now()))
 
-## Resources a side has gathered over the match (not spent), for the score.
-var gathered := {1: 0.0, 2: 0.0}
+## What one resource unit is worth to the score, banked. A ship counts for
+## SHIP_WORTH times what it cost: having a thing is always worth more than
+## having the resources for it (75 minerals = 7.5, a corvette = 15).
+const BANKED_WORTH := 0.1
+const SHIP_WORTH := 2.0
 
-## The running score shown above the minimap. Four parts, each something a
-## side has built up, so it rises with good play and only the society part
-## can fall back:
-##   economy  - every resource gathered, /10
-##   military - the build cost of enemy ships destroyed, /5
+## The running score shown above the minimap, a snapshot of what a side has
+## right now, so it falls as well as rises:
+##   economy  - resources in the bank, x BANKED_WORTH
+##   military - every ship on the field, at its build cost x BANKED_WORTH x SHIP_WORTH
 ##   research - 25 per technology
 ##   society  - 20 per world held, plus population /100
 func score(pid: int) -> int:
 	var g := Game.instance
+	var economy := 0.0
+	for k in g.resources.get(pid, {}):
+		economy += maxf(float(g.resources[pid][k]), 0.0)
+	var military := 0.0
+	for s in g.get_tree().get_nodes_in_group("ships"):
+		if s.owner_id == pid and s.is_alive():
+			for r in s.def["cost"]:
+				military += float(s.def["cost"][r])
 	var worlds := 0
 	var pop := 0.0
 	for p in g.get_tree().get_nodes_in_group("planets"):
 		if p.owner_id == pid:
 			worlds += 1
 			pop += p.pop
-	return int(gathered.get(pid, 0.0) / 10.0 + get_count(pid, "kill_value") / 5.0
+	return int(economy * BANKED_WORTH + military * BANKED_WORTH * SHIP_WORTH
 		+ g.researched.get(pid, {}).size() * 25 + worlds * 20 + pop / 100.0)
 
 ## Highest value of a sampled field for one side.
