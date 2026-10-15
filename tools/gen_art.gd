@@ -794,16 +794,19 @@ func _gen_title() -> void:
 	var red := Color("ff4f5e")
 	for p in [[150, 120, "cruiser"], [128, 100, "destroyer"], [132, 146, "destroyer"], [110, 88, "corvette"], [112, 160, "corvette"], [96, 124, "corvette"]]:
 		_paste(img, "ship_" + p[2], int(p[0]) * S, int(p[1]) * S, blue)
-	for p in [[300, 60, "destroyer"], [322, 44, "corvette"], [326, 78, "corvette"], [344, 58, "corvette"]]:
+	# The title sits across the top band (design y ~30-60, x ~125-355), so
+	# nothing is placed there: the red fleet comes in low on the right, under
+	# the gas giant, and the fight happens below the menu's top button.
+	for p in [[318, 206, "destroyer"], [340, 190, "corvette"], [344, 222, "corvette"], [362, 204, "corvette"]]:
 		_paste(img, "ship_" + p[2], int(p[0]) * S, int(p[1]) * S, red, true)
 	# Crossfire and a kill.
 	for i in 3:
 		for t in 10 * S:
 			for k in S:
-				img.set_pixel((190 + i * 30) * S + t, (104 - i * 12) * S - t / 3 + k, Color("9fd8ff"))
+				img.set_pixel((176 + i * 34) * S + t, (150 + i * 14) * S + t / 3 + k, Color("9fd8ff"))
 	var frame := 32 * S
 	var boom := Image.load_from_file(OUT + "explosion.png").get_region(Rect2i(3 * frame, 0, frame, frame))
-	img.blend_rect(boom, Rect2i(0, 0, frame, frame), Vector2i(272 * S, 50 * S))
+	img.blend_rect(boom, Rect2i(0, 0, frame, frame), Vector2i(284 * S, 182 * S))
 	img.save_png(OUT + "title_bg.png")
 
 func _paste(dst: Image, name: String, cx: int, cy: int, team: Color = Color.WHITE, flip: bool = false) -> void:
