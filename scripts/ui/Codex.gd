@@ -623,39 +623,94 @@ func _page_economy() -> void:
 
 func _page_systems() -> void:
 	_heading("Systems")
-	_para("Every system is point-symmetric, so both players start with the same terrain. Each has its own star, look and signature feature, and every one has spice nebulae - endless spice for Gas Skimmers, at the price of shields drained to nothing inside them - laid out its own way.")
+	_para("A match is fought in one star system, chosen in the lobby. Every system is point-symmetric - both players start with the same worlds, rocks and distances, mirrored through the star - and every one has spice nebulae: endless spice for Gas Skimmers, at the price of shields drained to nothing inside them. What differs is the star, the signature feature and where the gas lies, and those decide how the match is fought.")
 	for s in SystemGen.SYSTEMS:
-		if s["id"] == "random":
-			continue
-		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _panel_style())
-		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 4)
-		card.add_child(col)
-		var star: Dictionary = Defs.STAR_TYPES.get(s.get("star", "yellow"), {})
-		col.add_child(_label(s["name"], star.get("tint", TEXT), 20))
-		col.add_child(_label("%s  ·  %s" % [s["desc"], star.get("label", "")], DIM, 16))
-		col.add_child(_wrap(s.get("arrival", ""), TEXT, 15))
-		var feature: String = s.get("feature", "")
-		if feature != "":
-			var ftext: String = {
-				"binary": "Twin suns: two radiation zones circle the center, and the safe lane between them keeps moving.",
-				"spice_nebula": "Spice nebula: shields drain inside it and won't recharge, ships hide in it, and Gas Skimmers can harvest spice there.",
-				"rings": "Debris ring: an impassable wall of rubble with a few gaps, which makes those gaps chokepoints.",
-				"storms": "Ion storms: sweeping arms slow ships to 40% and halve sensors while they pass.",
-			}.get(feature, feature)
-			col.add_child(_wrap(ftext, EDGE_LIT, 16))
-		# Every system has spice nebulae; this is where its gas lies.
-		var ntext: String = {
-			"flanks": "Spice clouds: one on each flank, equally far from both bases - the contested middle.",
-			"bands": "Spice bands: two arcs of gas across the lane between the bases, just outside the suns' orbit.",
-			"pockets": "Spice pockets: small clouds scattered outside the debris ring, near the outer worlds.",
-			"drifts": "Spice drifts: a great cloud on each base's flank - your own to harvest, the enemy's to raid.",
-		}.get(s.get("nebula", ""), "Spice clouds of a shape drawn with the rest of the system." if s.get("id", "") == "random" else "")
-		if ntext != "":
-			col.add_child(_wrap(ntext, Defs.RESOURCE_COLORS["spice"], 16))
+		_system_card(s)
+	_star_section()
+
+## Everything a player needs to know about one system: its map, star, worlds
+## and rocks, signature feature, nebulae, and how it tends to play.
+func _system_card(s: Dictionary) -> void:
+	var id: String = s["id"]
+	var random := id == "random"
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _panel_style())
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	card.add_child(row)
+	var map := SystemPreview.new()
+	map.custom_minimum_size = Vector2(260, 166)
+	map.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	map.show_system(id)
+	row.add_child(map)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 5)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(col)
+	var star: Dictionary = Defs.STAR_TYPES.get(s.get("star", "yellow"), {})
+	col.add_child(_label(s["name"], star.get("tint", TEXT), 22))
+	col.add_child(_label(s["desc"], DIM, 16))
+	if random:
+		col.add_child(_card_text("Everything is drawn fresh each match from the match's seed, and the same seed always gives the same system:", TEXT))
+		col.add_child(_card_text("- Star: any type, from a Red Dwarf (smallest, gentlest radiation) to a Blue Giant (widest, deadliest).\n- Worlds: 3 to 5 per side, of mixed types.\n- Belts: 1 to 3 per side; 6% to 25% of rocks carry spice.\n- Spice nebulae: one of the four layouts - flank clouds, bands, pockets or drifts.\n- No signature feature (no twin suns, debris ring or ion storms), and its own backdrop and world names.", DIM))
+		col.add_child(_card_text("How it plays: scout first. Nothing about the map is known in advance, so an early Scout and a look at where the gas lies matter more here than anywhere.", EDGE_LIT))
 		card.set_meta("block", true)
 		_body.add_child(card)
+		return
+	# Star and radiation.
+	var binary: bool = s.get("feature", "") == "binary"
+	col.add_child(_card_text("Star: %s%s - radiation out to %d px, up to %d damage/s at the surface." % [
+		"twin " if binary else "", star.get("label", ""), int(star.get("zone", 0)), int(star.get("dps", 0))], TEXT))
+	# Worlds and rocks, counted from the layout itself.
+	var lay: Dictionary = map._layout
+	var kinds := {}
+	var giants := 0
+	for p in lay.get("planets", []):
+		if p["owner"] == 0 and not Defs.PLANET_TYPES.get(p["kind"], {}).get("habitable", true):
+			giants += 1
+		elif p["owner"] == 0:
+			var lbl: String = Defs.PLANET_TYPES.get(p["kind"], {}).get("label", p["kind"])
+			kinds[lbl] = kinds.get(lbl, 0) + 1
+	var worlds: Array = []
+	for k in kinds:
+		worlds.append("%d %s" % [kinds[k], k])
+	var rocks: int = lay.get("asteroids", []).size()
+	var spice := 0
+	for a in lay.get("asteroids", []):
+		if str(a["variant"]).begins_with("spice"):
+			spice += 1
+	col.add_child(_card_text("Worlds to claim: %s.  Gas giants: %d.  Asteroids: %d, %d of them spice." % [", ".join(worlds) if not worlds.is_empty() else "none", giants, rocks, spice], TEXT))
+	var feature: String = s.get("feature", "")
+	if feature != "":
+		col.add_child(_card_text({
+			"binary": "Twin suns: two radiation zones circle the center, and the safe lane between them keeps moving.",
+			"spice_nebula": "Spice nebula: a full ring of gas around the star, seeded with extra spice rocks.",
+			"rings": "Debris ring: an impassable wall of rubble with four narrow gaps, which makes those gaps chokepoints.",
+			"storms": "Ion storms: sweeping arms slow ships to 40% and halve sensors while they pass.",
+		}.get(feature, feature), EDGE_LIT))
+	var ntext: String = {
+		"flanks": "Spice nebulae: one cloud on each flank, equally far from both bases - the contested middle.",
+		"bands": "Spice nebulae: two arcs of gas across the lane between the bases, just outside the suns' orbit.",
+		"pockets": "Spice nebulae: six small clouds scattered outside the debris ring, near the outer worlds.",
+		"drifts": "Spice nebulae: a great cloud on each base's flank - your own to harvest, the enemy's to raid.",
+	}.get(s.get("nebula", ""), "")
+	if ntext != "":
+		col.add_child(_card_text(ntext, Defs.RESOURCE_COLORS["spice"]))
+	if SYSTEM_TIPS.has(id):
+		col.add_child(_card_text("How it plays: " + SYSTEM_TIPS[id], DIM))
+	card.set_meta("block", true)
+	_body.add_child(card)
+
+## One line per system on what tends to decide a match there.
+const SYSTEM_TIPS := {
+	"orion_reach": "The even, open map. Both flank clouds are as close to the enemy as to you, so spice goes to whoever holds the middle - send skimmers with an escort.",
+	"vega_drift": "The suns' radiation sweeps the center, so the lane between bases opens and closes. Time attacks for when it is clear, and harvest the bands when the enemy fleet is elsewhere.",
+	"kharon_expanse": "Few worlds, but the most spice anywhere, all of it inside the ring. Shields fail in the gas: bring armor-heavy hulls or a Heat Shield Frigate, and expect fights inside it.",
+	"tethys_cluster": "The richest worlds sit behind the debris ring, reachable only through its gaps. Hold a gap and you hold the inner system; the outer pockets are easy, safe spice.",
+	"sable_verge": "Heavy belts and sparse worlds: a mining race. Ion storms slow and blind anything they cross, and each side's spice drift is an inviting raid target.",
+}
+
+func _star_section() -> void:
 	_heading("The star")
 	var splate: Array = []
 	for st in Defs.STAR_TYPES:
