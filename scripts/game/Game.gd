@@ -240,6 +240,12 @@ func _build_system() -> void:
 	system_settings = SystemGen.settings(GameState.system_id, GameState.system_seed)
 	_apply_system_look(system_settings)
 	if GameState.system_id == "orion_reach":
+		# Hand-built in Main.tscn, so its nebulae are laid out here against
+		# the starbases that are already in the scene.
+		var p1 := starbases_root.get_children().filter(func(b): return b.owner_id == 1)
+		if not p1.is_empty() and system_settings.has("nebula"):
+			for ft in SystemGen.nebulae(str(system_settings["nebula"]), p1[0].position, GameState.system_seed):
+				_add_nebula(ft)
 		return
 	var layout := SystemGen.generate(GameState.system_seed, system_settings)
 	for root in [$World/Planets, $World/Asteroids, starbases_root, ships_root]:
@@ -301,11 +307,13 @@ func _build_system() -> void:
 				s.orbit_speed = TAU / ft["period"]
 				s.position = s.orbit_position(now())
 		if ft["type"] == "spice_nebula":
-			var neb := SpiceNebula.new()
-			neb.inner = ft["inner"]
-			neb.outer = ft["outer"]
-			world.add_child(neb)
-			world.move_child(neb, 0)
+			_add_nebula(ft)
+
+## Puts one spice nebula into the world, under everything else.
+func _add_nebula(ft: Dictionary) -> void:
+	var neb := SpiceNebula.from_feature(ft)
+	world.add_child(neb)
+	world.move_child(neb, 0)
 
 ## Amber heads-up (no alarm) when your shielded ships are in a nebula, at
 ## most every NEBULA_WARN_MS, with a minimap flare where it happened.
@@ -2314,7 +2322,7 @@ func _enter_dev_capture() -> void:
 		# Dev: a skimmer harvesting spice gas in the nearest spice nebula.
 		var home := nearest_starbase(player_id, Vector2.ZERO)
 		var neb: Node2D = get_tree().get_nodes_in_group("nebulae")[0]
-		var spot: Vector2 = neb.global_position + (home.global_position - neb.global_position).normalized() * (neb.inner + neb.outer) / 2.0
+		var spot: Vector2 = neb.heart_toward(home.global_position)
 		var sk := spawn_ship("skimmer", player_id, home.global_position + Vector2(40, 40))
 		sk.order_mine(nebula_pocket_at(spot))
 		var trips := [0]

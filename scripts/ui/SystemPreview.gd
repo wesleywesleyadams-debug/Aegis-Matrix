@@ -47,6 +47,10 @@ func show_system(id: String) -> void:
 			facts += "\nSpice Nebula: rich spice, but shields drain inside."
 		if _settings.get("feature", "") == "storms":
 			facts += "\nIon storms: sweeping arms slow ships to 40%."
+		facts += {"flanks": "\nSpice clouds on both flanks, equally far from each base.",
+			"bands": "\nSpice bands arc across the lane between the bases.",
+			"pockets": "\nSmall spice pockets scattered outside the ring.",
+			"drifts": "\nA great spice drift on each base's flank."}.get(_settings.get("nebula", ""), "")
 	queue_redraw()
 
 ## Orion Reach is hand-placed in Main.tscn: read its planets, rocks and
@@ -63,6 +67,9 @@ static func _orion_layout() -> Dictionary:
 	for s in main.get_node("World/Starbases").get_children():
 		out["starbases"].append({"owner": s.owner_id, "pos": s.position})
 	main.free()
+	# Its nebulae are laid out at match start against the player 1 base.
+	var p1: Array = out["starbases"].filter(func(b): return b["owner"] == 1)
+	out["features"] = SystemGen.nebulae("flanks", p1[0]["pos"], 0) if not p1.is_empty() else []
 	_orion_cache = out
 	return out
 
@@ -97,7 +104,7 @@ func _draw() -> void:
 					draw_arc(center, ft["radius"] * sc, a0, a0 + TAU / 96.0, 3, Color("6e5c4a"), maxf(2.0, ft["width"] * sc))
 	for ft in _layout.get("features", []):
 		if ft["type"] == "spice_nebula":
-			draw_arc(center, (ft["inner"] + ft["outer"]) / 2.0 * sc, 0.0, TAU, 64, Color(1.0, 0.6, 0.2, 0.16), (ft["outer"] - ft["inner"]) * sc)
+			SpiceNebula.draw_feature_on_map(self, func(p): return center + p * sc, sc, ft)
 	var st: Dictionary = Defs.STAR_TYPES[_settings.get("star", "yellow")]
 	# The star (or both binary stars, with their orbit): radiation zone as a
 	# dashed ring, then the star itself.

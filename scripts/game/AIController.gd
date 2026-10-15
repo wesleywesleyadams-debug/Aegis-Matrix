@@ -498,15 +498,20 @@ func _use_jobs(pid: int, ships: Array, game: Game) -> void:
 					if not near:
 						Abilities.use(s)
 
-## Middle of the nearest spice nebula's band on the side facing `from`, if
-## this player has explored it; Vector2.INF otherwise.
+## A harvest spot in the nearest spice nebula this player has explored, on
+## the side facing `from`; Vector2.INF if it has explored none.
 func _nebula_spot(from: Vector2, game: Game, v: Vision) -> Vector2:
+	var best := Vector2.INF
+	var best_d := INF
 	for n in game.get_tree().get_nodes_in_group("nebulae"):
-		var dir: Vector2 = (from - n.global_position).normalized()
-		var p: Vector2 = n.global_position + dir * (n.inner + n.outer) / 2.0
-		if v == null or v.is_explored_at(p):
-			return p
-	return Vector2.INF
+		var p: Vector2 = n.heart_toward(from)
+		if v != null and not v.is_explored_at(p):
+			continue
+		var d := from.distance_to(p)
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
 
 ## The corvette variant that best fits the enemy defenses seen so far (see
 ## Defs.VARIANTS), or "" when we haven't seen enough of their fleet.

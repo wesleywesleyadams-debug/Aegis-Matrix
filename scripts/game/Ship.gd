@@ -1110,10 +1110,7 @@ func _avoid_sun(desired: Vector2) -> Vector2:
 func _leave_nebula() -> void:
 	for n in Game.instance.nebula_list:
 		if n.contains(global_position):
-			var out: Vector2 = global_position - n.global_position
-			var d := out.length()
-			var edge: float = n.inner - 40.0 if d - n.inner < n.outer - d else n.outer + 40.0
-			order_move(n.global_position + out.normalized() * edge)
+			order_move(n.exit_from(global_position))
 			return
 
 ## Next point to fly at on the way to `final`, planning a path around debris

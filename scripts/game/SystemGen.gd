@@ -14,18 +14,18 @@ class_name SystemGen
 ## rest are generated from a fixed seed and their own flavor of params.
 const SYSTEMS := [
 	{"id": "orion_reach", "name": "Orion Reach", "desc": "The classic hand-built system.", "star": "yellow", "star_name": "Orion",
-		"bg": "violet", "arrival": "You arrive in Orion Reach. Twin deserts flank a quiet yellow sun."},
+		"bg": "violet", "nebula": "flanks", "arrival": "You arrive in Orion Reach. Twin deserts flank a quiet yellow sun."},
 	{"id": "vega_drift", "name": "Vega Drift", "seed": 1101, "desc": "Balanced worlds around twin suns.", "star": "white", "star_name": "Vega",
-		"bg": "teal", "names": "cold", "feature": "binary", "arrival": "You arrive in Vega Drift. Twin white suns wheel around a shifting safe lane.",
+		"bg": "teal", "names": "cold", "feature": "binary", "nebula": "bands", "arrival": "You arrive in Vega Drift. Twin white suns wheel around a shifting safe lane.",
 		"params": {"planets": 4, "belts": 2, "spice": 0.12}},
 	{"id": "kharon_expanse", "name": "Kharon Expanse", "seed": 2207, "desc": "Sparse and spice-rich.", "star": "red_dwarf", "star_name": "Kharon",
 		"bg": "rust", "names": "dust", "feature": "spice_nebula", "arrival": "You arrive in the Kharon Expanse. Spice lies thick in the dim red dust.",
 		"params": {"planets": 3, "belts": 1, "spice": 0.28}},
 	{"id": "tethys_cluster", "name": "Tethys Cluster", "seed": 3313, "desc": "Crowded worlds behind a debris ring.", "star": "orange", "star_name": "Tethys",
-		"bg": "verdant", "names": "myth", "feature": "rings", "arrival": "You arrive in the Tethys Cluster. A wall of rubble rings the inner worlds; find the gaps.",
+		"bg": "verdant", "names": "myth", "feature": "rings", "nebula": "pockets", "arrival": "You arrive in the Tethys Cluster. A wall of rubble rings the inner worlds; find the gaps.",
 		"params": {"planets": 5, "belts": 3, "spice": 0.1}},
 	{"id": "sable_verge", "name": "Sable Verge", "seed": 4419, "desc": "Heavy belts, swept by ion storms.", "star": "blue_giant", "star_name": "Sable",
-		"bg": "ash", "names": "stone", "feature": "storms", "arrival": "You arrive at the Sable Verge. Ion storms wheel around a blue giant; time your moves.",
+		"bg": "ash", "names": "stone", "feature": "storms", "nebula": "drifts", "arrival": "You arrive at the Sable Verge. Ion storms wheel around a blue giant; time your moves.",
 		"params": {"planets": 3, "belts": 3, "spice": 0.05}},
 	{"id": "random", "name": "Random", "desc": "A new system every match.", "arrival": "You arrive in uncharted space."},
 ]
@@ -85,7 +85,7 @@ static func settings(id: String, seed: int) -> Dictionary:
 	var out: Dictionary = sys.get("params", {}).duplicate()
 	if id == "random" or out.is_empty():
 		out = random_params(seed)
-	for k in ["star", "bg", "names", "star_name", "arrival", "feature"]:
+	for k in ["star", "bg", "names", "star_name", "arrival", "feature", "nebula"]:
 		if sys.has(k):
 			out[k] = sys[k]
 	if not out.has("star_name"):
@@ -108,7 +108,8 @@ static func random_params(seed: int) -> Dictionary:
 	var bgs: Array = BACKGROUNDS.keys()
 	var sets: Array = NAME_SETS.keys()
 	return {"planets": rng.randi_range(3, 5), "belts": rng.randi_range(1, 3), "spice": rng.randf_range(0.06, 0.25),
-		"star": stars[rng.randi() % stars.size()], "bg": bgs[rng.randi() % bgs.size()], "names": sets[rng.randi() % sets.size()]}
+		"star": stars[rng.randi() % stars.size()], "bg": bgs[rng.randi() % bgs.size()], "names": sets[rng.randi() % sets.size()],
+		"nebula": NEBULA_STYLES[rng.randi() % NEBULA_STYLES.size()]}
 
 static func generate(seed: int, params: Dictionary) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
@@ -218,6 +219,9 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 			if half_rocks.filter(func(r): return r["pos"].length() > inner and r["pos"].length() < outer and str(r["variant"]).begins_with("spice")).size() >= 7:
 				break
 
+	if params.has("nebula"):
+		features.append_array(nebulae(str(params["nebula"]), sb_pos, seed))
+
 	# Mirror through the star for player 2.
 	var out := {"planets": [], "asteroids": [], "starbases": [], "ships": [], "features": features}
 	var n := 0
@@ -237,6 +241,60 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 		for i in 3:
 			out["ships"].append({"type": "miner", "owner": pid, "pos": sb + side_dir * (60.0 + i * 22.0), "rot": face})
 			out["ships"].append({"type": "corvette", "owner": pid, "pos": sb - side_dir * (60.0 + i * 22.0) + Vector2.from_angle(face) * 30.0, "rot": face})
+	return out
+
+## Nebula layouts other than Kharon's full ring, one per system so each map
+## is fought over differently. Everything is mirrored through the star, so
+## both players get the same gas at the same distances.
+##   flanks  - one cloud on each flank, equally far from both bases: the
+##             contested middle (Orion Reach).
+##   bands   - two arcs of a ring outside the twin suns' orbit, across the
+##             lane between the bases (Vega Drift).
+##   pockets - small clouds scattered outside the debris ring (Tethys).
+##   drifts  - one big cloud on each base's flank, out toward the edge: a home nebula
+##             that the other side has to come and take (Sable Verge).
+const NEBULA_STYLES := ["flanks", "bands", "pockets", "drifts"]
+## How close gas may come to a starbase: a base parked in a nebula would
+## lose its shields, which no layout should do to a player.
+const NEBULA_BASE_CLEAR := 200.0
+
+## The nebula features for `style`, given player 1's starbase position.
+static func nebulae(style: String, base: Vector2, seed: int) -> Array:
+	var half: Array = []
+	var axis := base.normalized()
+	var ang := axis.angle()
+	match style:
+		"flanks":
+			half.append({"shape": "cloud", "pos": axis.orthogonal() * 720.0, "radius": 250.0})
+		"bands":
+			var r0 := star_clear + 110.0
+			half.append({"shape": "ring", "pos": Vector2.ZERO, "inner": r0, "outer": r0 + 150.0, "arc_mid": ang + PI / 2.0, "arc_half": 0.55})
+		"pockets":
+			var r := (ring_radius if ring_radius > 0.0 else RING_RADIUS) + 250.0
+			for da in [-0.8, 0.75, 1.75]:
+				half.append({"shape": "cloud", "pos": Vector2.from_angle(ang + da) * r, "radius": 130.0})
+		"drifts":
+			half.append({"shape": "cloud", "pos": Vector2.from_angle(ang + 0.7) * 1200.0, "radius": 300.0})
+	var out: Array = []
+	var k := 0
+	for side in 2:
+		var s := 1.0 if side == 0 else -1.0
+		for h in half:
+			var f: Dictionary = h.duplicate()
+			f["type"] = "spice_nebula"
+			f["seed"] = seed + 31 * k
+			k += 1
+			f["pos"] = h["pos"] * s
+			if f.has("arc_mid") and side == 1:
+				f["arc_mid"] = float(h["arc_mid"]) + PI
+			if f["shape"] == "cloud":
+				# Inside the map, and never over a starbase.
+				var lim := Vector2(1800.0 - EDGE_MARGIN, 1150.0 - EDGE_MARGIN) - Vector2.ONE * float(f["radius"])
+				f["pos"] = Vector2(clampf(f["pos"].x, -lim.x, lim.x), clampf(f["pos"].y, -lim.y, lim.y))
+				for b in [base, -base]:
+					var room: float = f["pos"].distance_to(b) - NEBULA_BASE_CLEAR
+					f["radius"] = maxf(minf(float(f["radius"]), room), 60.0)
+			out.append(f)
 	return out
 
 static func _on_ellipse(a: float, t: float) -> Vector2:

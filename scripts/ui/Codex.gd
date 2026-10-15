@@ -623,7 +623,7 @@ func _page_economy() -> void:
 
 func _page_systems() -> void:
 	_heading("Systems")
-	_para("Every system is point-symmetric, so both players start with the same terrain. Each has its own star, look and signature feature.")
+	_para("Every system is point-symmetric, so both players start with the same terrain. Each has its own star, look and signature feature, and every one has spice nebulae - endless spice for Gas Skimmers, at the price of shields drained to nothing inside them - laid out its own way.")
 	for s in SystemGen.SYSTEMS:
 		if s["id"] == "random":
 			continue
@@ -645,6 +645,15 @@ func _page_systems() -> void:
 				"storms": "Ion storms: sweeping arms slow ships to 40% and halve sensors while they pass.",
 			}.get(feature, feature)
 			col.add_child(_wrap(ftext, EDGE_LIT, 16))
+		# Every system has spice nebulae; this is where its gas lies.
+		var ntext: String = {
+			"flanks": "Spice clouds: one on each flank, equally far from both bases - the contested middle.",
+			"bands": "Spice bands: two arcs of gas across the lane between the bases, just outside the suns' orbit.",
+			"pockets": "Spice pockets: small clouds scattered outside the debris ring, near the outer worlds.",
+			"drifts": "Spice drifts: a great cloud on each base's flank - your own to harvest, the enemy's to raid.",
+		}.get(s.get("nebula", ""), "Spice clouds of a shape drawn with the rest of the system." if s.get("id", "") == "random" else "")
+		if ntext != "":
+			col.add_child(_wrap(ntext, Defs.RESOURCE_COLORS["spice"], 16))
 		card.set_meta("block", true)
 		_body.add_child(card)
 	_heading("The star")

@@ -1,17 +1,31 @@
 class_name SpiceNebula
 extends Node2D
-## Kharon Expanse's signature feature: a ring of spice-laden gas around the
-## star, between `inner` and `outer` (px from the star). Extra spice rocks
-## drift in it (SystemGen places them). Anything with shields inside it loses
-## DRAIN of its max shield per second and can't regenerate; hulls are never
-## hurt, so going in is safe but leaves you exposed.
+## A spice nebula: spice-laden gas that Gas Skimmers harvest (anywhere inside
+## it, slowly and for ever). Anything with shields inside it loses DRAIN of
+## its max shield per second and can't regenerate; hulls are never hurt, so
+## going in is safe but leaves you exposed, and ships inside are hidden from
+## sensors that are not close by.
+##
+## Every system has them, in a shape that suits it (see SystemGen.nebulae):
+##   "ring"  - a band around the node's position, between `inner` and `outer`
+##             px, optionally only an arc of it (`arc_mid` +- `arc_half`).
+##   "cloud" - a patch of gas of `radius` px around the node's position.
+## Everything else in the game asks a nebula the same questions (contains,
+## heart_toward, exit_from, draw_on_map) and never looks at its shape.
 
 const DRAIN := 0.1
 ## The cloud is painted at 1/PIXEL resolution so it matches the pixel art.
 const PIXEL := 4
 
+var shape: String = "ring"
 var inner: float = 300.0
 var outer: float = 700.0
+## Ring arcs: the band covers angles arc_mid +- arc_half. PI or more = whole.
+var arc_mid: float = 0.0
+var arc_half: float = PI
+var radius: float = 260.0
+## Varies the paint so mirrored clouds are not pixel-identical.
+var seed_value: int = 7
 
 func _ready() -> void:
 	add_to_group("nebulae")
@@ -22,16 +36,78 @@ func _ready() -> void:
 	sprite.scale = Vector2.ONE * PIXEL
 	add_child(sprite)
 
-func contains(p: Vector2) -> bool:
-	var d := p.distance_to(global_position)
-	return d >= inner and d <= outer
+## Builds one from a SystemGen feature dict.
+static func from_feature(ft: Dictionary) -> SpiceNebula:
+	var n := SpiceNebula.new()
+	n.position = ft.get("pos", Vector2.ZERO)
+	n.shape = ft.get("shape", "ring")
+	n.inner = ft.get("inner", 300.0)
+	n.outer = ft.get("outer", 700.0)
+	n.arc_mid = ft.get("arc_mid", 0.0)
+	n.arc_half = ft.get("arc_half", PI)
+	n.radius = ft.get("radius", 260.0)
+	n.seed_value = int(ft.get("seed", 7))
+	return n
 
-## Soft orange-magenta haze, densest mid-ring, fading at both edges.
+func _in_arc(a: float) -> bool:
+	return arc_half >= PI or absf(angle_difference(arc_mid, a)) <= arc_half
+
+func contains(p: Vector2) -> bool:
+	var v := p - global_position
+	if shape == "cloud":
+		return v.length() <= radius
+	var d := v.length()
+	return d >= inner and d <= outer and _in_arc(v.angle())
+
+## A point well inside the nebula, on the part nearest `from`: where a
+## skimmer goes to work, or where the AI sends one.
+func heart_toward(from: Vector2) -> Vector2:
+	if shape == "cloud":
+		return global_position + (from - global_position).limit_length(radius * 0.4)
+	var a := (from - global_position).angle()
+	if not _in_arc(a):
+		a = arc_mid + clampf(angle_difference(arc_mid, a), -arc_half * 0.8, arc_half * 0.8)
+	return global_position + Vector2.from_angle(a) * (inner + outer) / 2.0
+
+## The nearest point just outside the nebula from a point inside it.
+func exit_from(p: Vector2) -> Vector2:
+	var v := p - global_position
+	var d := maxf(v.length(), 0.001)
+	if shape == "cloud":
+		return global_position + v / d * (radius + 40.0)
+	# A ring band: out through whichever face is closer; an arc can also be
+	# left through its ends, but the faces are always near enough.
+	var edge: float = inner - 40.0 if d - inner < outer - d else outer + 40.0
+	return global_position + v / d * edge
+
+## Draws the nebula onto a map (the minimap, the lobby preview): `to_map`
+## turns a world point into the canvas, `k` is canvas units per world px.
+func draw_on_map(canvas: CanvasItem, to_map: Callable, k: float) -> void:
+	draw_feature_on_map(canvas, to_map, k, {"pos": global_position, "shape": shape, "inner": inner, "outer": outer,
+		"arc_mid": arc_mid, "arc_half": arc_half, "radius": radius})
+
+## The same for a feature dict, so the lobby can draw a system it has not
+## built.
+static func draw_feature_on_map(canvas: CanvasItem, to_map: Callable, k: float, ft: Dictionary) -> void:
+	var col := Color(1.0, 0.6, 0.2, 0.16)
+	var c: Vector2 = to_map.call(ft.get("pos", Vector2.ZERO))
+	if ft.get("shape", "ring") == "cloud":
+		canvas.draw_circle(c, float(ft["radius"]) * k, col)
+		return
+	var half: float = ft.get("arc_half", PI)
+	var mid: float = ft.get("arc_mid", 0.0)
+	var a0: float = 0.0 if half >= PI else mid - half
+	var a1: float = TAU if half >= PI else mid + half
+	canvas.draw_arc(c, (float(ft["inner"]) + float(ft["outer"])) / 2.0 * k, a0, a1, 64, col, (float(ft["outer"]) - float(ft["inner"])) * k)
+
+## Soft orange-magenta haze, densest in the middle of the gas, fading at the
+## edges.
 func _paint() -> Image:
-	var n := int(ceil(outer * 2.0 / PIXEL)) + 2
+	var reach := radius if shape == "cloud" else outer
+	var n := int(ceil(reach * 2.0 / PIXEL)) + 22
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
 	var noise := FastNoiseLite.new()
-	noise.seed = 7
+	noise.seed = seed_value
 	noise.frequency = 0.035
 	noise.fractal_octaves = 3
 	var cols := [Color("5a1f3a"), Color("8a2e3f"), Color("c8522a"), Color("ff9a2e")]
@@ -41,11 +117,23 @@ func _paint() -> Image:
 	var half := (outer - inner) / 2.0
 	for y in n:
 		for x in n:
-			var d := Vector2(x - c, y - c).length() * PIXEL
-			if d < inner - 40.0 or d > outer + 40.0:
-				continue
-			var ring := 1.0 - clampf(absf(d - mid) / (half + 40.0), 0.0, 1.0)
-			var v := ring * 0.8 + noise.get_noise_2d(x, y) * 0.5
+			var off := Vector2(x - c, y - c) * PIXEL
+			var d := off.length()
+			var body: float
+			if shape == "cloud":
+				if d > radius + 40.0:
+					continue
+				body = 1.0 - clampf(d / (radius + 40.0), 0.0, 1.0)
+				body = sqrt(body)
+			else:
+				if d < inner - 40.0 or d > outer + 40.0:
+					continue
+				body = 1.0 - clampf(absf(d - mid) / (half + 40.0), 0.0, 1.0)
+				if arc_half < PI:
+					# Thin out toward the arc's ends instead of stopping dead.
+					var off_a := absf(angle_difference(arc_mid, off.angle()))
+					body *= clampf((arc_half + 0.12 - off_a) / 0.3, 0.0, 1.0)
+			var v := body * 0.8 + noise.get_noise_2d(x, y) * 0.5
 			if v <= 0.1:
 				continue
 			# Color bands picked with a light ordered dither; alpha stays soft.

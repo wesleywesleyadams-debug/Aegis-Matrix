@@ -59,10 +59,10 @@ func _draw() -> void:
 			var a0 := TAU * i / 96.0
 			if not ring.in_gap(a0 + TAU / 192.0):
 				draw_arc(rc, ring.radius * size.x / Game.MAP_RECT.size.x, a0, a0 + TAU / 96.0, 3, Color("6e5c4a"), rw)
-	# Spice nebulae as a faint amber ring.
+	# Spice nebulae as faint amber gas, whatever their shape.
 	var msc := size.x / Game.MAP_RECT.size.x
 	for neb in tree.get_nodes_in_group("nebulae"):
-		draw_arc(_map_to_ui(neb.global_position), (neb.inner + neb.outer) / 2.0 * msc, 0.0, TAU, 64, Color(1.0, 0.6, 0.2, 0.14), (neb.outer - neb.inner) * msc)
+		neb.draw_on_map(self, _map_to_ui, msc)
 	for star in tree.get_nodes_in_group("stars"):
 		draw_circle(_map_to_ui(star.global_position), 3.0 + star.core_radius / 10.0, star.tint)
 	# Asteroids as small blips in their resource's color (minerals teal,
