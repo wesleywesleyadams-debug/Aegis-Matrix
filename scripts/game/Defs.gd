@@ -207,7 +207,8 @@ const ENERGY_STARVED_FACTOR := 0.25
 
 ## Planet types. A planet's size = its number of fields, and its base
 ## population cap is size * POP_PER_SIZE (a size 19 world: 19 fields, 19k pops).
-## fertility is informational for now (farms produce a flat amount).
+## fertility multiplies what a Farm grows there: a lush Terran world feeds
+## its farms in full, a Molten one barely at all.
 ## spice_reserve: spice stored underground for Spice Extractors. Barren
 ## worlds hold the most (desert above all); lush worlds very little.
 ## energy_mult: how much a Power Plant here makes, against the same plant
@@ -224,12 +225,14 @@ const PLANET_TYPES := {
 ## What a planet type does differently from the rest, as short lines for
 ## any description of it: every multiplier that is not 1.0, positive or
 ## negative, read straight from PLANET_TYPES so a new one shows up without
-## touching the UI. Fertility is not listed: nothing uses it yet.
-const PLANET_TRAIT_LABELS := {"energy_mult": "Energy production"}
+## touching the UI.
+const PLANET_TRAIT_LABELS := {"fertility": "Food production", "energy_mult": "Energy production"}
 
 static func planet_traits(kind: String) -> Array:
 	var out: Array = []
 	var t: Dictionary = PLANET_TYPES.get(kind, {})
+	if not t.get("habitable", true):
+		return out  # nothing is built on a gas giant
 	for key in PLANET_TRAIT_LABELS:
 		var m: float = float(t.get(key, 1.0))
 		if absf(m - 1.0) > 0.001:
@@ -254,7 +257,8 @@ const OUTPUT_PER_POP := 0.0001
 ## A shortage ends only once the world has been fed continuously for this
 ## long; until then it neither grows nor stops losing pops.
 const REGROW_SECONDS := 5.0
-## Food comes only from Farms (see BUILDINGS), scaled by planet fertility.
+## Food comes only from Farms (see BUILDINGS), scaled by planet fertility
+## (PLANET_TYPES) and by population (OUTPUT_PER_POP).
 ## Planets and pops produce and consume no energy on their own; only Power
 ## Plants (and starbase reactors) make it.
 
@@ -275,7 +279,7 @@ static func field_count(planet_diameter_px: float) -> int:
 ## only: planet kinds it can be built on (empty = any).
 const BUILDINGS := {
 	"farm": {"name": "Farm", "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
-		"desc": "+20 food/min at base, more with population: feeds 2,000 pops (boosted by Hydroponics)."},
+		"desc": "+20 food/min at base on a fertile world (x0.15 to x1.0 by world type), more with population: feeds 2,000 pops at full fertility (boosted by Hydroponics)."},
 	"generator": {"name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 20.0}, "only": [],
 		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world."},
 	"mine": {"name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],

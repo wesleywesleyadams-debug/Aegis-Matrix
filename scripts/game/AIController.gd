@@ -147,6 +147,12 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 
 	# Develop planets: farms when food is falling, otherwise a rotating mix.
 	var food_rate: float = game.rates[pid].get("food", 0.0)
+	# Farms grow in proportion to fertility, so food goes where the soil is:
+	# a poor world only farms if this side has nothing better.
+	var best_soil := 0.0
+	for p0 in game.get_tree().get_nodes_in_group("planets"):
+		if p0.owner_id == pid and p0.free_fields() > 0:
+			best_soil = maxf(best_soil, float(p0.type_def().get("fertility", 1.0)))
 	for p in game.get_tree().get_nodes_in_group("planets"):
 		if p.owner_id != pid or not p.construction.is_empty() or not p.construction_queue.is_empty() or p.free_fields() == 0:
 			continue
@@ -159,6 +165,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				pick = "generator"
 			if res["spice"] < 150.0 and p.spice_reserve > 500.0 and p.count_building("spice_extractor") == 0:
 				pick = "spice_extractor"
+		if pick == "farm" and float(p.type_def().get("fertility", 1.0)) < best_soil * 0.6:
+			pick = "generator"
 		for i in p.fields:
 			if p.order_build(i, pick) == "":
 				break

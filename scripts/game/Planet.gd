@@ -472,7 +472,8 @@ func _run_buildings(dt: float) -> void:
 			var v: float = Defs.BUILDINGS[b]["output"][k] * hands
 			# Outputs are per minute (Defs.PER_MIN); this loop works per second.
 			if k == "food":
-				v *= g.mod(owner_id, "food")
+				# How much a Farm grows depends on the soil it is built in.
+				v *= g.mod(owner_id, "food") * float(t.get("fertility", 1.0))
 				food_made_per_min += v
 			elif k == "energy":
 				# A Molten world's plants run hotter than anyone else's.
