@@ -93,7 +93,7 @@ static func _cost(c: Dictionary) -> float:
 func peak(pid: int, field: String) -> int:
 	var best := 0
 	for s in samples:
-		best = maxi(best, int(s[str(pid)][field]))
+		best = maxi(best, int(s[str(pid)].get(field, 0)))
 	return best
 
 ## One snapshot per side: stockpiles, pop, worlds, fleet, starbases, tech.
@@ -125,5 +125,5 @@ static func sample(t: float) -> Dictionary:
 		var r: Dictionary = g.resources[pid]
 		out[str(pid)] = {"food": int(r["food"]), "minerals": int(r["minerals"]), "energy": int(r["energy"]), "spice": int(r["spice"]),
 			"pop": int(pop), "worlds": worlds, "warships": war, "power": int(power), "miners": miners, "starbases": bases,
-			"techs": g.researched[pid].size(), "mode": str(g.ai._state.get(pid, {}).get("mode", ""))}
+			"techs": g.researched[pid].size(), "score": g.stats.score(pid) if g.stats else 0, "mode": str(g.ai._state.get(pid, {}).get("mode", ""))}
 	return out

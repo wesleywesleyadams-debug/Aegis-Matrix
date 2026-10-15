@@ -1459,6 +1459,8 @@ func _show_stats(on: bool) -> void:
 		["Peak population", func(p): return st.peak(p, "pop")],
 		["Peak warships", func(p): return st.peak(p, "warships")],
 		["Technologies researched", func(p): return game.researched[p].size()],
+		["Peak score", func(p): return st.peak(p, "score")],
+		["Final score", func(p): return st.score(p)],
 	]
 	for l in lines:
 		grid.add_child(_label(l[0], TEXT))
@@ -1468,12 +1470,12 @@ func _show_stats(on: bool) -> void:
 			grid.add_child(v)
 	# Charts over time.
 	var charts := GridContainer.new()
-	charts.columns = 2
+	charts.columns = 3
 	charts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	charts.add_theme_constant_override("h_separation", 16)
 	charts.add_theme_constant_override("v_separation", 16)
 	row.add_child(charts)
-	for c in [["Worlds", "worlds"], ["Population", "pop"], ["Warships", "warships"], ["Fleet strength", "power"]]:
+	for c in [["Score", "score"], ["Worlds", "worlds"], ["Population", "pop"], ["Warships", "warships"], ["Fleet strength", "power"], ["Technologies", "techs"]]:
 		var box := VBoxContainer.new()
 		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.add_child(_label(c[0], TEXT, 15))
@@ -1481,7 +1483,7 @@ func _show_stats(on: bool) -> void:
 		ch.samples = st.samples
 		ch.field = c[1]
 		ch.sides = [[me, Defs.team_color(me)], [foe, Defs.team_color(foe)]]
-		ch.custom_minimum_size = Vector2(390, 150)
+		ch.custom_minimum_size = Vector2(250, 150)
 		box.add_child(ch)
 		charts.add_child(box)
 
@@ -1500,7 +1502,7 @@ class StatChart extends Control:
 		var v_max := 1.0
 		for s in samples:
 			for sd in sides:
-				v_max = maxf(v_max, float(s[str(sd[0])][field]))
+				v_max = maxf(v_max, float(s[str(sd[0])].get(field, 0)))
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(4, 13), str(int(v_max)), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("6a7596"))
 		draw_string(font, Vector2(size.x - 44, size.y - 4), "%d min" % int(t_max / 60.0), HORIZONTAL_ALIGNMENT_RIGHT, 40, 11, Color("6a7596"))
@@ -1514,7 +1516,7 @@ class StatChart extends Control:
 			var pts := PackedVector2Array()
 			for s in samples:
 				var x: float = pad.x + area.x * float(s["t"]) / t_max
-				var y: float = pad.y + area.y * (1.0 - float(s[str(sd[0])][field]) / v_max)
+				var y: float = pad.y + area.y * (1.0 - float(s[str(sd[0])].get(field, 0)) / v_max)
 				pts.append(Vector2(x, y))
 			draw_polyline(pts, sd[1], 2.0, true)
 		# A key, so a chart read on its own still says whose line is whose.
