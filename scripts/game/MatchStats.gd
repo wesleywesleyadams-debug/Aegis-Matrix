@@ -41,6 +41,8 @@ func finish() -> void:
 ## more than having the resources for it (75 minerals = 7.5, a corvette = 15).
 const BANKED_WORTH := 0.1
 const OWNED_WORTH := 2.0
+## Score for having explored the entire system.
+const EXPLORE_WORTH := 100.0
 
 ## The running score shown above the minimap: a snapshot of what a side has
 ## right now, so it falls as well as rises.
@@ -49,6 +51,7 @@ const OWNED_WORTH := 2.0
 ##            ships, finished starbases, Mining Stations and Weapons Depots,
 ##            every building on every world, and every technology researched
 ##   worlds - 20 per world held, plus population /100 (people are not bought)
+##   explored - EXPLORE_WORTH for the whole map charted, pro rata
 func score(pid: int) -> int:
 	var g := Game.instance
 	var banked := 0.0
@@ -74,7 +77,10 @@ func score(pid: int) -> int:
 	for t in g.researched.get(pid, {}):
 		if Defs.TECHS.has(t):
 			owned += _cost(Defs.TECHS[t]["cost"])
-	return int(banked * BANKED_WORTH + owned * BANKED_WORTH * OWNED_WORTH + worlds * 20 + pop / 100.0)
+	# Each side's own fog of war, so it is what that side has actually seen.
+	var v: Vision = g.visions.get(pid)
+	var explored: float = v.explored_fraction() if v != null else 0.0
+	return int(banked * BANKED_WORTH + owned * BANKED_WORTH * OWNED_WORTH + worlds * 20 + pop / 100.0 + explored * EXPLORE_WORTH)
 
 ## Every resource in a cost, summed.
 static func _cost(c: Dictionary) -> float:
