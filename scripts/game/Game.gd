@@ -7,6 +7,9 @@ extends Node2D
 
 signal selection_changed
 signal message(text: String, color: Color)
+## A message that stays up `extra` seconds (real time) longer than usual,
+## and is never pushed off the stack by newer ones: the arrival lines.
+signal message_long(text: String, color: Color, extra: float)
 signal match_over(won: bool)
 signal tech_completed(pid: int, tech_id: String)
 
@@ -214,11 +217,15 @@ func _ready() -> void:
 	if loaded:
 		notify("Saved game loaded.", "note_save")
 	else:
-		message.emit(system_settings.get("arrival", "You arrive in uncharted space."), Color("e8d6a8"))
-		message.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"))
+		# The arrival lines linger: they are the player's briefing.
+		message_long.emit(system_settings.get("arrival", "You arrive in uncharted space."), Color("e8d6a8"), ARRIVAL_LINGER)
+		message_long.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"), ARRIVAL_LINGER)
 	_enter_dev_capture()
 
 # ---------------------------------------------------------------- system
+
+## Extra real-time seconds the arrival lines stay up beyond a normal message.
+const ARRIVAL_LINGER := 15.0
 
 ## The current system's settings (star, background, arrival line...).
 var system_settings: Dictionary = {}

@@ -120,6 +120,7 @@ func _ready() -> void:
 
 	game.selection_changed.connect(_rebuild_selection)
 	game.message.connect(_push_message)
+	game.message_long.connect(func(t, c, extra): _push_message(t, c, extra))
 	game.match_over.connect(_on_match_over)
 	game.tech_completed.connect(func(_p, _t): _refresh_research())
 	_rebuild_selection()
@@ -1219,14 +1220,31 @@ func flash_target(node: Node2D, kind: String) -> void:
 func ping(world_pos: Vector2, color: Color) -> void:
 	_pings.append({"pos": world_pos, "t": Game.now(), "color": color})
 
-func _push_message(text: String, color: Color) -> void:
+## `extra` keeps a message up that many more real seconds and pins it, so
+## newer messages push other lines off the stack instead of it.
+func _push_message(text: String, color: Color, extra: float = 0.0) -> void:
 	var l := _label(text, color, 18)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	if extra > 0.0:
+		l.set_meta("pinned", true)
 	_messages.add_child(l)
 	while _messages.get_child_count() > 4:
-		_messages.get_child(0).free()
+		var drop: Node = null
+		for c in _messages.get_children():
+			if not c.has_meta("pinned"):
+				drop = c
+				break
+		if drop == null:
+			drop = _messages.get_child(0)
+		drop.free()
 	var tw := l.create_tween()
-	tw.tween_interval(3.5)
+	if extra > 0.0:
+		# Real time, so game speed does not cut the briefing short: the usual
+		# hold as it plays at normal speed, plus the extra.
+		tw.set_ignore_time_scale(true)
+		tw.tween_interval(3.5 / TIME_RATE + extra)
+	else:
+		tw.tween_interval(3.5)
 	tw.tween_property(l, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(l.queue_free)
 
