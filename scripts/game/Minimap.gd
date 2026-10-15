@@ -79,7 +79,7 @@ func _draw() -> void:
 		draw_arc(pos, 5.0, 0, TAU, 16, c, 1.5)
 	# Fog of war over the terrain (see Vision).
 	if game.vision and game.vision.enabled:
-		game.vision.draw_fog(self, Rect2(Vector2.ZERO, size))
+		game.vision.draw_fog(self, Rect2(Vector2.ZERO, size), Vision.FOG_TINT_MAP)
 	for sb in tree.get_nodes_in_group("starbases"):
 		if not sb.visible:
 			continue

@@ -27,7 +27,12 @@ const PLANET_SENSOR := 280.0
 const NEBULA_SPOT := 160.0
 const STORM_SENSOR_MULT := 0.5
 
-const FOG_COLOR := Color(0.015, 0.015, 0.015, 1.0)
+## The fog is stored white and tinted where it is drawn: near-black over the
+## world, but a muted purple on the minimap, where black-on-black made it hard
+## to tell explored space from the unknown.
+const FOG_COLOR := Color(1, 1, 1, 1)
+const FOG_TINT_WORLD := Color(0.015, 0.015, 0.015)
+const FOG_TINT_MAP := Color("2b2440")
 const EXPLORED_ALPHA := 0.55
 
 var game: Game
@@ -230,13 +235,15 @@ func _hide_unseen() -> void:
 
 func _draw() -> void:
 	if enabled and render:
-		draw_fog(self, Rect2(Game.MAP_RECT.position, Vector2(cols, rows) * CELL))
+		draw_fog(self, Rect2(Game.MAP_RECT.position, Vector2(cols, rows) * CELL), FOG_TINT_WORLD)
 
 ## Draws the fog (both layers) onto any canvas item, stretched over `rect`
 ## (the world here, the minimap there).
-func draw_fog(ci: CanvasItem, rect: Rect2) -> void:
-	ci.draw_texture_rect(_sight_tex, rect, false)
-	ci.draw_texture_rect(_dark_tex, rect, false)
+## `dark_tint` colours never-explored space; explored space you cannot see
+## right now is always dimmed toward the world's near-black.
+func draw_fog(ci: CanvasItem, rect: Rect2, dark_tint: Color = FOG_TINT_WORLD) -> void:
+	ci.draw_texture_rect(_sight_tex, rect, false, FOG_TINT_WORLD)
+	ci.draw_texture_rect(_dark_tex, rect, false, dark_tint)
 
 ## Dev aid: SL_FOG_TEST=1 prints how many enemy ships / starbases are shown.
 func _ready() -> void:
