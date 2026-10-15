@@ -456,6 +456,8 @@ func _build_pause(root: Control) -> void:
 		b.text = pair[0]
 		b.pressed.connect(pair[1])
 		MenuStyle.button(b)
+		if pair[0] == "Quit to Title":
+			MenuStyle.leave(b)
 		v.add_child(b)
 
 func _build_end(root: Control) -> void:
@@ -466,6 +468,8 @@ func _build_end(root: Control) -> void:
 		var b := Button.new()
 		b.text = pair[0]
 		MenuStyle.button(b)
+		if pair[0] == "Return to Title":
+			MenuStyle.leave(b)
 		b.pressed.connect(pair[1])
 		parts[1].add_child(b)
 	_build_map_bar(root)
@@ -1300,6 +1304,8 @@ func _build_map_bar(root: Control) -> void:
 		var b := Button.new()
 		b.text = pair[0]
 		b.pressed.connect(pair[1])
+		if pair[0] == "Return to Title":
+			MenuStyle.leave(b)
 		h.add_child(b)
 	_map_bar = p
 

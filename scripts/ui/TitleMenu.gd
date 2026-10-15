@@ -48,7 +48,7 @@ func _ready() -> void:
 			MenuStyle.button(b)
 	# New Game green (like the lobby's Start Match), Quit red.
 	_tint(play_button, [Color("1a5a2a"), Color("247a38"), Color("103a1a")], Color("6aff8a"), Color("d6ffe0"))
-	_tint(quit_button, [Color("5a1a1a"), Color("7a2424"), Color("3a1010")], Color("ff6a6a"), Color("ffd6d6"))
+	MenuStyle.leave(quit_button)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and _credits.visible:
