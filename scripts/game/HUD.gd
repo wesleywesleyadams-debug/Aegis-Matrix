@@ -173,11 +173,11 @@ func _fmt(v: float) -> String:
 ## the research button, which keeps the row even at any window width.
 const TOP_Y := 8
 const TOP_H := 62
-const HUD_GAP := 26
+const HUD_GAP := 20
 const HUD_SIDE := 12
 const MENU_W := 170
-const SPEED_W := 330
-const RESEARCH_W := 222
+const SPEED_W := 368
+const RESEARCH_W := 200
 const CLOCK_W := 86
 const SPEED_RIGHT := -HUD_SIDE - MENU_W - HUD_GAP
 const CLOCK_RIGHT := SPEED_RIGHT - SPEED_W - HUD_GAP
@@ -208,7 +208,7 @@ func _build_top_bar(root: Control) -> void:
 		box.add_child(_icon("icon_" + key))
 		var l := _label("0")
 		# Longest realistic text: "54.3k -12.5/s".
-		l.custom_minimum_size = Vector2(150 if key == "food" else 116, 0)
+		l.custom_minimum_size = Vector2(116, 0)
 		l.clip_text = true
 		box.add_child(l)
 		_res_labels[key] = l
@@ -223,7 +223,7 @@ func _build_top_bar(root: Control) -> void:
 	fleet.add_theme_constant_override("separation", 6)
 	fleet.add_child(_icon("icon_fleet"))
 	_fleet_label = _label("0/0")
-	_fleet_label.custom_minimum_size = Vector2(196, 0)
+	_fleet_label.custom_minimum_size = Vector2(220, 0)
 	_fleet_label.clip_text = true
 	fleet.add_child(_fleet_label)
 	h.add_child(fleet)
