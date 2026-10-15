@@ -11,21 +11,22 @@ const BEYOND := 4000.0
 const DASH := 28.0
 const CORNER := 90.0
 
-## Out of bounds is blurred, drained of colour, tinted and striped, so it
-## reads as "not part of the map" at a glance - darker fog alone could be
-## mistaken for unexplored space.
+## Out of bounds is the same sky in a different palette: the starfield and
+## nebulae behind it are kept crisp but re-coloured along a navy -> teal ->
+## ice ramp by brightness, so it stays pretty while plainly not being the
+## map's colours.
 const OUTSIDE_SHADER := """
 shader_type canvas_item;
-uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
-uniform vec4 tint : source_color = vec4(0.32, 0.08, 0.18, 0.55);
+uniform sampler2D screen_tex : hint_screen_texture, filter_nearest;
+uniform vec3 deep : source_color = vec3(0.012, 0.03, 0.075);
+uniform vec3 mid : source_color = vec3(0.07, 0.26, 0.38);
+uniform vec3 high : source_color = vec3(0.82, 0.95, 1.0);
 void fragment() {
-	vec3 c = textureLod(screen_tex, SCREEN_UV, 3.5).rgb;
-	float g = dot(c, vec3(0.3, 0.59, 0.11));
-	vec3 d = mix(c, vec3(g), 0.75) * 0.55;
-	vec3 col = mix(d, tint.rgb, tint.a);
-	// Faint diagonal hazard stripes, fixed to the screen.
-	float stripe = step(0.5, fract((FRAGCOORD.x + FRAGCOORD.y) / 28.0));
-	col *= 1.0 - stripe * 0.18;
+	vec3 c = texture(screen_tex, SCREEN_UV).rgb;
+	float l = dot(c, vec3(0.3, 0.59, 0.11));
+	// The sky is dark, so stretch its low end to bring the nebulae out.
+	float t = clamp(l * 4.0, 0.0, 1.0);
+	vec3 col = t < 0.5 ? mix(deep, mid, t * 2.0) : mix(mid, high, (t - 0.5) * 2.0);
 	COLOR = vec4(col, 1.0);
 }
 """
