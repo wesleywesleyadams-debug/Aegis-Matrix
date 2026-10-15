@@ -36,36 +36,52 @@ func finish() -> void:
 	_stopped = true
 	samples.append(sample(Game.now()))
 
-## What one resource unit is worth to the score, banked. A ship counts for
-## SHIP_WORTH times what it cost: having a thing is always worth more than
-## having the resources for it (75 minerals = 7.5, a corvette = 15).
+## What one resource unit is worth to the score, banked. Anything owned
+## counts for OWNED_WORTH times what it cost: having a thing is always worth
+## more than having the resources for it (75 minerals = 7.5, a corvette = 15).
 const BANKED_WORTH := 0.1
-const SHIP_WORTH := 2.0
+const OWNED_WORTH := 2.0
 
-## The running score shown above the minimap, a snapshot of what a side has
-## right now, so it falls as well as rises:
-##   economy  - resources in the bank, x BANKED_WORTH
-##   military - every ship on the field, at its build cost x BANKED_WORTH x SHIP_WORTH
-##   research - 25 per technology
-##   society  - 20 per world held, plus population /100
+## The running score shown above the minimap: a snapshot of what a side has
+## right now, so it falls as well as rises.
+##   banked - resources in the bank, x BANKED_WORTH
+##   owned  - everything bought, at its cost x BANKED_WORTH x OWNED_WORTH:
+##            ships, finished starbases, Mining Stations and Weapons Depots,
+##            every building on every world, and every technology researched
+##   worlds - 20 per world held, plus population /100 (people are not bought)
 func score(pid: int) -> int:
 	var g := Game.instance
-	var economy := 0.0
+	var banked := 0.0
 	for k in g.resources.get(pid, {}):
-		economy += maxf(float(g.resources[pid][k]), 0.0)
-	var military := 0.0
+		banked += maxf(float(g.resources[pid][k]), 0.0)
+	var owned := 0.0
 	for s in g.get_tree().get_nodes_in_group("ships"):
 		if s.owner_id == pid and s.is_alive():
-			for r in s.def["cost"]:
-				military += float(s.def["cost"][r])
+			owned += _cost(s.def["cost"])
+	for grp in [["starbases", Defs.STARBASE], ["mining_stations", Defs.MINING_STATION], ["depots", Defs.WEAPONS_DEPOT]]:
+		for c in g.get_tree().get_nodes_in_group(grp[0]):
+			if c.owner_id == pid and c.is_alive() and not c.under_construction:
+				owned += _cost(grp[1]["cost"])
 	var worlds := 0
 	var pop := 0.0
 	for p in g.get_tree().get_nodes_in_group("planets"):
 		if p.owner_id == pid:
 			worlds += 1
 			pop += p.pop
-	return int(economy * BANKED_WORTH + military * BANKED_WORTH * SHIP_WORTH
-		+ g.researched.get(pid, {}).size() * 25 + worlds * 20 + pop / 100.0)
+			for b in p.buildings:
+				if b != "":
+					owned += _cost(Defs.BUILDINGS[b]["cost"])
+	for t in g.researched.get(pid, {}):
+		if Defs.TECHS.has(t):
+			owned += _cost(Defs.TECHS[t]["cost"])
+	return int(banked * BANKED_WORTH + owned * BANKED_WORTH * OWNED_WORTH + worlds * 20 + pop / 100.0)
+
+## Every resource in a cost, summed.
+static func _cost(c: Dictionary) -> float:
+	var n := 0.0
+	for r in c:
+		n += float(c[r])
+	return n
 
 ## Highest value of a sampled field for one side.
 func peak(pid: int, field: String) -> int:
