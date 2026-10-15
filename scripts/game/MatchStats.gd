@@ -36,6 +36,27 @@ func finish() -> void:
 	_stopped = true
 	samples.append(sample(Game.now()))
 
+## Resources a side has gathered over the match (not spent), for the score.
+var gathered := {1: 0.0, 2: 0.0}
+
+## The running score shown above the minimap. Four parts, each something a
+## side has built up, so it rises with good play and only the society part
+## can fall back:
+##   economy  - every resource gathered, /10
+##   military - the build cost of enemy ships destroyed, /5
+##   research - 25 per technology
+##   society  - 20 per world held, plus population /100
+func score(pid: int) -> int:
+	var g := Game.instance
+	var worlds := 0
+	var pop := 0.0
+	for p in g.get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid:
+			worlds += 1
+			pop += p.pop
+	return int(gathered.get(pid, 0.0) / 10.0 + get_count(pid, "kill_value") / 5.0
+		+ g.researched.get(pid, {}).size() * 25 + worlds * 20 + pop / 100.0)
+
 ## Highest value of a sampled field for one side.
 func peak(pid: int, field: String) -> int:
 	var best := 0

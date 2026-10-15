@@ -440,6 +440,8 @@ func add_resources(pid: int, amounts: Dictionary) -> void:
 		return
 	for k in amounts:
 		resources[pid][k] = resources[pid].get(k, 0.0) + amounts[k]
+		if amounts[k] > 0.0:
+			stats.gathered[pid] = stats.gathered.get(pid, 0.0) + amounts[k]
 		_rate_acc[pid][k] = _rate_acc[pid].get(k, 0.0) + amounts[k]
 
 func _deduct(pid: int, k: String, amount: float) -> void:
@@ -885,7 +887,14 @@ func spawn_ship(ship_type: String, pid: int, pos: Vector2) -> Ship:
 	s.position = pos
 	ships_root.add_child(s)
 	# Destroyed in battle (not used up colonizing / founding a starbase).
-	s.died.connect(func(e): if e.hp <= 0.0: stats.count(e.owner_id, "ships_lost"))
+	s.died.connect(func(e):
+		if e.hp <= 0.0:
+			stats.count(e.owner_id, "ships_lost")
+			# Two sides, so the other one scores the kill, at what it cost.
+			var cost := 0
+			for r in e.def["cost"]:
+				cost += int(e.def["cost"][r])
+			stats.count(3 - e.owner_id, "kill_value", cost))
 	return s
 
 func found_starbase(pid: int, pos: Vector2) -> Starbase:

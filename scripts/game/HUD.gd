@@ -39,6 +39,9 @@ var _clock: Label
 var _sel_body: VBoxContainer
 ## The per-ship condition tiles of a multi-ship selection (see _add_fleet_tiles).
 var _fleet_tiles: Array = []
+## The per-side score lines above the minimap.
+var _score_box: VBoxContainer
+var _score_timer := 0.0
 var _messages: VBoxContainer
 var _overlay: Control
 var _pause: Control
@@ -413,6 +416,52 @@ func _build_minimap(root: Control) -> void:
 	mm.game = game
 	minimap = mm
 	frame.add_child(mm)
+	# The system's name just above the map, in its star's colour, so the
+	# player always knows which map they are on.
+	var name_tag := _label("", TEXT, 18)
+	name_tag.anchor_left = 1.0
+	name_tag.anchor_right = 1.0
+	name_tag.anchor_top = 1.0
+	name_tag.anchor_bottom = 1.0
+	name_tag.offset_left = -12 - 344
+	name_tag.offset_right = -14
+	name_tag.offset_top = -12 - 232 - 30
+	name_tag.offset_bottom = -12 - 232 - 4
+	name_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	name_tag.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	name_tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	name_tag.add_theme_constant_override("outline_size", 6)
+	root.add_child(name_tag)
+	# Above it, one line per side: name and running score (MatchStats.score).
+	_score_box = VBoxContainer.new()
+	_score_box.anchor_left = 1.0
+	_score_box.anchor_right = 1.0
+	_score_box.anchor_top = 1.0
+	_score_box.anchor_bottom = 1.0
+	_score_box.offset_left = -12 - 344
+	_score_box.offset_right = -14
+	_score_box.offset_top = -12 - 232 - 30 - 52
+	_score_box.offset_bottom = -12 - 232 - 30
+	_score_box.alignment = BoxContainer.ALIGNMENT_END
+	_score_box.add_theme_constant_override("separation", 0)
+	_score_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_score_box)
+	for pid in [game.player_id, 3 - game.player_id]:
+		var l := _label("", Defs.team_color(pid), 16)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		l.add_theme_constant_override("outline_size", 6)
+		l.set_meta("pid", pid)
+		_score_box.add_child(l)
+	_update_scores()
+	# Filled once the system is built (Game sets it up before the first frame).
+	(func():
+		var sys := SystemGen.find(GameState.system_id)
+		var st: Dictionary = game.system_settings
+		# Random has no name of its own: it is called after the star drawn for it.
+		name_tag.text = "%s System" % st.get("star_name", "Uncharted") if GameState.system_id == "random" else str(sys.get("name", ""))
+		name_tag.add_theme_color_override("font_color", Defs.STAR_TYPES.get(st.get("star", "yellow"), {}).get("tint", TEXT))
+	).call_deferred()
 
 func _build_messages(root: Control) -> void:
 	_messages = VBoxContainer.new()
@@ -1129,6 +1178,10 @@ func _process(delta: float) -> void:
 		_refresh = 0.1
 		_update_top_bar()
 		_update_selection_info()
+		_score_timer -= 0.1
+		if _score_timer <= 0.0:
+			_score_timer = 1.0
+			_update_scores()
 		_refresh_research()
 		planet_view.refresh()
 	_fit_selection_panel()
@@ -1136,6 +1189,20 @@ func _process(delta: float) -> void:
 	_pings = _pings.filter(func(p): return now - p["t"] < 0.5)
 	_flashes = _flashes.filter(func(f): return is_instance_valid(f["node"]) and Time.get_ticks_msec() / 1000.0 - f["real"] < FLASH_TIME)
 	_overlay.queue_redraw()
+
+## Who each side is, for the score lines: the signed-in account (or "You")
+## for the player, and the AI for the other side.
+func _side_name(pid: int) -> String:
+	if pid == game.player_id:
+		return GameState.active_account if GameState.active_account != "" else "You"
+	return "AI Opponent"
+
+func _update_scores() -> void:
+	if _score_box == null:
+		return
+	for l in _score_box.get_children():
+		var pid: int = l.get_meta("pid")
+		l.text = "%s   %d" % [_side_name(pid), game.stats.score(pid)]
 
 func _update_top_bar() -> void:
 	var pid := game.player_id
