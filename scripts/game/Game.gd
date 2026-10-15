@@ -244,6 +244,8 @@ func _apply_system_look(st: Dictionary) -> void:
 ## Swaps Main.tscn's hand-made Orion Reach for a generated system when a
 ## different one is picked (see SystemGen). Orion Reach keeps the scene as-is.
 func _build_system() -> void:
+	# The edge of the playable area, shaded off and outlined.
+	world.add_child(MapEdge.new())
 	system_settings = SystemGen.settings(GameState.system_id, GameState.system_seed)
 	_apply_system_look(system_settings)
 	if GameState.system_id == "orion_reach":
