@@ -2503,6 +2503,14 @@ func _enter_dev_capture() -> void:
 		"desert":
 			_focus_planet(get_tree().get_nodes_in_group("planets").filter(func(p): return p.kind == "planet_desert")[0])
 			selection_changed.emit()
+		"molten":
+			# Dev: a Molten world, to check its traits line.
+			var mw := get_tree().get_nodes_in_group("planets").filter(func(p): return p.kind == "planet_lava")
+			if not mw.is_empty():
+				_focus_planet(mw[0])
+				center_on(mw[0].global_position)
+				selection_changed.emit()
+			print("MOLTEN worlds here: %d" % mw.size())
 		"sun":
 			var sun0: Star = get_tree().get_nodes_in_group("stars")[0]
 			_focus_star(sun0)

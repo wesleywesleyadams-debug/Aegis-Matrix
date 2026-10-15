@@ -330,6 +330,8 @@ func refresh() -> void:
 %d/%d built" % [t["label"], planet.fields, used0, planet.fields]) if planet.fields > 0 else t["label"]
 	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else "Enemy world")
 	var s := owner_text
+	for tr in Defs.planet_traits(planet.kind):
+		s += "\n" + tr
 	if not planet.is_habitable():
 		s = "Uninhabitable. No regions to build on; cannot be colonized."
 		if planet.depleted_timer > 0.0:

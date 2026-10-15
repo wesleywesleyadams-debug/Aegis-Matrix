@@ -221,6 +221,21 @@ const PLANET_TYPES := {
 	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy_mult": 1.0},
 	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy_mult": 1.0, "spice_reserve": 3000},
 }
+## What a planet type does differently from the rest, as short lines for
+## any description of it: every multiplier that is not 1.0, positive or
+## negative, read straight from PLANET_TYPES so a new one shows up without
+## touching the UI. Fertility is not listed: nothing uses it yet.
+const PLANET_TRAIT_LABELS := {"energy_mult": "Energy production"}
+
+static func planet_traits(kind: String) -> Array:
+	var out: Array = []
+	var t: Dictionary = PLANET_TYPES.get(kind, {})
+	for key in PLANET_TRAIT_LABELS:
+		var m: float = float(t.get(key, 1.0))
+		if absf(m - 1.0) > 0.001:
+			out.append("%s: x%s" % [PLANET_TRAIT_LABELS[key], str(snappedf(m, 0.01))])
+	return out
+
 const POP_PER_SIZE := 1000
 const START_POP := 100.0
 ## Worlds owned at match start (home planets) begin with this many pops.

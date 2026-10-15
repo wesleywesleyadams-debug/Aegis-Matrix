@@ -571,8 +571,8 @@ func _page_economy() -> void:
 	for p in Defs.PLANET_TYPES:
 		var pd: Dictionary = Defs.PLANET_TYPES[p]
 		prows.append([pd["label"], "yes" if pd.get("habitable", true) else "no (gas giant)",
-			"%.2f" % pd["fertility"], str(pd.get("spice_reserve", pd.get("gas_reserve", 0)))])
-	_table(["Type", "Habitable", "Fertility", "Spice / gas reserve"], prows)
+			", ".join(Defs.planet_traits(p)) if not Defs.planet_traits(p).is_empty() else "-", str(pd.get("spice_reserve", pd.get("gas_reserve", 0)))])
+	_table(["Type", "Habitable", "Effects", "Spice / gas reserve"], prows)
 	var wplate: Array = []
 	for p2 in Defs.PLANET_TYPES:
 		wplate.append([p2 + "_s", Defs.PLANET_TYPES[p2]["label"]])
