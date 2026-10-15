@@ -18,9 +18,9 @@ const BUILTIN_TRACKS := [
 	["magic_space", "Magic Space (CodeManu)"],
 	["deus_ex_tempus", "Deus Ex Tempus (Trevor Lentz)"],
 	["hero_immortal", "Hero Immortal (Trevor Lentz)"],
-	["game", "Star Lords Synth: In-Game"],
-	["title", "Star Lords Synth: Title"],
-	["lobby", "Star Lords Synth: Lobby"],
+	["game", "Stardust Dominion Synth: In-Game"],
+	["title", "Stardust Dominion Synth: Title"],
+	["lobby", "Stardust Dominion Synth: Lobby"],
 ]
 ## Imported songs live here; their track id is "user:<file name>".
 const USER_DIR := "user://music"

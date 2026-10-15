@@ -372,7 +372,7 @@ func _show(id: String) -> void:
 	_flow()
 
 func _page_overview() -> void:
-	_heading("Star Lords")
+	_heading("Stardust Dominion")
 	_para("A match is won by destroying every enemy starbase. Starbases build ships and receive the cargo your miners haul in; lose your last one and the match is over.")
 	_plate([["starbase", "Starbase", EDGE_LIT], ["planet_terran_s", "Worlds"], ["ship_miner", "Harvesters"],
 		["ship_corvette", "Warships"], ["asteroid_0", "Belts"]], 68.0, true,

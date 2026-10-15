@@ -1,4 +1,4 @@
-# Star Lords — Credits
+# Stardust Dominion — Credits
 
 ## Music
 

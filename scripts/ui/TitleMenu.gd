@@ -348,20 +348,20 @@ func _build_credits() -> void:
 	var music := _credit_list(cols, "Music", Color("3fd6b0"))
 	for c in MUSIC_CREDITS:
 		_credit_entry(music, "\"%s\"" % c[0], "by " + c[1], "%s\n%s" % [c[2], c[3]])
-	_credit_entry(music, "Star Lords Synth (Title, Lobby, In-Game)", "Original", "Generated for Star Lords")
+	_credit_entry(music, "Stardust Dominion Synth (Title, Lobby, In-Game)", "Original", "Generated for Stardust Dominion")
 	_credit_entry(music, "", "", "CC BY-SA 3.0: creativecommons.org/licenses/by-sa/3.0")
 
 	# Art.
 	var art := _credit_list(cols, "Art", Color("ffd166"))
-	_credit_entry(art, "Ships, starbases & planets", "Original pixel art", "Generated procedurally for Star Lords (tools/gen_art.gd)")
+	_credit_entry(art, "Ships, starbases & planets", "Original pixel art", "Generated procedurally for Stardust Dominion (tools/gen_art.gd)")
 	_credit_entry(art, "Stars, nebulae, debris rings & ion storms", "Original", "Drawn procedurally in-game")
 	_credit_entry(art, "Space backgrounds", "Original", "Generated procedurally per star system")
-	_credit_entry(art, "Interface", "Original", "Built for Star Lords")
+	_credit_entry(art, "Interface", "Original", "Built for Stardust Dominion")
 	_credit_entry(art, "Font", "Consolas / system monospace", "Supplied by your operating system")
 
 	# Sound & AI.
 	var sai := _credit_list(cols, "Sound & AI", Color("ff9a2e"))
-	_credit_entry(sai, "Sound effects", "Original", "Synthesised for Star Lords (tools/gen_audio.gd): lasers, explosions, alerts, notifications")
+	_credit_entry(sai, "Sound effects", "Original", "Synthesised for Stardust Dominion (tools/gen_audio.gd): lasers, explosions, alerts, notifications")
 	_credit_entry(sai, "Scripted AI opponent", "Original", "Expand / build up / attack / recover strategy")
 	_credit_entry(sai, "Neural AI opponent", "Original", "A small neural network trained by evolution strategies over thousands of AI-vs-AI matches, including self-play")
 
