@@ -5,24 +5,56 @@ extends Node2D
 ## ends. The camera may look past the edge, so without this the background
 ## simply carried on and nothing said the map had stopped.
 
-const SHADE := Color(0.0, 0.0, 0.02, 0.62)
 const LINE := Color(0.55, 0.65, 0.95, 0.55)
 ## How far the shade reaches past the edge: further than any zoom can show.
 const BEYOND := 4000.0
 const DASH := 28.0
 const CORNER := 90.0
 
+## Out of bounds is blurred, drained of colour, tinted and striped, so it
+## reads as "not part of the map" at a glance - darker fog alone could be
+## mistaken for unexplored space.
+const OUTSIDE_SHADER := """
+shader_type canvas_item;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+uniform vec4 tint : source_color = vec4(0.32, 0.08, 0.18, 0.55);
+void fragment() {
+	vec3 c = textureLod(screen_tex, SCREEN_UV, 3.5).rgb;
+	float g = dot(c, vec3(0.3, 0.59, 0.11));
+	vec3 d = mix(c, vec3(g), 0.75) * 0.55;
+	vec3 col = mix(d, tint.rgb, tint.a);
+	// Faint diagonal hazard stripes, fixed to the screen.
+	float stripe = step(0.5, fract((FRAGCOORD.x + FRAGCOORD.y) / 28.0));
+	col *= 1.0 - stripe * 0.18;
+	COLOR = vec4(col, 1.0);
+}
+"""
+
+var _outside: Node2D
+
 func _ready() -> void:
 	# Over the backdrop and nebulae, under everything that moves.
 	z_index = 5
+	_outside = Node2D.new()
+	var mat := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = OUTSIDE_SHADER
+	mat.shader = sh
+	_outside.material = mat
+	_outside.draw.connect(_draw_outside)
+	_outside.show_behind_parent = true
+	add_child(_outside)
+
+## The four bands beyond the edge, drawn through the shader above.
+func _draw_outside() -> void:
+	var r := Game.MAP_RECT
+	_outside.draw_rect(Rect2(r.position.x - BEYOND, r.position.y - BEYOND, r.size.x + BEYOND * 2.0, BEYOND), Color.WHITE)
+	_outside.draw_rect(Rect2(r.position.x - BEYOND, r.end.y, r.size.x + BEYOND * 2.0, BEYOND), Color.WHITE)
+	_outside.draw_rect(Rect2(r.position.x - BEYOND, r.position.y, BEYOND, r.size.y), Color.WHITE)
+	_outside.draw_rect(Rect2(r.end.x, r.position.y, BEYOND, r.size.y), Color.WHITE)
 
 func _draw() -> void:
 	var r := Game.MAP_RECT
-	# Four bands around the map, darkening everything outside it.
-	draw_rect(Rect2(r.position.x - BEYOND, r.position.y - BEYOND, r.size.x + BEYOND * 2.0, BEYOND), SHADE)
-	draw_rect(Rect2(r.position.x - BEYOND, r.end.y, r.size.x + BEYOND * 2.0, BEYOND), SHADE)
-	draw_rect(Rect2(r.position.x - BEYOND, r.position.y, BEYOND, r.size.y), SHADE)
-	draw_rect(Rect2(r.end.x, r.position.y, BEYOND, r.size.y), SHADE)
 	# A dashed line along the edge itself.
 	var corners := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
 	for i in 4:
