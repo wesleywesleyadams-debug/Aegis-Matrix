@@ -63,15 +63,23 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	var pierce: int = profile.get("pierce", 0)
 	var rest := amount
 	var absorbed := 0.0
+	var g := Game.instance
+	var src_ok := g != null and is_instance_valid(_from)
+	# Overcharged Coils: a share of the shot passes through the shields.
+	var past_shield := 0.0
+	if pierce < 1 and shield > 0.0 and src_ok:
+		past_shield = rest * clampf(g.mod(_from.owner_id, "shield_pierce") - 1.0, 0.0, 1.0)
+		rest -= past_shield
 	if pierce < 1:
 		var m: float = vs.get("shield", 1.0)
 		absorbed = minf(shield, rest * m)
 		shield -= absorbed
 		rest -= absorbed / m
-	# Overcharged Coils: a share of the shot goes past the plating to the hull.
+	rest += past_shield
+	# Burst Cyclers: a share of the shot goes past the plating to the hull.
 	var through := 0.0
-	if pierce < 2 and rest > 0.0 and armor > 0.0 and is_instance_valid(_from) and Game.instance:
-		through = rest * clampf(Game.instance.mod(_from.owner_id, "armor_pierce") - 1.0, 0.0, 1.0)
+	if pierce < 2 and rest > 0.0 and armor > 0.0 and src_ok:
+		through = rest * clampf(g.mod(_from.owner_id, "armor_pierce") - 1.0, 0.0, 1.0)
 		rest -= through
 	if pierce < 2 and rest > 0.0:
 		var m: float = vs.get("armor", 1.0)
@@ -80,6 +88,9 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		rest -= plated / m
 	rest += through
 	if rest > 0.0:
+		# Hullbreaker Rounds: what reaches the hull hits harder.
+		if src_ok:
+			rest *= g.mod(_from.owner_id, "hull_damage")
 		hp -= rest * vs.get("hull", 1.0)
 	if absorbed > 0.0:
 		Game.instance.spawn_shield_hit(global_position, radius, (_from.global_position if is_instance_valid(_from) else global_position + Vector2.RIGHT))

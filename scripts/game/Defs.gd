@@ -369,13 +369,15 @@ const TECHS := {
 	# --- Weapons: every step up the line costs something. The two tier 3
 	# projects are a fork, not a sequence: heavy slow guns or light fast ones.
 	"overcharged_coils": {"name": "Overcharged Coils", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 80}, "time": 55.0,
-		"effects": {"armor_pierce": 0.25}, "desc": "Shots ignore 25% of enemy armor: a quarter of every hit goes straight to the hull. The answer to plated hulls and starbases."},
-	"burst_cyclers": {"name": "Burst Cyclers", "group": "weapons", "tier": 2, "requires": ["autoloaders"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
-		"effects": {"fire_rate": 0.25}, "desc": "+25% rate of fire. Pays off most on ships that already fire quickly, which means corvettes."},
+		"effects": {"shield_pierce": 0.25}, "desc": "A quarter of every hit slips past enemy shields and strikes what lies beneath."},
+	"burst_cyclers": {"name": "Burst Cyclers", "group": "weapons", "tier": 2, "requires": ["overcharged_coils"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
+		"effects": {"armor_pierce": 0.25}, "desc": "A quarter of every hit skips enemy armor and goes straight to the hull."},
 	"lance_batteries": {"name": "Lance Batteries", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"damage": 0.30}, "desc": "+30% weapon damage. Heavy shots: the fastest way through armor and starbase hulls."},
 	"scatter_arrays": {"name": "Scatter Arrays", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"fire_rate": 0.30}, "desc": "+30% rate of fire. More shots in the water: what a swarm of corvettes wants."},
+	"hullbreaker_rounds": {"name": "Hullbreaker Rounds", "group": "weapons", "tier": 3, "requires": ["burst_cyclers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
+		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls: once shields and armor are gone, ships come apart fast."},
 
 	# --- Constructs: tier 3 forks into a defensive posture or an industrial one.
 	"siege_platforms": {"name": "Siege Platforms", "group": "constructs", "tier": 2, "requires": ["garrison_guns"], "cost": {"energy": 165, "spice": 25}, "time": 90.0,
