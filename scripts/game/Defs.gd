@@ -94,7 +94,7 @@ const BASE_SHIPS := {
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
-		"hp": 64.0, "armor": 192.0, "shield": 128.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
+		"hp": 70.0, "armor": 211.0, "shield": 141.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
 		"cost": {"minerals": 170, "spice": 5}, "build_time": 38.0, "upkeep": 1.7,
 		"weapon": "laser", "damage": 10.0, "cooldown": 1.0, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 25.0},
 		# Two light turrets on the prongs: they track a circling corvette
@@ -104,7 +104,7 @@ const BASE_SHIPS := {
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 341.0, "armor": 170.0, "shield": 510.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
+		"hp": 409.0, "armor": 204.0, "shield": 612.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 80.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 11.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 		# Three laser turrets: the hub and both forward wings.
@@ -116,7 +116,7 @@ const BASE_SHIPS := {
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one, and the hangar
 		# bays are the real reason to build one.
-		"hp": 1147.0, "armor": 1147.0, "shield": 1146.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
+		"hp": 1433.0, "armor": 1433.0, "shield": 1434.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": 12.0, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
 		"guns": 4, "bays": 6, "job": "hangar",
@@ -431,11 +431,11 @@ const TECHS := {
 	"carriers": {"name": "Carriers", "group": "warships", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 155, "spice": 40}, "time": 240.0,
 		"effects": {"unlock_carrier": 1.0}, "desc": "Unlocks the Carrier."},
 	"carrier_mk2": {"name": "Mk II Carrier", "group": "warships", "class": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 145}, "time": 85.0,
-		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk II: +12% damage, hull, armor and shields (+12% over Mk I)."},
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk II: +24% damage, hull, armor and shields (+24% over Mk I)."},
 	"carrier_mk3": {"name": "Mk III Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk2"], "cost": {"energy": 340, "spice": 55}, "time": 205.0,
-		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk III: +48% damage, hull, armor and shields (+60% over Mk I)."},
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk III: +29% damage, hull, armor and shields (+53% over Mk I)."},
 	"carrier_mk4": {"name": "Mk IV Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk3"], "cost": {"energy": 1660, "spice": 310}, "time": 260.0,
-		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk IV: +110% damage, hull, armor and shields (+170% over Mk I)."},
+		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk IV: +35% damage, hull, armor and shields (+88% over Mk I)."},
 	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 60.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
 	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 135, "spice": 30}, "time": 150.0,
@@ -444,23 +444,23 @@ const TECHS := {
 	# starts Mk I). Each mark lifts only that class, so investing in
 	# corvettes and investing in cruisers are different strategies.
 	"corvette_mk2": {"name": "Mk II Corvette", "group": "warships", "class": "corvette", "tier": 1, "requires": [], "cost": {"energy": 65}, "time": 55.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk II: +6% damage, hull, armor and shields (+6% over Mk I)."},
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk II: +15% damage, hull, armor and shields (+15% over Mk I)."},
 	"corvette_mk3": {"name": "Mk III Corvette", "group": "warships", "class": "corvette", "tier": 2, "requires": ["corvette_mk2"], "cost": {"energy": 155, "spice": 25}, "time": 90.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk III: +10% damage, hull, armor and shields (+16% over Mk I)."},
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk III: +17% damage, hull, armor and shields (+32% over Mk I)."},
 	"corvette_mk4": {"name": "Mk IV Corvette", "group": "warships", "class": "corvette", "tier": 3, "requires": ["corvette_mk3"], "cost": {"energy": 755, "spice": 140}, "time": 235.0,
-		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk IV: +14% damage, hull, armor and shields (+30% over Mk I)."},
+		"effects": {"mark_corvette": 1.0}, "desc": "Corvettes become Mk IV: +20% damage, hull, armor and shields (+52% over Mk I)."},
 	"destroyer_mk2": {"name": "Mk II Destroyer", "group": "warships", "class": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 85}, "time": 65.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk II: +8% damage, hull, armor and shields (+8% over Mk I)."},
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk II: +17% damage, hull, armor and shields (+17% over Mk I)."},
 	"destroyer_mk3": {"name": "Mk III Destroyer", "group": "warships", "class": "destroyer", "tier": 2, "requires": ["destroyer_mk2"], "cost": {"energy": 200, "spice": 35}, "time": 100.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk III: +19% damage, hull, armor and shields (+27% over Mk I)."},
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk III: +20% damage, hull, armor and shields (+37% over Mk I)."},
 	"destroyer_mk4": {"name": "Mk IV Destroyer", "group": "warships", "class": "destroyer", "tier": 3, "requires": ["destroyer_mk3"], "cost": {"energy": 980, "spice": 180}, "time": 250.0,
-		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk IV: +23% damage, hull, armor and shields (+50% over Mk I)."},
+		"effects": {"mark_destroyer": 1.0}, "desc": "Destroyers become Mk IV: +24% damage, hull, armor and shields (+61% over Mk I)."},
 	"cruiser_mk2": {"name": "Mk II Cruiser", "group": "warships", "class": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 110}, "time": 80.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk II: +10% damage, hull, armor and shields (+10% over Mk I)."},
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk II: +20% damage, hull, armor and shields (+20% over Mk I)."},
 	"cruiser_mk3": {"name": "Mk III Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk2"], "cost": {"energy": 265, "spice": 45}, "time": 205.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk III: +24% damage, hull, armor and shields (+34% over Mk I)."},
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk III: +24% damage, hull, armor and shields (+44% over Mk I)."},
 	"cruiser_mk4": {"name": "Mk IV Cruiser", "group": "warships", "class": "cruiser", "tier": 3, "requires": ["cruiser_mk3"], "cost": {"energy": 1285, "spice": 240}, "time": 260.0,
-		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk IV: +56% damage, hull, armor and shields (+90% over Mk I)."},
+		"effects": {"mark_cruiser": 1.0}, "desc": "Cruisers become Mk IV: +29% damage, hull, armor and shields (+73% over Mk I)."},
 	# Defense lines (research screen's Defenses tab): shields, armor, hull. Each
 	# is three tiers of big, expensive upgrades for every ship and starbase,
 	# so which layer to invest in is a real strategic choice.
@@ -586,15 +586,13 @@ static func carrier_bays(w: int, h: int) -> Array:
 const HULL_MARKS := ["Mk I", "Mk II", "Mk III", "Mk IV"]
 ## What one mark adds to its class, per step.
 ## Hull marks: the total bonus to damage, hull, armor and shields at Mk I-IV,
-## per class. Each mark is worth more than the one before, and a bigger class
-## gains more from each - Mk II corvette is the smallest step, Mk IV carrier
-## the largest - so a big class keeps its edge after paying for its
-## costlier research.
+## per class. Each step grows with the mark and with the class: Mk II
+## corvette is the smallest (+15%), Mk IV carrier the largest (+35%).
 const MARK_BONUS := {
-	"corvette": [0.0, 0.06, 0.16, 0.30],
-	"destroyer": [0.0, 0.08, 0.27, 0.50],
-	"cruiser": [0.0, 0.10, 0.34, 0.90],
-	"carrier": [0.0, 0.12, 0.60, 1.70],
+	"corvette": [0.0, 0.15, 0.32, 0.52],
+	"destroyer": [0.0, 0.17, 0.37, 0.61],
+	"cruiser": [0.0, 0.20, 0.44, 0.73],
+	"carrier": [0.0, 0.24, 0.53, 0.88],
 }
 
 ## Multiplier a ship type gets at mark `level` (0 = Mk I).
