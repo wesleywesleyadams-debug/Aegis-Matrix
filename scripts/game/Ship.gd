@@ -98,6 +98,7 @@ var ability_until: float = 0.0
 var _repairing: Array = []
 var _repair_timer: float = 0.0
 var _cooldown: float = 0.0
+var _secondary_cd: float = 0.0
 var _mine_timer: float = 0.0
 ## Fractional ore gathered between ticks (nodes hold whole units).
 var _mine_carry: float = 0.0
@@ -564,6 +565,7 @@ func _physics_process(delta: float) -> void:
 	# Out of energy: weapons recharge (and engines run) at a quarter speed.
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
+	_secondary_cd -= delta * power
 	_acquire_timer -= delta
 	_scan_cd -= delta
 
@@ -831,6 +833,12 @@ func _physics_process(delta: float) -> void:
 						continue
 					Game.instance.fire(self, shoot, def["weapon"], dmg)
 				_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+			# A secondary weapon (a cruiser's torpedo) keeps its own clock; it
+			# homes, so it needs no bearing.
+			if def.has("secondary") and _secondary_cd <= 0.0:
+				var sec: Dictionary = def["secondary"]
+				Game.instance.fire(self, shoot, sec["weapon"], sec["damage"] * (1.0 + Game.instance.mark_level(owner_id, ship_type) * float(Defs.MARK_STEP["damage"])), float(sec.get("aoe", 0.0)))
+				_secondary_cd = sec["cooldown"] / Game.instance.mod(owner_id, "fire_rate")
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)

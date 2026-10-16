@@ -14,6 +14,8 @@ var speed: float
 var homing: bool
 var life: float = 3.0
 var _vel: Vector2
+## Burst radius: everything hostile within it takes the full hit too.
+var aoe := 0.0
 
 func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
 	shooter = from
@@ -70,6 +72,8 @@ func _physics_process(delta: float) -> void:
 		if near.distance_to(target.global_position) <= target.radius:
 			target.take_damage(damage, shooter if is_instance_valid(shooter) else null, profile)
 			_splash(target)
+			if aoe > 0.0:
+				_burst(target)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)
 			queue_free()
@@ -90,3 +94,12 @@ func _splash(hit: Node2D) -> void:
 		if o != hit and o.owner_id != shooter.owner_id and o.is_alive() and o.global_position.distance_to(hit.global_position) <= r + o.radius:
 			o.take_damage(damage * float(sp[1]), shooter, profile)
 	Game.instance.spawn_explosion(hit.global_position, 0.25)
+
+## A bursting warhead (aoe): every other enemy ship within the radius of the
+## one it hit takes the full damage too.
+func _burst(hit: Node2D) -> void:
+	var owner_pid: int = shooter.owner_id if is_instance_valid(shooter) else -1
+	for o in get_tree().get_nodes_in_group("ships"):
+		if o != hit and o.owner_id != owner_pid and o.is_alive() and o.global_position.distance_to(hit.global_position) <= aoe + o.radius:
+			o.take_damage(damage, shooter if is_instance_valid(shooter) else null, profile)
+	Game.instance.spawn_explosion(hit.global_position, aoe / 40.0)
