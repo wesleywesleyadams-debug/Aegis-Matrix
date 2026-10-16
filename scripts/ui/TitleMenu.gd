@@ -13,8 +13,77 @@ var load_list_panel: Control
 @onready var saves_list: VBoxContainer = $LoadListPanel/OuterVBox/ScrollContainer/SavesList
 @onready var close_button: Button = $LoadListPanel/OuterVBox/CloseButton
 
+## The background: a real match between the two AIs, played out live behind
+## the menu and restarted on a fresh system each time one ends (see
+## Game.demo_mode and DemoDirector). The static picture stays underneath as
+## a fallback for the first frame.
+const DEMO_SPEED := 2.0
+const MAIN_SCENE := preload("res://scenes/Main.tscn")
+var _demo_view: SubViewport
+var _demo_game: Node
+var _demo_round := 0
+
+func _start_demo_backdrop() -> void:
+	var box := SubViewportContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.stretch = true
+	# Purely a picture: clicks go to the menu, never into the match.
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(box)
+	move_child(box, get_node("Background").get_index() + 1)
+	_demo_view = SubViewport.new()
+	_demo_view.handle_input_locally = false
+	_demo_view.gui_disable_input = true
+	box.add_child(_demo_view)
+	# A light veil so the title and buttons stay the thing you read.
+	var veil := ColorRect.new()
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	veil.color = Color(0.02, 0.02, 0.05, 0.35)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(veil)
+	move_child(veil, box.get_index() + 1)
+	_next_demo_match()
+
+## Throws away the finished match (if any) and starts another on a different
+## system. The lobby's own system choice is put back untouched.
+func _next_demo_match() -> void:
+	if is_instance_valid(_demo_game):
+		_demo_game.queue_free()
+		await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	var keep_id: String = GameState.system_id
+	var keep_seed: int = GameState.system_seed
+	var named: Array = SystemGen.SYSTEMS.filter(func(x): return x["id"] != "random")
+	_demo_round += 1
+	# Mostly the named systems in turn, with a random one every third match.
+	if _demo_round % 3 == 0:
+		GameState.system_id = "random"
+		GameState.system_seed = randi()
+	else:
+		var sys: Dictionary = named[randi() % named.size()]
+		GameState.system_id = sys["id"]
+		GameState.system_seed = int(sys.get("seed", 0))
+	GameState.demo_mode = true
+	if OS.get_environment("SL_DEMO_MAX") != "":
+		print("DEMO match %d on %s" % [_demo_round, GameState.system_id])
+	_demo_game = MAIN_SCENE.instantiate()
+	_demo_view.add_child(_demo_game)
+	GameState.demo_mode = false
+	GameState.system_id = keep_id
+	GameState.system_seed = keep_seed
+	Engine.time_scale = DEMO_SPEED
+	for c in _demo_game.get_children():
+		if c is DemoDirector:
+			c.finished.connect(_next_demo_match)
+
+func _exit_tree() -> void:
+	# Whatever comes next sets its own pace.
+	Engine.time_scale = 1.0
+
 func _ready() -> void:
 	Music.play_screen(Music.TITLE_TRACK)
+	_start_demo_backdrop()
 	_build_credits()
 	_build_new_game_page()
 	$LoadListPanel.visible = false
@@ -252,7 +321,8 @@ func _on_quit_pressed() -> void:
 ## Dev aid: SL_TITLE_SHOT=1 saves user://title.png after a moment and quits.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_READY and OS.get_environment("SL_TITLE_SHOT") != "":
-		await get_tree().create_timer(1.0).timeout
+		# SL_TITLE_WAIT=<real seconds> lets the background match get going first.
+		await get_tree().create_timer(float(OS.get_environment("SL_TITLE_WAIT")) if OS.get_environment("SL_TITLE_WAIT") != "" else 1.0, true, false, true).timeout
 		if OS.get_environment("SL_TITLE_SHOT") == "loadmulti":
 			for s in _list_saves():
 				if s["mode"] == "multi":

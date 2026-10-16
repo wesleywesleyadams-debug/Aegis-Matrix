@@ -33,6 +33,10 @@ static var _clock: float = 0.0
 ## heard (effects, sounds, the HUD) so matches run faster. Outcomes are
 ## unaffected: projectiles, which carry the damage, still fly.
 var sim_mode: bool = false
+## The title screen's background match: the AI plays both sides, silently,
+## with no HUD, no fog and no player input, and a DemoDirector moving the
+## camera. Unlike a sim, everything is still drawn.
+var demo_mode: bool = false
 
 var player_id: int = 1
 var players: Array[int] = [1, 2]
@@ -118,6 +122,7 @@ func _enter_tree() -> void:
 	instance = self
 	_clock = 0.0
 	sim_mode = OS.get_environment("SL_SIM") != ""
+	demo_mode = GameState.demo_mode
 	# Seed sims here, before any child's _ready draws a random number.
 	# SL_SEED (if set) fixes the match randomness independently of the run
 	# name, so trainers can replay the same game with different players.
@@ -134,6 +139,9 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	process_physics_priority = -10
+	if demo_mode:
+		_start_demo()
+		return
 	# No account controls during a match.
 	SignedInLabel.visible = false
 	tree_exiting.connect(func(): SignedInLabel.visible = true)
@@ -221,6 +229,28 @@ func _ready() -> void:
 		message_long.emit(system_settings.get("arrival", "You arrive in uncharted space."), Color("e8d6a8"), ARRIVAL_LINGER)
 		message_long.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"), ARRIVAL_LINGER)
 	_enter_dev_capture()
+
+## The title screen's background match (demo_mode): build the system, hand
+## both sides to the AI and set the barges working, then let a DemoDirector
+## run the camera. No HUD, sound, music, fog or briefing.
+func _start_demo() -> void:
+	_build_system()
+	for sb in get_tree().get_nodes_in_group("starbases"):
+		(sb as Starbase).died.connect(_on_starbase_died)
+	add_child(stats)
+	ai.setup([1, 2])
+	hud.visible = false
+	hud.process_mode = Node.PROCESS_MODE_DISABLED
+	sfx.process_mode = Node.PROCESS_MODE_DISABLED
+	for s in get_tree().get_nodes_in_group("ships"):
+		if s.is_miner():
+			var rock := nearest_asteroid(s.global_position, 900.0)
+			if rock:
+				s.order_mine(rock)
+	# Close in, so the ships read as ships behind the menu.
+	_zoom_index = 3
+	camera.zoom = Vector2.ONE * ZOOM_LEVELS[_zoom_index]
+	add_child(DemoDirector.new())
 
 # ---------------------------------------------------------------- system
 
@@ -1044,13 +1074,14 @@ func _end_match(won: bool) -> void:
 	ai.process_mode = Node.PROCESS_MODE_DISABLED
 	if vision:
 		vision.reveal_all()
-	sfx.play_ui("victory" if won else "defeat")
+	if not demo_mode:
+		sfx.play_ui("victory" if won else "defeat")
 	match_over.emit(won)
 
 # ---------------------------------------------------------------- input
 
 func _unhandled_input(event: InputEvent) -> void:
-	if paused_menu or (is_over and not map_view):
+	if paused_menu or (is_over and not map_view) or demo_mode:
 		return
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event)
@@ -1263,7 +1294,7 @@ func _process(delta: float) -> void:
 	var real_dt := minf((now_us - _last_real_us) / 1000000.0, 0.1) if _last_real_us > 0 else 0.0
 	_last_real_us = now_us
 	_update_background()
-	if paused_menu or (is_over and not map_view):
+	if paused_menu or (is_over and not map_view) or demo_mode:
 		return
 	var dir := Vector2(
 		Input.get_axis("cam_left", "cam_right"),

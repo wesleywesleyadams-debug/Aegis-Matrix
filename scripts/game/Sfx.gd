@@ -37,7 +37,7 @@ func _ready() -> void:
 
 ## Positional effect at a world position.
 func play_at(name: String, pos: Vector2, volume_db: float = 0.0) -> void:
-	if Game.instance and Game.instance.sim_mode:
+	if Game.instance and (Game.instance.sim_mode or Game.instance.demo_mode):
 		return
 	var now := Game.now()
 	if now - _last.get(name, -1.0) < MIN_GAP.get(name, 0.0):
@@ -53,7 +53,7 @@ func play_at(name: String, pos: Vector2, volume_db: float = 0.0) -> void:
 
 ## Interface sound, not positional.
 func play_ui(name: String, extra_db: float = 0.0) -> void:
-	if Game.instance and Game.instance.sim_mode:
+	if Game.instance and (Game.instance.sim_mode or Game.instance.demo_mode):
 		return
 	_ui.stream = _streams[name]
 	_ui.volume_db = UI_VOLUME.get(name, 0.0) + (ALERT_TRIM if name.begins_with("alert") else 0.0) + extra_db

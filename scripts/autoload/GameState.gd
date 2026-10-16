@@ -8,6 +8,9 @@ extends Node
 signal active_account_changed
 
 var load_on_start: bool = false
+## Set by the title screen while it builds its background match (see
+## Game.demo_mode); cleared as soon as that match exists.
+var demo_mode: bool = false
 ## Which save file to load, e.g. "user://saves/save_1234567890.json".
 ## Only meaningful when load_on_start is true.
 var load_save_path: String = ""
