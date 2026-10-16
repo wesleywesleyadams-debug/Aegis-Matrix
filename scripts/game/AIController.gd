@@ -224,17 +224,21 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# Idle warships next to an enemy planet start bombarding it.
 	for s in idle.duplicate():
 		var ep := _nearest_planet(s.global_position, game, func(pl): return pl.is_enemy_of(pid) and (v == null or v.is_visible_at(pl.global_position)))
-		# Only small colonies are worth bombarding; big worlds would take forever.
-		if ep and ep.pop < 4000.0 and s.global_position.distance_to(ep.global_position) < 350.0:
+		# Only a world the warships near it can actually bring down.
+		if ep and s.global_position.distance_to(ep.global_position) < 350.0 and _can_win(pid, idle.filter(func(o): return o.global_position.distance_to(ep.global_position) < 500.0), ep.global_position, game):
 			s.order_bombard(ep)
 			idle.erase(s)
 	# Attack mode (clearly stronger): go now with a smaller wave.
 	var need: int = 6 if mode == "attack" else st["wave"]
 	if mode != "build_up" and idle.size() >= need:
-		var goal := _attack_goal(pid, base.global_position, game)
-		for s in idle:
-			s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
-		st["wave"] = mini(st["wave"] + 4, 30)
+		# Only a fight it expects to win with ships left over (see _can_win).
+		var goal := _winnable_target(pid, idle, base.global_position, game)
+		if goal != Vector2.INF:
+			for s in idle:
+				s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+			st["wave"] = mini(st["wave"] + 4, 30)
+	# Waves already out pull back if their target has become too strong.
+	_recall_losing_waves(pid, war, base, game)
 
 ## Which tech to start next. Unlocking a class or a depot beats upgrading
 ## what you already have, and a hull mark is only worth it once there is a
@@ -739,3 +743,98 @@ func _depot_site(home: Vector2, game: Game) -> Vector2:
 			if game.depot_site_problem(p) == "":
 				return p
 	return Vector2.INF
+
+# ---------------------------------------------------------------- fight sense
+# The AI takes a fight only when it expects to win it with ships to spare.
+# A side's strength is its total damage per second times its total toughness
+# (the duel tests show fights scaling that way); attackers must out-strength
+# the defence by WIN_MARGIN squared, which leaves roughly 60% of them alive.
+
+const WIN_MARGIN := 1.3
+## Enemy ships counted as defending a target within this range of it.
+const DEFEND_RANGE := 600.0
+## Damage per second per point of toughness, for enemy ships known only by
+## their size (fog of war): about the fleet average across the classes.
+const DPS_PER_TOUGH := 0.04
+
+func _ship_dps(s: Ship, game: Game) -> float:
+	if s.def.get("weapon", "") == "":
+		return 0.0
+	return float(s.def["damage"]) * int(s.def.get("guns", 1)) / maxf(float(s.def["cooldown"]), 0.1) \
+		* Defs.mark_mult(s.ship_type, game.mark_level(s.owner_id, s.ship_type)) * game.mod(s.owner_id, "damage")
+
+## [dps, toughness] of whatever defends `at` for the enemies of `pid`: the
+## starbase or world there plus enemy warships around it.
+func _defence_at(pid: int, at: Vector2, game: Game) -> Vector2:
+	var dps := 0.0
+	var tough := 0.0
+	for sb in game.get_tree().get_nodes_in_group("starbases"):
+		if sb.owner_id != pid and sb.global_position.distance_to(at) < 120.0:
+			dps += Defs.STARBASE["damage"] / Defs.STARBASE["cooldown"]
+			tough += sb.hp + sb.armor + sb.shield
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.is_enemy_of(pid) and p.global_position.distance_to(at) < 120.0:
+			dps += p.count_building("battery") * Defs.BATTERY["damage"] / Defs.BATTERY["cooldown"]
+			tough += p.shield + p.pop / Planet.POP_PER_DAMAGE
+	var v: Vision = game.visions.get(pid)
+	if v:
+		# Only what we have seen recently.
+		for id in v.sightings:
+			var sg: Array = v.sightings[id]
+			if Game.now() - sg[0] < 30.0 and at.distance_to(sg[2]) < DEFEND_RANGE:
+				tough += sg[1]
+				dps += sg[1] * DPS_PER_TOUGH
+	else:
+		for s in game.get_tree().get_nodes_in_group("ships"):
+			if s.owner_id != pid and s.def["role"] == "warship" and s.global_position.distance_to(at) < DEFEND_RANGE:
+				tough += s.hp + s.armor + s.shield
+				dps += _ship_dps(s, game)
+	return Vector2(dps, tough)
+
+## True if `ships` should beat what defends `at` with ships to spare.
+func _can_win(pid: int, ships: Array, at: Vector2, game: Game) -> bool:
+	var dps := 0.0
+	var tough := 0.0
+	for s in ships:
+		dps += _ship_dps(s, game)
+		tough += s.hp + s.armor + s.shield
+	var d := _defence_at(pid, at, game)
+	return dps * tough > d.x * d.y * WIN_MARGIN * WIN_MARGIN and dps > 0.0
+
+## The nearest enemy starbase or world (that we know of) `ships` can take,
+## or INF if none: no attack is launched then.
+func _winnable_target(pid: int, ships: Array, from: Vector2, game: Game) -> Vector2:
+	var v: Vision = game.visions.get(pid)
+	var spots: Array = []
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		var o: int = v.known_owner(p) if v else p.owner_id
+		if o > 0 and o != pid:
+			spots.append(p.global_position)
+	if v:
+		for sb in v.seen_bases:
+			spots.append(v.seen_bases[sb][0])
+	else:
+		for sb in game.get_tree().get_nodes_in_group("starbases"):
+			if sb.owner_id != pid:
+				spots.append(sb.global_position)
+	spots.sort_custom(func(a, b): return from.distance_to(a) < from.distance_to(b))
+	for at in spots:
+		if _can_win(pid, ships, at, game):
+			return at
+	return Vector2.INF
+
+## Attack-moving warships heading for a fight they would now lose come home.
+func _recall_losing_waves(pid: int, war: Array, base: Starbase, game: Game) -> void:
+	var groups := {}
+	for s in war:
+		if s.state == Ship.State.ATTACK_MOVE:
+			var key := Vector2i((s.move_goal / 200.0).round())
+			if not groups.has(key):
+				groups[key] = []
+			groups[key].append(s)
+	for key in groups:
+		var g: Array = groups[key]
+		var at: Vector2 = g[0].move_goal
+		if not _can_win(pid, g, at, game):
+			for s in g:
+				s.order_move(base.global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
