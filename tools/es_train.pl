@@ -32,7 +32,7 @@ my $EVAL_GAMES = $ENV{EVAL_GAMES} // 10;
 # use the scripted AI as a fixed yardstick (comparable scores across runs).
 my $SELFPLAY = $ENV{SELFPLAY} // 0;
 my $GODOT = $ENV{GODOT} // "/c/Users/whole/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe";
-my ($N_IN, $N_H, $N_OUT) = (40, 28, 19);
+my ($N_IN, $N_H, $N_OUT) = (43, 28, 20);
 my $NP = $N_H * $N_IN + $N_H + $N_OUT * $N_H + $N_OUT;
 
 my $USER = "$ENV{APPDATA}/Godot/app_userdata/Star Lords";
@@ -73,11 +73,13 @@ sub play {
 	my ($explore, @jobs) = @_;   # jobs: [tag, weights path, side, seed, system, opponent weights or -]
 	my $list = join("", map { "$_->[0] $_->[1] $_->[2] $_->[3] $_->[4] " . ($_->[5] // "-") . "\n" } @jobs);
 	spit("$RL/jobs.txt", $list);
+	if ($ENV{GH_TRAIN}) { play_gh(@jobs) } else {
 	# The policy samples its actions by default (see NeuralCommander.explore);
 	# SL_NN_EXPLORE is kept for older builds.
 	my $ex = $explore ? "SL_NN_EXPLORE=1 " : "";
 	my $cmd = "cat \"$RL/jobs.txt\" | xargs -P $JOBS -L 1 sh -c '${ex}SL_SIM=\"\$0\" SL_NN_WEIGHTS=\"\$1\" SL_NN_SIDE=\"\$2\" SL_SEED=\"\$3\" SL_SIM_MINUTES=$CAP SL_SYSTEM=\"\$4\" SL_NN_OPP_WEIGHTS=\"\$5\" timeout 2400 \"$GODOT\" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'";
 	system($cmd);
+	}
 	my %fit;
 	for my $j (@jobs) {
 		my $f = "$SIMS/$j->[4]_$j->[0].json";
@@ -97,6 +99,46 @@ sub play {
 	}
 	return \%fit;
 }
+# GitHub mode (GH_TRAIN=1): the generation's weight files and a job list go
+# to the nn-train branch (main + one commit, force-pushed), one "Balance
+# tests" nn_batch run plays every game in parallel, and its results are
+# downloaded where play() reads them. Uses a separate worktree (WT) so the
+# main checkout is never switched.
+my $GH = $ENV{GH} // "/c/Program Files/GitHub CLI/gh.exe";
+my $WT = $ENV{WT} // "../sd-nn-train";
+sub play_gh {
+	my @jobs = @_;
+	system("git worktree add -f \"$WT\" origin/main >/dev/null 2>&1") unless -d $WT;
+	system("git -C \"$WT\" fetch -q origin main && git -C \"$WT\" checkout -q -B nn-train origin/main") == 0 or die "worktree";
+	mkdir "$WT/ai"; mkdir "$WT/ai/train";
+	my %seen;
+	for my $j (@jobs) {
+		for my $res ($j->[1], $j->[5]) {
+			next if !defined $res or $res eq "-" or $seen{$res}++;
+			(my $p = $res) =~ s{^res://}{};
+			copy($p, "$WT/$p") or die "copy $p: $!";
+		}
+	}
+	my $tag = "nn" . time;
+	spit("$WT/ai/train/jobs.json", $json->encode([map { {tag => $_->[0], w => $_->[1], side => $_->[2], seed => $_->[3], system => $_->[4], opp => ($_->[5] // "-")} } @jobs]));
+	system("git -C \"$WT\" add -f ai/train && git -C \"$WT\" commit -qm \"nn-train $tag\" && git -C \"$WT\" push -qf origin nn-train") == 0 or die "push nn-train";
+	system("\"$GH\" workflow run balance.yml --ref nn-train -f mode=nn_batch -f tag=$tag -f minutes=$CAP -f speed=4 >/dev/null") == 0 or die "dispatch";
+	my $id;
+	for (1 .. 60) {
+		sleep 10;
+		$id = `"$GH" run list --workflow=balance.yml --limit 20 --json databaseId,displayTitle -q '.[] | select(.displayTitle | endswith(" $tag")) | .databaseId'`;
+		chomp $id; last if $id;
+	}
+	die "run for $tag not found" unless $id;
+	system("\"$GH\" run watch $id --interval 30 >/dev/null 2>&1");
+	my $dl = "$RL/dl_$tag";
+	system("\"$GH\" run download $id -n all-results -D \"$dl\" >/dev/null 2>&1");
+	opendir(my $dh, $dl) or die "no results for run $id";
+	for my $f (grep { /.json$/ } readdir $dh) { move("$dl/$f", "$SIMS/$f") }
+	closedir $dh;
+	return undef;
+}
+
 sub tanh_ { my $x = shift; my $e = exp(2 * $x); return ($e - 1) / ($e + 1) }
 
 for my $g ($gen0 + 1 .. $gen0 + $GENS) {

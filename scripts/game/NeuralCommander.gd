@@ -10,10 +10,10 @@ class_name NeuralCommander
 
 ## Every buildable hull (Defs.BUILD_ORDER), plus the strategic moves.
 const ACTIONS := ["wait", "miner", "skimmer", "colony", "constructor", "scout", "tender",
-	"corvette", "destroyer", "cruiser", "heatshield",
+	"corvette", "destroyer", "cruiser", "carrier", "heatshield",
 	"research_offense", "research_defense", "research_economy",
 	"depot", "refit", "attack", "defend", "regroup"]
-const N_FEATURES := 40
+const N_FEATURES := 43
 const HIDDEN := 28
 const DECIDE := 2.0
 
@@ -186,6 +186,9 @@ func features(game: Game, base: Starbase) -> PackedFloat32Array:
 		_line_level(game, "shields") / 3.0, _line_level(game, "armor") / 3.0, _line_level(game, "hull") / 3.0,
 		minf(depots, 2) / 2.0, float(specialists) / maxf(mine.size(), 1.0),
 		layers["shield"] / lt, layers["armor"] / lt, layers["hull"] / lt,
+		1.0 if game.has_tech(pid, "carriers") else 0.0,
+		minf(game.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == pid).size() / 10.0, 2.0),
+		minf((v.seen_bases.size() if v else game.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == foe).size()) / 10.0, 2.0),
 		1.0,
 	])
 
@@ -252,7 +255,10 @@ func _do(a: String, game: Game, base: Starbase, ai: AIController) -> void:
 					s.order_refit(depot.variant, depot)
 					sent += 1
 		"attack":
-			var goal := ai._attack_goal(pid, base.global_position, game)
+			# Only toward a target the fleet can take with ships to spare.
+			var goal := ai._winnable_target(pid, _war(game, pid).filter(func(s): return s.state == Ship.State.IDLE or s.state == Ship.State.MOVE), base.global_position, game)
+			if goal == Vector2.INF:
+				return
 			for s in _war(game, pid):
 				if s.state == Ship.State.IDLE or s.state == Ship.State.MOVE:
 					s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))

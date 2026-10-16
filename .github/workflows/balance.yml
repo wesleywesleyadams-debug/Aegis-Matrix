@@ -11,7 +11,7 @@ on:
       mode:
         description: "What to run"
         type: choice
-        options: [sims, single, size_grid, mark_grid]
+        options: [sims, single, nn_batch, size_grid, mark_grid]
         default: sims
       runs:
         description: "Sims: games per system"
@@ -44,9 +44,15 @@ jobs:
     outputs:
       matrix: ${{ steps.m.outputs.matrix }}
     steps:
+      # nn_batch reads its game list from the checked-out ref (the nn-train
+      # branch tools/es_train.pl pushes each generation).
+      - uses: actions/checkout@v4
+        if: inputs.mode == 'nn_batch'
       - id: m
         run: |
-          if [ "${{ inputs.mode }}" = "single" ]; then
+          if [ "${{ inputs.mode }}" = "nn_batch" ]; then
+            m=$(python3 -c "import json; print(json.dumps(json.load(open('ai/train/jobs.json'))))")
+          elif [ "${{ inputs.mode }}" = "single" ]; then
             m='[{"system": "${{ inputs.system }}", "run": "${{ inputs.tag }}"}]'
           elif [ "${{ inputs.mode }}" = "sims" ]; then
             m=$(python3 -c "import json; print(json.dumps([{'system': s, 'run': r} for s in ['orion_reach','vega_drift','kharon_expanse','tethys_cluster','sable_verge'] for r in range(int('${{ inputs.runs }}'))]))")
@@ -85,6 +91,16 @@ jobs:
           mkdir -p out
           cp log.txt out/${{ matrix.system }}_${{ matrix.run }}.log
           cp ~/.local/share/Godot/app_userdata/"Star Lords"/sims/*.json out/ 2>/dev/null || cp ~/.local/share/godot/app_userdata/"Star Lords"/sims/*.json out/ 2>/dev/null || true
+      - name: Training game
+        if: inputs.mode == 'nn_batch'
+        run: |
+          OPP="${{ matrix.opp }}"; [ "$OPP" = "-" ] && OPP=""
+          SL_SIM=${{ matrix.tag }} SL_NN_WEIGHTS=${{ matrix.w }} SL_NN_SIDE=${{ matrix.side }} SL_SEED=${{ matrix.seed }} \
+          SL_SYSTEM=${{ matrix.system }} SL_NN_OPP_WEIGHTS="$OPP" SL_SIM_MINUTES=${{ inputs.minutes }} SL_SIM_SCALE=${{ inputs.speed }} \
+            ./godot --headless --fixed-fps 60 --path . res://scenes/Main.tscn 2>&1 | tee log.txt | grep -E "SIM RESULT|SCRIPT ERROR" || true
+          mkdir -p out
+          cp log.txt out/${{ matrix.tag }}.log
+          cp ~/.local/share/Godot/app_userdata/"Star Lords"/sims/*.json out/ 2>/dev/null || true
       - name: Size grid
         if: inputs.mode == 'size_grid'
         run: |
