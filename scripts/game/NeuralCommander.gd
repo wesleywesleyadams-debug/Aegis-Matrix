@@ -19,11 +19,11 @@ const DECIDE := 2.0
 
 ## Research grouped the way a commander thinks about it.
 const TECH_GROUPS := {
-	"research_offense": ["destroyers", "depots", "ion_cannons", "corvette_mk2", "cruisers", "destroyer_mk2", "particle_lances", "corvette_mk3", "destroyer_mk3", "cruiser_mk2", "dark_matter", "corvette_mk4", "destroyer_mk4", "cruiser_mk3", "cruiser_mk4"],
+	"research_offense": ["destroyers", "depots", "ion_cannons", "corvette_mk2", "cruisers", "destroyer_mk2", "particle_lances", "corvette_mk3", "destroyer_mk3", "cruiser_mk2", "corvette_mk4", "destroyer_mk4", "cruiser_mk3", "cruiser_mk4"],
 	"research_defense": ["deflectors", "phase_shields", "aegis_matrix", "composite_plating", "reactive_armor",
 		"neutronium_armor", "reinforced_frames", "nanite_plating", "adaptive_hulls"],
 	"research_economy": ["hydroponics", "deep_drills", "gas_skimming", "gene_clinics", "arcologies",
-		"ion_thrusters", "spice_navigation", "cutting_lasers", "resonance_drills", "bulk_holds", "fusion_drives"],
+		"ion_thrusters", "spice_navigation", "cutting_lasers", "resonance_drills", "bulk_holds", "fusion_drives", "solar_collectors", "plasma_reactors", "dark_matter"],
 }
 var net: NeuralNet
 var pid: int

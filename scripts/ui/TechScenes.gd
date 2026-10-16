@@ -29,6 +29,7 @@ const SCENES := [
 	"reinforced_frames", "nanite_plating", "adaptive_hulls", "flak_screens", "point_defense", "aegis_umbrella",
 	"ion_cannons", "particle_lances", "capital_batteries", "targeting_arrays", "beam_focusing", "lance_batteries",
 	"autoloaders", "heavy_mounts", "scatter_arrays", "overcharged_coils", "burst_cyclers", "dark_matter",
+	"solar_collectors", "plasma_reactors",
 	"hydroponics", "colony_pods", "rationing", "habitat_modules", "gene_clinics", "arcologies",
 	"orbital_farms", "planetary_shields", "terraforming", "deep_vaults", "gene_forges", "planetary_citadels",
 	"deep_drills", "bulk_holds", "cutting_lasers", "resonance_drills", "gas_skimming", "ion_thrusters",
@@ -184,6 +185,18 @@ static func call_scene(id: String, img: Image) -> void:
 				_barrel(img, Vector2(18, 26 + k * 6), Vector2(36, 26 + k * 6), 3.0)
 			for k in 3:
 				_burst(img, Vector2(44 + k * 6, 26 + k * 6), 3.0, Color("ffd84a"))
+		"solar_collectors":
+			_disc(img, Vector2(14, 14), 7.0, Color("ffd84a"))
+			for k in 3:
+				var o := Vector2(16 + k * 12, 28 + k * 8)
+				_poly(img, [o, o + Vector2(14, -4), o + Vector2(18, 8), o + Vector2(4, 12)], Color("3d6fc8"))
+				_line(img, o + Vector2(2, 6), o + Vector2(16, 2), 1.0, Color("b0d8ff"))
+		"plasma_reactors":
+			_box(img, Vector2(20, 14), Vector2(44, 52), Color("6a7596"))
+			_ellipse(img, Vector2(32, 33), Vector2(8, 14), Color("ff6ad8"))
+			_ellipse(img, Vector2(32, 33), Vector2(4, 9), Color("ffd0f4"))
+			for k in 4:
+				_line(img, Vector2(16, 18 + k * 10), Vector2(48, 18 + k * 10), 1.5, Color("9aa6c4"))
 		"dark_matter":
 			_disc(img, C, 14.0, Color("1a0f2a"))
 			_ring(img, C, 18.0, 2.0, Color("b06cff"))

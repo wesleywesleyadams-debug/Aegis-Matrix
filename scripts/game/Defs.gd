@@ -397,7 +397,7 @@ const TECHS := {
 	"gene_forges": {"name": "Gene Forges", "group": "worlds", "tier": 3, "requires": ["gene_clinics"], "cost": {"energy": 665, "spice": 130}, "time": 215.0,
 		"effects": {"growth": 0.80, "max_pop": 0.10}, "desc": "+80% population growth and +10% population cap: worlds reach their cap, and their output, far sooner."},
 	"planetary_citadels": {"name": "Planetary Citadels", "group": "worlds", "tier": 3, "requires": ["planetary_shields"], "cost": {"energy": 755, "spice": 160}, "time": 235.0,
-		"effects": {"planet_shield": 0.60, "planet_damage": 0.25}, "desc": "+60% planetary shield and +25% planetary battery damage: a besieged world holds out, and hits back."},
+		"effects": {"planet_shield": 0.60, "planet_damage": 0.25}, "desc": "+60% planetary shield and +25% battery damage: a besieged world hits back."},
 
 	# --- Logistics: tier 3 is a choice of what a harvester is good at.
 	"convoy_protocols": {"name": "Convoy Protocols", "group": "logistics", "tier": 2, "requires": ["bulk_holds"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
@@ -474,7 +474,11 @@ const TECHS := {
 		"effects": {"hull": 0.20}, "desc": "+20% hull."},
 	"adaptive_hulls": {"name": "Adaptive Hulls", "group": "defense", "line": "hull", "tier": 3, "requires": ["nanite_plating"], "cost": {"energy": 890, "spice": 200}, "time": 260.0,
 		"effects": {"hull": 0.45}, "desc": "+45% hull."},
-	"dark_matter": {"name": "Dark Matter Reactors", "group": "weapons", "tier": 3, "requires": ["particle_lances"], "cost": {"spice": 200}, "time": 215.0,
+	"solar_collectors": {"name": "Solar Collectors", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 45.0,
+		"effects": {"energy": 0.15}, "desc": "+15% energy output from every world and starbase: orbital mirrors feed the grid."},
+	"plasma_reactors": {"name": "Plasma Reactors", "group": "worlds", "tier": 2, "requires": ["solar_collectors"], "cost": {"energy": 130, "spice": 20}, "time": 80.0,
+		"effects": {"energy": 0.25}, "desc": "A further +25% energy output: contained plasma where the old turbines stood."},
+	"dark_matter": {"name": "Dark Matter Reactors", "group": "worlds", "tier": 3, "requires": ["plasma_reactors"], "cost": {"spice": 200}, "time": 215.0,
 		"effects": {"energy": 0.50}, "desc": "+50% energy output. Paid entirely in spice."},
 	"spice_navigation": {"name": "Spice Navigation", "group": "logistics", "tier": 3, "requires": ["ion_thrusters", "gene_clinics"], "cost": {"spice": 200}, "time": 180.0,
 		"effects": {"speed": 0.15, "growth": 0.25}, "desc": "+15% ship speed, +25% population growth. Paid entirely in spice."},
