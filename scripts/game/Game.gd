@@ -2814,6 +2814,12 @@ func _duel() -> void:
 	Engine.time_scale = 4.0
 	duel_nomovepen = OS.get_environment("SL_DUEL_NOMOVEPEN") != ""
 	var tough := float(OS.get_environment("SL_DUEL_TOUGH")) if OS.get_environment("SL_DUEL_TOUGH") != "" else 1.0
+	# SL_DUEL_SCALE="destroyer:0.7,cruiser:0.5" scales a class's hull, armor and shields for the test.
+	if OS.get_environment("SL_DUEL_SCALE") != "":
+		for part in OS.get_environment("SL_DUEL_SCALE").split(","):
+			var kv := part.split(":")
+			for k9 in ["hp", "armor", "shield"]:
+				Defs.SHIPS[kv[0]][k9] = Defs.SHIPS[kv[0]][k9] * float(kv[1])
 	var budget := float(OS.get_environment("SL_DUEL_BUDGET")) if OS.get_environment("SL_DUEL_BUDGET") != "" else 2550.0
 	var specs := OS.get_environment("SL_DUEL").split(",")
 	var c := Vector2(float(OS.get_environment("SL_DUEL_X")) if OS.get_environment("SL_DUEL_X") != "" else -900.0, -700.0)
@@ -2825,7 +2831,21 @@ func _duel() -> void:
 		var pid := i + 1
 		for m in range(2, mk + 1):
 			researched[pid]["%s_mk%d" % [t, m]] = true
-		var n := int(round(budget / float(Defs.SHIPS[t]["cost"]["minerals"])))
+		# Every resource counts 1:1 - minerals, spice, and the energy and spice
+		# of the research needed to unlock the class - so a side that needs
+		# more tech fields fewer ships.
+		var unit := 0.0
+		for r9 in Defs.SHIPS[t]["cost"]:
+			unit += float(Defs.SHIPS[t]["cost"][r9])
+		var tech := 0.0
+		var tid: String = str(Defs.SHIPS[t].get("requires", ""))
+		while tid != "" and Defs.TECHS.has(tid):
+			for r9 in Defs.TECHS[tid]["cost"]:
+				tech += float(Defs.TECHS[tid]["cost"][r9])
+			var rq: Array = Defs.TECHS[tid].get("requires", [])
+			tid = str(rq[0]) if not rq.is_empty() else ""
+		var n := maxi(1, int(round((budget - tech) / unit)))
+		print("DUEL_SIDE %s: %d ships at %d each + %d research" % [t, n, int(unit), int(tech)])
 		var dir := -1.0 if i == 0 else 1.0
 		for k in n:
 			# Spaced by hull size, so big ships do not start overlapping.
