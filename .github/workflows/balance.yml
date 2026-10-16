@@ -3,6 +3,7 @@
 # -> Run workflow). Results are attached to the run as artifacts, and a short
 # summary is written to the run page.
 name: Balance tests
+run-name: "Balance ${{ inputs.mode }} ${{ inputs.system }} ${{ inputs.tag }}"
 
 on:
   workflow_dispatch:
@@ -10,7 +11,7 @@ on:
       mode:
         description: "What to run"
         type: choice
-        options: [sims, size_grid, mark_grid]
+        options: [sims, single, size_grid, mark_grid]
         default: sims
       runs:
         description: "Sims: games per system"
@@ -27,6 +28,12 @@ on:
       budget:
         description: "Duel budget"
         default: "6725"
+      system:
+        description: "single: system id"
+        default: "orion_reach"
+      tag:
+        description: "single: run label (tools/dispatch.sh uses it to find the run)"
+        default: "0"
 
 env:
   GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
@@ -39,7 +46,9 @@ jobs:
     steps:
       - id: m
         run: |
-          if [ "${{ inputs.mode }}" = "sims" ]; then
+          if [ "${{ inputs.mode }}" = "single" ]; then
+            m='[{"system": "${{ inputs.system }}", "run": "${{ inputs.tag }}"}]'
+          elif [ "${{ inputs.mode }}" = "sims" ]; then
             m=$(python3 -c "import json; print(json.dumps([{'system': s, 'run': r} for s in ['orion_reach','vega_drift','kharon_expanse','tethys_cluster','sable_verge'] for r in range(int('${{ inputs.runs }}'))]))")
           elif [ "${{ inputs.mode }}" = "size_grid" ]; then
             m=$(python3 -c "import json; print(json.dumps([{'mark': m} for m in '${{ inputs.marks }}'.split()]))")
@@ -68,7 +77,7 @@ jobs:
       - name: Import assets
         run: ./godot --headless --import --path . || true
       - name: Simulate
-        if: inputs.mode == 'sims'
+        if: inputs.mode == 'sims' || inputs.mode == 'single'
         run: |
           SL_SYSTEM=${{ matrix.system }} SL_SIM=ci_${{ matrix.run }} SL_SEED=${{ matrix.system }}${{ matrix.run }}${{ github.run_id }} \
           SL_SIM_MINUTES=${{ inputs.minutes }} SL_SIM_SCALE=${{ inputs.speed }} \

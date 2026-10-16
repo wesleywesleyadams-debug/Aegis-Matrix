@@ -12,3 +12,4 @@ build/
 /android/
 ai/train/
 ai/commander_latest.json
+sim_results/
