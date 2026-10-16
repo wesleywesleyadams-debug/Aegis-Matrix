@@ -216,6 +216,7 @@ func has_rally_or(fallback: Vector2) -> Vector2:
 func take_damage(amount: float, from: SpaceEntity = null, profile: Dictionary = {}) -> void:
 	super.take_damage(amount, from, profile)
 	var g := Game.instance
+	g.stats.count(owner_id, "starbase_damage_taken", int(amount))
 	if owner_id == g.player_id and hp > 0.0:
 		g.alert("Your starbase is under attack!", "alert_starbase", false, global_position)
 

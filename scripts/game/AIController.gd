@@ -173,6 +173,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 
 	_scout(pid, st, game, ships.filter(func(s): return s.def["role"] == "scout") + war)
 	_use_jobs(pid, ships, game)
+	_expand_production(pid, st, game, base, ships)
 	_manage_depot(pid, ships, base, game)
 
 	# The learned commander decides builds and fleet moves itself.
@@ -300,6 +301,13 @@ func _nearest_planet(from: Vector2, game: Game, filter: Callable) -> Planet:
 				best = p
 	return best
 
+## A fleet only detours to an enemy world when it is this much closer than the
+## enemy starbase (a fraction of the distance), so attacks reach the base that
+## wins the match instead of grinding on colonies along the way.
+const DETOUR := 0.5
+## Attack once our fleet is this much stronger than theirs.
+const ATTACK_EDGE := 1.15
+
 func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 	# The enemy starbase wins the match; a small enemy colony on the way is
 	# fair game (big worlds take too long to bombard).
@@ -312,7 +320,7 @@ func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 		var kb := v.known_enemy_base(from)
 		var home := game.nearest_starbase(pid, Vector2.ZERO)
 		var base_pos: Vector2 = kb[0] if not kb.is_empty() else (-home.global_position if home else Vector2.ZERO)
-		if kp and from.distance_to(kp.global_position) < from.distance_to(base_pos):
+		if kp and from.distance_to(kp.global_position) < from.distance_to(base_pos) * DETOUR:
 			return kp.global_position
 		return base_pos
 	var p := _nearest_planet(from, game, func(pl): return pl.owner_id != 0 and pl.owner_id != pid and pl.pop < 4000.0)
@@ -320,7 +328,7 @@ func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 	for sb in game.get_tree().get_nodes_in_group("starbases"):
 		if sb.owner_id != pid:
 			enemy_base = sb
-	if p and (enemy_base == null or from.distance_to(p.global_position) < from.distance_to(enemy_base.global_position)):
+	if p and (enemy_base == null or from.distance_to(p.global_position) < from.distance_to(enemy_base.global_position) * DETOUR):
 		return p.global_position
 	return enemy_base.global_position if enemy_base else from
 
@@ -410,7 +418,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 		mode = "recover"
 	elif threat or theirs > mine * 1.3:
 		mode = "build_up"
-	elif mine > theirs * 1.4 and war.size() >= 8:
+	elif mine > theirs * ATTACK_EDGE and war.size() >= 8:
 		mode = "attack"
 	st["threat"] = threat
 	var old: String = st.get("mode", "")
@@ -559,6 +567,52 @@ func _pick_variant(pid: int, game: Game) -> String:
 	return best
 
 # ---------------------------------------------------------------- weapons depot
+
+## Spend, don't hoard: when minerals pile up past SPARE_MINERALS, add
+## starbases (up to MAX_STARBASES) beside our worlds, and keep every extra
+## starbase building warships. One yard cannot turn a growing income into
+## ships fast enough, which is what left AI fleets small and games stalled.
+const SPARE_MINERALS := 1500.0
+const MAX_STARBASES := 4
+
+func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, ships: Array) -> void:
+	var res: Dictionary = game.resources[pid]
+	var bases: Array = game.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == pid)
+	# Every yard but the home one is a pure warship yard.
+	for b in bases:
+		if b == base or b.queue.size() >= 2 or st.get("mode", "") == "recover":
+			continue
+		var pick := _pick_warship(pid, game, st)
+		if pick != "" and b.can_queue(pick) == "" and res["minerals"] >= Defs.SHIPS[pick]["cost"]["minerals"]:
+			b.enqueue(pick)
+	if res["minerals"] < SPARE_MINERALS or bases.size() >= MAX_STARBASES:
+		return
+	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
+	if builders.is_empty():
+		if base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
+			base.enqueue("constructor")
+		return
+	if builders.any(func(c): return c.state == Ship.State.BUILD and c.build_kind == "starbase"):
+		return
+	var site := _yard_site(pid, game, bases)
+	if site == Vector2.INF:
+		return
+	for c in builders:
+		if c.state == Ship.State.IDLE:
+			c.order_build_starbase(site)
+			return
+
+## A legal starbase site beside one of our worlds that has no yard nearby.
+func _yard_site(pid: int, game: Game, bases: Array) -> Vector2:
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.owner_id != pid or bases.any(func(b): return b.global_position.distance_to(p.global_position) < 700.0):
+			continue
+		for r in [160.0, 220.0, 280.0]:
+			for a in [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]:
+				var q: Vector2 = p.global_position + Vector2.from_angle(a) * r
+				if game.starbase_site_problem(q) == "":
+					return q
+	return Vector2.INF
 
 ## Once the fleet is sizable: get a Constructor, build a Weapons Depot near
 ## home, then refit idle generalist corvettes near home into the variant

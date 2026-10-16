@@ -302,6 +302,8 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	var g := Game.instance
 	if g.now() - last_hit_time > SIEGE_MEMORY or siege_start_pop <= 0.0:
 		siege_start_pop = maxf(pop, 1.0)
+	if owner_id != 0:
+		g.stats.count(owner_id, "world_damage_taken", int(amount))
 	last_hit_time = g.now()
 	# The planetary shield soaks damage first (shield-piercing shots slip past;
 	# Ion shots hit it harder; Reavers hit the population harder).
