@@ -936,9 +936,8 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 		notify("Starbase construction started.", "note_starbase", pos)
 	return sb
 
-func fire(from: Node2D, to: Node2D, weapon: String, damage: float, aoe: float = 0.0) -> void:
+func fire(from: Node2D, to: Node2D, weapon: String, damage: float) -> void:
 	var p := Projectile.new()
-	p.aoe = aoe
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"))
 	if not sim_mode:

@@ -109,10 +109,8 @@ const BASE_SHIPS := {
 		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 50.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 7.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
-		# Two turrets on the forward wings for the lasers, and a heavy
-		# torpedo every 10 s that bursts over 10 px for four times a laser hit.
-		"guns": 2, "turret_rate": 1.0, "turret_scale": 0.6, "turrets": [[0.3, -0.28], [0.3, 0.28]],
-		"secondary": {"weapon": "torpedo", "damage": 28.0, "cooldown": 10.0, "aoe": 10.0},
+		# Three laser turrets: the hub and both forward wings.
+		"guns": 3, "turret_rate": 1.0, "turret_scale": 0.6, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
 	},
 	"carrier": {
 		"name": "Carrier", "role": "warship", "requires": "carriers", "base": "carrier",
@@ -643,8 +641,6 @@ static func _with_variants() -> Dictionary:
 			d["base"] = base
 			d.erase("hotkey")
 			d["damage"] = d["damage"] * vd["damage"]
-			if d.has("secondary"):
-				d["secondary"]["damage"] = d["secondary"]["damage"] * vd["damage"]
 			for r in d["cost"]:
 				d["cost"][r] = int(round(d["cost"][r] * vd["cost"]))
 			out["%s_%s" % [v, base]] = d
