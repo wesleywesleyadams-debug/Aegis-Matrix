@@ -302,7 +302,7 @@ const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "
 const BATTERY_SHIELD := 1200.0
 const BATTERY := {"weapon": "laser", "damage": 18.0, "cooldown": 1.2, "range": 250.0}
 const SHIELD_REGEN_DELAY := 4.0
-const SHIELD_REGEN_PER_SEC := 0.08 # fraction of max shield
+const SHIELD_REGEN_PER_SEC := 0.025 # fraction of max shield
 ## Energy spent per shield point regenerated (spice covers shortfalls).
 const SHIELD_ENERGY_PER_POINT := 0.0055
 
