@@ -109,9 +109,9 @@ const BASE_SHIPS := {
 		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 50.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 7.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
-		# Three turrets (hub and both forward wings) for the lasers, and a heavy
+		# Two turrets on the forward wings for the lasers, and a heavy
 		# torpedo every 5 s that bursts over 30 px for twice a laser hit.
-		"guns": 3, "turret_rate": 1.0, "turret_scale": 0.6, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
+		"guns": 2, "turret_rate": 1.0, "turret_scale": 0.6, "turrets": [[0.3, -0.28], [0.3, 0.28]],
 		"secondary": {"weapon": "torpedo", "damage": 14.0, "cooldown": 5.0, "aoe": 30.0},
 	},
 	"carrier": {
