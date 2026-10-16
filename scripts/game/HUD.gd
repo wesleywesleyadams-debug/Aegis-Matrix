@@ -239,6 +239,10 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_research_button.add_theme_font_size_override("font_size", 13)
 	_research_button.focus_mode = Control.FOCUS_NONE
+	# The active tech's picture rides beside its name and progress.
+	_research_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_research_button.add_theme_constant_override("icon_max_width", 40)
+	_research_button.add_theme_constant_override("h_separation", 6)
 	_research_button.anchor_left = 1.0
 	_research_button.anchor_right = 1.0
 	_research_button.offset_right = RESEARCH_RIGHT
@@ -1245,13 +1249,16 @@ Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 	var glow := 1.0 if phase < RESEARCH_BLINK * 0.7 else 0.0
 	if cur.is_empty():
 		_research_button.text = "Research [R]"
+		_research_button.icon = null
 		_research_button.modulate = Color.WHITE.lerp(Color("ffd46b"), glow)
 		_research_fill.visible = false
 	else:
 		var t: Dictionary = Defs.TECHS[cur["id"]]
 		# The label stays short enough to fit: project name and percentage only.
 		var frac: float = clampf(cur["progress"] / t["time"], 0.0, 1.0)
-		_research_button.text = "%s %d%%" % [t["name"], int(100.0 * frac)]
+		# Percentage first: if the name is cut short to fit, progress is not.
+		_research_button.text = "%d%% %s" % [int(100.0 * frac), t["name"]]
+		_research_button.icon = TechIcons.icon(cur["id"])
 		_research_button.tooltip_text = "%s: %d%% complete.%s" % [t["name"], int(100.0 * frac), "\nSTALLED: not enough resources to keep paying for it." if cur["stalled"] else ""]
 		# Running: no blink, the green fill carries the progress. Stalled: the
 		# button blinks red and the fill freezes where it stopped.
@@ -1579,7 +1586,11 @@ func _refresh_ability_button() -> void:
 ## and a progress bar along the bottom (see _refresh_research).
 ## The width every tech card is drawn at, on every tab, and the width of the
 ## row-header column beside them.
-const TECH_CARD_W := 300.0
+const TECH_CARD_W := 360.0
+## The tech's picture on the left of its card (TechIcons), and the room it
+## takes from the text.
+const TECH_ICON := 56.0
+const TECH_ICON_PAD := 66.0
 const TECH_ROW_HEAD_W := 110.0
 
 ## One row header: a name, optionally over an icon.
@@ -1629,9 +1640,19 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	b.clip_contents = true
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(func(): game.request_research(id); _refresh_research())
+	# The tech's picture, top-left, with the text beside it.
+	var pic := TextureRect.new()
+	pic.texture = TechIcons.icon(id)
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.position = Vector2(6, 8)
+	pic.size = Vector2(TECH_ICON, TECH_ICON)
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(pic)
 	var box := VBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_FULL_RECT)
-	box.offset_left = 10
+	box.offset_left = TECH_ICON_PAD
 	box.offset_top = 5
 	box.offset_right = -10
 	box.add_theme_constant_override("separation", 2)
@@ -1653,7 +1674,7 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	box.add_child(CostRow.make(Defs.TECHS[id]["cost"], 15, Defs.TECHS[id]["time"]))
 	var desc := Label.new()
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.custom_minimum_size = Vector2(width - 22.0, 0)
+	desc.custom_minimum_size = Vector2(width - TECH_ICON_PAD - 12.0, 0)
 	desc.add_theme_font_size_override("font_size", 14)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(desc)
