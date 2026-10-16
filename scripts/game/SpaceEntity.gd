@@ -68,11 +68,17 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		absorbed = minf(shield, rest * m)
 		shield -= absorbed
 		rest -= absorbed / m
+	# Overcharged Coils: a share of the shot goes past the plating to the hull.
+	var through := 0.0
+	if pierce < 2 and rest > 0.0 and armor > 0.0 and is_instance_valid(_from) and Game.instance:
+		through = rest * clampf(Game.instance.mod(_from.owner_id, "armor_pierce") - 1.0, 0.0, 1.0)
+		rest -= through
 	if pierce < 2 and rest > 0.0:
 		var m: float = vs.get("armor", 1.0)
 		var plated := minf(armor, rest * m)
 		armor -= plated
 		rest -= plated / m
+	rest += through
 	if rest > 0.0:
 		hp -= rest * vs.get("hull", 1.0)
 	if absorbed > 0.0:

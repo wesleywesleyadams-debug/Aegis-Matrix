@@ -369,7 +369,7 @@ const TECHS := {
 	# --- Weapons: every step up the line costs something. The two tier 3
 	# projects are a fork, not a sequence: heavy slow guns or light fast ones.
 	"overcharged_coils": {"name": "Overcharged Coils", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 80}, "time": 55.0,
-		"effects": {"damage": 0.15, "fire_rate": 0.05}, "desc": "+15% weapon damage and +5% rate of fire on everything you own."},
+		"effects": {"armor_pierce": 0.25}, "desc": "Shots ignore 25% of enemy armor: a quarter of every hit goes straight to the hull. The answer to plated hulls and starbases."},
 	"burst_cyclers": {"name": "Burst Cyclers", "group": "weapons", "tier": 2, "requires": ["autoloaders"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
 		"effects": {"fire_rate": 0.25}, "desc": "+25% rate of fire. Pays off most on ships that already fire quickly, which means corvettes."},
 	"lance_batteries": {"name": "Lance Batteries", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
