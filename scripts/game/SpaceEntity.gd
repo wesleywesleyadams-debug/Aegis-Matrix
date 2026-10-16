@@ -88,7 +88,7 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		rest -= plated / m
 	rest += through
 	if rest > 0.0:
-		# Hullbreaker Rounds: what reaches the hull hits harder.
+		# Rupture Charges: what reaches the hull hits harder.
 		if src_ok:
 			rest *= g.mod(_from.owner_id, "hull_damage")
 		hp -= rest * vs.get("hull", 1.0)
