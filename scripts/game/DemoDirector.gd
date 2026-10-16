@@ -1,7 +1,7 @@
 class_name DemoDirector
 extends Node
 ## Runs the camera for the title screen's background match (Game.demo_mode):
-## it holds on one side's starbase, then drifts across to the other's. It also says when the
+## it holds still on one side's starbase, then cuts to the other's. It also says when the
 ## match is done, so the title screen can start a fresh one: when a side
 ## wins, or when it has run long without one.
 
@@ -9,8 +9,6 @@ signal finished
 
 ## Real seconds between choosing where to look.
 const RESHOT := 12.0
-## How quickly the camera eases toward its target (per real second).
-const EASE := 0.6
 ## A match that has not been decided by now is cut, so the title screen
 ## keeps showing openings and fights rather than a long stalemate.
 const MAX_GAME_SECONDS := 900.0
@@ -42,8 +40,8 @@ func _process(_delta: float) -> void:
 	if _timer <= 0.0:
 		_timer = RESHOT
 		_choose()
-	var look := _framed(_target)
-	g.camera.global_position = g.camera.global_position.lerp(look, clampf(EASE * dt, 0.0, 1.0))
+	# A straight cut to the shot, held still: no panning.
+	g.camera.global_position = _framed(_target)
 	if not _done and Game.now() > _max_seconds:
 		_finish()
 
