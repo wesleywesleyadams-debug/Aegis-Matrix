@@ -1,7 +1,8 @@
 class_name DemoDirector
 extends Node
 ## Runs the camera for the title screen's background match (Game.demo_mode):
-## it holds still on one side's starbase, then cuts to the other's. It also says when the
+## it holds still on one player's home - midway between their home world
+## and starting starbase - then cuts to the other's. It also says when the
 ## match is done, so the title screen can start a fresh one: when a side
 ## wins, or when it has run long without one.
 
@@ -54,16 +55,37 @@ func _framed(p: Vector2) -> Vector2:
 	var r := Game.MAP_RECT.grow_individual(-half.x, -half.y, -half.x, -half.y)
 	return p.clamp(r.position, r.end) if r.size.x > 0.0 and r.size.y > 0.0 else p
 
-## The starbases, one side and then the other each shot: they are where a
-## match is built, defended and finally decided.
-func _choose() -> void:
+## The two shots, fixed at the start of the match: for each player, the open
+## space midway between their home world and their starting starbase, where
+## the opening plays out.
+var _shots: Array = []
+
+func _plan_shots() -> void:
 	var g := Game.instance
-	var bases: Array = g.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.is_alive() and not b.under_construction)
-	if bases.is_empty():
+	for pid in [1, 2]:
+		var base: Node2D = null
+		for b in g.get_tree().get_nodes_in_group("starbases"):
+			if b.owner_id == pid:
+				base = b
+				break
+		if base == null:
+			continue
+		var home: Node2D = null
+		var best := INF
+		for p in g.get_tree().get_nodes_in_group("planets"):
+			if p.owner_id == pid and p.global_position.distance_to(base.global_position) < best:
+				best = p.global_position.distance_to(base.global_position)
+				home = p
+		_shots.append((base.global_position + home.global_position) / 2.0 if home else base.global_position)
+
+## One player's shot, then the other's.
+func _choose() -> void:
+	if _shots.is_empty():
+		_plan_shots()
+	if _shots.is_empty():
 		return
-	bases.sort_custom(func(a, b): return a.owner_id < b.owner_id)
 	_shot += 1
-	_target = bases[_shot % bases.size()].global_position
+	_target = _shots[_shot % _shots.size()]
 
 func _finish() -> void:
 	if _done:
