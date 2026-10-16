@@ -11,7 +11,9 @@ class_name TechIcons
 ##   pips    - its tier, bottom-right
 ## Icons are SIZE px square, pixel-art crisp, and cached.
 
-const SIZE := 64
+const SIZE := 120
+## Drawing scale against the 64-unit grid the pictures are laid out on.
+const K := SIZE / 64.0
 const GROUP_COLORS := {
 	"warships": Color("4fa8ff"), "weapons": Color("ff6a4a"), "defense": Color("7fd8ff"),
 	"constructs": Color("ffb347"), "worlds": Color("6fe07a"), "logistics": Color("3fd6b0"),
@@ -41,10 +43,10 @@ static func _paint(id: String) -> Image:
 		if main_fx.begins_with("mark_"):
 			var mk := int(id.get_slice("_mk", 1)) if "_mk" in id else 2
 			for k in mk - 1:
-				_line(img, Vector2(7 + k * 7, 13), Vector2(10 + k * 7, 9), 2.0, GOLD)
-				_line(img, Vector2(10 + k * 7, 9), Vector2(13 + k * 7, 13), 2.0, GOLD)
+				_line(img, Vector2(7 + k * 7, 13) * K, Vector2(10 + k * 7, 9) * K, 2.0 * K, GOLD)
+				_line(img, Vector2(10 + k * 7, 9) * K, Vector2(13 + k * 7, 13) * K, 2.0 * K, GOLD)
 		for k in int(t.get("tier", 1)):
-			_disc(img, Vector2(55 - k * 7, 55), 2.4, GOLD)
+			_disc(img, Vector2(55 - k * 7, 55) * K, 2.4 * K, GOLD)
 		return img
 	var col: Color = GROUP_COLORS.get(t.get("group", ""), Color("a8b4d4"))
 	var line: String = t.get("line", "")
@@ -107,16 +109,16 @@ const BORDER_COLORS := {
 ## and a chrome sheen band across the surface.
 static func _plaque(img: Image, art: Image, edge: Color = GOLD) -> void:
 	img.fill(Color(0, 0, 0, 1))
-	for y in range(4, SIZE - 4):
-		for x in range(4, SIZE - 4):
+	for y in range(6, SIZE - 6):
+		for x in range(6, SIZE - 6):
 			var c := art.get_pixel(x, y)
 			if c.a < 0.05:
 				# A drop shadow cast down-right onto the black.
-				if art.get_pixel(x - 2, y - 2).a > 0.3:
+				if art.get_pixel(x - 3, y - 3).a > 0.3:
 					img.set_pixel(x, y, Color(0.0, 0.0, 0.0))
 				continue
 			var lum := c.get_luminance()
-			var band := 0.5 + 0.5 * sin((lum * 2.2 + float(x + y) / 36.0) * PI)
+			var band := 0.5 + 0.5 * sin((lum * 2.2 + float(x + y) / (36.0 * K)) * PI)
 			var v := clampf(0.1 + lum * 0.5 + band * 0.5, 0.0, 1.0)
 			if art.get_pixel(x - 1, y - 1).a < 0.05:
 				v = 1.0
@@ -128,8 +130,8 @@ static func _plaque(img: Image, art: Image, edge: Color = GOLD) -> void:
 	for y in SIZE:
 		for x in SIZE:
 			var d := mini(mini(x, y), mini(SIZE - 1 - x, SIZE - 1 - y))
-			if d < 3:
-				img.set_pixel(x, y, edge if d == 1 else edge.darkened(0.4))
+			if d < 5:
+				img.set_pixel(x, y, edge if d >= 1 and d <= 3 else edge.darkened(0.4))
 
 static func _tile(img: Image, col: Color, seed_v: int) -> void:
 	var bg := col.darkened(0.78)
@@ -179,7 +181,7 @@ static func _sprite(img: Image, tex_name: String) -> void:
 		src.decompress()
 	src.convert(Image.FORMAT_RGBA8)
 	# Fit inside the tile, crisp.
-	var room := 44.0
+	var room := 44.0 * K
 	var k: float = room / maxf(src.get_width(), src.get_height())
 	var w := maxi(1, int(src.get_width() * k))
 	var h := maxi(1, int(src.get_height() * k))
@@ -193,7 +195,7 @@ static func _sprite(img: Image, tex_name: String) -> void:
 		tim.convert(Image.FORMAT_RGBA8)
 		tim.resize(w, h, Image.INTERPOLATE_NEAREST)
 	var ox := (SIZE - w) / 2
-	var oy := (SIZE - h) / 2 + 2
+	var oy := (SIZE - h) / 2 + int(2 * K)
 	for y in h:
 		for x in w:
 			var c := src.get_pixel(x, y)

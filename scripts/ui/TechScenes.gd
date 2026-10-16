@@ -10,6 +10,8 @@ class_name TechScenes
 
 const S := TechIcons.SIZE
 const C := Vector2(32, 32)
+## Scenes are laid out on a 64-unit grid and drawn at the icon's real size.
+const K := TechIcons.K
 
 static func paint(id: String, img: Image) -> bool:
 	if not has_method_scene(id):
@@ -312,6 +314,8 @@ static func _space(img: Image, seed_v: int) -> void:
 		img.set_pixel(x, y, Color(1, 1, 1, rng.randf_range(0.25, 0.8)))
 
 static func _sprite(img: Image, tex_name: String, c: Vector2, box: float) -> void:
+	c *= K
+	box *= K
 	var tex := Defs.tex(tex_name)
 	if tex == null:
 		return
@@ -339,9 +343,11 @@ static func _sprite(img: Image, tex_name: String, c: Vector2, box: float) -> voi
 				col = Defs.team_color(1) * tim.get_pixel(x, y).r
 				col.a = 1.0
 			if col.a > 0.0:
-				_put(img, o.x + x, o.y + y, col)
+				TechIcons._put(img, o.x + x, o.y + y, col)
 
 static func _planet(img: Image, c: Vector2, r: float, base: Color) -> void:
+	c *= K
+	r *= K
 	for y in range(int(c.y - r), int(c.y + r) + 1):
 		for x in range(int(c.x - r), int(c.x + r) + 1):
 			var v := (Vector2(x, y) - c) / r
@@ -349,13 +355,15 @@ static func _planet(img: Image, c: Vector2, r: float, base: Color) -> void:
 				continue
 			# Lit from the top-left.
 			var lit := clampf(0.55 - v.dot(Vector2(0.6, 0.7)) * 0.5, 0.15, 1.0)
-			_put(img, x, y, base * lit + Color(0, 0, 0, 1) * (1.0 - lit) * 0.0)
+			TechIcons._put(img, x, y, base * lit + Color(0, 0, 0, 1) * (1.0 - lit) * 0.0)
 
 static func _half(img: Image, c: Vector2, r: float, col: Color) -> void:
+	c *= K
+	r *= K
 	for y in range(int(c.y - r), int(c.y + r) + 1):
 		for x in range(int(c.x - r), int(c.x) + 1):
 			if Vector2(x, y).distance_to(c) <= r:
-				_put(img, x, y, col * clampf(0.9 - (Vector2(x, y) - c).y / r * 0.3, 0.3, 1.0))
+				TechIcons._put(img, x, y, col * clampf(0.9 - (Vector2(x, y) - c).y / r * 0.3, 0.3, 1.0))
 
 static func _wing(img: Image, at: Vector2, w: float, h: float, col: Color) -> void:
 	_poly(img, [at, at + Vector2(w, 4), at + Vector2(w, h - 4), at + Vector2(0, h)], col)
@@ -416,37 +424,43 @@ static func _dashes(img: Image, a: Vector2, b: Vector2, col: Color) -> void:
 			_line(img, a.lerp(b, float(k) / n), a.lerp(b, float(k + 1) / n), 1.5, col)
 
 # ---------------------------------------------------------------- primitives
-# Shared with TechIcons.
+# TechIcons' primitives, taking scene units (a 64 grid) and drawing at K.
 
+## One scene pixel: a K-sized block.
 static func _put(img: Image, x: int, y: int, col: Color) -> void:
-	TechIcons._put(img, x, y, col)
+	for dy in ceili(K):
+		for dx in ceili(K):
+			TechIcons._put(img, int(x * K) + dx, int(y * K) + dy, col)
 
 static func _disc(img: Image, c: Vector2, r: float, col: Color) -> void:
-	TechIcons._disc(img, c, r, col)
+	TechIcons._disc(img, c * K, r * K, col)
 
 static func _ring(img: Image, c: Vector2, r: float, w: float, col: Color) -> void:
-	TechIcons._ring(img, c, r, w, col)
+	TechIcons._ring(img, c * K, r * K, w * K, col)
 
 static func _arc(img: Image, c: Vector2, r: float, a0: float, a1: float, w: float, col: Color) -> void:
-	TechIcons._arc(img, c, r, a0, a1, w, col)
+	TechIcons._arc(img, c * K, r * K, a0, a1, w * K, col)
 
 static func _line(img: Image, a: Vector2, b: Vector2, w: float, col: Color) -> void:
-	TechIcons._line(img, a, b, w, col)
+	TechIcons._line(img, a * K, b * K, w * K, col)
 
 static func _poly(img: Image, pts: Array, col: Color) -> void:
-	TechIcons._poly(img, pts, col)
+	var out: Array = []
+	for q in pts:
+		out.append(q * K)
+	TechIcons._poly(img, out, col)
 
 static func _box(img: Image, a: Vector2, b: Vector2, col: Color) -> void:
-	TechIcons._box(img, a, b, col)
+	TechIcons._box(img, a * K, b * K, col)
 
 static func _frame(img: Image, a: Vector2, b: Vector2, w: float, col: Color) -> void:
-	TechIcons._frame(img, a, b, w, col)
+	TechIcons._frame(img, a * K, b * K, w * K, col)
 
 static func _ellipse(img: Image, c: Vector2, r: Vector2, col: Color) -> void:
-	TechIcons._ellipse(img, c, r, col)
+	TechIcons._ellipse(img, c * K, r * K, col)
 
 static func _hex(img: Image, c: Vector2, r: float, w: float, col: Color) -> void:
-	TechIcons._hex(img, c, r, w, col)
+	TechIcons._hex(img, c * K, r * K, w * K, col)
 
 static func _burst(img: Image, c: Vector2, r: float, col: Color) -> void:
-	TechIcons._burst(img, c, r, col)
+	TechIcons._burst(img, c * K, r * K, col)
