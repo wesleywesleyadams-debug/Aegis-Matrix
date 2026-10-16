@@ -549,7 +549,7 @@ func _batteries_fire(delta: float) -> void:
 			best_d = d
 			best = s
 	if best:
-		g.fire(self, best, Defs.BATTERY["weapon"], Defs.BATTERY["damage"] * n)
+		g.fire(self, best, Defs.BATTERY["weapon"], Defs.BATTERY["damage"] * n * g.mod(owner_id, "planet_damage"))
 		_battery_cd = Defs.BATTERY["cooldown"]
 	else:
 		_battery_cd = 0.4

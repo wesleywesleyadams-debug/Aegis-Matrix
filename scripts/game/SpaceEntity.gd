@@ -56,6 +56,9 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	_last_hit_time = Game.now()
 	# Screens (Defense) soak a slice of everything before the layers see it.
 	amount /= Game.instance.mod(owner_id, "damage_taken") if Game.instance else 1.0
+	# Convoy Protocols: harvesters are armored on top of that.
+	if Game.instance and self is Ship and self.def.get("role", "") in ["miner", "skimmer"]:
+		amount /= Game.instance.mod(owner_id, "harvester_damage_taken")
 	var vs: Dictionary = profile.get("vs", {})
 	var pierce: int = profile.get("pierce", 0)
 	var rest := amount

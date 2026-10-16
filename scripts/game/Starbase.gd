@@ -53,7 +53,7 @@ func refresh_stats() -> void:
 	max_hp = Defs.STARBASE["hp"] * g.mod(owner_id, "hull") * g.mod(owner_id, "structure")
 	max_armor = Defs.STARBASE.get("armor", 0.0) * g.mod(owner_id, "armor") * g.mod(owner_id, "structure")
 	armor = max_armor * ar_frac
-	max_shield = Defs.STARBASE["shield"] * g.mod(owner_id, "shield")
+	max_shield = Defs.STARBASE["shield"] * g.mod(owner_id, "shield") * g.mod(owner_id, "structure_shield")
 	hp = max_hp * hp_frac
 	shield = minf(shield, max_shield)
 	display_name = "Starbase (under construction)" if under_construction else Defs.STARBASE["name"]

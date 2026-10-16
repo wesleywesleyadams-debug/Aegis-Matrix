@@ -352,7 +352,7 @@ const TECHS := {
 	"forward_bases": {"name": "Forward Bases", "group": "constructs", "tier": 2, "requires": ["orbital_yards"], "cost": {"energy": 180, "spice": 30}, "time": 100.0,
 		"effects": {"build_speed": 0.15, "construct_speed": 0.15}, "desc": "A further +15% ship production and +15% construction: plant a yard at the front and keep it fed."},
 	"citadel_protocols": {"name": "Citadel Protocols", "group": "constructs", "tier": 3, "requires": ["reinforced_docks"], "cost": {"energy": 810, "spice": 180}, "time": 245.0,
-		"effects": {"structure": 0.45, "range": 0.10}, "desc": "A further +45% hull and armor on every construct, and +10% weapon range."},
+		"effects": {"structure_shield": 0.50, "structure_range": 0.15}, "desc": "+50% shields and +15% weapon range on every construct: a base that outranges what comes for it."},
 
 	# --- Worlds: feeding, growing and holding colonies.
 	"colony_pods": {"name": "Colony Pods", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 50}, "time": 40.0,
@@ -369,13 +369,13 @@ const TECHS := {
 	# --- Weapons: every step up the line costs something. The two tier 3
 	# projects are a fork, not a sequence: heavy slow guns or light fast ones.
 	"overcharged_coils": {"name": "Overcharged Coils", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 80}, "time": 55.0,
-		"effects": {"damage": 0.20}, "desc": "+20% weapon damage on everything you own."},
+		"effects": {"damage": 0.15, "fire_rate": 0.05}, "desc": "+15% weapon damage and +5% rate of fire on everything you own."},
 	"burst_cyclers": {"name": "Burst Cyclers", "group": "weapons", "tier": 2, "requires": ["autoloaders"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
 		"effects": {"fire_rate": 0.25}, "desc": "+25% rate of fire. Pays off most on ships that already fire quickly, which means corvettes."},
 	"lance_batteries": {"name": "Lance Batteries", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
-		"effects": {"damage": 0.45}, "desc": "+45% weapon damage. Heavy shots: the fastest way through armor and starbase hulls."},
+		"effects": {"damage": 0.30}, "desc": "+30% weapon damage. Heavy shots: the fastest way through armor and starbase hulls."},
 	"scatter_arrays": {"name": "Scatter Arrays", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
-		"effects": {"fire_rate": 0.40}, "desc": "+40% rate of fire. More shots in the water: what a swarm of corvettes wants."},
+		"effects": {"fire_rate": 0.30}, "desc": "+30% rate of fire. More shots in the water: what a swarm of corvettes wants."},
 
 	# --- Constructs: tier 3 forks into a defensive posture or an industrial one.
 	"siege_platforms": {"name": "Siege Platforms", "group": "constructs", "tier": 2, "requires": ["garrison_guns"], "cost": {"energy": 165, "spice": 25}, "time": 90.0,
@@ -391,21 +391,21 @@ const TECHS := {
 
 	# --- Worlds: feeding a population you chose to grow.
 	"rationing": {"name": "Rationing", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 45}, "time": 40.0,
-		"effects": {"food_per_pop": -0.30}, "desc": "Pops eat 30% less. A thin harvest feeds a bigger population, and farms you have not built yet are farms you do not need."},
+		"effects": {"growth": 0.10}, "desc": "+10% population growth: careful stores mean more mouths can be raised."},
 	"habitat_modules": {"name": "Habitat Modules", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 60}, "time": 45.0,
 		"effects": {"max_pop": 0.20}, "desc": "+20% population cap on every world."},
 	"gene_forges": {"name": "Gene Forges", "group": "worlds", "tier": 3, "requires": ["gene_clinics"], "cost": {"energy": 665, "spice": 130}, "time": 215.0,
-		"effects": {"growth": 0.60}, "desc": "+60% population growth: worlds reach their cap, and their output, far sooner."},
+		"effects": {"growth": 0.80, "max_pop": 0.10}, "desc": "+80% population growth and +10% population cap: worlds reach their cap, and their output, far sooner."},
 	"planetary_citadels": {"name": "Planetary Citadels", "group": "worlds", "tier": 3, "requires": ["planetary_shields"], "cost": {"energy": 755, "spice": 160}, "time": 235.0,
-		"effects": {"planet_shield": 0.60}, "desc": "+60% planetary shield: a besieged world holds out long enough for the fleet to come home."},
+		"effects": {"planet_shield": 0.60, "planet_damage": 0.25}, "desc": "+60% planetary shield and +25% planetary battery damage: a besieged world holds out, and hits back."},
 
 	# --- Logistics: tier 3 is a choice of what a harvester is good at.
 	"convoy_protocols": {"name": "Convoy Protocols", "group": "logistics", "tier": 2, "requires": ["bulk_holds"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
-		"effects": {"cargo": 0.45}, "desc": "Harvesters carry +45% per load: fewer, heavier runs, which is what a distant belt wants."},
+		"effects": {"harvester_damage_taken": 0.43}, "desc": "Harvesters take 30% less damage: armored hauls that survive a raid."},
 	"jump_drives": {"name": "Jump Drives", "group": "logistics", "tier": 3, "requires": ["fusion_drives"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
-		"effects": {"speed": 0.35}, "desc": "+35% speed on every ship: a fleet that arrives before the fight is decided, and harvesters that cover ground."},
+		"effects": {"speed": 0.40, "upkeep": -0.10}, "desc": "+40% speed on every ship and -10% fleet upkeep: a fleet that arrives before the fight is decided, and costs less to keep."},
 	"mass_drivers": {"name": "Mass Drivers", "group": "logistics", "tier": 3, "requires": ["resonance_drills"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
-		"effects": {"harvest": 0.45}, "desc": "+45% gather rate at every node: the most ore per barge you can buy."},
+		"effects": {"harvest": 0.60}, "desc": "+60% gather rate at every node: the most ore per barge you can buy."},
 	"logistics_command": {"name": "Logistics Command", "group": "logistics", "tier": 3, "requires": ["convoy_protocols"], "cost": {"energy": 755, "spice": 140}, "time": 225.0,
 		"effects": {"harvest": 0.25, "cargo": 0.25}, "desc": "+25% gather rate and +25% cargo: the whole supply line, a quarter better."},
 
@@ -415,7 +415,7 @@ const TECHS := {
 	"point_defense": {"name": "Point Defense Net", "group": "defense", "line": "screens", "tier": 2, "requires": ["flak_screens"], "cost": {"energy": 155, "spice": 25}, "time": 90.0,
 		"effects": {"damage_taken": 0.12}, "desc": "A further 12% off all incoming damage."},
 	"aegis_umbrella": {"name": "Aegis Umbrella", "group": "defense", "line": "screens", "tier": 3, "requires": ["point_defense"], "cost": {"energy": 755, "spice": 160}, "time": 235.0,
-		"effects": {"damage_taken": 0.18}, "desc": "A further 18% off all incoming damage, whatever the layer and whatever is carrying it."},
+		"effects": {"damage_taken": 0.30}, "desc": "A further 30% off all incoming damage, whatever the layer and whatever is carrying it."},
 
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 80, "spice": 10}, "time": 60.0,
@@ -461,23 +461,23 @@ const TECHS := {
 	"phase_shields": {"name": "Phase Shields", "group": "defense", "line": "shields", "tier": 2, "requires": ["deflectors"], "cost": {"energy": 335, "spice": 100}, "time": 180.0,
 		"effects": {"shield": 0.25}, "desc": "+25% shields."},
 	"aegis_matrix": {"name": "Aegis Matrix", "group": "defense", "line": "shields", "tier": 3, "requires": ["phase_shields"], "cost": {"energy": 890, "spice": 200}, "time": 260.0,
-		"effects": {"shield": 0.35}, "desc": "+35% shields."},
+		"effects": {"shield": 0.45}, "desc": "+45% shields."},
 	"composite_plating": {"name": "Composite Plating", "group": "defense", "line": "armor", "tier": 1, "requires": [], "cost": {"energy": 165, "spice": 40}, "time": 120.0,
 		"effects": {"armor": 0.20}, "desc": "+20% armor on all ships and starbases."},
 	"reactive_armor": {"name": "Reactive Armor", "group": "defense", "line": "armor", "tier": 2, "requires": ["composite_plating"], "cost": {"energy": 335, "spice": 100}, "time": 180.0,
 		"effects": {"armor": 0.25}, "desc": "+25% armor."},
 	"neutronium_armor": {"name": "Neutronium Armor", "group": "defense", "line": "armor", "tier": 3, "requires": ["reactive_armor"], "cost": {"energy": 890, "spice": 200}, "time": 260.0,
-		"effects": {"armor": 0.35}, "desc": "+35% armor."},
+		"effects": {"armor": 0.45}, "desc": "+45% armor."},
 	"reinforced_frames": {"name": "Reinforced Frames", "group": "defense", "line": "hull", "tier": 1, "requires": [], "cost": {"energy": 165, "spice": 40}, "time": 120.0,
 		"effects": {"hull": 0.15}, "desc": "+15% hull on all ships and starbases."},
 	"nanite_plating": {"name": "Nanite Plating", "group": "defense", "line": "hull", "tier": 2, "requires": ["reinforced_frames"], "cost": {"energy": 335, "spice": 100}, "time": 180.0,
 		"effects": {"hull": 0.20}, "desc": "+20% hull."},
 	"adaptive_hulls": {"name": "Adaptive Hulls", "group": "defense", "line": "hull", "tier": 3, "requires": ["nanite_plating"], "cost": {"energy": 890, "spice": 200}, "time": 260.0,
-		"effects": {"hull": 0.30}, "desc": "+30% hull."},
+		"effects": {"hull": 0.45}, "desc": "+45% hull."},
 	"dark_matter": {"name": "Dark Matter Reactors", "group": "weapons", "tier": 3, "requires": ["particle_lances"], "cost": {"spice": 200}, "time": 215.0,
-		"effects": {"energy": 0.50, "damage": 0.25}, "desc": "+50% energy output, +25% weapon damage. Paid entirely in spice."},
+		"effects": {"energy": 0.50}, "desc": "+50% energy output. Paid entirely in spice."},
 	"spice_navigation": {"name": "Spice Navigation", "group": "logistics", "tier": 3, "requires": ["ion_thrusters", "gene_clinics"], "cost": {"spice": 200}, "time": 180.0,
-		"effects": {"speed": 0.25, "growth": 0.25}, "desc": "+25% ship speed, +25% population growth. Paid entirely in spice."},
+		"effects": {"speed": 0.15, "growth": 0.25}, "desc": "+15% ship speed, +25% population growth. Paid entirely in spice."},
 }
 
 static func tex(name: String) -> Texture2D:

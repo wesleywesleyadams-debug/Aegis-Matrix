@@ -51,7 +51,7 @@ func refresh_stats() -> void:
 	var ar_frac := armor / max_armor if max_armor > 0.0 else 1.0
 	max_hp = d["hp"] * g.mod(owner_id, "hull") * g.mod(owner_id, "structure")
 	max_armor = d["armor"] * g.mod(owner_id, "armor") * g.mod(owner_id, "structure")
-	max_shield = d["shield"] * g.mod(owner_id, "shield")
+	max_shield = d["shield"] * g.mod(owner_id, "shield") * g.mod(owner_id, "structure_shield")
 	hp = max_hp * hp_frac
 	armor = max_armor * ar_frac
 	shield = minf(shield, max_shield)
