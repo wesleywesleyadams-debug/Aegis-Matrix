@@ -94,7 +94,7 @@ const BASE_SHIPS := {
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
-		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 11.0,
+		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
 		"cost": {"minerals": 170, "spice": 5}, "build_time": 32.0, "upkeep": 1.7,
 		"weapon": "laser", "damage": 7.0, "cooldown": 0.9, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 25.0},
 		# Two light turrets on the prongs: they track a circling corvette
@@ -106,7 +106,7 @@ const BASE_SHIPS := {
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 16.0,
+		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 50.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 11.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 		# Three laser turrets: the hub and both forward wings.
@@ -118,9 +118,9 @@ const BASE_SHIPS := {
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one, and the hangar
 		# bays are the real reason to build one.
-		"hp": 520.0, "armor": 720.0, "shield": 300.0, "speed": 38.0, "radius": 32.0,
+		"hp": 520.0, "armor": 720.0, "shield": 300.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 100.0, "upkeep": 8.0,
-		"weapon": "torpedo", "damage": 30.0, "cooldown": 2.0, "range": 260.0, "sensor": 460.0,
+		"weapon": "laser", "damage": 30.0, "cooldown": 2.0, "range": 260.0, "sensor": 460.0,
 		"guns": 4, "bays": 6, "job": "hangar",
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can

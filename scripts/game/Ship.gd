@@ -182,7 +182,9 @@ func _apply_visuals() -> void:
 	team.modulate = Defs.team_color(owner_id)
 	# The art is drawn at Defs.ART_SCALE and shown at 1/ART_SCALE, so a ship
 	# covers the same world space as before at twice the detail.
-	hull.scale = Vector2.ONE / Defs.ART_SCALE
+	# "size" draws a class bigger than its art (destroyer 1.33x, cruiser
+	# 1.66x, carrier 2x); its radius in Defs is scaled to match.
+	hull.scale = Vector2.ONE / Defs.ART_SCALE * float(Defs.SHIPS.get(ship_type, {}).get("size", 1.0))
 	team.scale = hull.scale
 	_apply_mark()
 	_rebuild_flames(hull.texture, hull.scale)
@@ -279,12 +281,12 @@ func _rebuild_turrets() -> void:
 	var hull: Sprite2D = get_node("Hull")
 	if hull.texture == null:
 		return
-	var size := Vector2(hull.texture.get_size()) / Defs.ART_SCALE
+	var size := Vector2(hull.texture.get_size()) * hull.scale
 	for m in def["turrets"]:
 		var t := Sprite2D.new()
 		t.texture = Defs.tex("ship_turret")
 		t.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		t.scale = Vector2.ONE / Defs.ART_SCALE * float(def.get("turret_scale", 1.0))
+		t.scale = hull.scale * float(def.get("turret_scale", 1.0))
 		t.position = Vector2((float(m[0]) - 0.5) * size.x, float(m[1]) * size.y)
 		add_child(t)
 		_turret_sprites.append(t)
@@ -292,7 +294,7 @@ func _rebuild_turrets() -> void:
 ## Where bay `i` sits in the carrier's own frame (see Defs.carrier_bays):
 ## the odd slots are the mirrored, lower-side bays.
 func bay_offset(i: int) -> Vector2:
-	var art: Dictionary = Defs.WARSHIP_ART_SIZE.get(ship_type, {})
+	var art: Dictionary = Defs.WARSHIP_ART_SIZE.get(def.get("base", ship_type), {})
 	if art.is_empty():
 		return Vector2.ZERO
 	var bays: Array = Defs.carrier_bays(int(art["w"]), int(art["h"]))
@@ -302,7 +304,7 @@ func bay_offset(i: int) -> Vector2:
 	# Design units run from the stern; the sprite is centred on the hull.
 	var x: float = b.x - art["w"] / 2.0
 	var y: float = b.y * (1.0 if i % 2 == 0 else -1.0)
-	return Vector2(x, y)
+	return Vector2(x, y) * float(def.get("size", 1.0))
 
 ## A free bay for `craft`, or -1.
 func free_bay() -> int:
