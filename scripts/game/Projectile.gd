@@ -68,9 +68,7 @@ func _physics_process(delta: float) -> void:
 		var next_pos := global_position + _vel * delta
 		var near := Geometry2D.get_closest_point_to_segment(target.global_position, global_position, next_pos)
 		if near.distance_to(target.global_position) <= target.radius:
-			# An Escort nearby softens weapon hits (see Abilities).
-			var mult := Abilities.incoming_mult(target) if target is SpaceEntity else 1.0
-			target.take_damage(damage * mult, shooter if is_instance_valid(shooter) else null, profile)
+			target.take_damage(damage, shooter if is_instance_valid(shooter) else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)
 			queue_free()

@@ -1178,9 +1178,6 @@ func _draw_job() -> void:
 			if Abilities.is_active(self):
 				draw_arc(Vector2.ZERO, Abilities.EMERGENCY_RANGE, 0.0, TAU, 96, Color(c, 0.8), 3.0)
 				draw_circle(Vector2.ZERO, Abilities.EMERGENCY_RANGE, Color(c, 0.12))
-		"escort":
-			if selected:
-				draw_arc(Vector2.ZERO, Abilities.ESCORT_RANGE, 0.0, TAU, 64, Color(c, 0.25), 1.0)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # ---------------------------------------------------------------- refits

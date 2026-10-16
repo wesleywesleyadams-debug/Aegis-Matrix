@@ -7,8 +7,6 @@ extends RefCounted
 const SWARM_RANGE := 150.0
 const SWARM_PER := 0.06
 const SWARM_MAX := 0.36
-const ESCORT_RANGE := 130.0
-const ESCORT_CUT := 0.15
 const HEAT_RANGE := 170.0
 const HEAT_CUT := 0.75
 const REPAIR_RANGE := 180.0
@@ -71,13 +69,6 @@ static func damage_mult(s: Ship) -> float:
 		if o != s and o.owner_id == s.owner_id and o.global_position.distance_squared_to(s.global_position) <= SWARM_RANGE * SWARM_RANGE:
 			n += 1
 	return 1.0 + minf(n * SWARM_PER, SWARM_MAX)
-
-## Incoming weapon damage multiplier (an Escort nearby).
-static func incoming_mult(e: SpaceEntity) -> float:
-	for o in Game.instance.job_ships.get("escort", []):
-		if o != e and o.owner_id == e.owner_id and o.global_position.distance_squared_to(e.global_position) <= ESCORT_RANGE * ESCORT_RANGE:
-			return 1.0 - ESCORT_CUT
-	return 1.0
 
 ## Radiation damage multiplier (a Heat Shield Frigate nearby).
 static func radiation_mult(e: SpaceEntity) -> float:

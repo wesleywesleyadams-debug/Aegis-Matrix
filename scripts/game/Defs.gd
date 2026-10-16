@@ -96,7 +96,7 @@ const BASE_SHIPS := {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
 		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 11.0,
 		"cost": {"minerals": 170, "spice": 5}, "build_time": 32.0, "upkeep": 1.7,
-		"weapon": "laser", "damage": 7.0, "cooldown": 0.9, "range": 210.0, "sensor": 330.0, "job": "escort", "refit": {"minerals": 10, "time": 25.0},
+		"weapon": "laser", "damage": 7.0, "cooldown": 0.9, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 25.0},
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
@@ -653,8 +653,6 @@ static func damage_profile(d: Dictionary) -> Dictionary:
 const JOBS := {
 	"swarm": {"name": "Swarm", "active": false, "color": Color("7fb2ff"),
 		"desc": "+6% damage for each other corvette within 150 px (up to +36%). Strong in numbers, weak alone."},
-	"escort": {"name": "Escort", "active": false, "color": Color("7fd8ff"),
-		"desc": "Friendly ships within 130 px take 15% less weapon damage. Guards miners, colony ships and fleets."},
 	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
 		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
 	"heat_screen": {"name": "Heat Screen", "active": false, "color": Color("ffc24a"),
