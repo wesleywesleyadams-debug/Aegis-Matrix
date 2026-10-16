@@ -337,8 +337,8 @@ const TECHS := {
 		"effects": {"range": 0.20}, "desc": "+20% weapon range."},
 	"heavy_mounts": {"name": "Heavy Mounts", "group": "weapons", "tier": 2, "requires": ["autoloaders"], "cost": {"energy": 155, "spice": 25}, "time": 90.0,
 		"effects": {"fire_rate": 0.20}, "desc": "+20% rate of fire."},
-	"capital_batteries": {"name": "Capital Batteries", "group": "weapons", "tier": 3, "requires": ["particle_lances", "heavy_mounts"], "cost": {"energy": 755, "spice": 160}, "time": 235.0,
-		"effects": {"damage": 0.25, "range": 0.10}, "desc": "+25% weapon damage and +10% range."},
+	"capital_batteries": {"name": "Capital Batteries", "group": "weapons", "tier": 3, "requires": ["beam_focusing"], "cost": {"energy": 755, "spice": 160}, "time": 235.0,
+		"effects": {"range": 0.35}, "desc": "+35% weapon range."},
 
 	# --- Constructs: what you build rather than fly.
 	"garrison_guns": {"name": "Garrison Guns", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 70}, "time": 50.0,
@@ -372,9 +372,9 @@ const TECHS := {
 		"effects": {"shield_pierce": 0.25}, "desc": "25% of each hit skips enemy shields."},
 	"burst_cyclers": {"name": "Burst Cyclers", "group": "weapons", "tier": 2, "requires": ["overcharged_coils"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
 		"effects": {"armor_pierce": 0.25}, "desc": "25% of each hit skips enemy armor."},
-	"lance_batteries": {"name": "Lance Batteries", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
+	"lance_batteries": {"name": "Lance Batteries", "group": "weapons", "tier": 3, "requires": ["particle_lances"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"damage": 0.30}, "desc": "+30% weapon damage."},
-	"scatter_arrays": {"name": "Scatter Arrays", "group": "weapons", "tier": 3, "requires": ["capital_batteries"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
+	"scatter_arrays": {"name": "Scatter Arrays", "group": "weapons", "tier": 3, "requires": ["heavy_mounts"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"fire_rate": 0.30}, "desc": "+30% rate of fire."},
 	"hullbreaker_rounds": {"name": "Rupture Charges", "group": "weapons", "tier": 3, "requires": ["burst_cyclers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls."},
