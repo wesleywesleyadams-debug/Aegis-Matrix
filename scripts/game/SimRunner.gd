@@ -23,7 +23,7 @@ func _ready() -> void:
 		max_minutes = float(OS.get_environment("SL_SIM_MINUTES"))
 	Engine.time_scale = float(OS.get_environment("SL_SIM_SCALE")) if OS.get_environment("SL_SIM_SCALE") != "" else 4.0
 	_t0_ms = Time.get_ticks_msec()
-	Game.instance.match_over.connect(func(won: bool): _finish("starbase", Game.instance.player_id if won else 3 - Game.instance.player_id))
+	Game.instance.match_over.connect(func(won: bool): _finish("defeat", Game.instance.player_id if won else 3 - Game.instance.player_id))
 
 func _process(_delta: float) -> void:
 	if _done:

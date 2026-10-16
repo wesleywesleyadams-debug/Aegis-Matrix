@@ -373,10 +373,10 @@ func _show(id: String) -> void:
 
 func _page_overview() -> void:
 	_heading("Stardust Dominion")
-	_para("A match is won by destroying every enemy starbase. Starbases build ships and receive the cargo your miners haul in; lose your last one and the match is over.")
+	_para("You lose the match when you hold no worlds, or when you have no starbase left and no Constructor to build one. You win when the enemy does. Starbases build your ships and take in what your harvesters haul, and worlds feed and power everything, so both are worth protecting - and both are what you go after.")
 	_plate([["starbase", "Starbase", EDGE_LIT], ["planet_terran_s", "Worlds"], ["ship_miner", "Harvesters"],
 		["ship_corvette", "Warships"], ["asteroid_0", "Belts"]], 68.0, true,
-		"Lose your last starbase and the match is over, so everything else exists to protect one or take one.")
+		"Lose every world, or every starbase with no Constructor to raise another, and the match is over.")
 	_heading("The loop", EDGE_LIT)
 	_para("Mine the belts and gas giants, settle free worlds, build farms and power plants so your population and fleet can grow, research what your strategy needs, and take the fight to the enemy before their economy outgrows yours.")
 	_heading("What you can see", EDGE_LIT)

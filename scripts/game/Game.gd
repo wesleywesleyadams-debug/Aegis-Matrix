@@ -199,7 +199,7 @@ func _ready() -> void:
 		return
 	# Balance harness (SL_SIM): the AI plays both sides.
 	if OS.get_environment("SL_SIM") != "":
-		ai.setup([1, 2])
+		ai.setup([2, 1] if OS.get_environment("SL_AI_ORDER") == "21" else [1, 2])
 		if OS.get_environment("SL_NOFOG") == "":
 			for p in [1, 2]:
 				_add_vision(p, false)
@@ -232,7 +232,7 @@ func _ready() -> void:
 	else:
 		# The arrival lines linger: they are the player's briefing.
 		message_long.emit(system_settings.get("arrival", "You arrive in uncharted space."), Color("e8d6a8"), ARRIVAL_LINGER)
-		message_long.emit("Grow your worlds, mine the belts, find spice, destroy the enemy starbase.", Color("c3cde4"), ARRIVAL_LINGER)
+		message_long.emit("Grow your worlds, mine the belts, find spice. Win by taking every enemy world, or every enemy starbase and Constructor.", Color("c3cde4"), ARRIVAL_LINGER)
 	_enter_dev_capture()
 
 ## The title screen's background match (demo_mode): build the system, hand
@@ -997,18 +997,27 @@ func _on_starbase_died(sb: SpaceEntity) -> void:
 	if sb.owner_id == player_id and not (sb as Starbase).under_construction:
 		alert("A starbase has been destroyed!", "alert_starbase_lost", true, sb.global_position)
 	await get_tree().process_frame
-	var mine := false
-	var theirs := false
-	for s in get_tree().get_nodes_in_group("starbases"):
-		if s == sb or not s.is_alive() or s.under_construction:
-			continue
-		if s.owner_id == player_id:
-			mine = true
-		else:
-			theirs = true
-	if not mine:
+	_check_defeat()
+
+## A player is out when they hold no worlds, or when they have no finished
+## starbase AND no constructor left to build one. Checked every game second
+## and whenever a starbase falls.
+var _next_defeat_check := 5.0
+
+func is_defeated(pid: int) -> bool:
+	if not get_tree().get_nodes_in_group("planets").any(func(p): return p.owner_id == pid):
+		return true
+	var yards := get_tree().get_nodes_in_group("starbases").any(func(s): return s.owner_id == pid and s.is_alive() and not s.under_construction)
+	var builders := get_tree().get_nodes_in_group("ships").any(func(s): return s.owner_id == pid and s.is_alive() and s.def["role"] == "constructor")
+	return not yards and not builders
+
+func _check_defeat() -> void:
+	if is_over:
+		return
+	var foe := 3 - player_id
+	if is_defeated(player_id):
 		_end_match(false)
-	elif not theirs:
+	elif is_defeated(foe):
 		_end_match(true)
 
 ## Light-blue notification for good news / progress (ship built, planet
@@ -1299,6 +1308,10 @@ func _process(delta: float) -> void:
 	var real_dt := minf((now_us - _last_real_us) / 1000000.0, 0.1) if _last_real_us > 0 else 0.0
 	_last_real_us = now_us
 	_update_background()
+	# Defeat is checked once a game second (see is_defeated).
+	if not is_over and _clock >= _next_defeat_check:
+		_next_defeat_check = _clock + 1.0
+		_check_defeat()
 	if paused_menu or (is_over and not map_view) or demo_mode:
 		return
 	var dir := Vector2(

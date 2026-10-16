@@ -309,13 +309,21 @@ func _nearest_planet(from: Vector2, game: Game, filter: Callable) -> Planet:
 	return best
 
 ## A fleet only detours to an enemy world when it is this much closer than the
-## enemy starbase (a fraction of the distance), so attacks reach the base that
-## wins the match instead of grinding on colonies along the way.
+## enemy starbase (a fraction of the distance), so attacks reach the yards
+## that build the enemy fleet instead of grinding on colonies along the way.
 const DETOUR := 0.5
 ## Attack once our fleet is this much stronger than theirs.
 const ATTACK_EDGE := 1.15
+## This far ahead the AI goes for the kill: it attacks with whatever it has
+## and heads for the nearest enemy world or starbase, since either one
+## falling (with the rest) ends the match.
+const FINISH_EDGE := 2.0
 
 func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
+	if _state.get(pid, {}).get("finishing", false):
+		var kill := _finish_target(pid, from, game)
+		if kill != Vector2.INF:
+			return kill
 	# The enemy starbase wins the match; a small enemy colony on the way is
 	# fair game (big worlds take too long to bombard).
 	var v: Vision = game.visions.get(pid)
@@ -338,6 +346,28 @@ func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 	if p and (enemy_base == null or from.distance_to(p.global_position) < from.distance_to(enemy_base.global_position) * DETOUR):
 		return p.global_position
 	return enemy_base.global_position if enemy_base else from
+
+## The nearest enemy world or finished starbase this player knows of (any
+## size: when finishing, every one counts). INF if none is known.
+func _finish_target(pid: int, from: Vector2, game: Game) -> Vector2:
+	var v: Vision = game.visions.get(pid)
+	var best := Vector2.INF
+	var best_d := INF
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		var owner_seen: int = v.known_owner(p) if v else p.owner_id
+		if owner_seen > 0 and owner_seen != pid and from.distance_to(p.global_position) < best_d:
+			best_d = from.distance_to(p.global_position)
+			best = p.global_position
+	if v:
+		var kb := v.known_enemy_base(from)
+		if not kb.is_empty() and from.distance_to(kb[0]) < best_d:
+			best = kb[0]
+	else:
+		for sb in game.get_tree().get_nodes_in_group("starbases"):
+			if sb.owner_id != pid and from.distance_to(sb.global_position) < best_d:
+				best_d = from.distance_to(sb.global_position)
+				best = sb.global_position
+	return best
 
 ## A planet this player knows to be free (seen unclaimed); without fog, any
 ## unclaimed planet.
@@ -427,6 +457,10 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 		mode = "build_up"
 	elif mine > theirs * ATTACK_EDGE and war.size() >= 8:
 		mode = "attack"
+	# Clearly winning: finish it, however small the fleet.
+	elif mine > theirs * FINISH_EDGE and war.size() >= 2:
+		mode = "attack"
+	st["finishing"] = mine > theirs * FINISH_EDGE
 	st["threat"] = threat
 	var old: String = st.get("mode", "")
 	st["mode"] = mode
