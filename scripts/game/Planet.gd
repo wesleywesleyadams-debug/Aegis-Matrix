@@ -12,11 +12,9 @@ extends Node2D
 ## anyone to colonize.
 
 ## Planetary shields: bombardment must knock these down before pops die.
-## Recharge after SHIELD_REGEN_DELAY seconds without hits (costs a little
-## energy, like ship shields). Boosted by shield research.
+## They recharge exactly like ship and construct shields (Defs.SHIELD_REGEN_DELAY,
+## Defs.SHIELD_REGEN_PER_SEC, a little energy). Boosted by shield research.
 const PLANET_SHIELD := 1000.0
-const PLANET_SHIELD_REGEN := 20.0
-const SHIELD_REGEN_DELAY := 5.0
 
 ## Pops killed per point of damage, pegged so one base corvette shot = 1 pop.
 static var POP_PER_DAMAGE: float = 1.0 / float(Defs.BASE_SHIPS["corvette"]["damage"])
@@ -218,8 +216,8 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	# Shield recharge once the bombardment has paused.
 	var ms := max_shield() if owner_id != 0 else 0.0
-	if shield < ms and Game.now() - last_hit_time > SHIELD_REGEN_DELAY:
-		var gain := minf(ms - shield, PLANET_SHIELD_REGEN * delta)
+	if shield < ms and Game.now() - last_hit_time > Defs.SHIELD_REGEN_DELAY:
+		var gain := minf(ms - shield, ms * Defs.SHIELD_REGEN_PER_SEC * delta)
 		var paid := Game.instance.pay_over_time(owner_id, {"energy": gain * Defs.SHIELD_ENERGY_PER_POINT}, 1.0)
 		shield += gain * paid
 		queue_redraw()

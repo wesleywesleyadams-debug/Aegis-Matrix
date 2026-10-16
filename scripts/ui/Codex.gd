@@ -397,7 +397,7 @@ func _page_combat() -> void:
 		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender restores it"],
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
-	_para("Shields only recharge once the ship has gone %d s without taking damage (a construct the same, a world %d s), then refill at %d%% of their maximum each second. So focused fire keeps them down, while fire spread across a fleet lets the ships you are not hitting recover." % [int(Defs.SHIELD_REGEN_DELAY), int(Planet.SHIELD_REGEN_DELAY), int(Defs.SHIELD_REGEN_PER_SEC * 100.0)])
+	_para("Shields - on ships, constructs and worlds alike - only recharge once they have gone %d s without taking damage, then refill at %d%% of their maximum each second. So focused fire keeps them down, while fire spread across a fleet lets the ships you are not hitting recover." % [int(Defs.SHIELD_REGEN_DELAY), int(Defs.SHIELD_REGEN_PER_SEC * 100.0)])
 	_heading("Generalists")
 	_para("Each class leans on a different layer - corvettes on hull, destroyers on armor, cruisers on shields, carriers evenly - which is what gives specialists something to specialize against.")
 	var rows: Array = []
