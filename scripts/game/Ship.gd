@@ -277,7 +277,7 @@ func _rebuild_turrets() -> void:
 		var t := Sprite2D.new()
 		t.texture = Defs.tex("ship_turret")
 		t.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		t.scale = Vector2.ONE / Defs.ART_SCALE
+		t.scale = Vector2.ONE / Defs.ART_SCALE * float(def.get("turret_scale", 1.0))
 		t.position = Vector2((float(m[0]) - 0.5) * size.x, float(m[1]) * size.y)
 		add_child(t)
 		_turret_sprites.append(t)
