@@ -2811,7 +2811,7 @@ var duel_nomovepen := false
 ## side 2 right, ordered at each other. Prints the result and quits.
 func _duel() -> void:
 	hud.visible = false
-	Engine.time_scale = 4.0
+	Engine.time_scale = float(OS.get_environment("SL_DUEL_SPEED")) if OS.get_environment("SL_DUEL_SPEED") != "" else 4.0
 	duel_nomovepen = OS.get_environment("SL_DUEL_NOMOVEPEN") != ""
 	var tough := float(OS.get_environment("SL_DUEL_TOUGH")) if OS.get_environment("SL_DUEL_TOUGH") != "" else 1.0
 	# SL_DUEL_SCALE="destroyer:0.7,cruiser:0.5" scales a class's hull, armor and shields for the test.
