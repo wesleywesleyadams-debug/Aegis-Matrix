@@ -61,7 +61,9 @@ static func allies_near(s: Node2D, r: float) -> Array:
 static func radiation_mult(e: SpaceEntity) -> float:
 	var best := 1.0
 	for o in Game.instance.job_ships.get("heat_screen", []):
-		if o.owner_id != e.owner_id:
+		# The list is rebuilt periodically, so a frigate destroyed since can
+		# still be in it.
+		if not is_instance_valid(o) or o.owner_id != e.owner_id:
 			continue
 		var d2: float = o.global_position.distance_squared_to(e.global_position)
 		if d2 <= HEAT_RANGE * HEAT_RANGE or o == e:
