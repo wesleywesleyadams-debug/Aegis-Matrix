@@ -817,6 +817,8 @@ func _physics_process(delta: float) -> void:
 				var acc := 1.0
 				if def.has("turrets"):
 					acc = lerpf(1.0, MOVING_ACCURACY, clampf(velocity.length() / maxf(max_speed(), 1.0), 0.0, 1.0))
+					if Game.instance.duel_nomovepen:
+						acc = 1.0
 				for g in int(def.get("guns", 1)):
 					if randf() >= acc:
 						continue

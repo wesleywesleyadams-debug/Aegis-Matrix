@@ -192,6 +192,11 @@ func _ready() -> void:
 				print("ECON t=%ds energy %.0f (%+.2f/s)  plants %.1f/min from %d worlds, %d pops  upkeep %.1f/min  ships %d" % [
 					int(Game.now()), resources[player_id]["energy"], rates[player_id].get("energy", 0.0), made, mine9.size(), int(pops),
 					upkeep(player_id), ship_count(player_id)]))
+	# Dev: SL_DUEL="type:mark,type:mark" pits two equal-cost fleets against
+	# each other with no AI, prints who won and quits.
+	if OS.get_environment("SL_DUEL") != "":
+		_duel()
+		return
 	# Balance harness (SL_SIM): the AI plays both sides.
 	if OS.get_environment("SL_SIM") != "":
 		ai.setup([1, 2])
@@ -934,7 +939,7 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 func fire(from: Node2D, to: Node2D, weapon: String, damage: float) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
-	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage") * (Abilities.damage_mult(from) if from is Ship else 1.0))
+	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"))
 	if not sim_mode:
 		sfx.play_at("laser" if weapon == "laser" else "torpedo", from.global_position, -8.0)
 
@@ -2791,3 +2796,56 @@ func cycle_starbase() -> void:
 		_starbase_cycle = 0
 	center_on(mine[_starbase_cycle].global_position)
 	sfx.play_ui("click")
+
+## Dev duel switch: no moving-turret miss.
+var duel_nomovepen := false
+
+## Dev duel (SL_DUEL): two fleets of the same mineral cost, side 1 left and
+## side 2 right, ordered at each other. Prints the result and quits.
+func _duel() -> void:
+	hud.visible = false
+	Engine.time_scale = 4.0
+	duel_nomovepen = OS.get_environment("SL_DUEL_NOMOVEPEN") != ""
+	var tough := float(OS.get_environment("SL_DUEL_TOUGH")) if OS.get_environment("SL_DUEL_TOUGH") != "" else 1.0
+	var budget := float(OS.get_environment("SL_DUEL_BUDGET")) if OS.get_environment("SL_DUEL_BUDGET") != "" else 2550.0
+	var specs := OS.get_environment("SL_DUEL").split(",")
+	var c := Vector2(float(OS.get_environment("SL_DUEL_X")) if OS.get_environment("SL_DUEL_X") != "" else -900.0, -700.0)
+	var fleets := [[], []]
+	for i in 2:
+		var sp := specs[i].split(":")
+		var t := sp[0]
+		var mk := int(sp[1]) if sp.size() > 1 else 1
+		var pid := i + 1
+		for m in range(2, mk + 1):
+			researched[pid]["%s_mk%d" % [t, m]] = true
+		var n := int(round(budget / float(Defs.SHIPS[t]["cost"]["minerals"])))
+		var dir := -1.0 if i == 0 else 1.0
+		for k in n:
+			var pos := c + Vector2(dir * (260.0 + (k / 6) * 22.0), (k % 6 - 2.5) * 22.0 + randf_range(-4, 4))
+			var s := spawn_ship(t, pid, pos)
+			if t == "destroyer" and tough != 1.0:
+				s.max_hp *= tough; s.hp = s.max_hp; s.max_armor *= tough; s.armor = s.max_armor; s.max_shield *= tough; s.shield = s.max_shield
+			if t == "destroyer" and OS.get_environment("SL_DUEL_HOLD") != "":
+				s.order_stop()
+			else:
+				s.order_attack_move(c - Vector2(dir * 400.0, 0))
+			fleets[i].append(s)
+	var t0 := now()
+	while true:
+		await get_tree().create_timer(0.5).timeout
+		var alive := [fleets[0].filter(func(x): return is_instance_valid(x) and x.is_alive()), fleets[1].filter(func(x): return is_instance_valid(x) and x.is_alive())]
+		if alive[0].is_empty() or alive[1].is_empty() or now() - t0 > 240.0:
+			var line := "DUEL %s (%d) vs %s (%d): " % [specs[0], fleets[0].size(), specs[1], fleets[1].size()]
+			var w := 0 if alive[1].is_empty() and not alive[0].is_empty() else (1 if alive[0].is_empty() and not alive[1].is_empty() else -1)
+			if w < 0:
+				line += "draw"
+			else:
+				var hp := 0.0
+				var mx := 0.0
+				for s in alive[w]:
+					hp += s.hp + s.armor + s.shield
+					mx += s.max_hp + s.max_armor + s.max_shield
+				line += "%s wins with %d/%d ships, %d%% of their toughness left, in %ds" % [specs[w], alive[w].size(), fleets[w].size(), int(100.0 * hp / maxf(mx, 1.0)), int(now() - t0)]
+			print(line)
+			get_tree().quit()
+			return

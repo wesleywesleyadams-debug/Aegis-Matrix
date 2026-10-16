@@ -4,9 +4,6 @@ extends RefCounted
 ## ship good at something particular. Ships call in here; the effects are
 ## drawn by Ship._draw_job in the job's accent color.
 
-const SWARM_RANGE := 150.0
-const SWARM_PER := 0.06
-const SWARM_MAX := 0.36
 const HEAT_RANGE := 170.0
 const HEAT_CUT := 0.75
 const REPAIR_RANGE := 180.0
@@ -59,16 +56,6 @@ static func allies_near(s: Node2D, r: float) -> Array:
 		if o != s and o.owner_id == s.owner_id and o.is_alive() and o.global_position.distance_squared_to(s.global_position) <= r2:
 			out.append(o)
 	return out
-
-## Outgoing weapon damage multiplier (Swarm).
-static func damage_mult(s: Ship) -> float:
-	if s.def.get("job", "") != "swarm":
-		return 1.0
-	var n := 0
-	for o in Game.instance.job_ships.get("swarm", []):
-		if o != s and o.owner_id == s.owner_id and o.global_position.distance_squared_to(s.global_position) <= SWARM_RANGE * SWARM_RANGE:
-			n += 1
-	return 1.0 + minf(n * SWARM_PER, SWARM_MAX)
 
 ## Radiation damage multiplier (a Heat Shield Frigate nearby).
 static func radiation_mult(e: SpaceEntity) -> float:

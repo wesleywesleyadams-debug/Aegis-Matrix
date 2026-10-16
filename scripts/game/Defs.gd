@@ -90,7 +90,7 @@ const BASE_SHIPS := {
 		"name": "Corvette", "role": "warship",
 		"hp": 70.0, "armor": 20.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 75}, "build_time": 20.0, "upkeep": 0.7,
-		"weapon": "laser", "damage": 5.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "job": "swarm", "refit": {"minerals": 5, "time": 15.0},
+		"weapon": "laser", "damage": 5.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 15.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
@@ -651,8 +651,6 @@ static func damage_profile(d: Dictionary) -> Dictionary:
 ## then need `cooldown` seconds; `duration` is how long an active effect
 ## lasts. `color` is the job's accent (sprites and effects share it).
 const JOBS := {
-	"swarm": {"name": "Swarm", "active": false, "color": Color("7fb2ff"),
-		"desc": "+6% damage for each other corvette within 150 px (up to +36%). Strong in numbers, weak alone."},
 	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
 		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
 	"heat_screen": {"name": "Heat Screen", "active": false, "color": Color("ffc24a"),
