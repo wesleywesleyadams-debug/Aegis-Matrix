@@ -415,7 +415,7 @@ func _page_combat() -> void:
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
 	_heading("Specialist variants")
 	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant shows as the colour of its mark chevrons, which matches the colour of its shots.")
-	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], "blocky, as built"]]
+	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
 		"slip": "orange V-shot", "disruptor": "purple V-shot"}
 	for v in Defs.VARIANTS:

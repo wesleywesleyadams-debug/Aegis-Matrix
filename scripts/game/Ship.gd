@@ -176,7 +176,7 @@ func _apply_visuals() -> void:
 	var hull: Sprite2D = get_node("Hull")
 	var team: Sprite2D = get_node("Team")
 	# One hull per class, whatever its rank or variant.
-	var art: String = "ship_" + def.get("base", ship_type)
+	var art: String = "ship_" + Defs.SHIPS.get(ship_type, {}).get("base", ship_type)
 	hull.texture = Defs.tex(art)
 	team.texture = Defs.tex(art + "_team")
 	team.modulate = Defs.team_color(owner_id)

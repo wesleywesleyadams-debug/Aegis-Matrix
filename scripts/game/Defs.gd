@@ -606,7 +606,7 @@ static func marked_name(ship_type: String, level: int) -> String:
 ## targets 7-18% faster and the others 5-46% slower (see tools notes).
 ## color: the variant's markings and shot color.
 ## Mark chevrons on a ship that has no variant.
-const GENERALIST_COLOR := Color("ffd84a")
+const GENERALIST_COLOR := Color("fff06a")
 
 const VARIANTS := {
 	"plasma": {"label": "Plasma", "vs": {"shield": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
@@ -615,7 +615,7 @@ const VARIANTS := {
 		"desc": "80% base damage, x2.2 against armor."},
 	"reaver": {"label": "Reaver", "vs": {"hull": 1.9}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("58e07a"),
 		"desc": "80% base damage, x1.9 against hull."},
-	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("ffa43a"),
+	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("ff7a14"),
 		"desc": "Shots slip past shields straight to armor and hull, at 65% base damage."},
 	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.4, "cost": 1.0, "color": Color("b06cff"),
 		"desc": "Shots pass through shields and armor straight to the hull, at 40% base damage."},
@@ -670,7 +670,7 @@ const JOBS := {
 ## lasers of specialists that hit a layer harder all use these colors.
 const LAYER_COLORS := {"shield": Color("7fd8ff"), "armor": Color("ff4a4a"), "hull": Color("58e07a")}
 ## Generalists (and starbases) fire yellow lasers.
-const GENERALIST_SHOT := Color("ffd84a")
+const GENERALIST_SHOT := GENERALIST_COLOR
 
 ## Base damage a ship with `variant` ("" = generalist) needs to destroy a
 ## target with these defenses — the same layer maths as

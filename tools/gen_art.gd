@@ -1199,8 +1199,8 @@ const VARIANT_BASES := {
 const TRIM_STYLES := ["blocky", "plasma", "breacher", "reaver", "slip", "disruptor"]
 
 func _gen_variants() -> void:
-	# Every variant exists for every mark, since a refit keeps the hull the
-	# ship was built with and only re-trims it.
+	# Variants share their class's hull (their mark chevrons carry the
+	# variant colour), so only the generalist trim is cut and saved.
 	for base in VARIANT_BASES:
 		for suffix in [""]:
 			var raw_name := "ship_%s%s" % [base, suffix]
@@ -1216,12 +1216,6 @@ func _gen_variants() -> void:
 			_trim_variant(g_hull, g_team, "blocky", unit)
 			_save(g_hull, raw_name)
 			_save(g_team, raw_name + "_team")
-			for v in VARIANT_BASES[base]:
-				var vh := raw.duplicate() as Image
-				var vt := raw_team.duplicate() as Image
-				_trim_variant(vh, vt, v, unit)
-				_save(vh, "ship_%s_%s%s" % [v, base, suffix])
-				_save(vt, "ship_%s_%s%s_team" % [v, base, suffix])
 
 ## Re-cuts a hull's outline in one variant's trim style. The image comes in
 ## outlined; the outline is stripped, every edge pixel is reworked and the

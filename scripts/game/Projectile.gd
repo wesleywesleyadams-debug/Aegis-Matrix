@@ -9,7 +9,7 @@ var damage: float
 ## Damage vs defense layers (Defs.damage_profile of the shooter).
 var profile: Dictionary = {}
 ## Slip shots (skip shields, hit armor and hull) are orange.
-const SLIP_SHOT := Color("ffa43a")
+const SLIP_SHOT := Color("ff7a14")
 var speed: float
 var homing: bool
 var life: float = 3.0
