@@ -7,6 +7,6 @@ N=${1:-1}
 for m in "destroyer:$N,corvette:$N" "cruiser:$N,destroyer:$N" "carrier:$N,cruiser:$N" \
          "cruiser:$N,corvette:$N" "carrier:$N,destroyer:$N" "carrier:$N,corvette:$N"; do
   for x in -900 600; do
-    SL_DUEL_BUDGET=${BUDGET:-3500} SL_DUEL=$m SL_DUEL_X=$x SL_NOFOG=1 timeout 300 "$G" --headless --path . scenes/Main.tscn 2>&1 | grep -E "^DUEL|SCRIPT ERROR" | sort -u | head -1
+    SL_DUEL_LIMIT=${LIMIT:-900} SL_DUEL_BUDGET=${BUDGET:-3500} SL_DUEL=$m SL_DUEL_X=$x SL_NOFOG=1 timeout 950 "$G" --headless --path . scenes/Main.tscn 2>&1 | grep -E "^DUEL|SCRIPT ERROR" | sort -u | head -1
   done
 done

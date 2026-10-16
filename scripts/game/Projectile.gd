@@ -20,7 +20,7 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
 	target = to
 	damage = dmg
 	homing = weapon == "torpedo"
-	speed = 170.0 if homing else 420.0
+	speed = 85.0 if homing else 210.0
 	# Misses expire just past weapon range instead of crossing the map.
 	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
