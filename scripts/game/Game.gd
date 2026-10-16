@@ -574,7 +574,7 @@ func mark_level(pid: int, ship_type: String) -> int:
 
 ## Research multiplier for `key` including this class's hull marks.
 func hull_mod(pid: int, ship_type: String, key: String) -> float:
-	return mod(pid, key) * (1.0 + mark_level(pid, ship_type) * float(Defs.MARK_STEP.get(key, 0.0)))
+	return mod(pid, key) * (Defs.mark_mult(ship_type, mark_level(pid, ship_type)) if key in ["damage", "hull", "armor", "shield"] else 1.0)
 
 ## The class's current name for this player, e.g. "Mk III Corvette".
 func ship_name(pid: int, ship_type: String) -> String:
@@ -2844,6 +2844,11 @@ func _duel() -> void:
 				tech += float(Defs.TECHS[tid]["cost"][r9])
 			var rq: Array = Defs.TECHS[tid].get("requires", [])
 			tid = str(rq[0]) if not rq.is_empty() else ""
+		# The marks being fielded are paid for too.
+		for m9 in range(2, mk + 1):
+			var mt: String = "%s_mk%d" % [Defs.SHIPS[t].get("base", t), m9]
+			for r9 in Defs.TECHS[mt]["cost"]:
+				tech += float(Defs.TECHS[mt]["cost"][r9])
 		var n := maxi(1, int(round((budget - tech) / unit)))
 		print("DUEL_SIDE %s: %d ships at %d each + %d research" % [t, n, int(unit), int(tech)])
 		var dir := -1.0 if i == 0 else 1.0

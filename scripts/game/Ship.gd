@@ -806,7 +806,7 @@ func _physics_process(delta: float) -> void:
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
-			var dmg: float = def["damage"] * (1.0 + Game.instance.mark_level(owner_id, ship_type) * float(Defs.MARK_STEP["damage"]))
+			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))
 			var ready := false
 			if def.has("turrets"):
 				# Turreted: the mounts traverse, the hull carries on. They

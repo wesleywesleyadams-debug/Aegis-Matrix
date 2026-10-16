@@ -504,11 +504,14 @@ func _page_ships() -> void:
 	_plate(cls_plate, 104.0, true, "One shape per class, for life: a corvette is an A, a destroyer a Y, a cruiser an X, a carrier an H.")
 	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow, a destroyer a tail boom forking into two prongs, a cruiser four wings crossed at a hub, and a carrier two nacelles either side of a hangar spine. You can read a fleet's composition from its silhouettes alone.")
 	_heading("Mark — the rank")
+	_para("Each mark adds to damage, hull, armor and shields alike. Later marks are worth more than earlier ones, and bigger classes gain more from each, which pays back their costlier research. Bonus over Mk I:")
 	var mrows0: Array = []
-	for i in Defs.HULL_MARKS.size():
-		mrows0.append([Defs.HULL_MARKS[i], "start" if i == 0 else "research", "+%d%% damage, +%d%% shields, armor and hull" % [
-			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
-	_table(["Mark", "From", "Over a Mk I"], mrows0)
+	for cls in Defs.MARK_LINES:
+		var row0: Array = [[Defs.SHIPS[cls]["name"], TEXT]]
+		for i in range(1, Defs.HULL_MARKS.size()):
+			row0.append("+%d%%" % int(round(Defs.MARK_BONUS[cls][i] * 100.0)))
+		mrows0.append(row0)
+	_table(["Class", Defs.HULL_MARKS[1], Defs.HULL_MARKS[2], Defs.HULL_MARKS[3]], mrows0)
 	_para("Every warship carries small chevrons beside it, one per mark: one at Mk I, up to four at Mk IV. Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments, and a mark applies to every ship of that class you already own the moment the research lands.")
 	_heading("Variant — the colour")
 	_para("A variant keeps its class's hull exactly; only its mark chevrons change colour. Generalists wear yellow chevrons, and each variant its own colour - the same colour as its shots:")
