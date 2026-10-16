@@ -79,11 +79,14 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	_manage_queues(pid, st, game, base)
 	var mode: String = st.get("mode", "expand")
 
-	# Research: keep one tech going if energy isn't collapsing.
-	if game.research[pid].is_empty() and game.research_queue[pid].is_empty() and res["energy"] > 17.0:
+	# Research never idles: the moment a project ends the next one starts
+	# (the AI thinks every second; one project runs at a time).
+	if game.research[pid].is_empty() and game.research_queue[pid].is_empty():
 		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available")
-		# Skip pure-spice techs unless spice is plentiful.
-		options = options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
+		# Prefer techs it can pay for now; fall back to anything available.
+		var payable := options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
+		if not payable.is_empty():
+			options = payable
 		if not options.is_empty():
 			game.queue_research(pid, _pick_tech(options, war.size()))
 
@@ -266,11 +269,11 @@ func _pick_tech(options: Array, fleet: int) -> String:
 	return best
 
 func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
-	var options: Array[String] = ["corvette", "corvette", "destroyer", "destroyer", "cruiser"]
-	# One carrier is worth having once there is a fleet to keep in the fight;
-	# a second one rarely is.
-	if game.has_tech(pid, "carriers") and st.get("fleet", 0) >= 10 and st.get("carriers", 0) < 1:
-		options.append("carrier")
+	# Any class it has unlocked, with no caps. The richer it is, the more it
+	# leans to big hulls, which turn a stockpile into strength fastest.
+	var options: Array[String] = ["corvette", "corvette", "destroyer", "destroyer", "cruiser", "carrier"]
+	if float(game.resources[pid]["minerals"]) > SPARE_MINERALS * 2.0:
+		options.append_array(["cruiser", "carrier", "carrier"])
 	options.shuffle()
 	var sb := game.nearest_starbase(pid, Vector2.ZERO)
 	var res: Dictionary = game.resources[pid]
@@ -568,12 +571,12 @@ func _pick_variant(pid: int, game: Game) -> String:
 
 # ---------------------------------------------------------------- weapons depot
 
-## Spend, don't hoard: when minerals pile up past SPARE_MINERALS, add
-## starbases (up to MAX_STARBASES) beside our worlds, and keep every extra
+## Spend, don't hoard: when minerals pile up past SPARE_MINERALS, add as many
+## starbases as the stockpile pays for (a mining station only where a worked
+## rock lacks a drop-off and a starbase is out of reach), and keep every extra
 ## starbase building warships. One yard cannot turn a growing income into
 ## ships fast enough, which is what left AI fleets small and games stalled.
 const SPARE_MINERALS := 1500.0
-const MAX_STARBASES := 4
 
 func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, ships: Array) -> void:
 	var res: Dictionary = game.resources[pid]
@@ -585,22 +588,53 @@ func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, sh
 		var pick := _pick_warship(pid, game, st)
 		if pick != "" and b.can_queue(pick) == "" and res["minerals"] >= Defs.SHIPS[pick]["cost"]["minerals"]:
 			b.enqueue(pick)
-	if res["minerals"] < SPARE_MINERALS or bases.size() >= MAX_STARBASES:
+	var stations: Array = game.get_tree().get_nodes_in_group("mining_stations").filter(func(m): return m.owner_id == pid)
+	# Build a construct when minerals pile up (a starbase), or when a worked
+	# rock has no drop-off and a station is affordable.
+	var gap := _dropoff_gap(pid, game, ships, bases + stations)
+	if res["minerals"] < SPARE_MINERALS and (gap == Vector2.INF or res["minerals"] < Defs.MINING_STATION["cost"]["minerals"]):
 		return
 	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
 	if builders.is_empty():
 		if base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
 			base.enqueue("constructor")
 		return
-	if builders.any(func(c): return c.state == Ship.State.BUILD and c.build_kind == "starbase"):
+	if builders.any(func(c): return c.state == Ship.State.BUILD):
 		return
-	var site := _yard_site(pid, game, bases)
-	if site == Vector2.INF:
+	var idle := builders.filter(func(c): return c.state == Ship.State.IDLE)
+	if idle.is_empty():
 		return
-	for c in builders:
-		if c.state == Ship.State.IDLE:
-			c.order_build_starbase(site)
+	# A starbase by default, as many as the stockpile pays for. Only when a
+	# starbase is out of reach does it fall back to a mining station, and
+	# only for a resource our harvesters are working with no drop-off nearby.
+	var sb_cost: Dictionary = Defs.STARBASE["cost"]
+	if res["minerals"] >= sb_cost["minerals"] and res["spice"] >= sb_cost.get("spice", 0):
+		var site := _yard_site(pid, game, bases)
+		if site != Vector2.INF:
+			idle[0].order_build_starbase(site)
 			return
+	if res["minerals"] >= Defs.MINING_STATION["cost"]["minerals"]:
+		if gap != Vector2.INF:
+			idle[0].order_build_station(gap)
+
+## Where a mining station is needed: beside a rock one of our harvesters is
+## working that has no starbase or station within DROPOFF_NEAR. INF if every
+## worked rock already has a drop-off close by.
+const DROPOFF_NEAR := 700.0
+
+func _dropoff_gap(pid: int, game: Game, ships: Array, drops: Array) -> Vector2:
+	for s in ships:
+		if not s.def["role"] in ["miner", "skimmer"] or not is_instance_valid(s.mine_target):
+			continue
+		var rock: Vector2 = s.mine_target.global_position
+		if drops.any(func(d): return is_instance_valid(d) and d.global_position.distance_to(rock) < DROPOFF_NEAR):
+			continue
+		for r in [90.0, 140.0, 200.0]:
+			for a in range(8):
+				var q: Vector2 = rock + Vector2.from_angle(TAU * a / 8.0) * r
+				if game.site_problem("station", q) == "":
+					return q
+	return Vector2.INF
 
 ## A legal starbase site beside one of our worlds that has no yard nearby.
 func _yard_site(pid: int, game: Game, bases: Array) -> Vector2:
@@ -612,6 +646,13 @@ func _yard_site(pid: int, game: Game, bases: Array) -> Vector2:
 				var q: Vector2 = p.global_position + Vector2.from_angle(a) * r
 				if game.starbase_site_problem(q) == "":
 					return q
+	# Every world has a yard: ring the yards we already have.
+	for b in bases:
+		for r in [260.0, 360.0, 460.0]:
+			for a in range(12):
+				var q2: Vector2 = b.global_position + Vector2.from_angle(TAU * a / 12.0) * r
+				if game.starbase_site_problem(q2) == "":
+					return q2
 	return Vector2.INF
 
 ## Once the fleet is sizable: get a Constructor, build a Weapons Depot near
@@ -627,7 +668,7 @@ func _manage_depot(pid: int, ships: Array, base: Starbase, game: Game) -> void:
 	# Each depot fits one variant, so build one for the variant our intel says
 	# we want (and a second later if the enemy fleet changes).
 	var have := depots.any(func(d): return d.variant == want)
-	if want != "" and not have and depots.size() < 2:
+	if want != "" and not have and depots.size() < 3:
 		if war.size() >= 6 and builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
 			base.enqueue("constructor")
 		for c in builders:
