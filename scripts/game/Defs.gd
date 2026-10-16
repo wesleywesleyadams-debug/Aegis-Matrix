@@ -121,11 +121,11 @@ const BASE_SHIPS := {
 		"hp": 520.0, "armor": 720.0, "shield": 300.0, "speed": 38.0, "radius": 32.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 100.0, "upkeep": 8.0,
 		"weapon": "torpedo", "damage": 30.0, "cooldown": 2.0, "range": 260.0, "sensor": 460.0,
-		"guns": 2, "bays": 6, "job": "hangar",
+		"guns": 4, "bays": 6, "job": "hangar",
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
 		# stay off the bearing and flank it.
-		"turret_rate": 0.5, "turrets": [[0.68, 0.0], [0.32, 0.0]],
+		"turret_rate": 0.5, "turrets": [[0.7, -0.22], [0.7, 0.22], [0.3, -0.22], [0.3, 0.22]],
 		# Refitting a hull this size is proportionally dearer and slower than
 		# a cruiser's (15 / 35 s) — twice the hull, twice the yard time.
 		"refit": {"minerals": 30, "time": 70.0},
