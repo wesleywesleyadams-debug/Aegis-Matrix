@@ -811,7 +811,7 @@ const SHIP_NOTES := {
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
 	"heatshield": "Lets a fleet fight where others can't: inside a star's radiation and inside a spice nebula, where shields normally drain away.",
 	"corvette": "The cheap body of a fleet, and the only hull a carrier can dock. Fast and short-ranged, it is bought in numbers.",
-	"destroyer": "A shield boat with two light flak turrets: they track a target without turning the hull, and each hit also catches enemy ships packed within 20 px of it for 11% of the damage. The answer to a corvette swarm.",
+	"destroyer": "A shield boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Armor and a torpedo that outranges everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
 	"carrier": "A mobile repair yard that shoots back. Its bays dock damaged corvettes, mend hull then armor and launch them again, and its two turrets traverse on their own, so the hull never has to come about to fire — but slowly enough that a corvette which keeps moving can stay off the bearing and flank it. Turrets fire on the move at reduced accuracy.",
 }
