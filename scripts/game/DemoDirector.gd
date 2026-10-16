@@ -15,17 +15,29 @@ const RESHOT := 12.0
 const MAX_GAME_SECONDS := 900.0
 ## Real seconds the final moment is held before the next match.
 const HOLD_AFTER := 5.0
+## Real seconds of each cut between shots: half fading to black, half back in.
+const FADE := 2.0
 
 var _target := Vector2.ZERO
 var _timer := 0.0
 var _done := false
 var _shot := -1
 var _max_seconds := MAX_GAME_SECONDS
+var _veil: ColorRect
 
 func _ready() -> void:
 	var g := Game.instance
 	g.match_over.connect(func(_won): _finish())
 	_choose()
+	_timer = RESHOT
+	var layer := CanvasLayer.new()
+	layer.layer = 50
+	add_child(layer)
+	_veil = ColorRect.new()
+	_veil.color = Color(0, 0, 0, 0)
+	_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_veil.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(_veil)
 	g.camera.global_position = _framed(_target)
 	# Dev: SL_DEMO_MAX=<game seconds> cuts matches short, to test the restart.
 	if OS.get_environment("SL_DEMO_MAX") != "":
@@ -42,6 +54,10 @@ func _process(_delta: float) -> void:
 		_timer = RESHOT
 		_choose()
 	# A straight cut to the shot, held still: no panning.
+	# Fade to black over the last second of a shot, back in over the first.
+	var half := FADE / 2.0
+	var into := RESHOT - _timer
+	_veil.color.a = clampf(maxf((half - _timer) / half, (half - into) / half if _shot > 0 else 0.0), 0.0, 1.0)
 	g.camera.global_position = _framed(_target)
 	if not _done and Game.now() > _max_seconds:
 		_finish()
