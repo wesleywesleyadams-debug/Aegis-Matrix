@@ -1592,11 +1592,11 @@ func _refresh_ability_button() -> void:
 ## and a progress bar along the bottom (see _refresh_research).
 ## The width every tech card is drawn at, on every tab, and the width of the
 ## row-header column beside them.
-const TECH_CARD_W := 360.0
+const TECH_CARD_W := 400.0
 ## The tech's picture on the left of its card (TechIcons), and the room it
 ## takes from the text.
-const TECH_ICON := 56.0
-const TECH_ICON_PAD := 66.0
+const TECH_ICON := 120.0
+const TECH_ICON_PAD := 134.0
 const TECH_ROW_HEAD_W := 110.0
 
 ## One row header: a name, optionally over an icon.
@@ -1682,7 +1682,7 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	pic.position = Vector2(6, 8)
+	pic.position = Vector2(6, 6)
 	pic.size = Vector2(TECH_ICON, TECH_ICON)
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(pic)
