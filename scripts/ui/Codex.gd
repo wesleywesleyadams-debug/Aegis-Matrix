@@ -287,7 +287,7 @@ func _sprite(name: String, scale_px: int, team: bool = false) -> Control:
 	return stack
 
 ## An illustration plate: a labelled strip of sprites, so a page SHOWS what a
-## shape, a trim or a world looks like instead of only describing it.
+## shape, a ship or a world looks like instead of only describing it.
 ## items: [[sprite_name, caption, caption_color (optional)], ...]
 func _plate(items: Array, box: float = 72.0, team: bool = true, note: String = "") -> void:
 	var card := PanelContainer.new()
@@ -414,10 +414,8 @@ func _page_combat() -> void:
 		[str(int(sb["hp"])), Defs.LAYER_COLORS["hull"]], "hull"])
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
 	_heading("Specialist variants")
-	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant is cut into the hull as a trim style along its edges, in your player color, so the silhouette names the variant and the shot color names the layer it hits — the Ships page shows all six side by side.")
+	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant shows as the colour of its mark chevrons, which matches the colour of its shots.")
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], "blocky, as built"]]
-	var marks := {"plasma": "rounded edges", "breacher": "ribbed plates", "reaver": "toothed saw edge",
-		"slip": "swept fins", "disruptor": "serrated notches"}
 	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
 		"slip": "orange V-shot", "disruptor": "purple V-shot"}
 	for v in Defs.VARIANTS:
@@ -430,8 +428,8 @@ func _page_combat() -> void:
 		else:
 			for layer in vd["vs"]:
 				effect = "x%.1f vs %s" % [vd["vs"][layer], layer]
-		vrows.append([[vd["label"], vd["color"]], effect, "%d%%" % int(vd["damage"] * 100.0), [shots[v], vd["color"]], marks[v]])
-	_table(["Variant", "Effect", "Base damage", "Shots", "Trim"], vrows)
+		vrows.append([[vd["label"], vd["color"]], effect, "%d%%" % int(vd["damage"] * 100.0), [shots[v], vd["color"]], ["^ ^ ^", vd["color"]]])
+	_table(["Variant", "Effect", "Base damage", "Shots", "Chevrons"], vrows)
 	_heading("Which variant against what")
 	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is the same, lower kills faster. Figures come straight from the ships' current stats.")
 	var head: Array = ["Target"]
@@ -495,8 +493,8 @@ func _page_ships() -> void:
 	_para("Every warship is described by three separate things. Its CLASS is the hull it was built as and never changes. Its MARK is how refined that hull is, bought on the War Ships research tab. Its VARIANT is what it was refitted to specialise in, bought at a Weapons Depot. A Mk IV Reaver Corvette is all three at once: a corvette, taken to the top mark, fitted to hunt hull.")
 	_table(["System", "Comes from", "Changes", "You can tell by"], [
 		[["Class", TEXT], "What you build it as", "Never", "The hull's silhouette"],
-		[["Mark", EDGE_LIT], "War Ships research", "Every ship of that class, at once", "How dressed the hull is"],
-		[["Variant", Defs.VARIANTS["reaver"]["color"]], "Refit at a Weapons Depot", "Once, permanently", "The trim cut along its edges"],
+		[["Mark", EDGE_LIT], "War Ships research", "Every ship of that class, at once", "How many chevrons beside it"],
+		[["Variant", Defs.VARIANTS["reaver"]["color"]], "Refit at a Weapons Depot", "Once, permanently", "The colour of its chevrons"],
 	])
 	_heading("Class — the shape")
 	var cls_plate: Array = []
@@ -510,17 +508,14 @@ func _page_ships() -> void:
 		mrows0.append([Defs.HULL_MARKS[i], "start" if i == 0 else "research", "+%d%% damage, +%d%% shields, armor and hull" % [
 			int(i * Defs.MARK_STEP["damage"] * 100.0), int(i * Defs.MARK_STEP["hull"] * 100.0)]])
 	_table(["Mark", "From", "Over a Mk I"], mrows0)
-	_para("A ship is built at Mk I and is dressed a little further at each mark: a lit rail along the spine at Mk II, a keel rail and hull studs at Mk III, a warm-white rim and lit engine blocks at Mk IV. Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments, and a mark applies to every ship of that class you already own the moment the research lands.")
-	_heading("Variant — the trim")
-	var vplate: Array = [["ship_corvette", "Generalist", TEXT]]
+	_para("Every warship carries small chevrons beside it, one per mark: one at Mk I, up to four at Mk IV. Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments, and a mark applies to every ship of that class you already own the moment the research lands.")
+	_heading("Variant — the colour")
+	_para("A variant keeps its class's hull exactly; only its mark chevrons change colour. Generalists wear yellow chevrons, and each variant its own colour - the same colour as its shots:")
+	var crows: Array = [[["Generalist", Defs.GENERALIST_COLOR], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	for tv in Defs.VARIANTS:
-		vplate.append(["ship_%s_corvette" % tv, Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]])
-	_plate(vplate, 96.0, true, "The same corvette in all six trims: blocky, rounded, ribbed, toothed, swept and serrated.")
-	var vplate2: Array = [["ship_carrier", "Generalist", TEXT]]
-	for tv in Defs.VARIANTS:
-		vplate2.append(["ship_%s_carrier" % tv, Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]])
-	_plate(vplate2, 120.0, true, "The trim is cut at the hull's own scale, so it reads the same on a carrier as on a corvette.")
-	_para("A variant is cut into the silhouette as a trim style along its edges, with its outermost pixel in your player color — so the shape names the variant at any zoom, and the shot color names the layer it hits. What each one does to damage is on the Combat page.")
+		crows.append([[Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]], ["^ ^ ^", Defs.VARIANTS[tv]["color"]]])
+	_table(["Variant", "Chevrons"], crows)
+	_para("So a glance at a fleet reads its rank from the count and its fit from the colour. What each variant does to damage is on the Combat page.")
 	_heading("Every ship")
 	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat).")
 	for t in Defs.BUILD_ORDER:
@@ -531,7 +526,7 @@ func _page_ships() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 16)
 		card.add_child(row)
-		row.add_child(_sprite("ship_" + t, 3, true))
+		row.add_child(_sprite("ship_" + Defs.SHIPS[t].get("base", t), 3, true))
 		var col := VBoxContainer.new()
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(col)

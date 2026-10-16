@@ -150,7 +150,7 @@ func _icon(name: String, scale_px: int = 2) -> TextureRect:
 
 ## The sprite for a ship type. One hull per class now, whatever its rank.
 func _ship_art(ship_type: String) -> String:
-	return "ship_" + ship_type
+	return "ship_" + Defs.SHIPS.get(ship_type, {}).get("base", ship_type)
 
 func _panel_style(margin: int = 10, border: Color = EDGE) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
@@ -875,7 +875,7 @@ func _entity_icon(e: SpaceEntity, px: int) -> Control:
 	elif e is MiningStation:
 		tex_name = "ship_mining_station"
 	elif e is Ship:
-		tex_name = "ship_" + (e as Ship).ship_type
+		tex_name = "ship_" + (e as Ship).def.get("base", (e as Ship).ship_type)
 	var stack := Control.new()
 	var base := _icon(tex_name, px)
 	var team := _icon(tex_name + "_team", px)

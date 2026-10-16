@@ -605,6 +605,9 @@ static func marked_name(ship_type: String, level: int) -> String:
 ## shield-heavy, cruiser armor-heavy) each specialist kills its favored
 ## targets 7-18% faster and the others 5-46% slower (see tools notes).
 ## color: the variant's markings and shot color.
+## Mark chevrons on a ship that has no variant.
+const GENERALIST_COLOR := Color("ffd84a")
+
 const VARIANTS := {
 	"plasma": {"label": "Plasma", "vs": {"shield": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
 		"desc": "80% base damage, x2.2 against shields."},

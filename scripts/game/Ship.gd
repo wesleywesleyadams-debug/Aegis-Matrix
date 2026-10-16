@@ -161,14 +161,22 @@ func _ready() -> void:
 		_harvest_fx.top_level = true
 		_harvest_fx.z_index = -1
 		add_child(_harvest_fx)
+	# Rank chevrons beside every warship (see MarkTag).
+	if Defs.MARK_LINES.has(def.get("base", ship_type)):
+		_mark_tag = MarkTag.new()
+		_mark_tag.host = self
+		_mark_tag.top_level = true
+		_mark_tag.z_index = 20
+		add_child(_mark_tag)
+		_apply_mark()
 
 func _apply_visuals() -> void:
 	if not is_node_ready() and not has_node("Hull"):
 		return
 	var hull: Sprite2D = get_node("Hull")
 	var team: Sprite2D = get_node("Team")
-	# One hull per class, whatever its rank.
-	var art: String = "ship_" + ship_type
+	# One hull per class, whatever its rank or variant.
+	var art: String = "ship_" + def.get("base", ship_type)
 	hull.texture = Defs.tex(art)
 	team.texture = Defs.tex(art + "_team")
 	team.modulate = Defs.team_color(owner_id)
@@ -179,21 +187,19 @@ func _apply_visuals() -> void:
 	_apply_mark()
 	_rebuild_flames(hull.texture, hull.scale)
 
-## Hull marks (Defs.HULL_MARKS) are rank: the hull keeps the one shape its
-## class is built in, and research shows as chevrons laid over the nose â
-## one for Mk II, two for Mk III, three for Mk IV.
+## Rank and fit at a glance: tiny chevrons beside the ship, one per mark
+## (Mk I = one, Mk IV = four), in the colour of its variant - yellow for a
+## generalist (Defs.GENERALIST_COLOR).
 func _apply_mark() -> void:
-	if not has_node("Mark"):
+	if has_node("Mark"):
+		get_node("Mark").texture = null
+		get_node("Mark").visible = false
+	if _mark_tag == null:
 		return
-	var mk: Sprite2D = get_node("Mark")
-	var cls: String = def.get("base", ship_type)
 	var level := Game.instance.mark_level(owner_id, ship_type) if Game.instance else 0
-	if level <= 0 or not Defs.MARK_LINES.has(cls):
-		mk.visible = false
-		return
-	mk.texture = Defs.tex("ship_mark_%s_%d" % [cls, clampi(level, 1, 3)])
-	mk.scale = Vector2.ONE / Defs.ART_SCALE
-	mk.visible = mk.texture != null
+	_mark_tag.count = level + 1
+	_mark_tag.color = Defs.VARIANTS[def["variant"]]["color"] if def.has("variant") else Defs.GENERALIST_COLOR
+	_mark_tag.queue_redraw()
 
 ## One flame per thruster, found from the hull art itself: the stern column
 ## is scanned for runs of solid pixels and a flame is placed behind the
@@ -259,6 +265,7 @@ func weapon_range() -> float:
 ## before it assigns one.
 func _apply_def_visuals() -> void:
 	_rebuild_turrets()
+	_apply_mark()
 	if def.has("bays") and bay_craft.size() != int(def["bays"]):
 		bay_craft.resize(int(def["bays"]))
 
@@ -955,6 +962,32 @@ func _draw() -> void:
 	super._draw()
 
 var _harvest_fx: HarvestFx
+var _mark_tag: MarkTag
+
+## A warship's mark chevrons, drawn upright beside it whatever its heading.
+class MarkTag extends Node2D:
+	var host: Ship
+	var count := 1
+	var color := Color.YELLOW
+
+	func _process(_delta: float) -> void:
+		if not is_instance_valid(host):
+			return
+		# The same small size on screen at any zoom.
+		var z: float = get_viewport().get_canvas_transform().get_scale().x
+		scale = Vector2.ONE / maxf(z, 0.01) * 1.6
+		global_position = host.global_position + Vector2(-host.radius - 6.0, host.radius * 0.3)
+		visible = host.visible
+
+	func _draw() -> void:
+		# Stacked upward, the lowest first, each with a dark backing so it
+		# reads on any background.
+		for k in count:
+			var y := -k * 3.5
+			var pts := PackedVector2Array([Vector2(-3, y + 1.5), Vector2(0, y - 1.5), Vector2(3, y + 1.5)])
+			draw_polyline(pts, Color(0, 0, 0, 0.8), 2.6)
+			draw_polyline(pts, color, 1.3)
+
 var _cargo_fx: CargoTank
 
 ## Paints what is in the hold into the glass tank the hull art leaves empty.

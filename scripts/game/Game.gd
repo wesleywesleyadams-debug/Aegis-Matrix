@@ -1759,6 +1759,13 @@ func _enter_dev_capture() -> void:
 		var c := Vector2(0, 700)
 		for i in 28:
 			var k: String = "cruiser" if i < 2 else ("destroyer" if i < 8 else "corvette")
+			# SL_MIXVARIANTS: every variant and mark on show, for the chevrons.
+			if OS.get_environment("SL_MIXVARIANTS") != "":
+				var vs9 := ["", "plasma_", "breacher_", "reaver_", "slip_", "disruptor_"]
+				k = vs9[i % 6] + k
+				for m9 in range(2, 5):
+					for c9 in ["corvette", "destroyer"]:
+						researched[player_id]["%s_mk%d" % [c9, m9]] = i > 14 or researched[player_id].get("%s_mk%d" % [c9, m9], false)
 			var off := Vector2(i % 7 * 16, i / 7 * 18)
 			spawn_ship(k, player_id, c + Vector2(-260, -40) + off).order_attack_move(c + Vector2(200, 0))
 			spawn_ship(k, foe, c + Vector2(160, -40) + off).order_attack_move(c - Vector2(200, 0))
