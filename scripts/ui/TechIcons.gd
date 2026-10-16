@@ -29,6 +29,23 @@ static func icon(id: String) -> Texture2D:
 static func _paint(id: String) -> Image:
 	var t: Dictionary = Defs.TECHS.get(id, {})
 	var img := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
+	var art := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
+	var fx: Dictionary = t.get("effects", {})
+	var main_fx: String = str(fx.keys()[0]) if not fx.is_empty() else ""
+	var drawn := TechScenes.paint(id, art)
+	if not drawn and (main_fx.begins_with("unlock_") or main_fx.begins_with("mark_")):
+		_sprite(art, _sprite_for(main_fx))
+		drawn = true
+	if drawn:
+		_plaque(img, art, BORDER_COLORS.get(t.get("group", ""), GOLD))
+		if main_fx.begins_with("mark_"):
+			var mk := int(id.get_slice("_mk", 1)) if "_mk" in id else 2
+			for k in mk - 1:
+				_line(img, Vector2(7 + k * 7, 13), Vector2(10 + k * 7, 9), 2.0, GOLD)
+				_line(img, Vector2(10 + k * 7, 9), Vector2(13 + k * 7, 13), 2.0, GOLD)
+		for k in int(t.get("tier", 1)):
+			_disc(img, Vector2(55 - k * 7, 55), 2.4, GOLD)
+		return img
 	var col: Color = GROUP_COLORS.get(t.get("group", ""), Color("a8b4d4"))
 	var line: String = t.get("line", "")
 	if line != "":
@@ -76,6 +93,43 @@ static func _paint(id: String) -> Image:
 	return img
 
 # ---------------------------------------------------------------- tile
+
+const GOLD := Color("ffd23a")
+## Plaque border per research category.
+const BORDER_COLORS := {
+	"weapons": Color("ff3a2e"), "defense": Color("8fd8ff"), "worlds": Color("4fd860"),
+	"logistics": Color("ffd23a"), "constructs": Color("f2f2f2"), "warships": Color("ff8a1e"),
+}
+
+## The house style: a black plaque with a yellow border, and the art on it
+## rendered as polished metal - its colours kept faintly, its shape carried
+## by hard highlights on top-left edges, deep shadow on bottom-right edges,
+## and a chrome sheen band across the surface.
+static func _plaque(img: Image, art: Image, edge: Color = GOLD) -> void:
+	img.fill(Color(0, 0, 0, 1))
+	for y in range(4, SIZE - 4):
+		for x in range(4, SIZE - 4):
+			var c := art.get_pixel(x, y)
+			if c.a < 0.05:
+				# A drop shadow cast down-right onto the black.
+				if art.get_pixel(x - 2, y - 2).a > 0.3:
+					img.set_pixel(x, y, Color(0.0, 0.0, 0.0))
+				continue
+			var lum := c.get_luminance()
+			var band := 0.5 + 0.5 * sin((lum * 2.2 + float(x + y) / 36.0) * PI)
+			var v := clampf(0.1 + lum * 0.5 + band * 0.5, 0.0, 1.0)
+			if art.get_pixel(x - 1, y - 1).a < 0.05:
+				v = 1.0
+			elif art.get_pixel(x + 1, y + 1).a < 0.05:
+				v *= 0.25
+			var grey := Color(v, v, v)
+			var m := grey.lerp(c * (0.4 + v), 0.3)
+			img.set_pixel(x, y, Color(0, 0, 0).lerp(Color(m.r, m.g, m.b), minf(c.a * 1.4, 1.0)))
+	for y in SIZE:
+		for x in SIZE:
+			var d := mini(mini(x, y), mini(SIZE - 1 - x, SIZE - 1 - y))
+			if d < 3:
+				img.set_pixel(x, y, edge if d == 1 else edge.darkened(0.4))
 
 static func _tile(img: Image, col: Color, seed_v: int) -> void:
 	var bg := col.darkened(0.78)
