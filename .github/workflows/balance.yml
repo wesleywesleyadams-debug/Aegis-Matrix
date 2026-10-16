@@ -1,0 +1,119 @@
+# Balance tests on GitHub's machines: AI-vs-AI simulations or the duel grids,
+# spread across many parallel jobs. Start from the Actions tab ("Balance tests"
+# -> Run workflow). Results are attached to the run as artifacts, and a short
+# summary is written to the run page.
+name: Balance tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "What to run"
+        type: choice
+        options: [sims, size_grid, mark_grid]
+        default: sims
+      runs:
+        description: "Sims: games per system"
+        default: "4"
+      minutes:
+        description: "Sims: game minutes before a draw"
+        default: "45"
+      speed:
+        description: "Game speed"
+        default: "4"
+      marks:
+        description: "size_grid: marks to test (space separated)"
+        default: "1 2 3 4"
+      budget:
+        description: "Duel budget"
+        default: "6725"
+
+env:
+  GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        run: |
+          if [ "${{ inputs.mode }}" = "sims" ]; then
+            m=$(python3 -c "import json; print(json.dumps([{'system': s, 'run': r} for s in ['orion_reach','vega_drift','kharon_expanse','tethys_cluster','sable_verge'] for r in range(int('${{ inputs.runs }}'))]))")
+          elif [ "${{ inputs.mode }}" = "size_grid" ]; then
+            m=$(python3 -c "import json; print(json.dumps([{'mark': m} for m in '${{ inputs.marks }}'.split()]))")
+          else
+            m='[{"mark": "x"}]'
+          fi
+          echo "matrix=$m" >> "$GITHUB_OUTPUT"
+
+  run:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get Godot
+        run: |
+          curl -sSL "$GODOT_URL" -o godot.zip
+          unzip -q godot.zip
+          mv Godot_v4.7.2-stable_linux.x86_64 godot
+          chmod +x godot
+          echo "GODOT=$PWD/godot" >> "$GITHUB_ENV"
+      - name: Import assets
+        run: ./godot --headless --import --path . || true
+      - name: Simulate
+        if: inputs.mode == 'sims'
+        run: |
+          SL_SYSTEM=${{ matrix.system }} SL_SIM=ci_${{ matrix.run }} SL_SEED=${{ matrix.system }}${{ matrix.run }}${{ github.run_id }} \
+          SL_SIM_MINUTES=${{ inputs.minutes }} SL_SIM_SCALE=${{ inputs.speed }} \
+            ./godot --headless --fixed-fps 60 --path . scenes/Main.tscn 2>&1 | tee log.txt | grep -E "SIM RESULT|SCRIPT ERROR" || true
+          mkdir -p out
+          cp log.txt out/${{ matrix.system }}_${{ matrix.run }}.log
+          cp ~/.local/share/Godot/app_userdata/"Star Lords"/sims/*.json out/ 2>/dev/null || cp ~/.local/share/godot/app_userdata/"Star Lords"/sims/*.json out/ 2>/dev/null || true
+      - name: Size grid
+        if: inputs.mode == 'size_grid'
+        run: |
+          mkdir -p out
+          JOBS=4 SPEED=${{ inputs.speed }} BUDGET=${{ inputs.budget }} bash tools/size_grid.sh ${{ matrix.mark }} | tee out/size_mk${{ matrix.mark }}.txt
+      - name: Mark grid
+        if: inputs.mode == 'mark_grid'
+        run: |
+          mkdir -p out
+          JOBS=4 SPEED=${{ inputs.speed }} BUDGET=${{ inputs.budget }} bash tools/mark_grid.sh | tee out/mark_grid.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ strategy.job-index }}
+          path: out/
+
+  summary:
+    needs: run
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: results
+          merge-multiple: true
+      - name: Summarize
+        run: |
+          {
+            echo "## Balance tests (${{ inputs.mode }})"
+            echo '```'
+            grep -h "SIM RESULT" results/*.log 2>/dev/null | sort || true
+            cat results/*.txt 2>/dev/null || true
+            echo '```'
+            if ls results/*.log >/dev/null 2>&1; then
+              echo "P1 wins: $(grep -h 'SIM RESULT' results/*.log | grep -c 'winner=1')  P2 wins: $(grep -h 'SIM RESULT' results/*.log | grep -c 'winner=2')  draws: $(grep -h 'SIM RESULT' results/*.log | grep -c 'winner=0')"
+              echo "Script errors: $(grep -h 'SCRIPT ERROR' results/*.log | sort | uniq -c | sort -rn | head -10)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: all-results
+          path: results/
