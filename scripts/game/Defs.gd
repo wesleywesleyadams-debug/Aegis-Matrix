@@ -101,6 +101,8 @@ const BASE_SHIPS := {
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
 		"guns": 2, "turret_rate": 1.6, "turret_scale": 0.5, "turrets": [[0.62, -0.22], [0.62, 0.22]],
+		# Flak: 11% of each hit also lands on enemy ships within 20 px.
+		"splash": [20.0, 0.11],
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",

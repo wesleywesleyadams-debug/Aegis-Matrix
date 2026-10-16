@@ -69,8 +69,24 @@ func _physics_process(delta: float) -> void:
 		var near := Geometry2D.get_closest_point_to_segment(target.global_position, global_position, next_pos)
 		if near.distance_to(target.global_position) <= target.radius:
 			target.take_damage(damage, shooter if is_instance_valid(shooter) else null, profile)
+			_splash(target)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)
 			queue_free()
 			return
 	global_position += _vel * delta
+
+## Flak: some hulls (def "splash": [radius, share]) also hurt every other
+## enemy ship within radius of the one hit, for a share of the damage.
+## Small and tight, it is what lets destroyers thin a packed corvette swarm.
+func _splash(hit: Node2D) -> void:
+	if not is_instance_valid(shooter) or not shooter is Ship:
+		return
+	var sp: Array = shooter.def.get("splash", [])
+	if sp.is_empty():
+		return
+	var r: float = sp[0]
+	for o in get_tree().get_nodes_in_group("ships"):
+		if o != hit and o.owner_id != shooter.owner_id and o.is_alive() and o.global_position.distance_to(hit.global_position) <= r + o.radius:
+			o.take_damage(damage * float(sp[1]), shooter, profile)
+	Game.instance.spawn_explosion(hit.global_position, 0.25)
