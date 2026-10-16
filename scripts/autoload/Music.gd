@@ -18,6 +18,7 @@ const BUILTIN_TRACKS := [
 	["magic_space", "Magic Space (CodeManu)"],
 	["deus_ex_tempus", "Deus Ex Tempus (Trevor Lentz)"],
 	["hero_immortal", "Hero Immortal (Trevor Lentz)"],
+	["galactic_temple", "Galactic Temple (yd)"],
 	["game", "Stardust Dominion Synth: In-Game"],
 	["title", "Stardust Dominion Synth: Title"],
 	["lobby", "Stardust Dominion Synth: Lobby"],
@@ -29,7 +30,7 @@ const IMPORT_EXTENSIONS := ["ogg", "mp3", "wav"]
 ## Per-track loudness trim (dB) so tracks sit at the same level (measured
 ## integrated loudness; the procedural loops are about -22 LUFS). Recordings
 ## are left untouched and turned down here instead.
-const TRACK_TRIM := {"through_space": -3.0, "spacelife": -3.0, "magic_space": -8.5, "deus_ex_tempus": -11.0, "hero_immortal": -9.5}
+const TRACK_TRIM := {"through_space": -3.0, "spacelife": -3.0, "magic_space": -8.5, "deus_ex_tempus": -11.0, "hero_immortal": -9.5, "galactic_temple": 2.0}
 
 signal tracks_changed
 
