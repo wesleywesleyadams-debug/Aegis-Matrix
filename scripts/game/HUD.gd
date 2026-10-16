@@ -575,7 +575,13 @@ func _build_research(root: Control) -> void:
 	# Every tab is the same grid: a row-header column, then one column per
 	# tier. A card is the same size and lands in the same place whichever tab
 	# is open, so the eye does not have to re-find anything when tabbing.
-	for group in ["weapons", "constructs", "worlds", "logistics", "general"]:
+	# Named rows, like Defense: each row is one line of upgrades.
+	for group in TECH_ROWS:
+		var named: Array = []
+		for r in TECH_ROWS[group]:
+			named.append([_row_head(r[0], TechIcons.GROUP_COLORS[group], ""), r[1]])
+		pages[group] = _tech_page(v, named)
+	for group in ["general"]:
 		var rows: Array = []
 		var by_tier := {1: [], 2: [], 3: []}
 		for id in Defs.TECHS:
@@ -1605,6 +1611,36 @@ func _row_head(text: String, color: Color, icon: String) -> Control:
 
 ## One research tab: a header row of tiers, then `rows` of [header, [ids]].
 ## An empty id leaves a hole the size of a card, so the grid never reflows.
+## The rows of the Weapons, Constructs, Worlds and Logistics tabs: a name,
+## then the tier 1-3 techs of that line.
+const TECH_ROWS := {
+	"weapons": [
+		["DAMAGE", ["ion_cannons", "particle_lances", "lance_batteries"]],
+		["RANGE", ["targeting_arrays", "beam_focusing", "capital_batteries"]],
+		["FIRE RATE", ["autoloaders", "heavy_mounts", "scatter_arrays"]],
+		["PENETRATION", ["overcharged_coils", "burst_cyclers", "hullbreaker_rounds"]],
+	],
+	"constructs": [
+		["FORTIFICATION", ["garrison_guns", "reinforced_docks", "citadel_protocols"]],
+		["STRONGHOLDS", ["depots", "siege_platforms", "fortress_doctrine"]],
+		["SHIPYARDS", ["orbital_yards", "forward_bases", "shipyard_networks"]],
+		["CONSTRUCTION", ["modular_frames", "rapid_assembly", "orbital_elevators"]],
+	],
+	"worlds": [
+		["FOOD", ["hydroponics", "orbital_farms", "terraforming"]],
+		["GROWTH", ["rationing", "gene_clinics", "gene_forges"]],
+		["POPULATION", ["habitat_modules", "arcologies", "deep_vaults"]],
+		["COLONIES", ["colony_pods", "planetary_shields", "planetary_citadels"]],
+		["ENERGY", ["solar_collectors", "plasma_reactors", "dark_matter"]],
+	],
+	"logistics": [
+		["CARGO", ["deep_drills", "bulk_holds", "logistics_command"]],
+		["HARVEST", ["cutting_lasers", "resonance_drills", "mass_drivers"]],
+		["SPEED", ["ion_thrusters", "fusion_drives", "jump_drives"]],
+		["SUPPLY", ["gas_skimming", "convoy_protocols", "spice_navigation"]],
+	],
+}
+
 func _tech_page(into: Control, rows: Array) -> GridContainer:
 	var grid := GridContainer.new()
 	grid.columns = 4
