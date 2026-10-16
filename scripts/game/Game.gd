@@ -2828,7 +2828,9 @@ func _duel() -> void:
 		var n := int(round(budget / float(Defs.SHIPS[t]["cost"]["minerals"])))
 		var dir := -1.0 if i == 0 else 1.0
 		for k in n:
-			var pos := c + Vector2(dir * (260.0 + (k / 6) * 22.0), (k % 6 - 2.5) * 22.0 + randf_range(-4, 4))
+			# Spaced by hull size, so big ships do not start overlapping.
+			var gap := maxf(22.0, float(Defs.SHIPS[t]["radius"]) * 2.4)
+			var pos := c + Vector2(dir * (260.0 + gap + (k / 6) * gap), (k % 6 - 2.5) * gap + randf_range(-4, 4))
 			var s := spawn_ship(t, pid, pos)
 			if t == "destroyer" and tough != 1.0:
 				s.max_hp *= tough; s.hp = s.max_hp; s.max_armor *= tough; s.armor = s.max_armor; s.max_shield *= tough; s.shield = s.max_shield
@@ -2841,11 +2843,18 @@ func _duel() -> void:
 	while true:
 		await get_tree().create_timer(0.5).timeout
 		var alive := [fleets[0].filter(func(x): return is_instance_valid(x) and x.is_alive()), fleets[1].filter(func(x): return is_instance_valid(x) and x.is_alive())]
-		if alive[0].is_empty() or alive[1].is_empty() or now() - t0 > 240.0:
+		if alive[0].is_empty() or alive[1].is_empty() or now() - t0 > float(OS.get_environment("SL_DUEL_LIMIT") if OS.get_environment("SL_DUEL_LIMIT") != "" else "240"):
 			var line := "DUEL %s (%d) vs %s (%d): " % [specs[0], fleets[0].size(), specs[1], fleets[1].size()]
 			var w := 0 if alive[1].is_empty() and not alive[0].is_empty() else (1 if alive[0].is_empty() and not alive[1].is_empty() else -1)
 			if w < 0:
-				line += "draw"
+				line += "draw after %ds" % int(now() - t0)
+				for si in 2:
+					var hh := 0.0
+					var mm := 0.0
+					for s in alive[si]:
+						hh += s.hp + s.armor + s.shield
+						mm += s.max_hp + s.max_armor + s.max_shield
+					line += " | %s %d ships, %d%% toughness" % [specs[si], alive[si].size(), int(100.0 * hh / maxf(mm, 1.0))]
 			else:
 				var hp := 0.0
 				var mx := 0.0

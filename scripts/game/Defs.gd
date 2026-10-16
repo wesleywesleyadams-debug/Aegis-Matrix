@@ -88,25 +88,25 @@ const BASE_SHIPS := {
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
-		"hp": 70.0, "armor": 20.0, "shield": 30.0, "speed": 125.0, "radius": 8.0,
-		"cost": {"minerals": 75}, "build_time": 20.0, "upkeep": 0.7,
-		"weapon": "laser", "damage": 5.0, "cooldown": 0.55, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 15.0},
+		"hp": 60.0, "armor": 40.0, "shield": 20.0, "speed": 125.0, "radius": 8.0,
+		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
+		"weapon": "laser", "damage": 5.0, "cooldown": 1.0, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 15.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
-		"hp": 120.0, "armor": 40.0, "shield": 140.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
-		"cost": {"minerals": 170, "spice": 5}, "build_time": 32.0, "upkeep": 1.7,
-		"weapon": "laser", "damage": 7.0, "cooldown": 0.9, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 25.0},
+		"hp": 80.0, "armor": 240.0, "shield": 160.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
+		"cost": {"minerals": 170, "spice": 5}, "build_time": 45.0, "upkeep": 1.7,
+		"weapon": "laser", "damage": 5.0, "cooldown": 1.0, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 25.0},
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
-		"guns": 2, "turret_rate": 1.6, "turret_scale": 0.5, "turrets": [[0.62, -0.22], [0.62, 0.22]],
+		"guns": 2, "turret_rate": 1.0, "turret_scale": 0.5, "turrets": [[0.62, -0.22], [0.62, 0.22]],
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 250.0, "armor": 360.0, "shield": 150.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
-		"cost": {"minerals": 350, "spice": 25}, "build_time": 50.0, "upkeep": 4.0,
-		"weapon": "laser", "damage": 11.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
+		"hp": 710.0, "armor": 355.0, "shield": 1063.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
+		"cost": {"minerals": 350, "spice": 25}, "build_time": 120.0, "upkeep": 4.0,
+		"weapon": "laser", "damage": 5.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 		# Three laser turrets: the hub and both forward wings.
 		"guns": 3, "turret_rate": 1.0, "turret_scale": 0.6, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
 	},
@@ -116,14 +116,14 @@ const BASE_SHIPS := {
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one, and the hangar
 		# bays are the real reason to build one.
-		"hp": 520.0, "armor": 720.0, "shield": 300.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
-		"cost": {"minerals": 700, "spice": 60}, "build_time": 100.0, "upkeep": 8.0,
-		"weapon": "laser", "damage": 30.0, "cooldown": 2.0, "range": 260.0, "sensor": 460.0,
+		"hp": 2667.0, "armor": 2667.0, "shield": 2666.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
+		"cost": {"minerals": 700, "spice": 60}, "build_time": 290.0, "upkeep": 8.0,
+		"weapon": "laser", "damage": 5.0, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
 		"guns": 4, "bays": 6, "job": "hangar",
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
 		# stay off the bearing and flank it.
-		"turret_rate": 0.5, "turrets": [[0.7, -0.22], [0.7, 0.22], [0.3, -0.22], [0.3, 0.22]],
+		"turret_rate": 1.0, "turrets": [[0.7, -0.22], [0.7, 0.22], [0.3, -0.22], [0.3, 0.22]],
 		# Refitting a hull this size is proportionally dearer and slower than
 		# a cruiser's (15 / 35 s) — twice the hull, twice the yard time.
 		"refit": {"minerals": 30, "time": 70.0},
@@ -428,7 +428,7 @@ const TECHS := {
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 80, "spice": 10}, "time": 60.0,
 		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot: Plasma, Breacher, Reaver, Slip and Disruptor."},
-	"carriers": {"name": "Carriers", "group": "warships", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 155, "spice": 40}, "time": 95.0,
+	"carriers": {"name": "Carriers", "group": "warships", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 155, "spice": 40}, "time": 240.0,
 		"effects": {"unlock_carrier": 1.0}, "desc": "Unlocks the Carrier."},
 	"carrier_mk2": {"name": "Mk II Carrier", "group": "warships", "class": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 145, "spice": 25}, "time": 85.0,
 		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk II: +18% damage; +15% shields, armor, hull."},
@@ -436,9 +436,9 @@ const TECHS := {
 		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk III: +18% damage; +15% shields, armor, hull."},
 	"carrier_mk4": {"name": "Mk IV Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk3"], "cost": {"energy": 890, "spice": 200}, "time": 260.0,
 		"effects": {"mark_carrier": 1.0}, "desc": "Carriers become Mk IV: +18% damage; +15% shields, armor, hull."},
-	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 45.0,
+	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 60.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
-	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 135, "spice": 30}, "time": 85.0,
+	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 135, "spice": 30}, "time": 150.0,
 		"effects": {"unlock_cruiser": 1.0}, "desc": "Unlocks the Cruiser."},
 	# Hull mark lines: one per warship class, three upgrades each (the class
 	# starts Mk I). Each mark lifts only that class, so investing in
