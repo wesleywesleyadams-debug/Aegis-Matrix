@@ -41,7 +41,11 @@ func _process(delta: float) -> void:
 	var game := Game.instance
 	if game == null or game.is_over:
 		return
-	for pid in players:
+	# A fresh order every tick: whoever thinks second sees a world the first
+	# has already acted on, and a fixed order gave that side most of the wins.
+	var order := players.duplicate()
+	order.shuffle()
+	for pid in order:
 		var st: Dictionary = _state[pid]
 		st["timer"] -= delta
 		if st["timer"] > 0.0:
