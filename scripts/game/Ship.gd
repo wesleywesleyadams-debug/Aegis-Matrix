@@ -140,7 +140,8 @@ func _ready() -> void:
 	display_name = Game.instance.ship_name(owner_id, ship_type)
 	refresh_stats()
 	hp = max_hp
-	shield = max_shield
+	# A solar sail's shield starts empty and is only charged by harvesting.
+	shield = 0.0 if def.has("solar_sail") else max_shield
 	armor = max_armor
 	radius = def["radius"]
 	move_goal = global_position
@@ -552,7 +553,10 @@ func _physics_process(delta: float) -> void:
 		return
 	if docked:
 		return
-	_regen_shields(delta)
+	if def.has("solar_sail"):
+		_solar_tick(delta)
+	else:
+		_regen_shields(delta)
 	if def.get("job", "") == "field_repair":
 		_repair_timer -= delta
 		if _repair_timer <= 0.0:
@@ -1202,6 +1206,12 @@ func _draw_job() -> void:
 				if i % 2 == 0:
 					var a := TAU * i / n + t * 0.3
 					draw_arc(Vector2.ZERO, Abilities.HEAT_RANGE, a, a + TAU / n, 3, Color(c, 0.22), 1.5)
+			# The solar shield: a light purple bubble, brighter the fuller it is.
+			if max_shield > 0.0 and shield > 0.0:
+				var f := shield / max_shield
+				var sc := shield_color()
+				draw_circle(Vector2.ZERO, radius + 7.0, Color(sc, 0.06 + 0.12 * f))
+				draw_arc(Vector2.ZERO, radius + 7.0, 0.0, TAU, 40, Color(sc, 0.25 + 0.45 * f), 1.5)
 		"field_repair":
 			for o in _repairing:
 				if is_instance_valid(o):
@@ -1292,3 +1302,36 @@ func order_build_depot(pos: Vector2, v: String = "plasma") -> void:
 	build_kind = "depot"
 	build_variant = v
 	state = State.BUILD
+
+# ---------------------------------------------------------------- solar sail
+
+## Is this ship inside a star's radiation or a spice nebula (where a solar
+## sail harvests)?
+func in_solar_field() -> bool:
+	var g := Game.instance
+	if g.in_nebula(global_position):
+		return true
+	for st in g.get_tree().get_nodes_in_group("stars"):
+		if st.dps_at(global_position.distance_to(st.global_position), radius) > 0.0:
+			return true
+	return false
+
+## Radiation Sail Array: harvests def.solar_sail energy a minute while in a
+## field. Each point first recharges the solar shield (1 energy = 1 shield),
+## with no pause after taking fire - it charges whenever energy comes in;
+## once the shield is full the rest goes to the owner's energy pool.
+func _solar_tick(delta: float) -> void:
+	if not in_solar_field():
+		return
+	var g := Game.instance
+	var gain: float = float(def["solar_sail"]) / 60.0 * delta * g.mod(owner_id, "energy")
+	var into_shield := minf(gain, maxf(max_shield - shield, 0.0))
+	if into_shield > 0.0:
+		shield += into_shield
+		queue_redraw()
+	if gain > into_shield:
+		g.resources[owner_id]["energy"] += gain - into_shield
+
+## The colour this ship's shield layer is drawn in (a solar sail's is purple).
+func shield_color() -> Color:
+	return def.get("shield_color", Defs.LAYER_COLORS["shield"])

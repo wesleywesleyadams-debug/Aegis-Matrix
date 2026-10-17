@@ -236,6 +236,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		if goal != Vector2.INF:
 			for s in idle:
 				s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+			# Radiation Sail Arrays (support, not warships) go with the wave to
+			# screen it from radiation and soak fire with their solar shield.
+			for rsa in ships.filter(func(s): return s.ship_type.ends_with("heatshield") and s.state == Ship.State.IDLE):
+				rsa.order_move(goal + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
 			st["wave"] = mini(st["wave"] + 4, 30)
 	# Waves already out pull back if their target has become too strong.
 	_recall_losing_waves(pid, war, base, game)

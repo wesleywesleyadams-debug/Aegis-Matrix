@@ -93,7 +93,7 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 			rest *= g.mod(_from.owner_id, "hull_damage")
 		hp -= rest * vs.get("hull", 1.0)
 	if absorbed > 0.0:
-		Game.instance.spawn_shield_hit(global_position, radius, (_from.global_position if is_instance_valid(_from) else global_position + Vector2.RIGHT))
+		Game.instance.spawn_shield_hit(global_position, radius, (_from.global_position if is_instance_valid(_from) else global_position + Vector2.RIGHT), call("shield_color") if has_method("shield_color") else Color("7fd8ff"))
 	queue_redraw()
 	if hp <= 0.0:
 		_die()

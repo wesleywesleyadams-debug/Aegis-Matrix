@@ -135,8 +135,13 @@ const BASE_SHIPS := {
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 600.0, "job": "beacon",
 	},
 	"heatshield": {
-		"name": "Radiation Sail Array", "role": "warship",
-		"hp": 130.0, "armor": 70.0, "shield": 140.0, "speed": 80.0, "radius": 11.0,
+		"name": "Radiation Sail Array", "role": "support",
+		# Solar sail: no ordinary shield. Inside a star's radiation or a spice
+		# nebula it harvests "solar_sail" energy a minute, charging a solar
+		# shield (base "shield", starts empty) first and sending the rest to the
+		# energy pool (Ship._solar_tick).
+		"solar_sail": 15.0, "shield_color": Color("c9a0ff"),
+		"hp": 130.0, "armor": 70.0, "shield": 100.0, "speed": 80.0, "radius": 11.0,
 		"cost": {"minerals": 110, "spice": 10}, "build_time": 24.0, "upkeep": 1.3,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
 	},

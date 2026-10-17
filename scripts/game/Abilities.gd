@@ -59,6 +59,9 @@ static func allies_near(s: Node2D, r: float) -> Array:
 
 ## Radiation damage multiplier (a Radiation Sail Array nearby).
 static func radiation_mult(e: SpaceEntity) -> float:
+	# A solar sail feeds on the radiation it sits in: it takes none itself.
+	if e is Ship and e.def.has("solar_sail"):
+		return 0.0
 	var best := 1.0
 	for o in Game.instance.job_ships.get("heat_screen", []):
 		# The list is rebuilt periodically, so an array destroyed since can

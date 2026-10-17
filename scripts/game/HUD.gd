@@ -829,7 +829,8 @@ class FleetTile extends Control:
 			return
 		var w := size.x - 4.0
 		var y := size.y - BARS_H
-		for gauge in [[host.shield, host.max_shield, Defs.LAYER_COLORS["shield"]],
+		var shield_col: Color = host.shield_color() if host.has_method("shield_color") else Defs.LAYER_COLORS["shield"]
+		for gauge in [[host.shield, host.max_shield, shield_col],
 				[host.armor, host.max_armor, Defs.LAYER_COLORS["armor"]],
 				[host.hp, host.max_hp, Defs.LAYER_COLORS["hull"]]]:
 			var full: float = gauge[1]

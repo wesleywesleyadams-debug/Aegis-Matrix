@@ -813,7 +813,7 @@ const SHIP_NOTES := {
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
-	"heatshield": "Lets a fleet fight where others can't: inside a star's radiation and inside a spice nebula, where shields normally drain away.",
+	"heatshield": "Lets a fleet fight where others can't: inside a star's radiation and inside a spice nebula, where shields normally drain away. Its solar sail harvests 15 energy a minute in those fields: it first charges its own light-purple solar shield (100, empty when built, charging even under fire), then sends the rest to your energy pool. A support ship: it can't be refitted.",
 	"corvette": "The cheap body of a fleet, and the only hull a carrier can dock. Fast and short-ranged, it is bought in numbers.",
 	"destroyer": "A shield boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Armor and a torpedo that outranges everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",

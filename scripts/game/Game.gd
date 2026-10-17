@@ -956,13 +956,13 @@ func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	fx_root.add_child(e)
 	sfx.play_at("boom_big" if scale_mult >= 1.0 else "boom", pos, -6.0)
 
-func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2) -> void:
+func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2, col: Color = Color("7fd8ff")) -> void:
 	if sim_mode:
 		return
 	var e := Effect.new()
 	e.texture = Defs.tex("shield_hit")
 	e.fps = 16.0
-	e.modulate = Color("7fd8ff")
+	e.modulate = col
 	e.global_position = pos
 	e.rotation = (from_pos - pos).angle()
 	e.scale = Vector2.ONE * maxf(1.0, round(r / 8.0)) / Defs.ART_SCALE
@@ -2443,6 +2443,13 @@ func _enter_dev_capture() -> void:
 		var star: Node2D = get_tree().get_nodes_in_group("stars")[0]
 		var rr: float = star.radiation_radius - 50.0
 		var hs := spawn_ship("heatshield", player_id, star.global_position + Vector2(rr, 0))
+		# SL_SAIL_LOG: the solar sail filling its shield, then the energy pool.
+		if OS.get_environment("SL_SAIL_LOG") != "":
+			var e0: float = resources[player_id]["energy"]
+			for t9 in [1.0, 10.0, 20.0, 30.0]:
+				get_tree().create_timer(t9, true, false, false).timeout.connect(func():
+					if is_instance_valid(hs):
+						print("SAIL t=%.0f shield %.1f/%.0f in field %s" % [now(), hs.shield, hs.max_shield, str(hs.in_solar_field())]))
 		var shielded: Array = []
 		var bare: Array = []
 		for i in 3:
@@ -2459,7 +2466,7 @@ func _enter_dev_capture() -> void:
 			s.order_stop()
 		get_tree().create_timer(0.5).timeout.connect(func(): print("JOBS beacon: ", Abilities.use(sc)))
 		get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.2).timeout.connect(func():
-			var f := func(arr): return ", ".join(arr.map(func(s): return "%d/%d" % [int(s.hp), int(s.max_hp)]))
+			var f := func(arr): return ", ".join(arr.map(func(s): return ("%d/%d" % [int(s.hp), int(s.max_hp)]) if is_instance_valid(s) else "dead"))
 			print("JOBS shielded corvettes %s | bare corvettes %s | repaired destroyers %s | beacons %d" % [f.call(shielded), f.call(bare), f.call(hurt), get_tree().get_nodes_in_group("beacons").size()]))
 	if OS.get_environment("SL_SHOT_OPEN") == "sun":
 		var c1 := spawn_ship("corvette", player_id, Vector2(52, 0))
