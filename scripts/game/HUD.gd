@@ -89,7 +89,7 @@ const MINIMAP_W := 380.0
 ## Smaller than this (per minute) counts as flat, so the arrow holds still.
 const TREND_DEADBAND := 1.0
 ## Faster than this (per minute, either way) earns a second arrow.
-const TREND_STRONG := 20.0
+const TREND_STRONG := 19.0
 ## Faster than this earns a third.
 const TREND_SURGE := 99.0
 ## The starbase page switch always sits in this grid cell (the bottom-right one, key C).
