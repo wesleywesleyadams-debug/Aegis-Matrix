@@ -4,12 +4,14 @@ Runs N headless games at once (each a Godot process the agent plays one side
 of, against the scripted AI), batches their observations through the policy
 on the GPU, and learns from the outcome:
   reward = winning: 1000 for an instant win, falling 12.5 a minute (750 at
-           20 min, 500 at 40, 0 at 80). Nothing for losing.
-         + KILL (10) per enemy ship or construct destroyed, BIG (20) per enemy
-           starbase destroyed, enemy world depopulated, or new world colonized
-         + a small curiosity bonus: NEW_ACTION for each kind of action (verb +
-           what it builds/researches) the first time it is used in a match,
-           and a far smaller REPEAT_ACTION each time it is used again.
+           20 min, 500 at 40, 0 at 80); LOSS (-300) for losing
+         + fighting: what enemy ships/constructs it destroys were worth / 100,
+           minus what it loses / 100 (so it learns to trade well)
+         + BIG (20) per enemy starbase destroyed, enemy world depopulated, or
+           new world colonized
+         + curiosity: NEW_ACTION (2) for each kind of action (verb + what it
+           builds/researches) the first time in a match, at most NEW_CAP (40)
+           per match; repeats earn nothing (they could be farmed).
 
 Usage (from the project root, with the venv's python):
   sd-venv/Scripts/python.exe tools/rl/train.py --envs 4 --updates 1000
@@ -31,11 +33,12 @@ WIN_REWARD = 1000.0
 ## Points the win reward loses per game minute (0 at 80 minutes).
 WIN_DECAY = 12.5
 ## Progress rewards (from the game's tally of what this side did).
-KILL = 10.0
+LOSS = -300.0
+VALUE_SCALE = 1.0 / 100.0
 BIG = 20.0
-## Curiosity: a kind of action (verb, object) new this match, and a repeat.
-NEW_ACTION = 25.0
-REPEAT_ACTION = 1.0
+## Curiosity: a kind of action (verb, object) new this match, capped.
+NEW_ACTION = 2.0
+NEW_CAP = 40.0
 ## The game's time limit in seconds (set from --minutes).
 LIMIT = 2400.0
 RUNS = os.path.join(os.path.dirname(__file__), "runs")
@@ -46,11 +49,14 @@ def reward_of(prev, cur):
     a, b = prev.get("tally", {}), cur.get("tally", {})
     if a and b:
         d = lambda k: max(0, b.get(k, 0) - a.get(k, 0))
-        r += KILL * (d("ship_kills") + d("construct_kills"))
+        r += VALUE_SCALE * (d("kill_value") - d("lost_value"))
         r += BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
-    if cur.get("done") and cur.get("won"):
-        # 1000 for an instant win, 750 at 20 min, 500 at 40, 0 at 80+.
-        r += max(0.0, WIN_REWARD - WIN_DECAY * cur.get("t", 0.0) / 60.0)
+    if cur.get("done"):
+        if cur.get("won"):
+            # 1000 for an instant win, 750 at 20 min, 500 at 40, 0 at 80+.
+            r += max(0.0, WIN_REWARD - WIN_DECAY * cur.get("t", 0.0) / 60.0)
+        elif cur.get("lost"):
+            r += LOSS
     return float(r)
 
 
@@ -63,6 +69,7 @@ def main():
     ap.add_argument("--speed", type=float, default=8)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--reset-value", action="store_true", help="re-learn the value head (after a reward change)")
     ap.add_argument("--port", type=int, default=47100)
     args = ap.parse_args()
     global LIMIT
@@ -77,6 +84,12 @@ def main():
         st = torch.load(ckpt, map_location=dev)
         pol.load_state_dict(st["model"]); opt.load_state_dict(st["opt"]); start = st["update"]
         print("resumed at update", start)
+        if args.reset_value:
+            for m in pol.value:
+                if hasattr(m, "reset_parameters"):
+                    m.reset_parameters()
+            opt = torch.optim.Adam(pol.parameters(), lr=args.lr)
+            print("value head reset")
     log = open(os.path.join(RUNS, "log.csv"), "a", newline="")
     lw = csv.writer(log)
 
@@ -108,11 +121,10 @@ def main():
                 r = reward_of(obs[i], nxt[i])
                 for o in orders[i]["orders"]:
                     kind = (o[1], o[2])   # verb, object (-1 = none)
-                    if kind in tried[i]:
-                        r += REPEAT_ACTION
-                    else:
+                    if kind not in tried[i]:
                         tried[i].add(kind)
-                        r += NEW_ACTION
+                        if len(tried[i]) * NEW_ACTION <= NEW_CAP:
+                            r += NEW_ACTION
                 ep_ret[i] += r
                 rews.append(r)
                 dones.append(bool(nxt[i].get("done")))

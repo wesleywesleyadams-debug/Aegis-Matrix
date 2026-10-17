@@ -110,7 +110,7 @@ func _observe(game: Game, base: Starbase, done: bool) -> Dictionary:
 		"enemy_score": _enemy_score(game),
 		"tally": {"ship_kills": game.stats.get_count(pid, "ship_kills"), "construct_kills": game.stats.get_count(pid, "construct_kills"),
 			"starbase_kills": game.stats.get_count(pid, "starbase_kills"), "planet_kills": game.stats.get_count(pid, "planet_kills"),
-			"colonized": game.stats.get_count(pid, "colonized")},
+			"colonized": game.stats.get_count(pid, "colonized"), "kill_value": game.stats.get_count(pid, "kill_value"), "lost_value": game.stats.get_count(pid, "lost_value")},
 		"entities": ents,
 		"actors": _actor_rows(game, home),
 		"objects": _object_rows(game),

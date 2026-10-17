@@ -116,11 +116,33 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	if hp <= 0.0:
 		_die()
 
+## What this cost to build (all resources), for the value tallies.
+func _worth() -> float:
+	var c: Dictionary = {}
+	if self is Ship:
+		c = self.def.get("cost", {})
+	elif self is Starbase:
+		c = Defs.STARBASE["cost"]
+	elif self is MiningStation:
+		c = Defs.MINING_STATION["cost"]
+	elif self is WeaponsDepot:
+		c = Defs.WEAPONS_DEPOT["cost"]
+	var t := 0.0
+	for k in c:
+		t += float(c[k])
+	return t
+
 func _die() -> void:
 	_dead = true
 	# Credit the kill to whoever hit it last (enemy ship or starbase kills).
 	if Game.instance and _killer != 0:
 		Game.instance.stats.count(_killer, "starbase_kills" if self is Starbase else ("ship_kills" if self is Ship else "construct_kills"))
+	# What it cost, for value-weighted kill and loss tallies.
+	if Game.instance and owner_id != 0:
+		var worth := int(_worth())
+		Game.instance.stats.count(owner_id, "lost_value", worth)
+		if _killer != 0:
+			Game.instance.stats.count(_killer, "kill_value", worth)
 	Game.instance.spawn_explosion(global_position, radius / 10.0)
 	died.emit(self)
 	queue_free()
