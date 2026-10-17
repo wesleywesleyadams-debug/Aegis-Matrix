@@ -280,6 +280,11 @@ static func _dev_run() -> bool:
 			return true
 	return false
 
+## Quitting saves too, so the next launch starts exactly as you left it.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		save_settings()
+
 func save_settings() -> void:
 	save_global_settings()
 	save_account_settings()

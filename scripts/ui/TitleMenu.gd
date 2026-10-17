@@ -316,6 +316,7 @@ func _on_close_load_list_pressed() -> void:
 	quit_button.visible = true
 
 func _on_quit_pressed() -> void:
+	GameState.save_settings()
 	get_tree().quit()
 
 ## Dev aid: SL_TITLE_SHOT=1 saves user://title.png after a moment and quits.
