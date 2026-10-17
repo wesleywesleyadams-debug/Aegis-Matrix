@@ -28,7 +28,9 @@ func show_system(id: String) -> void:
 		_layout = {}
 		facts = "A different system every match."
 	else:
-		_layout = _orion_layout() if id == "orion_reach" else SystemGen.generate(int(sys["seed"]), _settings)
+		# Dev: SL_LAYOUT_PLAYERS=n previews the n-player layout.
+		var n_pl := maxi(2, int(OS.get_environment("SL_LAYOUT_PLAYERS")))
+		_layout = _orion_layout() if id == "orion_reach" and n_pl == 2 else SystemGen.generate(int(sys.get("seed", 0)), _settings, n_pl)
 		var worlds := 0
 		for p in _layout["planets"]:
 			if p["owner"] == 0:

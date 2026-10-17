@@ -51,9 +51,11 @@ const NAME_SETS := {
 		"Cairn", "Tor", "Scree", "Shale", "Granitor", "Umbra", "Anvil", "Crag", "Monolith", "Ferrox", "Cobble", "Quarry"],
 }
 
-## Layout lives on an ellipse fitted to the map (it's wider than tall).
-const RX := 1640.0
-const RY := 1010.0
+## Layout lives on a circle inside the round system (Game.MAP_RADIUS): t = 1
+## is LAYOUT_R from the star. Each player gets an equal wedge of it.
+const LAYOUT_R := 1600.0
+## How many players the layout being generated is for (set by generate).
+static var players: int = 2
 ## Keep-out around the star: its radiation zone plus room to fly around it
 ## (set per system from its star type).
 static var star_clear: float = 330.0
@@ -111,7 +113,12 @@ static func random_params(seed: int) -> Dictionary:
 		"star": stars[rng.randi() % stars.size()], "bg": bgs[rng.randi() % bgs.size()], "names": sets[rng.randi() % sets.size()],
 		"nebula": NEBULA_STYLES[rng.randi() % NEBULA_STYLES.size()]}
 
-static func generate(seed: int, params: Dictionary) -> Dictionary:
+## One wedge (TAU / n_players wide, centred on PI) is laid out for player 1
+## and rotated round the star for every other player, so each start has the
+## same worlds, rocks and distances.
+static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dictionary:
+	players = maxi(2, n_players)
+	var wedge := PI / players   # half the wedge's angle
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	star_clear = float(Defs.STAR_TYPES.get(params.get("star", "yellow"), Defs.STAR_TYPES["yellow"])["zone"]) + 150.0
@@ -124,12 +131,12 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 		var tmp = names[i]
 		names[i] = names[j]
 		names[j] = tmp
-	var placed: Array = []   # [pos, clearance] for every object, both halves
+	var placed: Array = []   # [pos, clearance] for every object in wedge 1 (_fits checks every copy)
 	var half_planets: Array = []
 	var half_rocks: Array = []
 
-	# Home world on the left side, a little above or below the midline.
-	var home_a := PI + rng.randf_range(-0.35, 0.35)
+	# Home world in the middle of the wedge, give or take a little.
+	var home_a := PI + rng.randf_range(-1.0, 1.0) * minf(0.35, wedge * 0.22)
 	var home := _on_ellipse(home_a, HOME_T)
 	half_planets.append({"kind": "planet_terran", "pos": home, "owner": 1, "home": true})
 	_claim(placed, home, 90.0)
@@ -153,10 +160,10 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 		var ok := false
 		for attempt in 200:
 			var t := rng.randf_range(0.34, 0.95)
-			var a := PI + rng.randf_range(-PI / 2.0 + 0.12, PI / 2.0 - 0.12)
+			var a := PI + rng.randf_range(-wedge + 0.12, wedge - 0.12)
 			var pos := _on_ellipse(a, t)
 			# Planets keep extra room from the edge (big sprites, orbit space).
-			if absf(pos.x) > 1800.0 - EDGE_MARGIN - 110.0 or absf(pos.y) > 1150.0 - EDGE_MARGIN - 110.0:
+			if pos.length() > Game.MAP_RADIUS - EDGE_MARGIN - 110.0:
 				continue
 			if not _fits(placed, pos, 260.0) or pos.distance_to(home) < 480.0:
 				continue
@@ -180,12 +187,12 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	var spice_chance: float = params.get("spice", 0.12)
 	for b in int(params.get("belts", 2)):
 		var t := rng.randf_range(0.4, 0.85)
-		var a0 := PI + rng.randf_range(-1.2, 1.2)
-		var span := rng.randf_range(0.35, 0.7)
+		var a0 := PI + rng.randf_range(-1.2, 1.2) * wedge / (PI / 2.0)
+		var span := rng.randf_range(0.35, 0.7) * minf(1.0, wedge / (PI / 2.0))
 		for k in rng.randi_range(10, 16):
 			var a := a0 + span * (float(k) / 15.0 - 0.5) + rng.randf_range(-0.03, 0.03)
 			var p := _on_ellipse(a, t + rng.randf_range(-0.03, 0.03))
-			if p.x > -20.0 or not _fits(placed, p, 26.0) or not _inside(p):
+			if not _in_wedge(p) or not _fits(placed, p, 26.0) or not _inside(p):
 				continue
 			var spice := rng.randf() < spice_chance * (1.4 - t)
 			var variant := "spice_%d" % rng.randi_range(0, 1) if spice else ("asteroid_%d" % rng.randi_range(0, 3) if rng.randf() < 0.85 else "asteroid_big_%d" % rng.randi_range(0, 1))
@@ -198,11 +205,14 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	if params.get("feature", "") == "storms":
 		features.append({"type": "storms", "inner": star_clear - 60.0, "phase": rng.randf() * TAU})
 	if ring_radius > 0.0:
-		# Two gaps per half, mirrored through the star.
-		var g1 := rng.randf_range(0.3, 1.1)
-		var g2 := g1 + PI / 2.0 + rng.randf_range(-0.35, 0.35)
-		features.append({"type": "rings", "radius": RING_RADIUS, "width": RING_WIDTH, "gap_half": RING_GAP_HALF,
-			"gaps": [g1, g2, g1 + PI, g2 + PI]})
+		# Two gaps per wedge, turned with it.
+		var g1 := rng.randf_range(0.3, 1.1) * wedge / (PI / 2.0)
+		var g2 := g1 + wedge + rng.randf_range(-0.35, 0.35) * wedge / (PI / 2.0)
+		var gaps: Array = []
+		for k in players:
+			gaps.append(g1 + TAU * k / players)
+			gaps.append(g2 + TAU * k / players)
+		features.append({"type": "rings", "radius": RING_RADIUS, "width": RING_WIDTH, "gap_half": RING_GAP_HALF, "gaps": gaps})
 	if params.get("feature", "") == "binary":
 		features.append({"type": "binary", "orbit": BINARY_ORBIT, "period": BINARY_PERIOD})
 	if params.get("feature", "") == "spice_nebula":
@@ -210,9 +220,9 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 		var outer := inner + 400.0
 		features.append({"type": "spice_nebula", "inner": inner, "outer": outer})
 		for k in 24:
-			var a := PI + rng.randf_range(-PI / 2.0 + 0.1, PI / 2.0 - 0.1)
+			var a := PI + rng.randf_range(-wedge + 0.1, wedge - 0.1)
 			var p := Vector2.from_angle(a) * rng.randf_range(inner + 40.0, outer - 40.0)
-			if p.x > -20.0 or not _fits(placed, p, 26.0):
+			if not _in_wedge(p) or not _fits(placed, p, 26.0):
 				continue
 			half_rocks.append({"variant": "spice_%d" % rng.randi_range(0, 1), "pos": p})
 			_claim(placed, p, 12.0)
@@ -222,19 +232,19 @@ static func generate(seed: int, params: Dictionary) -> Dictionary:
 	if params.has("nebula"):
 		features.append_array(nebulae(str(params["nebula"]), sb_pos, seed))
 
-	# Mirror through the star for player 2.
+	# Turn the wedge round the star once per player.
 	var out := {"planets": [], "asteroids": [], "starbases": [], "ships": [], "features": features}
 	var n := 0
-	for side in 2:
-		var s := 1.0 if side == 0 else -1.0
+	for side in players:
+		var turn := TAU * side / players
 		for pl in half_planets:
-			out["planets"].append({"name": names[n % names.size()], "kind": pl["kind"], "size": pl.get("size", ""), "pos": pl["pos"] * s,
-				"owner": (pl["owner"] if side == 0 else (2 if pl["owner"] == 1 else 0))})
+			out["planets"].append({"name": names[n % names.size()], "kind": pl["kind"], "size": pl.get("size", ""), "pos": pl["pos"].rotated(turn),
+				"owner": (1 + side if pl["owner"] == 1 else 0)})
 			n += 1
 		for r in half_rocks:
-			out["asteroids"].append({"name": "Rock%d" % out["asteroids"].size(), "variant": r["variant"], "pos": r["pos"] * s})
+			out["asteroids"].append({"name": "Rock%d" % out["asteroids"].size(), "variant": r["variant"], "pos": r["pos"].rotated(turn)})
 		var pid := 1 + side
-		var sb := sb_pos * s
+		var sb: Vector2 = sb_pos.rotated(turn)
 		out["starbases"].append({"owner": pid, "pos": sb})
 		var face := (-sb).angle()
 		var side_dir := Vector2.from_angle(face).orthogonal()
@@ -277,45 +287,53 @@ static func nebulae(style: String, base: Vector2, seed: int) -> Array:
 			half.append({"shape": "cloud", "pos": Vector2.from_angle(ang + 0.7) * 1200.0, "radius": 300.0})
 	var out: Array = []
 	var k := 0
-	for side in 2:
-		var s := 1.0 if side == 0 else -1.0
+	var bases: Array = []
+	for side in players:
+		bases.append(base.rotated(TAU * side / players))
+	for side in players:
+		var turn := TAU * side / players
 		for h in half:
 			var f: Dictionary = h.duplicate()
 			f["type"] = "spice_nebula"
 			f["seed"] = seed + 31 * k
 			k += 1
-			f["pos"] = h["pos"] * s
-			if f.has("arc_mid") and side == 1:
-				f["arc_mid"] = float(h["arc_mid"]) + PI
+			f["pos"] = h["pos"].rotated(turn)
+			if f.has("arc_mid"):
+				f["arc_mid"] = float(h["arc_mid"]) + turn
 			if f["shape"] == "cloud":
 				# Inside the map, and never over a starbase.
-				var lim := Vector2(1800.0 - EDGE_MARGIN, 1150.0 - EDGE_MARGIN) - Vector2.ONE * float(f["radius"])
-				f["pos"] = Vector2(clampf(f["pos"].x, -lim.x, lim.x), clampf(f["pos"].y, -lim.y, lim.y))
-				for b in [base, -base]:
+				f["pos"] = f["pos"].limit_length(Game.MAP_RADIUS - EDGE_MARGIN - float(f["radius"]))
+				for b in bases:
 					var room: float = f["pos"].distance_to(b) - NEBULA_BASE_CLEAR
 					f["radius"] = maxf(minf(float(f["radius"]), room), 60.0)
 			out.append(f)
 	return out
 
 static func _on_ellipse(a: float, t: float) -> Vector2:
-	return Vector2(cos(a) * RX * t, sin(a) * RY * t)
+	return Vector2.from_angle(a) * LAYOUT_R * t
 
 static func _inside(p: Vector2) -> bool:
-	return absf(p.x) < 1800.0 - EDGE_MARGIN and absf(p.y) < 1150.0 - EDGE_MARGIN
+	return p.length() < Game.MAP_RADIUS - EDGE_MARGIN
+
+## Inside player 1's wedge (centred on PI), with a little room at its sides.
+static func _in_wedge(p: Vector2) -> bool:
+	return absf(angle_difference(p.angle(), PI)) < PI / players - 0.02
 
 ## Room for something of `clearance` at p: off the star, inside the map,
-## and clear of everything placed so far and its mirror image.
+## and clear of everything placed so far in every player's copy of it.
 static func _fits(placed: Array, p: Vector2, clearance: float) -> bool:
 	if p.length() < star_clear or not _inside(p):
 		return false
 	if ring_radius > 0.0 and absf(p.length() - ring_radius) < RING_WIDTH / 2.0 + minf(clearance, 60.0) + 30.0:
 		return false
-	if p.length() < clearance:
-		return false  # too close to its own mirror image
+	for k in range(1, players):
+		if p.distance_to(p.rotated(TAU * k / players)) < clearance:
+			return false  # too close to its own copy in the next wedge
 	for q in placed:
 		var min_d: float = clearance + q[1]
-		if p.distance_to(q[0]) < min_d or p.distance_to(-q[0]) < min_d:
-			return false
+		for k in players:
+			if p.distance_to(q[0].rotated(TAU * k / players)) < min_d:
+				return false
 	return true
 
 static func _claim(placed: Array, p: Vector2, clearance: float) -> void:
