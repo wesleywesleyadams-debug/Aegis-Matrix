@@ -252,6 +252,18 @@ func _ready() -> void:
 					if sb.owner_id == rl_side: mine = sb
 					elif foe == null: foe = sb
 				print("SIEGETEST foe hp ", foe.hp, "/", foe.max_hp, " shield ", foe.max_shield, " armor ", foe.max_armor)
+				for pl in get_tree().get_nodes_in_group("planets"):
+					if pl.owner_id != 0 and pl.owner_id != rl_side:
+						var p0: float = pl.pop
+						for k in 20:
+							pl.take_damage(200.0, mine)
+						print("SIEGETEST bombard pop ", p0, " -> ", pl.pop, "  tally ", stats.get_count(rl_side, "pop_bombarded"))
+						break
+				for sh in get_tree().get_nodes_in_group("ships"):
+					if sh.owner_id != rl_side:
+						sh.take_damage(sh.max_hp + sh.max_armor + sh.max_shield + 50.0, mine)
+						print("SIEGETEST ship damage_dealt ", stats.get_count(rl_side, "damage_dealt"))
+						break
 				for i in 40:
 					foe.take_damage(foe.max_hp * 0.05, mine)
 				print("SIEGETEST starbase_damage ", stats.get_count(rl_side, "starbase_damage"), " kills ", stats.get_count(rl_side, "starbase_kills"), " foe hp ", foe.hp if is_instance_valid(foe) else -1.0))

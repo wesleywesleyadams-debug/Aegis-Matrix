@@ -49,6 +49,8 @@ const ECON_TICK := 0.25
 
 var radius: float = 24.0
 var pop: float = 0.0
+var _bomb_low := INF    # lowest pop under bombardment since its last colonization
+var _bomb_frac := 0.0
 var starving: bool = false
 ## Bombardment: pop at the start of the current siege and time of last hit.
 var siege_start_pop: float = 0.0
@@ -181,6 +183,7 @@ func colonize(pid: int) -> void:
 	if not is_habitable():
 		return
 	var old := owner_id
+	_bomb_low = INF
 	if old != 0 and old != pid:
 		Game.instance.note_attack(old, pid)   # taken from them
 	if old == 0:
@@ -327,6 +330,17 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	if absorbed > 0.0:
 		g.spawn_shield_hit(global_position, radius * 0.6, from.global_position if is_instance_valid(from) else global_position + Vector2.RIGHT)
 	pop -= amount * POP_PER_DAMAGE
+	# Training tally: population bombarded away, in tenths - only below this
+	# world's lowest point so far, so letting it regrow and hitting it again
+	# earns nothing.
+	if is_instance_valid(from) and from.get("owner_id") != null and g.is_hostile(owner_id, from.owner_id):
+		var low := minf(_bomb_low, pop + amount * POP_PER_DAMAGE)
+		var cut := low - maxf(pop, 0.0)
+		if cut > 0.0:
+			_bomb_frac += cut * 10.0
+			g.stats.count(from.owner_id, "pop_bombarded", int(_bomb_frac))
+			_bomb_frac -= floorf(_bomb_frac)
+			_bomb_low = maxf(pop, 0.0)
 	if owner_id == g.player_id:
 		g.alert("%s is being bombarded!" % planet_name, "alert_planet", false, global_position)
 		Music.urgent_ping()

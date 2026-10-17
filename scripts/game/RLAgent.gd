@@ -51,6 +51,7 @@ var _objects: Array = []     # [kind, id, extra] per object row
 var _targets: Array = []     # Node2D or Vector2 per target row
 ## How often each verb was used (dev reports read it).
 var counts := {}
+var _found := {}   # enemy starbases / worlds seen this match (instance id)
 
 func _init(side: int, port: int) -> void:
 	pid = side
@@ -109,7 +110,8 @@ func _observe(game: Game, base: Starbase, done: bool) -> Dictionary:
 		"score": game.stats.score(pid),
 		"enemy_score": _enemy_score(game),
 		"tally": {"ship_kills": game.stats.get_count(pid, "ship_kills"), "construct_kills": game.stats.get_count(pid, "construct_kills"),
-			"starbase_kills": game.stats.get_count(pid, "starbase_kills"), "starbase_damage": game.stats.get_count(pid, "starbase_damage"), "planet_kills": game.stats.get_count(pid, "planet_kills"),
+			"starbase_kills": game.stats.get_count(pid, "starbase_kills"), "starbase_damage": game.stats.get_count(pid, "starbase_damage"),
+			"damage_dealt": game.stats.get_count(pid, "damage_dealt"), "pop_bombarded": game.stats.get_count(pid, "pop_bombarded"), "discovered": game.stats.get_count(pid, "discovered"), "planet_kills": game.stats.get_count(pid, "planet_kills"),
 			"colonized": game.stats.get_count(pid, "colonized"), "kill_value": game.stats.get_count(pid, "kill_value"), "lost_value": game.stats.get_count(pid, "lost_value")},
 		"entities": ents,
 		"actors": _actor_rows(game, home),
@@ -196,6 +198,12 @@ func _entities(game: Game, home: Vector2) -> Array:
 	cand.append_array(tree.get_nodes_in_group("nebulae"))
 	cand.append_array(tree.get_nodes_in_group("storms"))
 	cand.append_array(tree.get_nodes_in_group("stars"))
+	# Training tally: each enemy starbase or world the first time it's seen.
+	for e in cand:
+		var o = e.get("owner_id")
+		if o != null and o != 0 and game.is_hostile(pid, o) and (e is Starbase or e is Planet) 				and not _found.has(e.get_instance_id()) and (v == null or v.is_visible_at(e.global_position)):
+			_found[e.get_instance_id()] = true
+			game.stats.count(pid, "discovered")
 	cand.sort_custom(func(x, y): return (0 if x.get("owner_id") == pid else 1) * 1e6 + home.distance_to(x.global_position) < (0 if y.get("owner_id") == pid else 1) * 1e6 + home.distance_to(y.global_position))
 	_ents = cand.slice(0, MAX_ENTITIES)
 	return _ents.map(func(e): return _entity_row(e, home, game, v))
