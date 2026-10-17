@@ -78,7 +78,7 @@ func _shoot(delta: float) -> void:
 	if e == null:
 		return
 	_cooldown = d["cooldown"]
-	Game.instance.fire(self, e, d["weapon"], d["damage"] * Game.instance.mod(owner_id, "damage") * Game.instance.mod(owner_id, "structure_damage"))
+	Game.instance.fire(self, e, d["weapon"], d["damage"] * Game.instance.mod(owner_id, "structure_damage"))
 
 func _construct(delta: float) -> void:
 	var g := Game.instance
