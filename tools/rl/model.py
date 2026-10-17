@@ -148,10 +148,19 @@ class Policy(nn.Module):
             tl = (targets @ qt.unsqueeze(-1)).squeeze(-1) / self.d ** 0.5
             tl = tl.masked_fill(~tgt_m, NEG)
             td = torch.distributions.Categorical(logits=tl)
-            t = td.sample() if act is None else act[:, s, 3].clamp(min=0)
+            # Targets are padded as [entities..pad, points..pad]; orders use
+            # each game's own numbering [its entities, its points].
+            e_pad = x["ent"].shape[1]
+            e_own = x["ent_m"].sum(1)
+            if act is None:
+                t = td.sample()
+                t_out = torch.where(t < e_pad, t, t - e_pad + e_own)
+            else:
+                t_out = act[:, s, 3].clamp(min=0)
+                t = torch.where(t_out < e_own, t_out, t_out - e_own + e_pad)
             logp += td.log_prob(t) * has_t; ent += td.entropy() * has_t
             out[:, s, 0] = torch.where(live, ai, torch.full_like(ai, -1))
             out[:, s, 1] = v
             out[:, s, 2] = torch.where(has_o, o, torch.full_like(o, -1))
-            out[:, s, 3] = torch.where(has_t, t, torch.full_like(t, -1))
+            out[:, s, 3] = torch.where(has_t, t_out, torch.full_like(t_out, -1))
         return out, logp, ent, value
