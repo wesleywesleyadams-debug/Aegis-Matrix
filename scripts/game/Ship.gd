@@ -1434,7 +1434,9 @@ func _draw_solar_shield(t: float) -> void:
 		var a := TAU * i / n
 		var wob := 1.4 * sin(a * 5.0 + t * 2.2) + 0.9 * sin(a * 9.0 - t * 3.1)
 		pts.append(Vector2.from_angle(a) * (r0 + wob))
-	draw_colored_polygon(pts, Color(sc, (0.05 + 0.08 * f) * alpha / 0.8))
+	# Fill as a plain circle: the wobbly outline sometimes fails to
+	# triangulate as a polygon, which made the fill blink on and off.
+	draw_circle(Vector2.ZERO, r0, Color(sc, (0.05 + 0.08 * f) * alpha / 0.8))
 	draw_polyline(pts, Color(sc, alpha), width, true)
 	draw_polyline(pts, Color(sc.lightened(0.5), alpha * 0.35), width + 3.0, true)
 	# Impact ripples: a bright flare at the hit that spreads along the edge.
@@ -1447,22 +1449,23 @@ func _draw_solar_shield(t: float) -> void:
 
 ## Electrical arcs between the hull and the bubble while the array works:
 ## white/purple while charging the shield, white/yellow once it is full and
-## the energy flows to the stockpile. Each arc is re-struck a few times a
-## second at a new angle.
+## the energy flows to the stockpile.
 func _draw_sail_arcs(r0: float) -> void:
 	if _sail_mode == "":
 		return
 	var glow: Color = shield_color() if _sail_mode == "charge" else Color("ffe066")
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([get_instance_id(), int(Game.now() * 9.0)])
+	var t := Game.now()
+	var a0 := float(get_instance_id() % 1000)
 	for i in 3:
-		var a := rng.randf() * TAU
+		# Steady arcs: each slowly circles the hull and its kinks writhe
+		# smoothly - nothing re-strikes, so nothing flickers.
+		var a := a0 + TAU * i / 3.0 + t * (0.35 + 0.1 * i)
 		var pts := PackedVector2Array()
 		var steps := 10
 		for j in steps + 1:
 			var k := float(j) / steps
 			var r := lerpf(10.0, r0, k)
-			var jit := 0.0 if j == 0 or j == steps else rng.randf_range(-0.09, 0.09)
+			var jit := 0.0 if j == 0 or j == steps else 0.08 * sin(j * 1.9 + t * 2.4 + i * 2.1) * sin(j * 0.7 - t * 1.3)
 			pts.append(Vector2.from_angle(a + jit) * r)
 		draw_polyline(pts, Color(glow, 0.45), 4.0, true)
 		draw_polyline(pts, Color(Color.WHITE, 0.9), 1.4, true)
