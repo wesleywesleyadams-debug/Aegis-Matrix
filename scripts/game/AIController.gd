@@ -59,6 +59,10 @@ func _process(delta: float) -> void:
 		_think(pid, st, game)
 
 func _think(pid: int, st: Dictionary, game: Game) -> void:
+	# The learning agent runs its whole side itself: nothing scripted.
+	if st.get("nn") is RLAgent:
+		st["nn"].tick(game, game.nearest_starbase(pid, Vector2.ZERO), self)
+		return
 	var base := game.nearest_starbase(pid, Vector2.ZERO)
 	if base == null:
 		return

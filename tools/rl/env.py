@@ -69,19 +69,31 @@ class StarEnv:
             self.proc = None
 
 
+def random_orders(obs, k=6):
+    """Random valid-looking orders: for k random actors, a random allowed verb
+    with a random object and target (the game ignores what doesn't apply)."""
+    out = []
+    acts = obs["actors"]
+    for _ in range(min(k, len(acts))):
+        ai = random.randrange(len(acts))
+        verbs = [i for i, m in enumerate(acts[ai]["mask"]) if m]
+        if not verbs:
+            continue
+        out.append([ai, random.choice(verbs), random.randrange(len(obs["objects"])),
+                    random.randrange(len(obs["entities"]) + len(obs["targets"]))])
+    return {"orders": out}
+
+
 if __name__ == "__main__":
-    # Smoke test: random decisions for one game.
+    # Smoke test: random orders for one game.
     env = StarEnv(int(os.environ.get("PORT", 47000)), system=os.environ.get("SYSTEM", "orion_reach"), minutes=float(os.environ.get("MINUTES", 6)), log="rl_smoke.log")
     obs = env.reset()
     steps = 0
     while not obs.get("done"):
-        a = {"build": random.randrange(len(obs["build_opts"])) if obs["build_opts"] and random.random() < 0.5 else -1,
-             "tech": random.randrange(len(obs["tech_opts"])) if obs["tech_opts"] else -1,
-             "target": random.randrange(len(obs["targets"])) if random.random() < 0.1 else -1}
-        obs = env.step(a)
+        obs = env.step(random_orders(obs))
         steps += 1
         if steps % 30 == 1:
-            print(f"t={obs['t']:.0f}s entities={len(obs['entities'])}x{len(obs['entities'][0]) if obs['entities'] else 0} "
-                  f"builds={len(obs['build_opts'])} techs={len(obs['tech_opts'])} targets={len(obs['targets'])} score={obs['score']} vs {obs['enemy_score']}")
+            print(f"t={obs['t']:.0f}s entities={len(obs['entities'])}x{len(obs['entities'][0])} actors={len(obs['actors'])} "
+                  f"objects={len(obs['objects'])}x{len(obs['objects'][0])} targets={len(obs['entities']) + len(obs['targets'])} score={obs['score']} vs {obs['enemy_score']}")
     print("done after", steps, "steps; won", obs.get("won"), "lost", obs.get("lost"), "score", obs.get("score"))
     env.close()

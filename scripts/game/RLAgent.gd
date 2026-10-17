@@ -1,42 +1,55 @@
 class_name RLAgent
 extends Node
-## The learning AI's body in the game: every DECIDE seconds it describes the
-## match to a Python trainer (tools/rl/) over a local TCP socket, waits for
-## its decision and carries it out. Built to ADAPT to new rules, so nothing
-## here names a ship, tech or map feature:
-##   - the world is a SET of entities, each a feature vector (kind, owner
-##     relation, position, health layers, firepower, speed...);
-##   - every choice is a set of OPTIONS described by their stats - each ship
-##     it could build right now (costs, time, layers, damage, range, speed,
-##     role), each tech it could research (costs, time, tier, and its effects
-##     hashed into a fixed-size vector so new effect keys still fit), each
-##     place its fleet could go. The network scores options; a new ship or
-##     tech is simply one more option it can judge by its stats.
-## Mining, colonist targeting, planet development and ship steering stay with
-## the scripted AIController (it calls tick() like NeuralCommander).
+## The learning AI's body in the game. It runs its whole side - nothing comes
+## from the scripted AI - and it can give every order a human player can.
 ##
-## Protocol: one JSON object per line each way. Game -> trainer: {obs...,
-## "reward_info", "done"}. Trainer -> game: {"build": i, "tech": i,
-## "target": i} (-1 = none) or {"quit": true}.
-## Started with SL_RL_PORT (and SL_RL_SIDE, default 1) in a sim (SL_SIM).
+## Every DECIDE seconds it describes the match to a Python trainer (tools/rl/)
+## over a local TCP socket, receives a list of orders and carries them out.
+## Built to ADAPT to new rules, so nothing here names a ship, tech, building
+## or map feature:
+##   entities - everything it can see, each a feature vector (kind, owner
+##              relation, position, health layers, firepower, reach, speed);
+##   actors   - every unit, starbase, station, depot and world it owns, plus
+##              the empire itself (for research), each with a mask of the
+##              VERBS it can use right now;
+##   objects  - everything that can be built or researched (every ship,
+##              building, construct and tech the game defines), described by
+##              its stats hashed into a fixed-size vector, so a new one is
+##              simply one more row;
+##   targets  - every entity above, plus points on a grid over the system.
+## An order is {actor, verb, object, target} (-1 where unused); the trainer
+## may send any number per step. Invalid orders are ignored.
+##
+## Protocol: one JSON object per line each way. Game -> trainer: the
+## observation (with "done", "won", "lost", "score", "enemy_score").
+## Trainer -> game: {"orders": [[actor, verb, object, target], ...]} or
+## {"quit": true}. Started with SL_RL_PORT (+ SL_RL_SIDE) in a sim (SL_SIM).
 
 const DECIDE := 2.0
-## How many entities (nearest to the home base first) the trainer sees.
-const MAX_ENTITIES := 160
-## Hash buckets for tech effects (any effect key, present or future).
-const EFFECT_BUCKETS := 24
-const ROLES := ["miner", "skimmer", "colony", "constructor", "scout", "support", "warship"]
-const KINDS := ["ship", "starbase", "station", "depot", "planet", "asteroid", "nebula", "storm", "star"]
+const MAX_ENTITIES := 220
+## Hash buckets for any definition's stats (present or future keys).
+const OBJ_BUCKETS := 48
+## Grid of target points over the system (GRID x GRID, inside the disc).
+const GRID := 12
+const KINDS := ["ship", "starbase", "station", "depot", "planet", "asteroid", "nebula", "storm", "star", "point"]
+## Every order the game has, as engine-level verbs.
+const VERBS := ["stop", "move", "attack_move", "attack", "mine", "return", "colonize", "bombard",
+	"dock", "refit", "found", "ability", "build_ship", "cancel_ship", "rally",
+	"build_building", "cancel_building", "demolish", "research", "cancel_research"]
+## What kind of object each object row is (one-hot in its features).
+const OBJ_KINDS := ["ship", "building", "construct", "tech"]
 
 var pid: int = 1
 var _tcp := StreamPeerTCP.new()
 var _buf := ""
 var _next := 0.0
 var _done_sent := false
-var _build_ids: Array = []
-var _tech_ids: Array = []
-var _targets: Array = []
-## How often each kind of decision was taken (dev reports read it).
+## This step's lookups, so the trainer's indices can be resolved.
+var _ents: Array = []        # Node2D per entity row
+var _actors: Array = []      # [kind, node] per actor row ("empire" has null)
+var _objects: Array = []     # [kind, id, extra] per object row
+var _targets: Array = []     # Node2D or Vector2 per target row
+## How often each verb was used (dev reports read it).
 var counts := {}
 
 func _init(side: int, port: int) -> void:
@@ -55,7 +68,8 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	_finish()
 
-## Called from AIController._think (once a second).
+## Called from AIController._think (once a second) - the only thing the
+## AIController does for this side.
 func tick(game: Game, base: Starbase, _ai: AIController) -> void:
 	if Game.now() < _next or _done_sent:
 		return
@@ -65,38 +79,50 @@ func tick(game: Game, base: Starbase, _ai: AIController) -> void:
 	if reply.get("quit", false):
 		game.get_tree().quit()
 		return
-	_act(game, base, reply)
+	for o in reply.get("orders", []):
+		if o is Array and o.size() == 4:
+			_order(game, int(o[0]), int(o[1]), int(o[2]), int(o[3]))
 
 func _finish() -> void:
 	if _done_sent or _tcp.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 		return
 	_done_sent = true
 	var game := Game.instance
-	_send(_observe(game, game.nearest_starbase(pid, Vector2.ZERO) if game else null, true))
+	if game:
+		_send(_observe(game, game.nearest_starbase(pid, Vector2.ZERO), true))
 
 # ---------------------------------------------------------------- observe
 
 func _observe(game: Game, base: Starbase, done: bool) -> Dictionary:
-	var home: Vector2 = base.global_position if base else Vector2.ZERO
+	var home: Vector2 = base.global_position if base else _centroid(game)
 	var r: Dictionary = game.resources[pid]
 	var rt: Dictionary = game.rates.get(pid, {})
 	var me := [r.get("food", 0.0) / 1000.0, r.get("minerals", 0.0) / 1000.0, r.get("energy", 0.0) / 1000.0, r.get("spice", 0.0) / 1000.0,
 		rt.get("food", 0.0), rt.get("minerals", 0.0), rt.get("energy", 0.0), rt.get("spice", 0.0),
 		game.total_pop(pid) / 10000.0, Game.now() / 3600.0, float(game.players.size()) / 8.0,
-		1.0 if game.research[pid].is_empty() and game.research_queue[pid].is_empty() else 0.0,
-		float(base.queue.size()) / 5.0 if base else 0.0]
-	var obs := {
+		game.upkeep(pid) / 60.0, float(game.researched[pid].size()) / 40.0]
+	var ents := _entities(game, home)
+	return {
 		"t": Game.now(), "pid": pid, "self": me, "done": done,
 		"won": game.winner_pid == pid or (done and not game.is_defeated(pid) and game.living_players().size() == 1),
 		"lost": game.is_defeated(pid),
 		"score": game.stats.score(pid),
 		"enemy_score": _enemy_score(game),
-		"entities": _entities(game, home),
-		"build_opts": _build_options(game, base),
-		"tech_opts": _tech_options(game),
-		"targets": _target_options(game, home),
+		"entities": ents,
+		"actors": _actor_rows(game, home),
+		"objects": _object_rows(game),
+		"targets": _target_rows(game, home, ents.size()),
+		"verbs": VERBS.size(),
 	}
-	return obs
+
+func _centroid(game: Game) -> Vector2:
+	var c := Vector2.ZERO
+	var n := 0
+	for s in game.get_tree().get_nodes_in_group("entities"):
+		if s.owner_id == pid:
+			c += s.global_position
+			n += 1
+	return c / n if n > 0 else Vector2.ZERO
 
 func _enemy_score(game: Game) -> float:
 	var best := 0.0
@@ -112,152 +138,266 @@ func _rel(owner: int, game: Game) -> Array:
 		return [0, 0, 0, 1]
 	return [0, 1, 0, 0] if game.are_allies(pid, owner) else [0, 0, 1, 0]
 
-func _kind(k: String) -> Array:
-	var v := []
-	for name in KINDS:
-		v.append(1 if name == k else 0)
-	return v
+func _onehot(names: Array, k: String) -> Array:
+	return names.map(func(n): return 1 if n == k else 0)
 
-## One feature row: kind one-hot, owner relation, position (fraction of the
-## map radius, relative to home), health layers (log-scaled), fill
-## fractions, firepower, reach, speed, size, extra (cargo / pop / amount).
+## One entity feature row (see the class doc).
 func _row(kind: String, owner: int, pos: Vector2, home: Vector2, hp: float, armor: float, shield: float, frac: float, dps: float, reach: float, speed: float, size: float, extra: float, game: Game) -> Array:
 	var rel := pos - home
-	var row := _kind(kind) + _rel(owner, game)
-	row.append_array([rel.x / Game.MAP_RADIUS, rel.y / Game.MAP_RADIUS, pos.length() / Game.MAP_RADIUS,
+	var row := _onehot(KINDS, kind) + _rel(owner, game)
+	row.append_array([rel.x / Game.MAP_RADIUS, rel.y / Game.MAP_RADIUS, pos.x / Game.MAP_RADIUS, pos.y / Game.MAP_RADIUS,
 		log(1.0 + hp) / 8.0, log(1.0 + armor) / 8.0, log(1.0 + shield) / 8.0, frac,
 		log(1.0 + dps) / 5.0, reach / 1000.0, speed / 200.0, size / 100.0, extra])
 	return row
 
+func _entity_row(e: Node2D, home: Vector2, game: Game, v: Vision) -> Array:
+	if e is Planet:
+		var p: Planet = e
+		var o: int = v.known_owner(p) if v else p.owner_id
+		return _row("planet", o, p.global_position, home, p.pop, 0.0, p.shield, p.pop / maxf(p.max_pop(), 1.0), 0.0, 0.0, 0.0, p.radius, float(p.free_fields()) / 30.0, game)
+	if e is Asteroid:
+		return _row("asteroid", 0, e.global_position, home, float(e.amount), 0.0, 0.0, 1.0 if e.resource == "spice" else 0.0, 0.0, 0.0, 0.0, e.radius, 0.0, game)
+	if e is SpiceNebula:
+		return _row("nebula", 0, e.global_position, home, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (e.radius if e.shape == "cloud" else e.outer) / 10.0, 0.0, game)
+	if e is IonStorm:
+		return _row("storm", 0, e.global_position, home, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, e.radius / 10.0, 0.0, game)
+	if e.is_in_group("stars"):
+		return _row("star", 0, e.global_position, home, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, e.core_radius, 0.0, game)
+	var kind := "ship" if e is Ship else ("starbase" if e is Starbase else ("station" if e is MiningStation else "depot"))
+	var dps := 0.0
+	var reach := 0.0
+	var speed := 0.0
+	var extra := 0.0
+	if e is Ship:
+		var s: Ship = e
+		if s.def.get("weapon", "") != "":
+			dps = float(s.def["damage"]) * int(s.def.get("guns", 1)) / maxf(float(s.def["cooldown"]), 0.1)
+			reach = s.weapon_range()
+		speed = s.max_speed()
+		extra = float(s.cargo) / 100.0
+	var mx: float = e.max_hp + e.max_armor + e.max_shield
+	return _row(kind, e.owner_id, e.global_position, home, e.max_hp, e.max_armor, e.max_shield, (e.hp + e.armor + e.shield) / maxf(mx, 1.0), dps, reach, speed, e.radius, extra, game)
+
+## Everything it can see, nearest to home first (its own things always).
 func _entities(game: Game, home: Vector2) -> Array:
 	var v: Vision = game.visions.get(pid)
-	var rows: Array = []
 	var tree := game.get_tree()
+	var cand: Array = []
 	for e in tree.get_nodes_in_group("entities"):
-		if not e.is_alive():
+		if e.is_alive() and (e.owner_id == pid or v == null or v.can_see(e)):
+			cand.append(e)
+	cand.append_array(tree.get_nodes_in_group("planets"))
+	for a in tree.get_nodes_in_group("asteroids"):
+		if v == null or v.is_explored_at(a.global_position):
+			cand.append(a)
+	cand.append_array(tree.get_nodes_in_group("nebulae"))
+	cand.append_array(tree.get_nodes_in_group("storms"))
+	cand.append_array(tree.get_nodes_in_group("stars"))
+	cand.sort_custom(func(x, y): return (0 if x.get("owner_id") == pid else 1) * 1e6 + home.distance_to(x.global_position) < (0 if y.get("owner_id") == pid else 1) * 1e6 + home.distance_to(y.global_position))
+	_ents = cand.slice(0, MAX_ENTITIES)
+	return _ents.map(func(e): return _entity_row(e, home, game, v))
+
+## Its own units, buildings and worlds (each pointing at its entity row),
+## plus the empire, each with a mask over VERBS.
+func _actor_rows(game: Game, home: Vector2) -> Array:
+	_actors = [["empire", null]]
+	var idle_research: bool = game.research[pid].is_empty() and game.research_queue[pid].is_empty()
+	var rows: Array = [{"entity": -1, "mask": _mask({"research": idle_research, "cancel_research": not idle_research})}]
+	for i in _ents.size():
+		var e: Node2D = _ents[i]
+		if e.get("owner_id") != pid:
 			continue
-		# Fog: an enemy is only seen where our sensors reach.
-		if e.owner_id != pid and v and not v.can_see(e):
-			continue
-		var kind := "ship" if e is Ship else ("starbase" if e is Starbase else ("station" if e is MiningStation else "depot"))
-		var dps := 0.0
-		var reach := 0.0
-		var speed := 0.0
-		var extra := 0.0
+		var m := {}
 		if e is Ship:
 			var s: Ship = e
-			if s.def.get("weapon", "") != "":
-				dps = float(s.def["damage"]) * int(s.def.get("guns", 1)) / maxf(float(s.def["cooldown"]), 0.1)
-				reach = s.weapon_range()
-			speed = s.max_speed()
-			extra = float(s.cargo) / 100.0
-		var mx: float = e.max_hp + e.max_armor + e.max_shield
-		var frac: float = (e.hp + e.armor + e.shield) / maxf(mx, 1.0)
-		rows.append([home.distance_to(e.global_position), _row(kind, e.owner_id, e.global_position, home, e.max_hp, e.max_armor, e.max_shield, frac, dps, reach, speed, e.radius, extra, game)])
-	for p in tree.get_nodes_in_group("planets"):
-		var o: int = v.known_owner(p) if v else p.owner_id
-		rows.append([home.distance_to(p.global_position), _row("planet", o, p.global_position, home, p.pop, 0.0, p.shield, p.pop / maxf(p.max_pop(), 1.0), 0.0, 0.0, 0.0, p.radius, float(p.fields) / 30.0, game)])
-	for a in tree.get_nodes_in_group("asteroids"):
-		if v and not v.is_explored_at(a.global_position):
+			if s.docked:
+				continue
+			var armed: bool = s.def.get("weapon", "") != ""
+			m = {"stop": true, "move": true, "attack_move": armed, "attack": armed, "bombard": armed,
+				"mine": s.is_miner(), "return": s.is_miner() and s.cargo > 0,
+				"colonize": s.def["role"] == "colony", "found": s.def["role"] == "constructor",
+				"dock": s.fits_bay(), "refit": not s.def.has("variant") and Defs.VARIANTS_OF.has(s.ship_type),
+				"ability": not Abilities.job_def(s).is_empty() and Abilities.job_def(s).get("active", false) and Abilities.ready_in(s) <= 0.0}
+		elif e is Starbase:
+			var sb: Starbase = e
+			m = {"build_ship": not sb.under_construction, "cancel_ship": not sb.queue.is_empty(), "rally": not sb.under_construction}
+		elif e is Planet:
+			var p: Planet = e
+			m = {"build_building": p.free_fields() > 0, "cancel_building": not p.construction.is_empty() or not p.construction_queue.is_empty(),
+				"demolish": p.buildings.any(func(b): return b != "")}
+		elif e is WeaponsDepot:
+			m = {"cancel_ship": not e.bays.is_empty()}
+		else:
 			continue
-		var amt: float = a.amount if a.get("amount") != null else 0.0
-		rows.append([home.distance_to(a.global_position), _row("asteroid", 0, a.global_position, home, amt, 0.0, 0.0, 1.0 if a.resource == "spice" else 0.0, 0.0, 0.0, 0.0, a.radius, 0.0, game)])
-	for n in tree.get_nodes_in_group("nebulae"):
-		rows.append([home.distance_to(n.global_position), _row("nebula", 0, n.global_position, home, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, (n.radius if n.shape == "cloud" else n.outer) / 10.0, 0.0, game)])
-	for s in tree.get_nodes_in_group("storms"):
-		rows.append([home.distance_to(s.global_position), _row("storm", 0, s.global_position, home, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, s.radius / 10.0, 0.0, game)])
-	for s in tree.get_nodes_in_group("stars"):
-		rows.append([home.distance_to(s.global_position), _row("star", 0, s.global_position, home, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, s.core_radius, 0.0, game)])
-	rows.sort_custom(func(x, y): return x[0] < y[0])
-	return rows.slice(0, MAX_ENTITIES).map(func(x): return x[1])
+		_actors.append(["entity", e])
+		rows.append({"entity": i, "mask": _mask(m)})
+	return rows
 
-## Every ship the home starbase could start right now, described by stats.
-func _build_options(game: Game, base: Starbase) -> Array:
-	_build_ids = []
-	var out: Array = []
-	if base == null:
-		return out
-	var r: Dictionary = game.resources[pid]
+func _mask(m: Dictionary) -> Array:
+	return VERBS.map(func(vb): return 1 if m.get(vb, false) else 0)
+
+## A definition's stats, hashed into OBJ_BUCKETS (log-scaled, signed), so any
+## field - including ones added later - lands somewhere.
+func _hash_stats(d: Dictionary, prefix: String = "") -> Array:
+	var out := []
+	out.resize(OBJ_BUCKETS)
+	out.fill(0.0)
+	_hash_into(out, d, prefix)
+	return out
+
+func _hash_into(out: Array, d: Dictionary, prefix: String) -> void:
+	for k in d:
+		var val = d[k]
+		var key := prefix + str(k)
+		if val is Dictionary:
+			_hash_into(out, val, key + ".")
+		elif val is float or val is int:
+			var x := float(val)
+			out[hash(key) % OBJ_BUCKETS] += signf(x) * log(1.0 + absf(x))
+		elif val is bool:
+			out[hash(key) % OBJ_BUCKETS] += 1.0 if val else 0.0
+		elif val is String and k in ["role", "job", "weapon", "variant", "group", "line", "class", "base"]:
+			out[hash(key + "=" + val) % OBJ_BUCKETS] += 1.0
+
+## Every ship, building, construct and tech the game defines.
+func _object_rows(game: Game) -> Array:
+	_objects = []
+	var rows: Array = []
 	for t in Defs.SHIPS:
-		var d: Dictionary = Defs.SHIPS[t]
-		if d.has("variant") or base.can_queue(t) != "":
-			continue
-		if r["spice"] < d["cost"].get("spice", 0):
-			continue
-		var c: Dictionary = d["cost"]
-		var role: String = d.get("role", "warship")
-		var row := [c.get("minerals", 0.0) / 1000.0, c.get("spice", 0.0) / 100.0, c.get("energy", 0.0) / 100.0, float(d.get("build_time", 30.0)) / 100.0,
-			log(1.0 + d.get("hp", 0.0)) / 8.0, log(1.0 + d.get("armor", 0.0)) / 8.0, log(1.0 + d.get("shield", 0.0)) / 8.0,
-			float(d.get("damage", 0.0)) * int(d.get("guns", 1)) / maxf(float(d.get("cooldown", 1.0)), 0.1) / 30.0,
-			float(d.get("range", 0.0)) / 1000.0, float(d.get("speed", 0.0)) / 200.0, float(d.get("upkeep", 0.0)),
-			float(d.get("cargo", 0.0)) / 100.0, 1.0 if d.has("job") else 0.0]
-		for rl in ROLES:
-			row.append(1 if role == rl else 0)
-		_build_ids.append(t)
-		out.append(row)
-	return out
-
-## Every tech it could start, with its effects hashed into buckets.
-func _tech_options(game: Game) -> Array:
-	_tech_ids = []
-	var out: Array = []
-	if not (game.research[pid].is_empty() and game.research_queue[pid].is_empty()):
-		return out
+		if Defs.SHIPS[t].has("variant"):
+			continue   # variants come from refits, not starbases
+		_objects.append(["ship", t, ""])
+		rows.append(_onehot(OBJ_KINDS, "ship") + [1.0 if Game.instance.nearest_starbase(pid, Vector2.ZERO) and Game.instance.nearest_starbase(pid, Vector2.ZERO).can_queue(t) == "" else 0.0] + _hash_stats(Defs.SHIPS[t]))
+	for b in Defs.BUILDINGS:
+		_objects.append(["building", b, ""])
+		rows.append(_onehot(OBJ_KINDS, "building") + [1.0] + _hash_stats(Defs.BUILDINGS[b]))
+	_objects.append(["construct", "starbase", ""])
+	rows.append(_onehot(OBJ_KINDS, "construct") + [1.0] + _hash_stats(Defs.STARBASE))
+	_objects.append(["construct", "station", ""])
+	rows.append(_onehot(OBJ_KINDS, "construct") + [1.0] + _hash_stats(Defs.MINING_STATION))
+	var depots_ok := game.has_tech(pid, str(Defs.WEAPONS_DEPOT["requires"]))
+	for v in Defs.VARIANTS:
+		_objects.append(["construct", "depot", v])
+		rows.append(_onehot(OBJ_KINDS, "construct") + [1.0 if depots_ok else 0.0] + _add(_hash_stats(Defs.WEAPONS_DEPOT), _hash_stats(Defs.VARIANTS[v], "variant.")))
 	for id in Defs.TECHS:
-		if game.tech_state(pid, id) != "available":
-			continue
-		var t: Dictionary = Defs.TECHS[id]
-		var row := [t["cost"].get("energy", 0.0) / 1000.0, t["cost"].get("spice", 0.0) / 100.0, float(t["time"]) / 300.0, float(t["tier"]) / 3.0]
-		var fx := []
-		fx.resize(EFFECT_BUCKETS)
-		fx.fill(0.0)
-		for k in t["effects"]:
-			fx[hash(k) % EFFECT_BUCKETS] += float(t["effects"][k])
-		row.append_array(fx)
-		_tech_ids.append(id)
-		out.append(row)
+		_objects.append(["tech", id, ""])
+		rows.append(_onehot(OBJ_KINDS, "tech") + [1.0 if game.tech_state(pid, id) == "available" else 0.0] + _hash_stats(Defs.TECHS[id]))
+	return rows
+
+func _add(a: Array, b: Array) -> Array:
+	var out := a.duplicate()
+	for i in out.size():
+		out[i] += b[i]
 	return out
 
-## Where the fleet could be sent: known enemy worlds and bases, free worlds,
-## and home (defend). Each described like an entity.
-func _target_options(game: Game, home: Vector2) -> Array:
-	_targets = [home]
-	var out: Array = [_row("starbase", pid, home, home, 0, 0, 0, 1, 0, 0, 0, 0, 0, game)]
-	var v: Vision = game.visions.get(pid)
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		var o: int = v.known_owner(p) if v else p.owner_id
-		if o != pid:
-			_targets.append(p.global_position)
-			out.append(_row("planet", o, p.global_position, home, p.pop, 0, p.shield, 0, 0, 0, 0, p.radius, 0, game))
-	if v:
-		for sb in v.seen_bases:
-			_targets.append(v.seen_bases[sb][0])
-			out.append(_row("starbase", _any_enemy(game), v.seen_bases[sb][0], home, 0, 0, 0, v.seen_bases[sb][1], 0, 0, 0, 0, 0, game))
-	return out
-
-## Some enemy player id (for describing an enemy thing whose owner we only
-## know to be hostile).
-func _any_enemy(game: Game) -> int:
-	for p in game.players:
-		if game.is_hostile(pid, p):
-			return p
-	return 0
+## Targets: every entity row (by index, so the trainer can reuse their
+## encodings), then grid points over the system.
+func _target_rows(game: Game, home: Vector2, n_ents: int) -> Array:
+	_targets = _ents.duplicate()
+	var pts: Array = []
+	var step := Game.MAP_RADIUS * 2.0 / GRID
+	for gy in GRID:
+		for gx in GRID:
+			var p := Vector2(-Game.MAP_RADIUS + (gx + 0.5) * step, -Game.MAP_RADIUS + (gy + 0.5) * step)
+			if p.length() > Game.MAP_RADIUS - 40.0:
+				continue
+			_targets.append(p)
+			var v: Vision = game.visions.get(pid)
+			pts.append(_row("point", 0, p, home, 0, 0, 0, 1.0 if v and v.is_explored_at(p) else 0.0, 0, 0, 0, 0, 0, game))
+	return pts
 
 # ---------------------------------------------------------------- act
 
-func _act(game: Game, base: Starbase, a: Dictionary) -> void:
-	var b := int(a.get("build", -1))
-	if b >= 0 and b < _build_ids.size() and base:
-		base.enqueue(_build_ids[b])
-	var t := int(a.get("tech", -1))
-	if t >= 0 and t < _tech_ids.size():
-		game.queue_research(pid, _tech_ids[t])
-	var g := int(a.get("target", -1))
-	if g >= 0 and g < _targets.size():
-		var goal: Vector2 = _targets[g]
-		for s in game.get_tree().get_nodes_in_group("ships"):
-			if s.owner_id == pid and s.def["role"] == "warship" and s.is_alive() and not s.docked:
-				s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+func _order(game: Game, ai: int, vi: int, oi: int, ti: int) -> void:
+	if ai < 0 or ai >= _actors.size() or vi < 0 or vi >= VERBS.size():
+		return
+	var verb: String = VERBS[vi]
+	var actor = _actors[ai][1]
+	if actor != null and not is_instance_valid(actor):
+		return
+	var obj: Array = _objects[oi] if oi >= 0 and oi < _objects.size() else []
+	var tgt = _targets[ti] if ti >= 0 and ti < _targets.size() else null
+	if tgt is Object and not is_instance_valid(tgt):
+		return
+	var pos: Vector2 = (tgt.global_position if tgt is Node2D else tgt) if tgt != null else Vector2.INF
+	counts[verb] = counts.get(verb, 0) + 1
+	match verb:
+		"research":
+			if not obj.is_empty() and obj[0] == "tech":
+				game.queue_research(pid, obj[1])
+		"cancel_research":
+			var cur: String = game.research[pid].get("id", "")
+			if cur != "":
+				game.cancel_research(pid, cur)
+		"stop":
+			actor.order_stop()
+		"move":
+			if pos != Vector2.INF:
+				actor.order_move(pos.limit_length(Game.MAP_RADIUS - 20.0))
+		"attack_move":
+			if pos != Vector2.INF:
+				actor.order_attack_move(pos.limit_length(Game.MAP_RADIUS - 20.0))
+		"attack":
+			if tgt is SpaceEntity and tgt.is_enemy_of(pid):
+				actor.order_attack(tgt)
+		"bombard":
+			if tgt is Planet and tgt.is_enemy_of(pid):
+				actor.order_bombard(tgt)
+		"mine":
+			if tgt != null and tgt is Node2D and actor.can_mine(tgt):
+				actor.order_mine(tgt)
+			elif pos != Vector2.INF and game.in_nebula(pos):
+				var pocket := game.nebula_pocket_at(pos)
+				if pocket and actor.can_mine(pocket):
+					actor.order_mine(pocket)
+		"return":
+			actor.order_return(tgt if tgt is SpaceEntity and tgt.owner_id == pid else null)
+		"colonize":
+			if tgt is Planet and tgt.owner_id == 0 and tgt.is_habitable():
+				actor.order_colonize(tgt)
+		"dock":
+			if tgt is Ship and tgt.owner_id == pid and tgt.is_carrier():
+				actor.order_dock(tgt)
+		"refit":
+			if tgt is WeaponsDepot and tgt.owner_id == pid and actor.can_refit(tgt.variant):
+				actor.order_refit(tgt.variant, tgt)
+		"found":
+			if not obj.is_empty() and obj[0] == "construct" and pos != Vector2.INF:
+				match obj[1]:
+					"starbase": actor.order_build_starbase(pos)
+					"station": actor.order_build_station(pos)
+					"depot": actor.order_build_depot(pos, obj[2])
+		"ability":
+			Abilities.use(actor)
+		"build_ship":
+			if not obj.is_empty() and obj[0] == "ship" and actor is Starbase:
+				actor.enqueue(obj[1])
+		"cancel_ship":
+			if actor is Starbase and not actor.queue.is_empty():
+				actor.cancel(actor.queue.size() - 1)
+			elif actor is WeaponsDepot:
+				actor.cancel_all()
+		"rally":
+			if actor is Starbase and pos != Vector2.INF:
+				actor.set_rally(pos, tgt if tgt is Node2D else null)
+		"build_building":
+			if not obj.is_empty() and obj[0] == "building" and actor is Planet:
+				for f in actor.fields:
+					if actor.can_build(f, obj[1]) == "":
+						actor.order_build(f, obj[1])
+						break
+		"cancel_building":
+			if actor is Planet:
+				var f: int = actor.construction.get("field", -1)
+				if f < 0 and not actor.construction_queue.is_empty():
+					f = actor.construction_queue[-1]["field"]
+				if f >= 0:
+					actor.cancel_build(f)
+		"demolish":
+			if actor is Planet and not obj.is_empty() and obj[0] == "building":
+				var f2: int = actor.buildings.find(obj[1])
+				if f2 >= 0:
+					actor.demolish(f2)
 
 # ---------------------------------------------------------------- wire
 
