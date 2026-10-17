@@ -141,7 +141,7 @@ const BASE_SHIPS := {
 		# shield (base "shield", starts empty) first and sending the rest to the
 		# energy pool (Ship._solar_tick).
 		"solar_sail": 15.0, "shield_color": Color("c9a0ff"),
-		"hp": 130.0, "armor": 70.0, "shield": 100.0, "speed": 80.0, "radius": 11.0,
+		"hp": 200.0, "armor": 140.0, "shield": 100.0, "speed": 80.0, "radius": 11.0,
 		"cost": {"minerals": 110, "spice": 10}, "build_time": 24.0, "upkeep": 1.3,
 		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
 	},
