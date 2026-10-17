@@ -319,6 +319,7 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	pop -= amount * POP_PER_DAMAGE
 	if owner_id == g.player_id:
 		g.alert("%s is being bombarded!" % planet_name, "alert_planet", false, global_position)
+		Music.urgent_ping()
 	if pop <= 0.0:
 		var attacker: int = from.owner_id if is_instance_valid(from) and from.get("owner_id") != null else 0
 		_depopulate(attacker)

@@ -219,6 +219,7 @@ func take_damage(amount: float, from: SpaceEntity = null, profile: Dictionary = 
 	g.stats.count(owner_id, "starbase_damage_taken", int(amount))
 	if owner_id == g.player_id and hp > 0.0:
 		g.alert("Your starbase is under attack!", "alert_starbase", false, global_position)
+		Music.urgent_ping()
 
 func _draw() -> void:
 	if Engine.is_editor_hint():

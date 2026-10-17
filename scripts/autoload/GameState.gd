@@ -173,7 +173,7 @@ var ui_font: String = "console"
 var master_volume_db: float = 0.0
 var music_volume_db: float = -8.0
 ## In-game music playlist: track ids (see Music.available_tracks()).
-var music_playlist: Array = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "galactic_temple", "title", "lobby"]
+var music_playlist: Array = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "galactic_temple", "sector", "airy", "pulse", "determined_pursuit", "spacedman", "title", "lobby"]
 ## Shuffle: play the in-game songs in random order instead of list order.
 var music_shuffle: bool = false
 
@@ -358,7 +358,7 @@ func _reset_account_settings_to_defaults() -> void:
 	music_volume_db = -8.0
 	audio_enabled = true
 	music_enabled = true
-	music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "galactic_temple", "title", "lobby"]
+	music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "galactic_temple", "sector", "airy", "pulse", "determined_pursuit", "spacedman", "title", "lobby"]
 	music_shuffle = false
 	hotkeys = {}
 	human_player_id = 1

@@ -19,6 +19,11 @@ const BUILTIN_TRACKS := [
 	["deus_ex_tempus", "Deus Ex Tempus (Trevor Lentz)"],
 	["hero_immortal", "Hero Immortal (Trevor Lentz)"],
 	["galactic_temple", "Galactic Temple (yd)"],
+	["sector", "Sector (SRG774)"],
+	["airy", "Airy (SRG774)"],
+	["pulse", "Pulse (SRG774)"],
+	["determined_pursuit", "Determined Pursuit (Emma_MA)"],
+	["spacedman", "Spacedman (Shane Ivers)"],
 	["game", "Stardust Dominion Synth: In-Game"],
 	["title", "Stardust Dominion Synth: Title"],
 	["lobby", "Stardust Dominion Synth: Lobby"],
@@ -30,7 +35,7 @@ const IMPORT_EXTENSIONS := ["ogg", "mp3", "wav"]
 ## Per-track loudness trim (dB) so tracks sit at the same level (measured
 ## integrated loudness; the procedural loops are about -22 LUFS). Recordings
 ## are left untouched and turned down here instead.
-const TRACK_TRIM := {"through_space": -3.0, "spacelife": -3.0, "magic_space": -8.5, "deus_ex_tempus": -11.0, "hero_immortal": -9.5, "galactic_temple": 2.0}
+const TRACK_TRIM := {"through_space": -3.0, "spacelife": -3.0, "magic_space": -8.5, "deus_ex_tempus": -11.0, "hero_immortal": -9.5, "galactic_temple": 2.0, "sector": -10.0, "airy": -8.5, "pulse": -3.5, "determined_pursuit": -9.2, "spacedman": -2.3}
 
 signal tracks_changed
 
@@ -53,6 +58,10 @@ var _before_preview := {}
 func _ready() -> void:
 	player.volume_db = GameState.music_volume_db
 	player.finished.connect(_on_finished)
+	_cue_ui = AudioStreamPlayer.new()
+	add_child(_cue_ui)
+	# Every button in the game, now and later, gets the hover cue.
+	get_tree().node_added.connect(_on_node_added)
 	play_screen(TITLE_TRACK)
 	if OS.get_environment("SL_MUSIC_LIVE_TEST") != "":
 		_live_test.call_deferred()
@@ -152,6 +161,15 @@ func set_in_playlist(id: String, on: bool) -> void:
 ## disabling songs switches straight away.
 func play_screen(track: String) -> void:
 	_screen_track = track
+	_cue = ""
+	# The main screen has its own menu loop from the cue library.
+	if track == TITLE_TRACK and _cue_stream("title") != null:
+		_playlist = []
+		_in_game = false
+		var ts := _cue_stream("title")
+		_set_loop(ts, true)
+		_start("cue:title", ts)
+		return
 	if GameState.music_playlist.has(track) and _stream(track) != null:
 		play_track(track)
 	elif not _in_game:
@@ -180,6 +198,7 @@ func play_track(name: String) -> void:
 ## disabled: an empty playlist means no in-game music.
 func play_game_playlist() -> void:
 	_screen_track = ""
+	_cue = ""
 	_start_playlist()
 
 func _start_playlist() -> void:
@@ -202,7 +221,7 @@ func _play_playlist_item() -> void:
 	_start(id, stream)
 
 func _on_finished() -> void:
-	if previewing != "" or _playlist.is_empty():
+	if previewing != "" or _playlist.is_empty() or _cue != "":
 		return
 	_playlist_index = _next_index()
 	_play_playlist_item()
@@ -264,7 +283,7 @@ func stop_preview() -> void:
 
 ## Player volume = the Options music volume plus this track's trim.
 func apply_volume() -> void:
-	player.volume_db = GameState.music_volume_db + TRACK_TRIM.get(_current, 0.0)
+	player.volume_db = GameState.music_volume_db + TRACK_TRIM.get(_current, CUE_TRIM.get(_current.trim_prefix("cue:"), 0.0))
 
 func restart_current_track() -> void:
 	player.seek(0.0)
@@ -397,3 +416,78 @@ func _next_index() -> int:
 		return (_playlist_index + 1) % _playlist.size()
 	var i := randi() % (_playlist.size() - 1)
 	return i + 1 if i >= _playlist_index else i
+
+# ---------------------------------------------------------------- cues
+# A hidden library of musical cues (assets/audio/cues/cue_<name>.ogg, from
+# the Dark Sci-Fi Audio Pack, see CREDITS.md). They are never offered as
+# soundtrack songs: each plays for one purpose -
+#   title        the main screen's menu loop (play_screen)
+#   hover        button hover (every Button, see _on_node_added)
+#   victory      the win sound (Sfx plays it)
+#   transmission the end-of-match theme (play_cue, looping)
+#   urgent       high-stakes music while our worlds or starbases are under
+#                attack (urgent_ping), handing back to the playlist after
+#                URGENT_HOLD seconds of calm
+
+const CUE_DIR := "res://assets/audio/cues/cue_%s.ogg"
+## Loudness trims (dB) so the cues sit with the soundtrack.
+const CUE_TRIM := {"title": -2.0, "transmission": -9.0, "urgent": -2.4}
+const HOVER_DB := -16.0
+const HOVER_GAP_MS := 60
+## Seconds of calm after the last attack before urgent music hands back.
+const URGENT_HOLD := 25.0
+
+var _cue := ""
+var _cue_ui: AudioStreamPlayer
+var _last_hover_ms := 0
+var _urgent_until := 0.0
+
+func _cue_stream(name: String) -> AudioStream:
+	var p := CUE_DIR % name
+	return load(p) if ResourceLoader.exists(p) else null
+
+## Replaces the music with a cue until play_game_playlist / play_screen.
+func play_cue(name: String, loop: bool = true) -> void:
+	var s := _cue_stream(name)
+	if s == null:
+		return
+	_cue = name
+	_set_loop(s, loop)
+	_start("cue:" + name, s)
+
+## Called whenever our side is attacked: switches to the urgent cue and keeps
+## it going until URGENT_HOLD seconds pass without another call.
+func urgent_ping() -> void:
+	if not _in_game or (_cue != "" and _cue != "urgent"):
+		return
+	_urgent_until = Time.get_ticks_msec() / 1000.0 + URGENT_HOLD
+	if _cue != "urgent":
+		play_cue("urgent")
+
+func _process(_delta: float) -> void:
+	if _cue == "urgent" and Time.get_ticks_msec() / 1000.0 > _urgent_until:
+		_cue = ""
+		_start_playlist()
+
+## A one-shot cue on its own player, so it doesn't interrupt the music.
+func play_cue_sfx(name: String, volume_db: float = 0.0) -> void:
+	var s := _cue_stream(name)
+	if s == null:
+		return
+	_set_loop(s, false)
+	_cue_ui.stream = s
+	_cue_ui.volume_db = volume_db
+	_cue_ui.play()
+
+func _on_node_added(n: Node) -> void:
+	if n is BaseButton:
+		n.mouse_entered.connect(_on_button_hover.bind(n))
+
+func _on_button_hover(b: BaseButton) -> void:
+	if not is_instance_valid(b) or b.disabled:
+		return
+	var now := Time.get_ticks_msec()
+	if now - _last_hover_ms < HOVER_GAP_MS:
+		return
+	_last_hover_ms = now
+	play_cue_sfx("hover", HOVER_DB)

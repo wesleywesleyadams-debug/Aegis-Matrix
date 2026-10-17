@@ -364,6 +364,10 @@ const MUSIC_CREDITS := [
 	["Magic Space", "CodeManu", "CC0", "opengameart.org/content/magic-space"],
 	["Deus Ex Tempus", "Trevor Lentz", "CC BY-SA 3.0", "opengameart.org/content/deus-ex-tempus"],
 	["Hero Immortal", "Trevor Lentz", "CC BY-SA 3.0", "opengameart.org/content/hero-immortal"],
+	["Galactic Temple", "yd", "CC0", "opengameart.org/content/galactic-temple"],
+	["Dark Sci-Fi Audio Pack", "SRG774", "CC0", "opengameart.org/content/dark-sci-fi-audio-pack"],
+	["Determined Pursuit", "Emma_MA", "CC0", "opengameart.org/content/determined-pursuit-epic-orchestra-loop"],
+	["Spacedman", "Shane Ivers", "CC BY 4.0", "www.silvermansound.com"],
 ]
 
 var _credits: Control

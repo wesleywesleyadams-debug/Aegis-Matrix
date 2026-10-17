@@ -1088,8 +1088,13 @@ func _end_match(won: bool) -> void:
 	ai.process_mode = Node.PROCESS_MODE_DISABLED
 	if vision:
 		vision.reveal_all()
-	if not demo_mode:
-		sfx.play_ui("victory" if won else "defeat")
+	if not demo_mode and not sim_mode:
+		# The win sting and end theme come from the music cue library.
+		if won:
+			Music.play_cue_sfx("victory", -6.0)
+		else:
+			sfx.play_ui("defeat")
+		Music.play_cue("transmission")
 	match_over.emit(won)
 
 # ---------------------------------------------------------------- input
@@ -1695,11 +1700,12 @@ func _enter_dev_capture() -> void:
 		Engine.time_scale = 1.0
 		var probe: Node2D = get_tree().get_nodes_in_group("ships")[0]
 		var p0 := probe.global_position
-		print("VICTORY TEST sound at end: ", sfx._ui.stream.resource_path, " playing=", sfx._ui.playing, " vol=", sfx._ui.volume_db)
+		var end_sfx: AudioStreamPlayer = Music._cue_ui if Music._cue_ui.stream else sfx._ui
+		print("VICTORY TEST sound at end: ", end_sfx.stream.resource_path if end_sfx.stream else "none", " playing=", end_sfx.playing, " music=", Music._current)
 		var c0 := Game.now()
 		await get_tree().create_timer(2.0).timeout
 		print("VICTORY TEST frozen: ship moved %.2f px, clock moved %.2f s" % [probe.global_position.distance_to(p0), Game.now() - c0])
-		print("VICTORY TEST sound: ", sfx._ui.stream.resource_path, " playing=", sfx._ui.playing, " vol=", sfx._ui.volume_db)
+		print("VICTORY TEST sound: ", Music._cue_ui.stream.resource_path if Music._cue_ui.stream else "none", " playing=", Music._cue_ui.playing)
 		for step in ["end", "stats", "map"]:
 			if step == "stats":
 				hud._show_stats(true)
