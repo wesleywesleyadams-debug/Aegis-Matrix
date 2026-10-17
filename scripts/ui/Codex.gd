@@ -820,7 +820,8 @@ func _page_controls() -> void:
 		if i == HUD.PAGE_SWITCH_SLOT:
 			e = "Military >"
 			w = "< Economy"
-		rows.append([[OS.get_keycode_string(keys[i]), EDGE_LIT], e, w, Defs.SHIPS[Defs.BUILD_ORDER[i]]["name"]])
+		var sel: String = "" if Defs.BUILD_ORDER[i] == "corvette" else Defs.SHIPS[Defs.BUILD_ORDER[i]]["name"]
+		rows.append([[OS.get_keycode_string(keys[i]), EDGE_LIT], e, w, sel])
 	_table(["Key", "Economy page", "Military page", "Selects (no starbase)"], rows)
 	_heading("Everything else")
 	_table(["Action", "Key"], [
@@ -832,6 +833,7 @@ func _page_controls() -> void:
 		["Zoom", "Mouse wheel"],
 		["Stop", ["T", EDGE_LIT]],
 		["Select all warships", ["Tab", EDGE_LIT]],
+		["Select all corvettes", [OS.get_keycode_string(Defs.key_for("corvettes")), EDGE_LIT]],
 		["Go to your starbase, then cycle through the others", ["B", EDGE_LIT]],
 		["Next world of yours", ["Space", EDGE_LIT]],
 		["Build on the focused world", ["F", EDGE_LIT]],

@@ -1236,6 +1236,8 @@ func _handle_key(e: InputEventKey) -> void:
 		hud.set_speed_index(hud.speed_index() + 1)
 		return
 	match Defs.action_for_key(k):
+		"corvettes":
+			select_all_of_type("corvette")
 		"next_world":
 			cycle_planet()
 		"build_here":

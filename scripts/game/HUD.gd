@@ -1927,6 +1927,10 @@ func build_type_for_key(k: Key) -> String:
 	var i := panel_keys().find(k)
 	if i < 0 or i >= Defs.BUILD_ORDER.size():
 		return ""
+	# Corvettes have a key of their own (Defs.HOTKEYS "corvettes"), so Z
+	# can build a Radiation Sail Array without also meaning "corvettes".
+	if Defs.BUILD_ORDER[i] == "corvette":
+		return ""
 	return Defs.BUILD_ORDER[i]
 
 ## Opens the Codex over the match (pause menu). It runs in its own layer on
