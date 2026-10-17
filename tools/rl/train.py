@@ -32,7 +32,7 @@ Usage (from the project root, with the venv's python):
 Checkpoints and a log go to tools/rl/runs/ (not committed). --resume picks
 up the last checkpoint.
 """
-import argparse, copy, csv, os, random, threading, time
+import argparse, copy, csv, os, random, shutil, threading, time
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -40,6 +40,7 @@ import torch
 
 from env import StarEnv
 from model import Policy, collate, SLOTS
+from replay import render_replay
 
 SYSTEMS = ["orion_reach", "vega_drift", "kharon_expanse", "tethys_cluster", "sable_verge", "random"]
 ## The only reward: winning, scaled up the faster it happens.
@@ -77,6 +78,15 @@ DRILL_MINUTES = {"strike": 5.0, "hunt": 6.0, "expand": 8.0}
 ## straight in wins in under a minute at 0.1; at full it can't). 0.05 for an
 ## easier start.
 DRILL_DUCK = 0.05
+## Strike / hunt adapt to the agent: difficulty d (0-1) rises DRILL_STEP on a
+## win and falls on a loss, so it hovers near 50% wins. d sets how far out the
+## fleet starts (Game._drill_fleet) and the starbase's toughness, from
+## DRILL_TOUGH[0] to DRILL_TOUGH[1]. The drill is passed at d = 1.
+DRILL_STEP = 0.05
+DRILL_TOUGH = (0.03, 0.3)
+## Every KEEP_EVERY updates: a numbered copy of the checkpoint, and the next
+## game in env 0 is traced for a replay image (runs/replays/).
+KEEP_EVERY = 50
 ## Reward parts, for the per-game breakdown.
 PARTS = ["win", "loss", "trade", "siege", "damage", "bombard", "discover", "big", "curious"]
 ## Self-play: how often (updates) the frozen opponent catches up with the learner.
@@ -136,11 +146,13 @@ def main():
     start = 0
     si = 0          # index into STAGES
     duck = DUCK_START
+    drill_d = {"strike": 0.0, "hunt": 0.0}
     if args.resume and os.path.exists(ckpt):
         st = torch.load(ckpt, map_location=dev)
         pol.load_state_dict(st["model"]); opt.load_state_dict(st["opt"]); start = st["update"]
         si = st.get("stage", 0)
         duck = st.get("duck", DUCK_START)
+        drill_d.update(st.get("drill_d", {}))
         print("resumed at update", start)
         if args.reset_value:
             for m in pol.value:
@@ -178,7 +190,13 @@ def main():
         e.drill = s if s in DRILL_MINUTES else ""
         e.minutes = DRILL_MINUTES.get(s, args.minutes)
         e.level = {"L2": 2, "L5": 5}.get(s, 1)
-        e.duck = duck if s == "L1" else (DRILL_DUCK if s in ["strike", "hunt"] else 1.0)
+        e.drill_d = drill_d.get(s, 0.0)
+        e.duck = duck if s == "L1" else (DRILL_TOUGH[0] + (DRILL_TOUGH[1] - DRILL_TOUGH[0]) * e.drill_d if s in drill_d else 1.0)
+        e.trace = ""
+        if e is envs[0] and want_trace[0]:
+            want_trace[0] = False
+            os.makedirs(os.path.join(RUNS, "replays"), exist_ok=True)
+            e.trace = os.path.join(RUNS, "replays", "trace.jsonl")
         if s == "L5":
             if random.random() < TEST_SHARE:
                 e.level = 4   # yardstick game against the full scripted AI
@@ -191,6 +209,7 @@ def main():
         e.side = random.choice([1, 2])
         return e.reset()
 
+    want_trace = [False]
     obs = list(pool.map(fresh, envs))
     ep_ret = [0.0] * args.envs
     ep_parts = [dict.fromkeys(PARTS, 0.0) for _ in range(args.envs)]
@@ -230,12 +249,17 @@ def main():
                     gw.writerow([upd + 1, envs[i].stage, int(won), round(nxt[i].get("t", 0.0) / 60.0, 2), round(ep_ret[i], 1)]
                                 + [round(ep_parts[i][k], 1) for k in PARTS])
                     games.flush()
+                    if envs[i].stage in drill_d and envs[i].drill_d == drill_d[envs[i].stage]:
+                        k = envs[i].stage
+                        drill_d[k] = round(min(1.0, max(0.0, drill_d[k] + (DRILL_STEP if won else -DRILL_STEP))), 3)
+                    if envs[i].trace:
+                        render_replay(envs[i].trace, os.path.join(RUNS, "replays", f"upd{upd + 1}_{envs[i].stage}_{'won' if won else 'lost'}.png"))
                     if envs[i].stage == "L1" and won and envs[i].duck >= duck and duck < 1.0:
                         duck = min(1.0, duck * DUCK_GROW)
                         print(f"DUCK toughness now {duck:.3f}", flush=True)
                     # Promotion: wins PROMOTE of its last 20 games at this stage.
                     here = [r for r in results if r[4] == stage()][-20:]
-                    if si < len(STAGES) - 1 and (stage() != "L1" or duck >= 1.0) and len(here) >= 20 \
+                    if si < len(STAGES) - 1 and (stage() != "L1" or duck >= 1.0) and drill_d.get(stage(), 1.0) >= 1.0 and len(here) >= 20 \
                             and sum(1 for r in here if r[0]) >= PROMOTE * 20:
                         si += 1
                         print(f"PROMOTED to curriculum stage {stage()}", flush=True)
@@ -290,7 +314,7 @@ def main():
         vs_ai = sum(1 for r in tests if r[0]) / max(len(tests), 1)
         win = sum(1 for r in recent if r[0]) / max(len(recent), 1)
         mean_ret = np.mean([r[2] for r in recent]) if recent else 0.0
-        print(f"upd {upd + 1}  {stage()}  duck {duck:.3f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  ret {mean_ret:+.1f}  "
+        print(f"upd {upd + 1}  {stage()}  duck {duck:.3f}  drill {drill_d.get(stage(), 0):.2f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  ret {mean_ret:+.1f}  "
               f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f}  {time.time() - t0:.0f}s", flush=True)
         if recent and (upd + 1) % 10 == 0:
             print("  parts/game " + "  ".join(f"{k} {np.mean([r[5][k] for r in recent]):+.1f}" for k in PARTS), flush=True)
@@ -298,7 +322,10 @@ def main():
         if (upd + 1) % SNAPSHOT == 0 and stage() == "L5":
             pool_sd.append(copy.deepcopy(pol.state_dict()))
             del pool_sd[:-POOL]
-        torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1, "stage": si, "duck": duck}, ckpt)
+        torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1, "stage": si, "duck": duck, "drill_d": drill_d}, ckpt)
+        if (upd + 1) % KEEP_EVERY == 0:
+            shutil.copyfile(ckpt, os.path.join(RUNS, f"ckpt_{upd + 1}.pt"))
+            want_trace[0] = True
     for e in envs:
         e.close()
 

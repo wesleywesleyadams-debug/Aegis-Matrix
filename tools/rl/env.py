@@ -28,6 +28,8 @@ class StarEnv:
         self.duck = 1.0       # level 1: the sitting duck's starbase toughness
         self.drill = ""       # SL_DRILL practice scenario (strike, hunt, expand)
         self.stage = ""       # curriculum stage name, for the trainer
+        self.drill_d = 0.0    # drill difficulty 0-1 (SL_DRILL_D)
+        self.trace = ""       # SL_TRACE file for a replay of this game
         self.proc = self.conn = self.conn2 = None
         self.bufs = {}
 
@@ -46,7 +48,7 @@ class StarEnv:
         srv2 = self._listen(self.port + 500) if selfplay else None
         env = dict(os.environ, SL_SIM=f"rl{self.port}", SL_RL_PORT=str(self.port), SL_RL_SIDE=str(self.side),
                    SL_SYSTEM=self.system, SL_SIM_MINUTES=str(self.minutes), SL_SIM_SCALE=str(self.speed),
-                   SL_PLAYERS=str(self.players), SL_OPP_LEVEL=str(self.level), SL_DUCK_FRAC=str(self.duck), SL_DRILL=self.drill, SL_SEED=str(self.seed if self.seed is not None else random.randrange(1 << 30)))
+                   SL_PLAYERS=str(self.players), SL_OPP_LEVEL=str(self.level), SL_DUCK_FRAC=str(self.duck), SL_DRILL=self.drill, SL_DRILL_D=str(self.drill_d), SL_TRACE=os.path.abspath(self.trace) if self.trace else "", SL_SEED=str(self.seed if self.seed is not None else random.randrange(1 << 30)))
         if selfplay:
             env["SL_RL_PORT2"] = str(self.port + 500)
         out = open(self.log, "w") if self.log else subprocess.DEVNULL

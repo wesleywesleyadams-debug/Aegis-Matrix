@@ -51,6 +51,9 @@ var _objects: Array = []     # [kind, id, extra] per object row
 var _targets: Array = []     # Node2D or Vector2 per target row
 ## How often each verb was used (dev reports read it).
 var counts := {}
+## SL_TRACE=<file>: each decision, one JSON line of where everything is, for
+## the trainer's replay images (tools/rl/replay.py).
+var _trace: FileAccess = null
 var _found := {}   # enemy starbases / worlds seen this match (instance id)
 
 func _init(side: int, port: int) -> void:
@@ -76,6 +79,7 @@ func tick(game: Game, base: Starbase, _ai: AIController) -> void:
 		return
 	_next = Game.now() + DECIDE
 	_send(_observe(game, base, false))
+	_write_trace(game)
 	var reply := _receive()
 	if reply.get("quit", false):
 		game.get_tree().quit()
@@ -411,6 +415,24 @@ func _order(game: Game, ai: int, vi: int, oi: int, ti: int) -> void:
 					actor.demolish(f2)
 
 # ---------------------------------------------------------------- wire
+
+func _write_trace(game: Game) -> void:
+	var path := OS.get_environment("SL_TRACE")
+	if path == "":
+		return
+	if _trace == null:
+		_trace = FileAccess.open(path, FileAccess.WRITE)
+		if _trace == null:
+			return
+	var rows := []
+	var tree := game.get_tree()
+	for g in [["ships", "s"], ["starbases", "b"], ["planets", "p"]]:
+		for e in tree.get_nodes_in_group(g[0]):
+			if g[0] != "planets" and not e.is_alive():
+				continue
+			rows.append([g[1], int(e.owner_id), int(e.global_position.x), int(e.global_position.y)])
+	_trace.store_line(JSON.stringify({"t": snappedf(Game.now(), 0.1), "me": pid, "e": rows}))
+	_trace.flush()
 
 func _send(d: Dictionary) -> void:
 	_tcp.poll()

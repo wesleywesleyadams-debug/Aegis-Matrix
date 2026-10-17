@@ -3253,8 +3253,15 @@ func _drill_fleet() -> void:
 	var a: Vector2 = mine.global_position
 	var b: Vector2 = foe.global_position
 	var dir := (b - a).normalized()
-	# Strike starts inside the starbase's gun range (260), so the fight is on at once.
-	var at: Vector2 = b - dir * 180.0 if drill == "strike" else (a + b) * 0.5 + dir.orthogonal() * randf_range(-500.0, 500.0)
+	# SL_DRILL_D (0-1, set by the trainer) is the drill's difficulty. Strike:
+	# from inside the starbase's gun range (260) at 0 out to 600 at 1. Hunt:
+	# from 30% of the way home (and near the line) to 70% (and far off it).
+	var dd := clampf(float(OS.get_environment("SL_DRILL_D")), 0.0, 1.0)
+	var at: Vector2
+	if drill == "strike":
+		at = b - dir * lerpf(180.0, 600.0, dd)
+	else:
+		at = b + (a - b) * lerpf(0.3, 0.7, dd) + dir.orthogonal() * randf_range(-1.0, 1.0) * lerpf(100.0, 600.0, dd)
 	var kinds := ["destroyer", "destroyer", "corvette", "corvette", "corvette", "corvette", "corvette", "corvette"]
 	for i in kinds.size():
 		var s9 := spawn_ship(kinds[i], rl_side, at + Vector2(i % 4 * 18 - 27, i / 4 * 20 - 10).rotated(dir.angle()))
