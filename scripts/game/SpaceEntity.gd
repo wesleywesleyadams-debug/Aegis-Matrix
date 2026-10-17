@@ -52,6 +52,7 @@ func is_enemy_of(other_owner: int) -> bool:
 ## next at base value.
 ## The last enemy player to hit this (credited with the kill).
 var _killer := 0
+var _siege_frac := 0.0   # leftover thousandths for the starbase_damage tally
 
 func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary = {}) -> void:
 	if _dead:
@@ -71,6 +72,11 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		amount = Abilities.sail_absorb(self, amount, _from, profile)
 		if amount <= 0.0:
 			return
+	# Training tally: damage dealt to enemy starbases, in thousandths of their hull.
+	if Game.instance and self is Starbase and _killer != 0 and self.max_hp > 0.0:
+		_siege_frac += 1000.0 * minf(amount, self.hp) / self.max_hp
+		Game.instance.stats.count(_killer, "starbase_damage", int(_siege_frac))
+		_siege_frac -= floorf(_siege_frac)
 	# Convoy Protocols: harvesters are armored on top of that.
 	if Game.instance and self is Ship and self.def.get("role", "") in ["miner", "skimmer"]:
 		amount /= Game.instance.mod(owner_id, "harvester_damage_taken")

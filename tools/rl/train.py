@@ -7,6 +7,7 @@ on the GPU, and learns from the outcome:
            20 min, 500 at 40, 0 at 80); LOSS (-300) for losing
          + fighting: what enemy ships/constructs it destroys were worth / 100,
            minus what it loses / 100 (so it learns to trade well)
+         + SIEGE: 100 per whole enemy starbase hull worth of damage dealt
          + BIG (20) per enemy starbase destroyed, enemy world depopulated, or
            new world colonized
          + curiosity: NEW_ACTION (2) for each kind of action (verb + what it
@@ -45,6 +46,8 @@ WIN_DECAY = 12.5
 LOSS = -300.0
 VALUE_SCALE = 1.0 / 100.0
 BIG = 20.0
+## Per thousandth of an enemy starbase's hull destroyed (100 for a whole one).
+SIEGE = 0.1
 ## Curriculum: share of the last 20 games at a level it must win to move up.
 PROMOTE = 0.5
 ## Self-play: how often (updates) the frozen opponent catches up with the learner.
@@ -65,6 +68,7 @@ def reward_of(prev, cur):
     if a and b:
         d = lambda k: max(0, b.get(k, 0) - a.get(k, 0))
         r += VALUE_SCALE * (d("kill_value") - d("lost_value"))
+        r += SIEGE * d("starbase_damage")
         r += BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
     if cur.get("done"):
         if cur.get("won"):
@@ -80,7 +84,7 @@ def main():
     ap.add_argument("--envs", type=int, default=4)
     ap.add_argument("--steps", type=int, default=128, help="steps per env per update")
     ap.add_argument("--updates", type=int, default=1000)
-    ap.add_argument("--minutes", type=float, default=40)
+    ap.add_argument("--minutes", type=float, default=12)
     ap.add_argument("--speed", type=float, default=8)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--ent", type=float, default=0.01, help="exploration bonus (entropy weight)")
