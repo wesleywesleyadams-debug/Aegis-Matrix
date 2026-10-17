@@ -141,7 +141,7 @@ func _ready() -> void:
 	refresh_stats()
 	hp = max_hp
 	# A solar sail's shield starts empty and is only charged by harvesting.
-	shield = 0.0 if def.has("solar_sail") else max_shield
+	shield = max_shield
 	armor = max_armor
 	radius = def["radius"]
 	move_goal = global_position
