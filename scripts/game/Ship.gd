@@ -1315,6 +1315,8 @@ func in_solar_field() -> bool:
 ## once the shield is full the rest goes to the owner's energy pool.
 func _solar_tick(delta: float) -> void:
 	_solar_fx_tick(delta)
+	if Game.now() < sail_down_until:
+		return
 	if not in_solar_field():
 		return
 	_mote_timer -= delta
@@ -1350,6 +1352,8 @@ var _motes: Array = []
 var _mote_timer := 0.0
 var _sail_hits: Array = []
 var _sail_shards: Array = []
+## Game time until which the array is knocked out after its shield shattered.
+var sail_down_until := 0.0
 var _sail_reform := 1.0
 var _sail_was_up := false
 
@@ -1360,6 +1364,10 @@ func _solar_hit(from: SpaceEntity, before: float) -> void:
 	var a: float = (from.global_position - global_position).angle() if is_instance_valid(from) else randf() * TAU
 	_sail_hits.append({"a": a, "t": 0.0})
 	if before > 0.0 and shield <= 0.0:
+		# Shattered: the array is knocked out - no harvesting, no shield, no
+		# bubble - for Defs.SAIL_DOWN_TIME.
+		if from != null:
+			sail_down_until = Game.now() + Defs.SAIL_DOWN_TIME
 		# Shatter: fragments of the bubble fly outward and fade.
 		for i in 14:
 			var aa := TAU * i / 14.0 + randf_range(-0.1, 0.1)
