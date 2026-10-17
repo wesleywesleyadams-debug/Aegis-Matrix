@@ -176,6 +176,8 @@ var music_volume_db: float = -8.0
 var music_playlist: Array = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "galactic_temple", "sector", "airy", "pulse", "determined_pursuit", "spacedman", "title", "lobby"]
 ## Shuffle: play the in-game songs in random order instead of list order.
 var music_shuffle: bool = false
+## Adaptive music: in a match, songs follow what is happening (Music.MOODS).
+var adaptive_music: bool = true
 
 ## Rebindable controls: action id -> keycode (see Defs.HOTKEYS). Empty means
 ## "all defaults".
@@ -280,6 +282,7 @@ func save_account_settings() -> void:
 	config.set_value("audio", "music_enabled", music_enabled)
 	config.set_value("audio", "music_playlist", music_playlist)
 	config.set_value("audio", "music_shuffle", music_shuffle)
+	config.set_value("audio", "adaptive_music", adaptive_music)
 	config.set_value("controls", "hotkeys", hotkeys)
 	config.set_value("visuals", "show_debug_grid", show_debug_grid)
 	config.set_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
@@ -334,6 +337,7 @@ func load_account_settings() -> void:
 	music_enabled = config.get_value("audio", "music_enabled", music_enabled)
 	music_playlist = config.get_value("audio", "music_playlist", music_playlist)
 	music_shuffle = config.get_value("audio", "music_shuffle", music_shuffle)
+	adaptive_music = config.get_value("audio", "adaptive_music", adaptive_music)
 	hotkeys = config.get_value("controls", "hotkeys", {})
 	show_debug_grid = config.get_value("visuals", "show_debug_grid", show_debug_grid)
 	show_combat_hitboxes = config.get_value("visuals", "show_combat_hitboxes", show_combat_hitboxes)
@@ -360,6 +364,7 @@ func _reset_account_settings_to_defaults() -> void:
 	music_enabled = true
 	music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "galactic_temple", "sector", "airy", "pulse", "determined_pursuit", "spacedman", "title", "lobby"]
 	music_shuffle = false
+	adaptive_music = true
 	hotkeys = {}
 	human_player_id = 1
 	player_slots = _default_player_slots()

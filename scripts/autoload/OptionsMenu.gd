@@ -50,6 +50,16 @@ func _ready() -> void:
 	music_slider.value_changed.connect(_on_music_slider_changed)
 	audio_enabled_checkbox.toggled.connect(_on_audio_enabled_toggled)
 	music_enabled_checkbox.toggled.connect(_on_music_enabled_toggled)
+	# Adaptive music: songs follow what is happening in a match (Music moods).
+	var adaptive := CheckBox.new()
+	adaptive.text = "Adaptive music"
+	adaptive.tooltip_text = "In a match, play calm, tense or battle songs to match what is happening"
+	adaptive.button_pressed = GameState.adaptive_music
+	adaptive.toggled.connect(func(on: bool):
+		GameState.adaptive_music = on
+		GameState.save_settings()
+		Music.set_adaptive(on))
+	music_enabled_checkbox.get_parent().add_child(adaptive)
 	show_grid_checkbox.toggled.connect(_on_show_grid_toggled)
 	_populate_font_options()
 	font_option.item_selected.connect(_on_font_selected)

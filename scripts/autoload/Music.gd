@@ -60,6 +60,9 @@ func _ready() -> void:
 	player.finished.connect(_on_finished)
 	_cue_ui = AudioStreamPlayer.new()
 	add_child(_cue_ui)
+	_fader = AudioStreamPlayer.new()
+	_fader.bus = player.bus
+	add_child(_fader)
 	# Every button in the game, now and later, gets the hover cue.
 	get_tree().node_added.connect(_on_node_added)
 	play_screen(TITLE_TRACK)
@@ -199,6 +202,9 @@ func play_track(name: String) -> void:
 func play_game_playlist() -> void:
 	_screen_track = ""
 	_cue = ""
+	mood = "calm"
+	_mood_seen = {}
+	_calm_index = -1
 	_start_playlist()
 
 func _start_playlist() -> void:
@@ -209,12 +215,27 @@ func _start_playlist() -> void:
 		player.stop()
 		_current = ""
 		return
+	# Adaptive music: only this mood's songs (calm ones if the mood has none
+	# enabled; everything if calm has none either).
+	if GameState.adaptive_music:
+		var want := mood if mood != "siege" else "battle"
+		var m := pl.filter(func(id): return mood_of(id) == want)
+		if m.is_empty():
+			m = pl.filter(func(id): return mood_of(id) == "calm")
+		if not m.is_empty():
+			pl = m
 	_playlist = pl
-	_playlist_index = randi() % pl.size()
+	# Calm picks up where it left off; other moods start on a random song.
+	if mood == "calm" and _calm_index >= 0:
+		_playlist_index = (_calm_index + 1) % pl.size()
+	else:
+		_playlist_index = randi() % pl.size()
 	_play_playlist_item()
 
 func _play_playlist_item() -> void:
 	var id: String = _playlist[_playlist_index]
+	if mood == "calm":
+		_calm_index = _playlist_index
 	var stream := _stream(id)
 	# A single-song playlist just loops; otherwise each song plays once.
 	_set_loop(stream, _playlist.size() == 1)
@@ -227,10 +248,25 @@ func _on_finished() -> void:
 	_play_playlist_item()
 
 func _start(id: String, stream: AudioStream) -> void:
+	# Crossfade from whatever was playing (adaptive mood changes); the old
+	# song fades on its own player so `player` is always the current one.
+	if _fade_next and player.playing:
+		_fader.stream = player.stream
+		_fader.volume_db = player.volume_db
+		_fader.play(player.get_playback_position())
+		var tw := create_tween()
+		tw.tween_property(_fader, "volume_db", -60.0, CROSSFADE)
+		tw.tween_callback(_fader.stop)
+	var fade_in := _fade_next
+	_fade_next = false
 	_current = id
 	player.stream = stream
 	apply_volume()
 	player.play()
+	if fade_in:
+		var target := player.volume_db
+		player.volume_db = -40.0
+		create_tween().tween_property(player, "volume_db", target, CROSSFADE)
 	if OS.get_environment("SL_MUSIC_DEBUG") != "":
 		print("MUSIC %s: volume %.1f dB playing=%s" % [id, player.volume_db, str(player.playing)])
 
@@ -426,7 +462,7 @@ func _next_index() -> int:
 #   transmission the end-of-match theme (play_cue, looping)
 #   urgent       high-stakes music while our worlds or starbases are under
 #                attack (urgent_ping), handing back to the playlist after
-#                URGENT_HOLD seconds of calm
+#                attack, as the "siege" mood (see moods below)
 
 const CUE_DIR := "res://assets/audio/cues/cue_%s.ogg"
 ## Loudness trims (dB) so the cues sit with the soundtrack.
@@ -438,12 +474,10 @@ const HOVER_DB := -10.0
 var _hover_stream: AudioStream
 const HOVER_GAP_MS := 60
 ## Seconds of calm after the last attack before urgent music hands back.
-const URGENT_HOLD := 25.0
 
 var _cue := ""
 var _cue_ui: AudioStreamPlayer
 var _last_hover_ms := 0
-var _urgent_until := 0.0
 
 func _cue_stream(name: String) -> AudioStream:
 	var p := CUE_DIR % name
@@ -458,19 +492,86 @@ func play_cue(name: String, loop: bool = true) -> void:
 	_set_loop(s, loop)
 	_start("cue:" + name, s)
 
-## Called whenever our side is attacked: switches to the urgent cue and keeps
-## it going until URGENT_HOLD seconds pass without another call.
+## Called whenever our worlds or starbases are attacked: the siege mood.
 func urgent_ping() -> void:
-	if not _in_game or (_cue != "" and _cue != "urgent"):
+	report_mood("siege")
+
+# ---------------------------------------------------------------- moods
+# Adaptive music (GameState.adaptive_music): in a match, the game reports
+# what is happening once a second (Game._report_music_mood) and the songs
+# follow. Moods rise at once and only fall back after MOOD_HOLD seconds
+# without the higher one being reported, so the music doesn't flicker.
+
+const MOODS := {
+	"galactic_temple": "calm", "airy": "calm", "sector": "calm", "spacelife": "calm",
+	"magic_space": "calm", "spacedman": "calm", "through_space": "calm",
+	"pulse": "tension",
+	"determined_pursuit": "battle", "deus_ex_tempus": "battle", "hero_immortal": "battle",
+}
+const MOOD_RANK := {"calm": 0, "tension": 1, "battle": 2, "siege": 3}
+const MOOD_HOLD := 25.0
+const CROSSFADE := 2.0
+
+var mood := "calm"
+var _mood_seen := {}
+var _calm_index := -1
+var _fade_next := false
+var _fader: AudioStreamPlayer
+
+## The mood a song belongs to (imported and unlisted songs count as calm).
+func mood_of(id: String) -> String:
+	return MOODS.get(id, "calm")
+
+func report_mood(m: String) -> void:
+	if not _in_game or not GameState.adaptive_music or (_cue != "" and _cue != "urgent") or previewing != "":
 		return
-	_urgent_until = Time.get_ticks_msec() / 1000.0 + URGENT_HOLD
-	if _cue != "urgent":
-		play_cue("urgent")
+	var now := Time.get_ticks_msec() / 1000.0
+	_mood_seen[m] = now
+	if MOOD_RANK[m] > MOOD_RANK[mood]:
+		_set_mood(m)
 
 func _process(_delta: float) -> void:
-	if _cue == "urgent" and Time.get_ticks_msec() / 1000.0 > _urgent_until:
+	if not _in_game or not GameState.adaptive_music or mood == "calm":
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _mood_seen.get(mood, 0.0) < MOOD_HOLD:
+		return
+	# Fall to the highest mood still recently reported.
+	var best := "calm"
+	for m in MOOD_RANK:
+		if MOOD_RANK[m] < MOOD_RANK[mood] and MOOD_RANK[m] > MOOD_RANK[best] and now - _mood_seen.get(m, -INF) < MOOD_HOLD:
+			best = m
+	_set_mood(best)
+
+## The Options toggle: switch between mood songs and the plain playlist now.
+func set_adaptive(_on: bool) -> void:
+	if not _in_game or previewing != "":
+		return
+	mood = "calm"
+	_mood_seen = {}
+	if _cue == "urgent":
 		_cue = ""
+	if _cue == "":
+		_fade_next = true
 		_start_playlist()
+
+func _set_mood(m: String) -> void:
+	if m == mood:
+		return
+	var was_battle := mood == "battle" or mood == "siege"
+	mood = m
+	if OS.get_environment("SL_MUSIC_DEBUG") != "":
+		print("MUSIC mood -> ", m)
+	_fade_next = true
+	if m == "siege":
+		play_cue("urgent")
+		return
+	_cue = ""
+	# Battle to battle-fallback (siege ending) keeps a battle song going.
+	if m == "battle" and was_battle and _current != "cue:urgent":
+		_fade_next = false
+		return
+	_start_playlist()
 
 ## A one-shot cue on its own player, so it doesn't interrupt the music.
 func play_cue_sfx(name: String, volume_db: float = 0.0) -> void:

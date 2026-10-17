@@ -1011,6 +1011,31 @@ func is_defeated(pid: int) -> bool:
 	var builders := get_tree().get_nodes_in_group("ships").any(func(s): return s.owner_id == pid and s.is_alive() and s.def["role"] == "constructor")
 	return not yards and not builders
 
+## Adaptive music: what our side is going through right now (Music.MOODS).
+## Battle: our warships are fighting or were hit in the last few seconds.
+## Tension: enemy warships seen near our worlds or starbases, or our fleet is
+## on its way to attack. Siege is reported by the worlds and starbases
+## themselves when they are hit (Music.urgent_ping).
+func _report_music_mood() -> void:
+	var ours := get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == player_id and s.is_alive() and s.def["role"] == "warship")
+	for s in ours:
+		if s.state == Ship.State.ATTACK or now() - s._last_hit_time < 5.0:
+			Music.report_mood("battle")
+			return
+	var homes: Array = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)
+	homes += get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == player_id)
+	for e in get_tree().get_nodes_in_group("ships"):
+		if e.owner_id == player_id or e.owner_id == 0 or not e.is_alive() or e.def["role"] != "warship":
+			continue
+		if vision and not vision.can_see(e):
+			continue
+		for h in homes:
+			if e.global_position.distance_to(h.global_position) < 1200.0:
+				Music.report_mood("tension")
+				return
+	if ours.any(func(s): return s.state == Ship.State.ATTACK_MOVE):
+		Music.report_mood("tension")
+
 func _check_defeat() -> void:
 	if is_over:
 		return
@@ -1317,6 +1342,8 @@ func _process(delta: float) -> void:
 	if not is_over and _clock >= _next_defeat_check:
 		_next_defeat_check = _clock + 1.0
 		_check_defeat()
+		if not sim_mode and not demo_mode:
+			_report_music_mood()
 	if paused_menu or (is_over and not map_view) or demo_mode:
 		return
 	var dir := Vector2(
