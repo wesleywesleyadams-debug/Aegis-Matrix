@@ -88,12 +88,39 @@ static func sail_absorb(e: Node2D, amount: float, from: Node2D) -> float:
 	var rsa := sail_cover(e)
 	if rsa == null:
 		return amount
-	var soak := minf(rsa.shield, amount)
-	var before: float = rsa.shield
-	rsa.shield -= soak
-	rsa.call("_solar_hit", from, before)
-	rsa.queue_redraw()
-	return amount - soak
+	# Touching bubbles are one mega shield: the hit drains the arrays of the
+	# whole cluster, the fullest first.
+	var pool := sail_cluster(rsa)
+	pool.sort_custom(func(x, y): return x.shield > y.shield)
+	var left := amount
+	for o in pool:
+		if left <= 0.0:
+			break
+		var soak := minf(o.shield, left)
+		if soak <= 0.0:
+			continue
+		var before: float = o.shield
+		o.shield -= soak
+		left -= soak
+		o.call("_solar_hit", from, before)
+		o.queue_redraw()
+	return left
+
+## Every charged array of the same side linked to `rsa` through touching
+## bubbles (including rsa): together they form one mega shield.
+static func sail_cluster(rsa: Node2D) -> Array:
+	var all: Array = []
+	for o in Game.instance.job_ships.get("radiation_sail", []):
+		if is_instance_valid(o) and o.is_alive() and o.shield > 0.0 and o.owner_id == rsa.owner_id:
+			all.append(o)
+	var out: Array = [rsa]
+	var i := 0
+	while i < out.size():
+		for o in all:
+			if not out.has(o) and o.global_position.distance_to(out[i].global_position) <= 2.0 * Defs.SAIL_RADIUS:
+				out.append(o)
+		i += 1
+	return out
 
 
 ## Field Repair: heals up to REPAIR_MAX_TARGETS damaged, out-of-combat

@@ -1419,15 +1419,46 @@ func _draw_solar_shield(t: float) -> void:
 	if f < SAIL_LOW:
 		# Running low: the edge thins (no flicker).
 		width = 1.2
-	# Shimmering edge: a soft wobble around the circle.
-	var pts := PackedVector2Array()
-	var n := 64
+	# Shimmering edge: a soft wobble around the circle. Where an allied
+	# array's bubble overlaps this one, the edge inside it is left out, so
+	# touching bubbles merge into one mega shield with a single outer wall.
+	var others: Array = []
+	for o in Abilities.sail_cluster(self):
+		if o != self:
+			others.append(o.global_position - global_position)
+	var edge := func(a: float) -> Vector2:
+		return Vector2.from_angle(a) * (r0 + 1.4 * sin(a * 5.0 + t * 2.2) + 0.9 * sin(a * 9.0 - t * 3.1))
+	var inside := func(p: Vector2) -> bool:
+		for q in others:
+			if p.distance_to(q) < R:
+				return true
+		return false
+	var seg := PackedVector2Array()
+	var n := 96
+	var was_hidden := false
 	for i in n + 1:
 		var a := TAU * i / n
-		var wob := 1.4 * sin(a * 5.0 + t * 2.2) + 0.9 * sin(a * 9.0 - t * 3.1)
-		pts.append(Vector2.from_angle(a) * (r0 + wob))
-	draw_polyline(pts, Color(sc, alpha), width, true)
-	draw_polyline(pts, Color(sc.lightened(0.5), alpha * 0.35), width + 3.0, true)
+		var p: Vector2 = edge.call(a)
+		var hidden: bool = inside.call(p)
+		if i > 0 and hidden != was_hidden:
+			# Find where the wall meets the neighbour's, so the seam closes.
+			var lo := TAU * (i - 1) / n
+			var hi := a
+			for _k in 8:
+				var mid := (lo + hi) * 0.5
+				if inside.call(edge.call(mid)) == was_hidden:
+					lo = mid
+				else:
+					hi = mid
+			seg.append(edge.call((lo + hi) * 0.5))
+		was_hidden = hidden
+		if not hidden:
+			seg.append(p)
+		if (hidden or i == n) and seg.size() > 1:
+			draw_polyline(seg, Color(sc, alpha), width, true)
+			draw_polyline(seg, Color(sc.lightened(0.5), alpha * 0.35), width + 3.0, true)
+		if hidden:
+			seg = PackedVector2Array()
 	# Impact ripples: a bright flare at the hit that spreads along the edge.
 	for h in _sail_hits:
 		var k: float = h["t"] / 0.7

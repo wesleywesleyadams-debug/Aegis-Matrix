@@ -2454,6 +2454,11 @@ func _enter_dev_capture() -> void:
 		if OS.get_environment("SL_SAIL_FULL") != "":
 			hs.shield = hs.max_shield
 			center_on(hs.global_position)
+		# SL_SAIL_PAIR: two more arrays whose bubbles touch, to see them merge.
+		if OS.get_environment("SL_SAIL_PAIR") != "":
+			spawn_ship("heatshield", player_id, hs.global_position + Vector2(0, 200))
+			spawn_ship("heatshield", player_id, hs.global_position + Vector2(180, 90))
+			center_on(hs.global_position + Vector2(60, 100))
 		if OS.get_environment("SL_SAIL_HALF") != "":
 			hs.shield = hs.max_shield * 0.4
 			center_on(hs.global_position)
