@@ -21,6 +21,7 @@ var _streams := {}
 var _pool: Array[AudioStreamPlayer2D] = []
 var _ui: AudioStreamPlayer
 var _last := {}
+var _shield_ms := -10000
 var _next := 0
 
 func _ready() -> void:
@@ -42,6 +43,12 @@ func play_at(name: String, pos: Vector2, volume_db: float = 0.0) -> void:
 	# Fog of war: nothing is heard from where you can't see.
 	if Game.instance and Game.instance.vision and not Game.instance.vision.is_visible_at(pos):
 		return
+	# Shield hits beep at most once a second of real time, across all ships.
+	if name == "shield":
+		var ms := Time.get_ticks_msec()
+		if ms - _shield_ms < 1000:
+			return
+		_shield_ms = ms
 	var now := Game.now()
 	if now - _last.get(name, -1.0) < MIN_GAP.get(name, 0.0):
 		return

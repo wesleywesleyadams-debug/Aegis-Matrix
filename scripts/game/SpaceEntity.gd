@@ -53,7 +53,6 @@ func is_enemy_of(other_owner: int) -> bool:
 ## The last enemy player to hit this (credited with the kill).
 var _killer := 0
 var _siege_frac := 0.0   # leftover thousandths for the starbase_damage tally
-static var _env_hit_ms := -10000   # last radiation shield flash, any ship
 
 func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary = {}) -> void:
 	if _dead:
@@ -118,12 +117,7 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		if src_ok:
 			rest *= g.mod(_from.owner_id, "hull_damage")
 		hp -= rest * vs.get("hull", 1.0)
-	# Radiation (no attacker) hits every frame: its shield flash and beep
-	# play at most once a second (real time), however many ships are in it.
-	var env_ok := _from != null or Time.get_ticks_msec() - _env_hit_ms >= 1000
-	if absorbed > 0.0 and env_ok and not (self is Ship and self.def.has("solar_sail")):
-		if _from == null:
-			_env_hit_ms = Time.get_ticks_msec()
+	if absorbed > 0.0 and not (self is Ship and self.def.has("solar_sail")):
 		Game.instance.spawn_shield_hit(global_position, radius, (_from.global_position if is_instance_valid(_from) else global_position + Vector2.RIGHT), call("shield_color") if has_method("shield_color") else Color("7fd8ff"))
 	queue_redraw()
 	if hp <= 0.0:
