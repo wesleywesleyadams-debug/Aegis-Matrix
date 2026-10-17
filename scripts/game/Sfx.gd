@@ -39,6 +39,9 @@ func _ready() -> void:
 func play_at(name: String, pos: Vector2, volume_db: float = 0.0) -> void:
 	if Game.instance and (Game.instance.sim_mode or Game.instance.demo_mode):
 		return
+	# Fog of war: nothing is heard from where you can't see.
+	if Game.instance and Game.instance.vision and not Game.instance.vision.is_visible_at(pos):
+		return
 	var now := Game.now()
 	if now - _last.get(name, -1.0) < MIN_GAP.get(name, 0.0):
 		return
