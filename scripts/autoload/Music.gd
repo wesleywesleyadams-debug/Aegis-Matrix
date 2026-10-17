@@ -66,14 +66,16 @@ var _before_preview := {}
 
 func _ready() -> void:
 	player.volume_db = GameState.music_volume_db
+	# Keeps running while the game is paused (pause menu buttons flick too).
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	if OS.get_environment("SL_HOVER_TEST") != "":
+		_hover_test.call_deferred()
 	player.finished.connect(_on_finished)
 	_cue_ui = AudioStreamPlayer.new()
 	add_child(_cue_ui)
 	_fader = AudioStreamPlayer.new()
 	_fader.bus = player.bus
 	add_child(_fader)
-	# Every button in the game, now and later, gets the hover cue.
-	get_tree().node_added.connect(_on_node_added)
 	play_screen(TITLE_TRACK)
 	if OS.get_environment("SL_MUSIC_LIVE_TEST") != "":
 		_live_test.call_deferred()
@@ -488,12 +490,10 @@ const HOVER_SOUND := "res://assets/audio/sfx_hover_flick.wav"
 const HOVER_DB := -10.0
 var _hover_stream: AudioStream
 var _hover_ui: AudioStreamPlayer
-const HOVER_GAP_MS := 60
 ## Seconds of calm after the last attack before urgent music hands back.
 
 var _cue := ""
 var _cue_ui: AudioStreamPlayer
-var _last_hover_ms := 0
 
 func _cue_stream(name: String) -> AudioStream:
 	var p := CUE_DIR % name
@@ -549,6 +549,7 @@ func report_mood(m: String) -> void:
 		_set_mood(m)
 
 func _process(_delta: float) -> void:
+	_check_hover()
 	if not _in_game or not GameState.adaptive_music or mood == "calm":
 		return
 	var now := Time.get_ticks_msec() / 1000.0
@@ -599,17 +600,25 @@ func play_cue_sfx(name: String, volume_db: float = 0.0) -> void:
 	_cue_ui.pitch_scale = 1.0
 	_cue_ui.play()
 
-func _on_node_added(n: Node) -> void:
-	if n is BaseButton:
-		n.mouse_entered.connect(_on_button_hover.bind(n))
+## Button hover: checked every frame from what the mouse is actually over,
+## so every button - in any menu, created at any time, with children or not -
+## flicks once when the pointer moves onto it.
+var _hovered_button: BaseButton
 
-func _on_button_hover(b: BaseButton) -> void:
-	if not is_instance_valid(b) or b.disabled:
+func _check_hover() -> void:
+	var c := get_viewport().gui_get_hovered_control()
+	while c != null and not (c is BaseButton):
+		c = c.get_parent() as Control
+	var b := c as BaseButton
+	if b == _hovered_button:
 		return
-	var now := Time.get_ticks_msec()
-	if now - _last_hover_ms < HOVER_GAP_MS:
+	_hovered_button = b
+	if b == null or b.disabled or not b.is_visible_in_tree():
 		return
-	_last_hover_ms = now
+	_on_button_hover()
+
+func _on_button_hover() -> void:
+	_hover_plays += 1
 	if _hover_stream == null:
 		_hover_stream = load(HOVER_SOUND)
 	# Its own player, so a hover never cuts off a victory or defeat sting.
@@ -620,3 +629,37 @@ func _on_button_hover(b: BaseButton) -> void:
 	_hover_ui.volume_db = HOVER_DB
 	_hover_ui.pitch_scale = randf_range(0.94, 1.06)
 	_hover_ui.play()
+
+## Dev: SL_HOVER_TEST=1 moves the mouse over every visible button on the
+## title screen and prints how many flicks played.
+var _hover_plays := 0
+
+func _hover_test() -> void:
+	await get_tree().create_timer(float(OS.get_environment("SL_HOVER_WAIT")) if OS.get_environment("SL_HOVER_WAIT") != "" else 1.5).timeout
+	var phases := ["screen"]
+	if Game.instance:
+		phases = ["research panel", "task panel"]
+	for ph in phases:
+		if ph == "research panel":
+			Game.instance.hud.toggle_research()
+		elif ph == "task panel":
+			Game.instance.hud.toggle_research()
+			Game.instance._set_selection([Game.instance.nearest_starbase(Game.instance.player_id, Vector2.ZERO)], false)
+		for i in 6:
+			await get_tree().process_frame
+		var n := 0
+		var before := _hover_plays
+		for b in get_tree().root.find_children("*", "BaseButton", true, false):
+			if not b.is_visible_in_tree() or b.disabled or not get_viewport().get_visible_rect().has_point(b.get_global_rect().get_center()):
+				continue
+			get_viewport().warp_mouse(b.get_global_rect().get_center())
+			for i in 4:
+				await get_tree().process_frame
+			# Only buttons the pointer can actually reach (not under a panel).
+			if _hovered_button == b:
+				n += 1
+			else:
+				var top := get_viewport().gui_get_hovered_control()
+				print("  covered: %s under %s" % [b.text if b is Button else b.name, top.name if top else "nothing"])
+		print("HOVER TEST %s: buttons %d flicks %d" % [ph, n, _hover_plays - before])
+	get_tree().quit()
