@@ -113,6 +113,7 @@ func _observe(game: Game, base: Starbase, done: bool) -> Dictionary:
 		"lost": game.is_defeated(pid),
 		"score": game.stats.score(pid),
 		"enemy_score": _enemy_score(game),
+		"closed": _fleet_distance(game),
 		"tally": {"ship_kills": game.stats.get_count(pid, "ship_kills"), "construct_kills": game.stats.get_count(pid, "construct_kills"),
 			"starbase_kills": game.stats.get_count(pid, "starbase_kills"), "starbase_damage": game.stats.get_count(pid, "starbase_damage"),
 			"damage_dealt": game.stats.get_count(pid, "damage_dealt"), "pop_bombarded": game.stats.get_count(pid, "pop_bombarded"), "discovered": game.stats.get_count(pid, "discovered"), "planet_kills": game.stats.get_count(pid, "planet_kills"),
@@ -415,6 +416,32 @@ func _order(game: Game, ai: int, vi: int, oi: int, ti: int) -> void:
 					actor.demolish(f2)
 
 # ---------------------------------------------------------------- wire
+
+## Training: how far its spearhead (the 8 warships closest to a seen enemy
+## starbase) has closed in, summed over the match. Each decision adds the
+## mean of how much nearer those ships got; ships that died or were built
+## since don't count, so losses don't read as retreating.
+var _near_prev := {}      # warship instance id -> distance last decision
+var _closed := 0.0
+
+func _fleet_distance(game: Game) -> float:
+	var foes := game.get_tree().get_nodes_in_group("starbases").filter(func(s): return s.is_alive() and _found.has(s.get_instance_id()))
+	var cur := {}
+	if not foes.is_empty():
+		for sh in game.get_tree().get_nodes_in_group("ships"):
+			if sh.owner_id != pid or not sh.is_alive() or sh.def.get("role", "") != "warship":
+				continue
+			var best := INF
+			for f in foes:
+				best = minf(best, sh.global_position.distance_to(f.global_position))
+			cur[sh.get_instance_id()] = best
+	var lead: Array = _near_prev.keys()
+	lead.sort_custom(func(x, y): return _near_prev[x] < _near_prev[y])
+	lead = lead.slice(0, 8).filter(func(k): return cur.has(k))
+	if not lead.is_empty():
+		_closed += lead.reduce(func(acc, k): return acc + _near_prev[k] - cur[k], 0.0) / lead.size()
+	_near_prev = cur
+	return _closed
 
 func _write_trace(game: Game) -> void:
 	var path := OS.get_environment("SL_TRACE")

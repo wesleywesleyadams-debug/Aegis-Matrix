@@ -3255,14 +3255,15 @@ func _drill_fleet() -> void:
 	var dir := (b - a).normalized()
 	# SL_DRILL_D (0-1, set by the trainer) is the drill's difficulty. Strike:
 	# from inside the starbase's gun range (260) at 0 out to 600 at 1. Hunt:
-	# from 30% of the way home (and near the line) to 70% (and far off it).
+	# from just outside the starbase's gun range (and on the line) to 70% of
+	# the way home (and far off it).
 	var dd := clampf(float(OS.get_environment("SL_DRILL_D")), 0.0, 1.0)
 	var at: Vector2
 	if drill == "strike":
 		at = b - dir * lerpf(180.0, 600.0, dd)
 	else:
-		at = b + (a - b) * lerpf(0.3, 0.7, dd) + dir.orthogonal() * randf_range(-1.0, 1.0) * lerpf(100.0, 600.0, dd)
-	var kinds := ["destroyer", "destroyer", "corvette", "corvette", "corvette", "corvette", "corvette", "corvette"]
+		at = b - dir * lerpf(340.0, 0.7 * a.distance_to(b), dd) + dir.orthogonal() * randf_range(-1.0, 1.0) * lerpf(0.0, 600.0, dd)
+	var kinds := ["cruiser", "destroyer", "destroyer", "destroyer", "destroyer", "corvette", "corvette", "corvette", "corvette", "corvette", "corvette", "corvette"]
 	for i in kinds.size():
 		var s9 := spawn_ship(kinds[i], rl_side, at + Vector2(i % 4 * 18 - 27, i / 4 * 20 - 10).rotated(dir.angle()))
 		# Dev check (SL_DRILLTEST): send it in, to time a clean run.

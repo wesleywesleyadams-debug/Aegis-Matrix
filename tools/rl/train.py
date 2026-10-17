@@ -11,6 +11,8 @@ on the GPU, and learns from the outcome:
          + DAMAGE: 10 per whole enemy ship/construct worth of damage dealt
          + BOMBARD: 0.2 per enemy pop bombarded away (below its low point)
          + DISCOVER: 10 the first time each enemy starbase/world is seen
+         + APPROACH: 0.05 per unit its spearhead closes on a seen enemy starbase
+           (minus the same for moving away)
          + BIG (20) per enemy starbase destroyed, enemy world depopulated, or
            new world colonized
          + curiosity: NEW_ACTION (2) for each kind of action (verb + what it
@@ -59,6 +61,10 @@ DAMAGE = 0.01
 BOMBARD = 0.02
 ## The first sight of each enemy starbase or world in a match.
 DISCOVER = 10.0
+## Per unit its spearhead closes (on average) on a seen enemy starbase; moving
+## away costs the same, so it can't be farmed (about 10-15 for a final approach,
+## since a starbase is usually only seen from close in).
+APPROACH = 0.05
 ## Curriculum: share of the last 20 games at a level it must win to move up.
 PROMOTE = 0.5
 ## Level 1: the sitting duck's starbase starts at DUCK_START of its toughness
@@ -88,7 +94,7 @@ DRILL_TOUGH = (0.03, 0.3)
 ## game in env 0 is traced for a replay image (runs/replays/).
 KEEP_EVERY = 50
 ## Reward parts, for the per-game breakdown.
-PARTS = ["win", "loss", "trade", "siege", "damage", "bombard", "discover", "big", "curious"]
+PARTS = ["win", "loss", "trade", "siege", "damage", "bombard", "discover", "approach", "big", "curious"]
 ## Self-play: how often (updates) the frozen opponent catches up with the learner.
 SNAPSHOT = 25
 POOL = 8
@@ -113,6 +119,8 @@ def reward_of(prev, cur):
         p["bombard"] = BOMBARD * d("pop_bombarded")
         p["discover"] = DISCOVER * d("discovered")
         p["big"] = BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
+    if "closed" in prev and "closed" in cur:
+        p["approach"] = APPROACH * (cur["closed"] - prev["closed"])
     if cur.get("done"):
         if cur.get("won"):
             # 1000 for an instant win, 750 at 20 min, 500 at 40, 0 at 80+.
