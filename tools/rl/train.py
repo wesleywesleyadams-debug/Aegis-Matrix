@@ -15,8 +15,10 @@ on the GPU, and learns from the outcome:
 
 Curriculum: the opponent starts as a sitting duck (level 1), then a turtle
 that never attacks (2), a slow scripted AI (3), the full scripted AI (4) and
-finally self-play (5): a frozen copy of itself, refreshed every SNAPSHOT
-updates.
+then straight to self-play (5) once it beats the turtle - levels 3-4 are
+skipped. In self-play each game's opponent is a past version of itself from
+a pool (a new one joins every SNAPSHOT updates, the last POOL kept), and
+TEST_SHARE of games are against the full scripted AI as a fixed yardstick.
 The agent moves up a level once it wins PROMOTE of its last 20 games at the
 current one (the level is saved in the checkpoint; --level overrides).
 
@@ -47,6 +49,8 @@ BIG = 20.0
 PROMOTE = 0.5
 ## Self-play: how often (updates) the frozen opponent catches up with the learner.
 SNAPSHOT = 25
+POOL = 8
+TEST_SHARE = 0.2
 ## Curiosity: a kind of action (verb, object) new this match, capped.
 NEW_ACTION = 2.0
 NEW_CAP = 40.0
@@ -110,15 +114,17 @@ def main():
 
     if args.level:
         level = args.level
-    # Self-play opponent: a frozen copy of the policy, shared by every game
-    # (a lock keeps the env threads from using it at once).
-    frozen = copy.deepcopy(pol).eval()
-    frozen_lock = threading.Lock()
+    # Self-play: a pool of past versions; each game gets its own frozen copy
+    # (one per env, so the env threads never share one).
+    pool_sd = [copy.deepcopy(pol.state_dict())]
+    frozens = [copy.deepcopy(pol).eval() for _ in range(args.envs)]
 
-    def opponent(o):
-        with frozen_lock, torch.no_grad():
-            acts, _, _, _ = frozen(collate([o], dev))
-        return {"orders": [[int(a) for a in x] for x in acts[0].cpu().numpy() if x[0] >= 0]}
+    def make_opponent(net):
+        def opponent(o):
+            with torch.no_grad():
+                acts, _, _, _ = net(collate([o], dev))
+            return {"orders": [[int(a) for a in x] for x in acts[0].cpu().numpy() if x[0] >= 0]}
+        return opponent
     print("curriculum level", level)
     envs = [StarEnv(args.port + i, system=random.choice(SYSTEMS), minutes=args.minutes, speed=args.speed,
                     side=random.choice([1, 2]), log=os.path.join(RUNS, f"env{i}.log"), level=level) for i in range(args.envs)]
@@ -126,7 +132,13 @@ def main():
 
     def fresh(e):
         e.level = level
-        e.opponent = opponent
+        if level >= 5:
+            if random.random() < TEST_SHARE:
+                e.level = 4   # yardstick game against the full scripted AI
+            else:
+                k = envs.index(e)
+                frozens[k].load_state_dict(random.choice(pool_sd))
+                e.opponent = make_opponent(frozens[k])
         e.system = random.choice(SYSTEMS)
         e.side = random.choice([1, 2])
         return e.reset()
@@ -165,7 +177,7 @@ def main():
                     # Promotion: wins PROMOTE of its last 20 games at this level.
                     here = [r for r in results if r[4] == level][-20:]
                     if level < 5 and len(here) >= 20 and sum(1 for r in here if r[0]) >= PROMOTE * 20:
-                        level += 1
+                        level = 5 if level >= 2 else level + 1
                         print(f"PROMOTED to curriculum level {level}", flush=True)
                     ep_ret[i] = 0.0
                     tried[i] = set()
@@ -213,14 +225,16 @@ def main():
                 stats.append((pl.item(), vl.item(), ent.mean().item()))
         pl, vl, en = np.mean(stats, 0)
         recent = [r for r in results if r[4] == level][-20:]
+        tests = [r for r in results if r[4] == 4][-20:]
+        vs_ai = sum(1 for r in tests if r[0]) / max(len(tests), 1)
         win = sum(1 for r in recent if r[0]) / max(len(recent), 1)
         mean_ret = np.mean([r[2] for r in recent]) if recent else 0.0
-        print(f"upd {upd + 1}  L{level}  games {len(results)}  win(last20) {win:.2f}  ret {mean_ret:+.1f}  "
+        print(f"upd {upd + 1}  L{level}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  ret {mean_ret:+.1f}  "
               f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f}  {time.time() - t0:.0f}s", flush=True)
         lw.writerow([upd + 1, level, len(results), win, mean_ret, pl, vl, en]); log.flush()
-        if (upd + 1) % SNAPSHOT == 0:
-            with frozen_lock:
-                frozen.load_state_dict(pol.state_dict())
+        if (upd + 1) % SNAPSHOT == 0 and level >= 5:
+            pool_sd.append(copy.deepcopy(pol.state_dict()))
+            del pool_sd[:-POOL]
         torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1, "level": level}, ckpt)
     for e in envs:
         e.close()
