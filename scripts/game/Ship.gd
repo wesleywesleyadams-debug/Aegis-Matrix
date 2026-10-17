@@ -1315,6 +1315,7 @@ func in_solar_field() -> bool:
 ## once the shield is full the rest goes to the owner's energy pool.
 func _solar_tick(delta: float) -> void:
 	_solar_fx_tick(delta)
+	var was_full := _sail_mode == "full"
 	_sail_mode = ""
 	if Game.now() < sail_down_until:
 		return
@@ -1323,7 +1324,7 @@ func _solar_tick(delta: float) -> void:
 	_mote_timer -= delta
 	if _mote_timer <= 0.0:
 		_mote_timer = 0.12
-		_motes.append({"a": randf() * TAU, "d": 1.0, "life": 0.0})
+		_motes.append({"a": randf() * TAU, "d": 1.0, "life": 0.0, "out": was_full})
 	var g := Game.instance
 	var gain: float = float(def["solar_sail"]) / 60.0 * delta * g.mod(owner_id, "energy")
 	# Each point of energy charges Defs.SAIL_SHIELD_PER_ENERGY shield.
@@ -1405,8 +1406,13 @@ func _draw_solar_shield(t: float) -> void:
 	var R := _sail_radius()
 	# Motes drifting in from the field, fading as they soak in.
 	for m in _motes:
-		var p: Vector2 = Vector2.from_angle(m["a"]) * R * (1.0 + 1.6 * m["d"])
-		draw_circle(p, 1.6, Color(sc, 0.25 + 0.55 * (1.0 - m["d"])))
+		# Charging they drift in; once full, energy streams back out to the
+		# stockpile in the arcs' white/yellow.
+		var out: bool = m.get("out", false)
+		var p: Vector2 = Vector2.from_angle(m["a"]) * R * (1.0 + 1.6 * ((1.0 - m["d"]) if out else m["d"]))
+		if out:
+			draw_circle(p, 2.6, Color(Color("ffe066"), 0.35 * m["d"]))
+		draw_circle(p, 1.6, Color(Color("fff6cc"), 0.85 * m["d"]) if out else Color(sc, 0.25 + 0.55 * (1.0 - m["d"])))
 	# Shards of a broken bubble.
 	for s in _sail_shards:
 		var k: float = 1.0 - s["t"] / 0.9
