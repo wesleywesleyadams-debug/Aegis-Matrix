@@ -89,7 +89,7 @@ const MINIMAP_W := 380.0
 ## Smaller than this (per minute) counts as flat, so the arrow holds still.
 const TREND_DEADBAND := 1.0
 ## The starbase page switch always sits in this grid cell (key Z).
-const PAGE_SWITCH_SLOT := 6
+const PAGE_SWITCH_SLOT := 8
 
 func _ready() -> void:
 	game = get_parent()
