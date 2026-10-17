@@ -88,6 +88,8 @@ const NORMAL_SPEED := 2
 const MINIMAP_W := 380.0
 ## Smaller than this (per minute) counts as flat, so the arrow holds still.
 const TREND_DEADBAND := 1.0
+## Faster than this (per minute, either way) earns a second arrow.
+const TREND_STRONG := 20.0
 ## The starbase page switch always sits in this grid cell (the bottom-right one, key C).
 const PAGE_SWITCH_SLOT := 8
 
@@ -1250,10 +1252,10 @@ func _update_top_bar() -> void:
 		var arrow := "–"
 		var arrow_color := DIM
 		if avg > TREND_DEADBAND:
-			arrow = "▲"
+			arrow = "▲▲" if avg > TREND_STRONG else "▲"
 			arrow_color = GOOD
 		elif avg < -TREND_DEADBAND:
-			arrow = "▼"
+			arrow = "▼▼" if avg < -TREND_STRONG else "▼"
 			arrow_color = BAD
 		_res_labels[k].text = "%s %s" % [_fmt(r.get(k, 0.0)), arrow]
 		_res_labels[k].add_theme_color_override("font_color", arrow_color if arrow != "–" else TEXT)
