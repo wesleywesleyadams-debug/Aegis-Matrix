@@ -8,7 +8,9 @@ on the GPU, and learns from the outcome:
          + fighting: what enemy ships/constructs it destroys were worth / 100,
            minus what it loses / 100 (so it learns to trade well)
          + SIEGE: 100 per whole enemy starbase hull worth of damage dealt
-         + DAMAGE: 10 per whole enemy ship/construct worth of damage dealt
+         + DAMAGE: 10 per whole enemy ship/construct worth of damage dealt, minus
+           the same for damage taken (SIEGE likewise for starbases)
+         + TIMEOUT (-100) when a real match runs out of time
          + BOMBARD: 0.2 per enemy pop bombarded away (below its low point)
          + DISCOVER: 10 the first time each enemy starbase/world is seen
          + APPROACH: 0.05 per unit its spearhead closes on a seen enemy starbase
@@ -16,7 +18,7 @@ on the GPU, and learns from the outcome:
          + BIG (20) per enemy starbase destroyed, enemy world depopulated, or
            new world colonized
          + curiosity: NEW_ACTION (2) for each kind of action (verb + what it
-           builds/researches) the first time in a match, at most NEW_CAP (40)
+           builds/researches) the first time in a match, at most NEW_CAP (10)
            per match; repeats earn nothing (they could be farmed).
 
 Curriculum: the opponent starts as a sitting duck (level 1), then a turtle
@@ -101,21 +103,28 @@ POOL = 8
 TEST_SHARE = 0.2
 ## Curiosity: a kind of action (verb, object) new this match, capped.
 NEW_ACTION = 2.0
-NEW_CAP = 40.0
+## A real match (not a drill) that runs out of time.
+TIMEOUT = -100.0
+## Rewards are multiplied by this before training (what is logged stays in
+## points): the value head then predicts returns of a few units instead of
+## ~1000, which keeps its updates stable. Preferences are unchanged.
+REWARD_SCALE = 0.01
+NEW_CAP = 10.0
 ## The game's time limit in seconds (set from --minutes).
 LIMIT = 2400.0
 RUNS = os.path.join(os.path.dirname(__file__), "runs")
 
 
-def reward_of(prev, cur):
+def reward_of(prev, cur, real_match=False):
     """The step's reward, split into PARTS (they sum to the reward)."""
     p = dict.fromkeys(PARTS, 0.0)
     a, b = prev.get("tally", {}), cur.get("tally", {})
     if a and b:
         d = lambda k: max(0, b.get(k, 0) - a.get(k, 0))
         p["trade"] = VALUE_SCALE * (d("kill_value") - d("lost_value"))
-        p["siege"] = SIEGE * d("starbase_damage")
-        p["damage"] = DAMAGE * d("damage_dealt")
+        # Damage taken costs exactly what the same damage dealt earns.
+        p["siege"] = SIEGE * (d("starbase_damage") - d("starbase_hurt"))
+        p["damage"] = DAMAGE * (d("damage_dealt") - d("damage_hurt"))
         p["bombard"] = BOMBARD * d("pop_bombarded")
         p["discover"] = DISCOVER * d("discovered")
         p["big"] = BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
@@ -127,6 +136,8 @@ def reward_of(prev, cur):
             p["win"] = max(0.0, WIN_REWARD - WIN_DECAY * cur.get("t", 0.0) / 60.0)
         elif cur.get("lost"):
             p["loss"] = LOSS
+        elif real_match:
+            p["loss"] = TIMEOUT   # ran out of time: a small loss, so stalling doesn't pay
     return p
 
 
@@ -175,9 +186,8 @@ def main():
         si = STAGES.index(args.stage)
     stage = lambda: STAGES[si]
     # Self-play: a pool of past versions; each game gets its own frozen copy
-    # (one per env, so the env threads never share one).
+    # (one per StarEnv, so the env threads never share one).
     pool_sd = [copy.deepcopy(pol.state_dict())]
-    frozens = [copy.deepcopy(pol).eval() for _ in range(args.envs)]
 
     def make_opponent(net):
         def opponent(o):
@@ -188,6 +198,14 @@ def main():
     print("curriculum stage", stage())
     envs = [StarEnv(args.port + i, system=random.choice(SYSTEMS), minutes=args.minutes, speed=args.speed,
                     side=random.choice([1, 2]), log=os.path.join(RUNS, f"env{i}.log")) for i in range(args.envs)]
+    # Each slot also has a spare game, launched in the background while the
+    # current one plays, so a finished game is replaced at once instead of
+    # every slot waiting ~4 s for a new Godot to start. A launched game waits
+    # at its first decision until it is swapped in.
+    spare_envs = [StarEnv(args.port + 1000 + i, minutes=args.minutes, speed=args.speed,
+                          log=os.path.join(RUNS, f"env{i}b.log")) for i in range(args.envs)]
+    for i in range(args.envs):
+        envs[i].slot = spare_envs[i].slot = i
     games = open(os.path.join(RUNS, "games.csv"), "a", newline="")
     gw = csv.writer(games)
     pool = ThreadPoolExecutor(args.envs)
@@ -201,7 +219,7 @@ def main():
         e.drill_d = drill_d.get(s, 0.0)
         e.duck = duck if s == "L1" else (DRILL_TOUGH[0] + (DRILL_TOUGH[1] - DRILL_TOUGH[0]) * e.drill_d if s in drill_d else 1.0)
         e.trace = ""
-        if e is envs[0] and want_trace[0]:
+        if e.slot == 0 and want_trace[0]:
             want_trace[0] = False
             os.makedirs(os.path.join(RUNS, "replays"), exist_ok=True)
             e.trace = os.path.join(RUNS, "replays", "trace.jsonl")
@@ -210,15 +228,18 @@ def main():
                 e.level = 4   # yardstick game against the full scripted AI
                 e.stage = "L4"
             else:
-                k = envs.index(e)
-                frozens[k].load_state_dict(random.choice(pool_sd))
-                e.opponent = make_opponent(frozens[k])
+                if getattr(e, "frozen", None) is None:
+                    e.frozen = copy.deepcopy(pol).eval()
+                e.frozen.load_state_dict(random.choice(pool_sd))
+                e.opponent = make_opponent(e.frozen)
         e.system = random.choice(SYSTEMS)
         e.side = random.choice([1, 2])
         return e.reset()
 
     want_trace = [False]
     obs = list(pool.map(fresh, envs))
+    launcher = ThreadPoolExecutor(args.envs)
+    spares = [launcher.submit(fresh, e) for e in spare_envs]
     ep_ret = [0.0] * args.envs
     ep_parts = [dict.fromkeys(PARTS, 0.0) for _ in range(args.envs)]
     tried = [set() for _ in range(args.envs)]   # action kinds used this match
@@ -235,7 +256,7 @@ def main():
             nxt = list(pool.map(lambda iv: envs[iv[0]].step(iv[1]), enumerate(orders)))
             rews, dones = [], []
             for i in range(args.envs):
-                parts = reward_of(obs[i], nxt[i])
+                parts = reward_of(obs[i], nxt[i], envs[i].drill == "")
                 for o in orders[i]["orders"]:
                     kind = (o[1], o[2])   # verb, object (-1 = none)
                     if kind not in tried[i]:
@@ -246,7 +267,7 @@ def main():
                     ep_parts[i][k] += v
                 r = float(sum(parts.values()))
                 ep_ret[i] += r
-                rews.append(r)
+                rews.append(r * REWARD_SCALE)
                 dones.append(bool(nxt[i].get("done")))
             buf["obs"].append(obs); buf["act"].append(acts.cpu()); buf["logp"].append(logp.cpu())
             buf["val"].append(val.cpu()); buf["rew"].append(torch.tensor(rews)); buf["done"].append(torch.tensor(dones, dtype=torch.float32))
@@ -274,12 +295,13 @@ def main():
                     ep_ret[i] = 0.0
                     ep_parts[i] = dict.fromkeys(PARTS, 0.0)
                     tried[i] = set()
-            # Finished games restart (in parallel) before the next step.
-            redo = [i for i in range(args.envs) if dones[i]]
-            if redo:
-                fresh_obs = list(pool.map(lambda i: fresh(envs[i]), redo))
-                for i, o in zip(redo, fresh_obs):
-                    nxt[i] = o
+            # Finished games swap in their slot's spare; the finished one is
+            # closed and relaunched as the next spare in the background.
+            for i in range(args.envs):
+                if dones[i]:
+                    nxt[i] = spares[i].result()
+                    envs[i], spare_envs[i] = spare_envs[i], envs[i]
+                    spares[i] = launcher.submit(fresh, spare_envs[i])
             obs = nxt
         # GAE.
         with torch.no_grad():
@@ -334,7 +356,7 @@ def main():
         if (upd + 1) % KEEP_EVERY == 0:
             shutil.copyfile(ckpt, os.path.join(RUNS, f"ckpt_{upd + 1}.pt"))
             want_trace[0] = True
-    for e in envs:
+    for e in envs + spare_envs:
         e.close()
 
 

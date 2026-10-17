@@ -79,6 +79,8 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	if Game.instance and is_instance_valid(_from) and Game.instance.is_hostile(owner_id, _from.owner_id) and max_hp > 0.0:
 		_siege_frac += 1000.0 * minf(amount, hp + armor + shield) / (max_hp + max_armor + max_shield)
 		Game.instance.stats.count(_from.owner_id, "starbase_damage" if self is Starbase else "damage_dealt", int(_siege_frac))
+		# ...and the same, as damage taken, for this side.
+		Game.instance.stats.count(owner_id, "starbase_hurt" if self is Starbase else "damage_hurt", int(_siege_frac))
 		_siege_frac -= floorf(_siege_frac)
 	# Convoy Protocols: harvesters are armored on top of that.
 	if Game.instance and self is Ship and self.def.get("role", "") in ["miner", "skimmer"]:
