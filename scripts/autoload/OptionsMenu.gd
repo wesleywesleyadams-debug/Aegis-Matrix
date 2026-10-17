@@ -21,7 +21,7 @@ var _master_bus_index: int = 0
 ## GameState.ui_font) -> [display name, font resource]. null means "Default"
 ## (falls back to Godot's own built-in font instead of overriding it).
 const FONT_OPTIONS: Dictionary = {
-	"console": ["Console (pixel)", preload("res://themes/console_font.tres")],
+	"console": ["JetBrains Mono", preload("res://assets/fonts/JetBrainsMono.ttf")],
 	"default": ["Default", null],
 }
 ## Insertion order of FONT_OPTIONS' keys -- Dictionary iteration order in
@@ -171,6 +171,11 @@ func _on_font_selected(index: int) -> void:
 func _apply_font(key: String) -> void:
 	var hud_theme: Theme = load("res://themes/hud_theme.tres")
 	hud_theme.default_font = FONT_OPTIONS[key][1]
+	# Dev aid: SL_FONT=<font file> overrides it, to compare candidates.
+	if OS.get_environment("SL_FONT") != "":
+		var f := FontFile.new()
+		f.load_dynamic_font(OS.get_environment("SL_FONT"))
+		hud_theme.default_font = f
 
 # ---------------------------------------------------------------- music tracks
 
