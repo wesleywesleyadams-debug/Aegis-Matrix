@@ -3,9 +3,8 @@
 Runs N headless games at once (each a Godot process the agent plays one side
 of, against the scripted AI), batches their observations through the policy
 on the GPU, and learns from the outcome:
-  reward = ONLY for winning, and more the sooner it comes: WIN_REWARD x
-           (2 - time / time limit) - 200 for an instant win, 100 for a win
-           at the buzzer. Nothing for losing.
+  reward = winning: 1000 for an instant win, falling 12.5 a minute (750 at
+           20 min, 500 at 40, 0 at 80). Nothing for losing.
          + KILL (10) per enemy ship or construct destroyed, BIG (20) per enemy
            starbase destroyed, enemy world depopulated, or new world colonized
          + a small curiosity bonus: NEW_ACTION for each kind of action (verb +
@@ -28,7 +27,9 @@ from model import Policy, collate, SLOTS
 
 SYSTEMS = ["orion_reach", "vega_drift", "kharon_expanse", "tethys_cluster", "sable_verge", "random"]
 ## The only reward: winning, scaled up the faster it happens.
-WIN_REWARD = 100.0
+WIN_REWARD = 1000.0
+## Points the win reward loses per game minute (0 at 80 minutes).
+WIN_DECAY = 12.5
 ## Progress rewards (from the game's tally of what this side did).
 KILL = 10.0
 BIG = 20.0
@@ -48,7 +49,8 @@ def reward_of(prev, cur):
         r += KILL * (d("ship_kills") + d("construct_kills"))
         r += BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
     if cur.get("done") and cur.get("won"):
-        r += WIN_REWARD * (2.0 - min(cur.get("t", LIMIT) / LIMIT, 1.0))
+        # 1000 for an instant win, 750 at 20 min, 500 at 40, 0 at 80+.
+        r += max(0.0, WIN_REWARD - WIN_DECAY * cur.get("t", 0.0) / 60.0)
     return float(r)
 
 
@@ -57,7 +59,7 @@ def main():
     ap.add_argument("--envs", type=int, default=4)
     ap.add_argument("--steps", type=int, default=128, help="steps per env per update")
     ap.add_argument("--updates", type=int, default=1000)
-    ap.add_argument("--minutes", type=float, default=40)
+    ap.add_argument("--minutes", type=float, default=80)
     ap.add_argument("--speed", type=float, default=8)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--resume", action="store_true")
