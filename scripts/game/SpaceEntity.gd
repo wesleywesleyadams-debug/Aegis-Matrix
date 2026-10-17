@@ -50,12 +50,17 @@ func is_enemy_of(other_owner: int) -> bool:
 ## "pierce" skips layers (1 = shields, 2 = shields and armor). Damage works
 ## through the layers in order; what a layer can't absorb carries on to the
 ## next at base value.
+## The last enemy player to hit this (credited with the kill).
+var _killer := 0
+
 func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary = {}) -> void:
 	if _dead:
 		return
 	_last_hit_time = Game.now()
 	if Game.instance and is_instance_valid(_from):
 		Game.instance.note_attack(owner_id, _from.owner_id)
+		if Game.instance.is_hostile(owner_id, _from.owner_id):
+			_killer = _from.owner_id
 	# Screens (Defense) soak a slice of everything before the layers see it.
 	# Each screen tech cuts its own share off (all three: -52%).
 	if Game.instance:
@@ -113,6 +118,9 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 
 func _die() -> void:
 	_dead = true
+	# Credit the kill to whoever hit it last (enemy ship or starbase kills).
+	if Game.instance and _killer != 0:
+		Game.instance.stats.count(_killer, "starbase_kills" if self is Starbase else ("ship_kills" if self is Ship else "construct_kills"))
 	Game.instance.spawn_explosion(global_position, radius / 10.0)
 	died.emit(self)
 	queue_free()

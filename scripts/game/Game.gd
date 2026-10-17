@@ -1040,6 +1040,8 @@ func planet_claimed(p: Planet, old_owner: int) -> void:
 ## A bombarded planet ran out of pops and went neutral.
 func planet_depopulated(p: Planet, old_owner: int, attacker: int) -> void:
 	stats.count(old_owner, "planets_lost")
+	if attacker != 0 and is_hostile(attacker, old_owner):
+		stats.count(attacker, "planet_kills")
 	if old_owner == player_id:
 		alert("%s has been depopulated and lost!" % p.planet_name, "alert_planet_lost", true, p.global_position)
 	elif attacker == player_id:

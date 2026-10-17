@@ -183,6 +183,8 @@ func colonize(pid: int) -> void:
 	var old := owner_id
 	if old != 0 and old != pid:
 		Game.instance.note_attack(old, pid)   # taken from them
+	if old == 0:
+		Game.instance.stats.count(pid, "colonized")
 	owner_id = pid
 	construction = {}
 	construction_queue.clear()

@@ -6,6 +6,8 @@ on the GPU, and learns from the outcome:
   reward = ONLY for winning, and more the sooner it comes: WIN_REWARD x
            (2 - time / time limit) - 200 for an instant win, 100 for a win
            at the buzzer. Nothing for losing.
+         + KILL (10) per enemy ship or construct destroyed, BIG (20) per enemy
+           starbase destroyed, enemy world depopulated, or new world colonized
          + a small curiosity bonus: NEW_ACTION for each kind of action (verb +
            what it builds/researches) the first time it is used in a match,
            and a far smaller REPEAT_ACTION each time it is used again.
@@ -27,6 +29,9 @@ from model import Policy, collate, SLOTS
 SYSTEMS = ["orion_reach", "vega_drift", "kharon_expanse", "tethys_cluster", "sable_verge", "random"]
 ## The only reward: winning, scaled up the faster it happens.
 WIN_REWARD = 100.0
+## Progress rewards (from the game's tally of what this side did).
+KILL = 10.0
+BIG = 20.0
 ## Curiosity: a kind of action (verb, object) new this match, and a repeat.
 NEW_ACTION = 0.1
 REPEAT_ACTION = 0.0002
@@ -36,9 +41,15 @@ RUNS = os.path.join(os.path.dirname(__file__), "runs")
 
 
 def reward_of(prev, cur):
+    r = 0.0
+    a, b = prev.get("tally", {}), cur.get("tally", {})
+    if a and b:
+        d = lambda k: max(0, b.get(k, 0) - a.get(k, 0))
+        r += KILL * (d("ship_kills") + d("construct_kills"))
+        r += BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
     if cur.get("done") and cur.get("won"):
-        return float(WIN_REWARD * (2.0 - min(cur.get("t", LIMIT) / LIMIT, 1.0)))
-    return 0.0
+        r += WIN_REWARD * (2.0 - min(cur.get("t", LIMIT) / LIMIT, 1.0))
+    return float(r)
 
 
 def main():
