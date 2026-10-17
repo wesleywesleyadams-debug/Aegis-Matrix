@@ -34,8 +34,8 @@ WIN_DECAY = 12.5
 KILL = 10.0
 BIG = 20.0
 ## Curiosity: a kind of action (verb, object) new this match, and a repeat.
-NEW_ACTION = 0.1
-REPEAT_ACTION = 0.0002
+NEW_ACTION = 25.0
+REPEAT_ACTION = 1.0
 ## The game's time limit in seconds (set from --minutes).
 LIMIT = 2400.0
 RUNS = os.path.join(os.path.dirname(__file__), "runs")
