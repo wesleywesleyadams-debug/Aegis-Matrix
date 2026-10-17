@@ -5,7 +5,10 @@ of, against the scripted AI), batches their observations through the policy
 on the GPU, and learns from the outcome:
   reward = ONLY for winning, and more the sooner it comes: WIN_REWARD x
            (2 - time / time limit) - 200 for an instant win, 100 for a win
-           at the buzzer. Nothing for anything else, losing included.
+           at the buzzer. Nothing for losing.
+         + a small curiosity bonus: NEW_ACTION for each kind of action (verb +
+           what it builds/researches) the first time it is used in a match,
+           and a far smaller REPEAT_ACTION each time it is used again.
 
 Usage (from the project root, with the venv's python):
   sd-venv/Scripts/python.exe tools/rl/train.py --envs 4 --updates 1000
@@ -24,6 +27,9 @@ from model import Policy, collate, SLOTS
 SYSTEMS = ["orion_reach", "vega_drift", "kharon_expanse", "tethys_cluster", "sable_verge", "random"]
 ## The only reward: winning, scaled up the faster it happens.
 WIN_REWARD = 100.0
+## Curiosity: a kind of action (verb, object) new this match, and a repeat.
+NEW_ACTION = 0.1
+REPEAT_ACTION = 0.0002
 ## The game's time limit in seconds (set from --minutes).
 LIMIT = 2400.0
 RUNS = os.path.join(os.path.dirname(__file__), "runs")
@@ -72,6 +78,7 @@ def main():
 
     obs = list(pool.map(fresh, envs))
     ep_ret = [0.0] * args.envs
+    tried = [set() for _ in range(args.envs)]   # action kinds used this match
     results = []
     gamma, lam, clip = 0.995, 0.95, 0.2
     for upd in range(start, args.updates):
@@ -86,6 +93,13 @@ def main():
             rews, dones = [], []
             for i in range(args.envs):
                 r = reward_of(obs[i], nxt[i])
+                for o in orders[i]["orders"]:
+                    kind = (o[1], o[2])   # verb, object (-1 = none)
+                    if kind in tried[i]:
+                        r += REPEAT_ACTION
+                    else:
+                        tried[i].add(kind)
+                        r += NEW_ACTION
                 ep_ret[i] += r
                 rews.append(r)
                 dones.append(bool(nxt[i].get("done")))
@@ -95,6 +109,7 @@ def main():
                 if dones[i]:
                     results.append((nxt[i].get("won"), nxt[i].get("lost"), ep_ret[i], envs[i].system))
                     ep_ret[i] = 0.0
+                    tried[i] = set()
             # Finished games restart (in parallel) before the next step.
             redo = [i for i in range(args.envs) if dones[i]]
             if redo:
