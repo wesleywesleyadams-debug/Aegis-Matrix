@@ -406,7 +406,8 @@ func _setup_system_picker() -> void:
 	# Map preview and a facts line (star type, worlds, asteroids).
 	var preview := SystemPreview.new()
 	_preview = preview
-	preview.custom_minimum_size = Vector2(0, 262)
+	# Square, as wide as the panel: the round system at its largest.
+	preview.custom_minimum_size = Vector2(0, 404)
 	row.get_parent().add_child(preview)
 	row.get_parent().move_child(preview, desc.get_index() + 1)
 	var facts := Label.new()
