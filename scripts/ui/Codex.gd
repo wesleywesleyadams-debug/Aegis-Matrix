@@ -396,7 +396,7 @@ func _page_combat() -> void:
 	_para("Damage drains shields, then armor, then hull. A ship dies when its hull reaches 0.")
 	_table(["Layer", "Regenerates", "Notes"], [
 		[["Shields", Defs.LAYER_COLORS["shield"]], "Yes, for a little energy", "Paused while taking damage, Radiation included"],
-		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender restores it"],
+		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender or a carrier's hangar bays restore it"],
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
 	_para("Shields - on ships, constructs and worlds alike - only recharge once they have gone %d s without taking damage, then refill at %s%% of their maximum each second. So focused fire keeps them down, while fire spread across a fleet lets the ships you are not hitting recover." % [int(Defs.SHIELD_REGEN_DELAY), String.num(Defs.SHIELD_REGEN_PER_SEC * 100.0, 1)])
@@ -417,7 +417,7 @@ func _page_combat() -> void:
 		[str(int(sb["hp"])), Defs.LAYER_COLORS["hull"]], "hull"])
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
 	_heading("Specialist variants")
-	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant shows as the colour of its mark chevrons, which matches the colour of its shots.")
+	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant shows as the color of its mark chevrons, which matches the color of its shots.")
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
 		"slip": "orange V-shot", "disruptor": "purple V-shot"}
@@ -452,10 +452,10 @@ func _page_combat() -> void:
 	mrows.append(sbrow)
 	_table(head, mrows)
 	_heading("Hull marks", EDGE_LIT)
-	_para("A mark is rank, not purpose: it comes from the War Ships research tab and raises damage and every defense layer, while a variant comes from a Weapons Depot and decides what the ship is good against. The two stack. The Ships page lays out class, mark and variant side by side.")
+	_para("A mark is rank, not purpose: it comes from the Warships research tab and raises damage and every defense layer, while a variant comes from a Weapons Depot and decides what the ship is good against. The two stack. The Ships page lays out class, mark and variant side by side.")
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
-	_para("Starbases build generalists only. Once the Depots tech is researched, a Constructor builds a depot (E) for %s over %ds, and every depot is built for ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
+	_para("Starbases build generalists only. Once the Depots tech is researched, a Constructor builds a depot (one button per variant) for %s over %ds, and every depot is built for ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
 		Defs.cost_text(wd["cost"]), int(wd["build_time"])])
 	_para("Send generalists in by right-clicking the depot (or with the refit buttons in their panel). They fly in and dock — %d at a time, hidden and safe inside — and are refitted automatically as minerals allow. Each hull has its own cost and time:" % int(wd["capacity"]))
 	var rrows: Array = []
@@ -494,11 +494,11 @@ func _page_ships() -> void:
 	# conflating them, so they are laid out side by side here before the
 	# stat cards: what it IS, how GOOD it is, and what it is FOR.
 	_heading("Class, Mark and Variant")
-	_para("Every warship is described by three separate things. Its CLASS is the hull it was built as and never changes. Its MARK is how refined that hull is, bought on the War Ships research tab. Its VARIANT is what it was refitted to specialise in, bought at a Weapons Depot. A Mk IV Reaver Corvette is all three at once: a corvette, taken to the top mark, fitted to hunt hull.")
+	_para("Every warship is described by three separate things. Its CLASS is the hull it was built as and never changes. Its MARK is how refined that hull is, bought on the Warships research tab. Its VARIANT is what it was refitted to specialize in, bought at a Weapons Depot. A Mk IV Reaver Corvette is all three at once: a corvette, taken to the top mark, fitted to hunt hull.")
 	_table(["System", "Comes from", "Changes", "You can tell by"], [
 		[["Class", TEXT], "What you build it as", "Never", "The hull's silhouette"],
-		[["Mark", EDGE_LIT], "War Ships research", "Every ship of that class, at once", "How many chevrons beside it"],
-		[["Variant", Defs.VARIANTS["reaver"]["color"]], "Refit at a Weapons Depot", "Once, permanently", "The colour of its chevrons"],
+		[["Mark", EDGE_LIT], "Warships research", "Every ship of that class, at once", "How many chevrons beside it"],
+		[["Variant", Defs.VARIANTS["reaver"]["color"]], "Refit at a Weapons Depot", "Once, permanently", "The color of its chevrons"],
 	])
 	_heading("Class — the shape")
 	var cls_plate: Array = []
@@ -516,13 +516,13 @@ func _page_ships() -> void:
 		mrows0.append(row0)
 	_table(["Class", Defs.HULL_MARKS[1], Defs.HULL_MARKS[2], Defs.HULL_MARKS[3]], mrows0)
 	_para("Every warship carries small chevrons beside it, one per mark: one at Mk I, up to four at Mk IV. Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments, and a mark applies to every ship of that class you already own the moment the research lands.")
-	_heading("Variant — the colour")
-	_para("A variant keeps its class's hull exactly; only its mark chevrons change colour. Generalists wear yellow chevrons, and each variant its own colour - the same colour as its shots:")
+	_heading("Variant — the color")
+	_para("A variant keeps its class's hull exactly; only its mark chevrons change color. Generalists wear yellow chevrons, and each variant its own color - the same color as its shots:")
 	var crows: Array = [[["Generalist", Defs.GENERALIST_COLOR], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	for tv in Defs.VARIANTS:
 		crows.append([[Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]], ["^ ^ ^", Defs.VARIANTS[tv]["color"]]])
 	_table(["Variant", "Chevrons"], crows)
-	_para("So a glance at a fleet reads its rank from the count and its fit from the colour. What each variant does to damage is on the Combat page.")
+	_para("So a glance at a fleet reads its rank from the count and its fit from the color. What each variant does to damage is on the Combat page.")
 	_heading("Every ship")
 	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat).")
 	for t in Defs.BUILD_ORDER:
@@ -619,8 +619,8 @@ func _page_economy() -> void:
 		hrows.append([row[0], row[2], [row[3].capitalize(), Defs.RESOURCE_COLORS[row[3]]],
 			"%.0f/min" % rate, "%d" % int(d["cargo"]), "%ds" % int(float(d["cargo"]) / rate * Defs.PER_MIN)])
 	_table(["Ship", "Source", "Yields", "Gather", "Hold", "Fill time"], hrows)
-	_para("Asteroids run dry and vanish (a mineral rock holds about %s per 100 px of width, a spice rock %s), gas giants refill after a pause, and a spice nebula never runs out. The Logistics techs raise hold size, gather rate and speed." % [
-		str(int(Defs.ASTEROID_MINERALS_PER_PX2 * 1000.0)), str(int(Defs.ASTEROID_SPICE_PER_PX2 * 1000.0))])
+	_para("Asteroids run dry and vanish (a small mineral rock holds about %d, a large one about %d; spice rocks hold about a third as much), gas giants refill after a pause, and a spice nebula never runs out. The Logistics techs raise hold size, gather rate and speed." % [
+		int(round(16.0 * 16.0 * Defs.ASTEROID_MINERALS_PER_PX2 / 10.0)) * 10, int(round(26.0 * 26.0 * Defs.ASTEROID_MINERALS_PER_PX2 / 10.0)) * 10])
 	_heading("Buildings")
 	var bplate: Array = []
 	for b in Defs.BUILDING_ORDER:
@@ -648,7 +648,7 @@ func _page_economy() -> void:
 
 func _page_systems() -> void:
 	_heading("Systems")
-	_para("A match is fought in one star system, chosen in the lobby. Every system is point-symmetric - both players start with the same worlds, rocks and distances, mirrored through the star - and every one has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside them. What differs is the star, the signature feature and where the gas lies, and those decide how the match is fought.")
+	_para("A match is fought in one star system, chosen in the lobby. Every system is symmetric - every player starts with the same worlds, rocks and distances, arranged evenly around the star - and every one has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside them. What differs is the star, the signature feature and where the gas lies, and those decide how the match is fought.")
 	for s in SystemGen.SYSTEMS:
 		_system_card(s)
 	_star_section()
@@ -761,7 +761,7 @@ func _page_terms() -> void:
 		["Starbase", "Your production station. It builds ships, takes in cargo and defends itself. Losing every one with no Constructor left to build another loses the match (so does losing every world)."],
 		["Weapons Depot", "Constructor-built station where a generalist warship is refitted into a specialist variant, permanently."],
 		["Class", "The hull a warship was built as, and keeps for life: Corvette, Destroyer, Cruiser or Carrier. You read it off the silhouette."],
-		["Mark", "How refined a class is, Mk I to Mk IV, bought on the War Ships research tab. It applies to every ship of that class at once."],
+		["Mark", "How refined a class is, Mk I to Mk IV, bought on the Warships research tab. It applies to every ship of that class at once."],
 		["Generalist", "Any warship as built, before a refit: full damage to every defense layer."],
 		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor. One refit only, and it is permanent."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
@@ -839,7 +839,7 @@ func _page_controls() -> void:
 		["Build on the focused world", ["F", EDGE_LIT]],
 		["Research", ["R", EDGE_LIT]],
 		["Set / select control group", ["Ctrl + 1-9  /  1-9", EDGE_LIT]],
-		["Centre on a control group", ["1-9 twice", EDGE_LIT]],
+		["Center on a control group", ["1-9 twice", EDGE_LIT]],
 		["Pause and resume", ["Pause key, or the Pause button", EDGE_LIT]],
 		["Game speed", ["-  /  =  (Backspace resets)", EDGE_LIT]],
 		["Clear the selection; with nothing selected, the menu", ["Esc", EDGE_LIT]],
@@ -851,12 +851,12 @@ const SHIP_NOTES := {
 	"miner": "Hauls ore. Right-click an asteroid to mine it and it shuttles loads back to a starbase on its own; orange-flecked rocks carry spice. Asteroids run dry, so miners keep moving outward as a belt empties.",
 	"skimmer": "Mines minerals from gas giants, which never run out but refill slowly after being drained, and harvests spice gas inside a spice nebula: right-click a spot in the cloud and it works there, slowly and indefinitely.",
 	"colony": "Settles a free world, and is used up doing it. Colonizing takes a minute in orbit and the new colony starts small, so send it early and guard it: an unescorted colony ship is the cheapest kill on the map.",
-	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
+	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, a Mining Station as a forward drop-off, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
 	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there, charging a light-purple solar shield (100; each energy recharges 10% of it; full when built, charging even under fire) before any goes to your energy pool. The shield is a bubble nearly two carriers wide: one shared damage pillow that soaks enemy fire on every friendly ship, construct and world inside it, and while it is up nothing inside takes Radiation - friend or foe. Touching bubbles of your arrays merge into one mega shield that pools their points (three full arrays: 300); every hit is shared among the arrays in proportion to their charge, so the pool bursts for all of them at once when it hits 0. If they drift apart, each keeps its own share and becomes a separate bubble again. Shield techs on the Defense tab (Deflector Arrays, Phase Shields, Aegis Matrix) raise a solar shield's maximum like any other shield - all three: +90%, 190 points - and since each energy recharges 10% of the maximum, a bigger shield refills just as fast. Variant rules apply to solar shields as to any shield: Plasma hits them at x2.2, Slip and Disruptor shots pass straight through the bubble, and Overcharged Coils lets 25% of each hit through. The array itself is always immune to Radiation. A support ship with no weapon: it can't be refitted.",
 	"corvette": "The cheap body of a fleet, and the only hull a carrier can dock. Fast and short-ranged, it is bought in numbers.",
-	"destroyer": "A shield boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
-	"cruiser": "Armor and a torpedo that outranges everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
-	"carrier": "A mobile repair yard that shoots back. Its bays dock damaged corvettes, mend hull then armor and launch them again, and its two turrets traverse on their own, so the hull never has to come about to fire — but slowly enough that a corvette which keeps moving can stay off the bearing and flank it. Turrets fire on the move at reduced accuracy.",
+	"destroyer": "An armored boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
+	"cruiser": "Heavy shields and three laser turrets that outrange everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
+	"carrier": "A mobile repair yard that shoots back. Its bays dock damaged corvettes, mend hull then armor and launch them again, and its four turrets traverse on their own, so the hull never has to come about to fire — but slowly enough that a corvette which keeps moving can stay off the bearing and flank it. Turrets fire on the move at reduced accuracy.",
 }

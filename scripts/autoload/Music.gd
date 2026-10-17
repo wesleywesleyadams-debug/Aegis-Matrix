@@ -14,7 +14,7 @@ const IN_GAME_TRACK: String = "through_space"
 ## Built-in songs offered for the in-game playlist: [id, display name].
 const BUILTIN_TRACKS := [
 	["through_space", "Through Space (Maxstack)"],
-	["spacelife", "Space Life No. 14 (YD)"],
+	["spacelife", "Space Life No. 14 (yd)"],
 	["magic_space", "Magic Space (CodeManu)"],
 	["deus_ex_tempus", "Deus Ex Tempus (Trevor Lentz)"],
 	["hero_immortal", "Hero Immortal (Trevor Lentz)"],

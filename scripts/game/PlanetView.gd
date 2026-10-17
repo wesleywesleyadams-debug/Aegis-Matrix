@@ -337,7 +337,7 @@ func refresh() -> void:
 	_title.add_theme_color_override("font_color", Defs.team_color(planet.owner_id) if planet.owner_id != 0 else Color(0.85, 0.9, 1.0))
 	_subtitle.text = ("%s · Size %d
 %d/%d built" % [t["label"], planet.fields, used0, planet.fields]) if planet.fields > 0 else t["label"]
-	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else "Enemy world")
+	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else ("Allied world" if game.are_allies(planet.owner_id, game.player_id) else "Enemy world"))
 	var s := owner_text
 	for tr in Defs.planet_traits(planet.kind):
 		s += "\n" + tr

@@ -2950,7 +2950,7 @@ func start_depot_placement(v: String = "") -> void:
 		placing_depot_variant = v
 	placing_depot = true
 	placing_starbase = false
-	message.emit("Left-click open space for an %s Depot (%s over %ds): generalists sent here are refitted into %s ships. Right-click to cancel." % [
+	message.emit("Left-click open space for a %s Depot (%s over %ds): generalists sent here are refitted into %s ships. Right-click to cancel." % [
 		Defs.VARIANTS[placing_depot_variant]["label"], Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), Defs.WEAPONS_DEPOT["build_time"], Defs.VARIANTS[placing_depot_variant]["label"]], Color("c3cde4"))
 
 func _place_depot(pos: Vector2) -> void:

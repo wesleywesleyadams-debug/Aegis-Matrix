@@ -343,7 +343,7 @@ func _build_speed(root: Control) -> void:
 		sb.content_margin_right = 8
 		_play_button.add_theme_stylebox_override(st, sb)
 	_play_button.focus_mode = Control.FOCUS_NONE
-	_play_button.tooltip_text = "Pause / resume the game (Space). You can still give orders while paused."
+	_play_button.tooltip_text = "Pause / resume the game (Pause key). You can still give orders while paused."
 	_play_button.pressed.connect(toggle_play)
 	h.add_child(_play_button)
 	var v := VBoxContainer.new()
@@ -666,7 +666,7 @@ func _build_research(root: Control) -> void:
 		def_rows.append([_row_head(line[1], line[2], LINE_ICONS[line[0]]), ids])
 	pages["defense"] = _tech_page(v, def_rows)
 
-	var order := [["warships", "War Ships"], ["weapons", "Weapons"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"], ["general", "General"]]
+	var order := [["warships", "Warships"], ["weapons", "Weapons"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"], ["general", "General"]]
 	var buttons := {}
 	for pair in order:
 		if not pages.has(pair[0]):
@@ -1092,7 +1092,7 @@ func _build_star_panel(s: Star) -> void:
 	head.add_child(col)
 	_sel_body.add_child(head)
 	_sel_body.add_child(_label("Radiation: ships and stations within %d px take damage, rising sharply closer in, up to %d/s on contact with the surface (shields absorb it first)." % [int(s.radiation_radius), int(s.max_dps)], Color("ff8a6a"), 13))
-	_sel_body.add_child(_label("Future research may allow harvesting energy from stars.", DIM, 12))
+	_sel_body.add_child(_label("A Radiation Sail Array harvests energy inside this radiation.", DIM, 12))
 	for l in _sel_body.get_children():
 		if l is Label:
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1120,7 +1120,7 @@ func _build_planet_panel(p: Planet) -> void:
 	var col := VBoxContainer.new()
 	# Out of sensor range the owner is only the last one seen (fog of war).
 	var so := p.shown_owner()
-	var owner_text := "Unclaimed" if so == 0 else ("Yours" if so == game.player_id else "Enemy")
+	var owner_text := "Unclaimed" if so == 0 else ("Yours" if so == game.player_id else ("Allied (%s)" % game.player_name(so) if game.are_allies(so, game.player_id) else ("Enemy" if game.players.size() == 2 else "Enemy (%s)" % game.player_name(so))))
 	if not p.in_sight:
 		owner_text += "  (last seen: out of sensor range)"
 	col.add_child(_label(("%s  ·  %s  ·  Size %d" % [p.planet_name, t["label"], p.fields]) if p.fields > 0 else "%s  ·  %s" % [p.planet_name, t["label"]], Defs.team_color(so), 20))
@@ -1162,7 +1162,7 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 	txt += "Hull %d/%d" % [ceili(e.hp), e.max_hp]
 	if e is Ship:
 		var s := e as Ship
-		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Bombarding planet", "Refitting at Weapons Depot"][s.state]
+		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Bombarding planet", "Refitting at Weapons Depot", "Docking at carrier", "Docked"][s.state]
 		if s.is_miner():
 			txt += "   Cargo %d/%d %s" % [s.cargo, s.cargo_cap(), s.cargo_type]
 		elif s.def["weapon"] != "":
@@ -1293,8 +1293,8 @@ func _update_top_bar() -> void:
 		_res_labels["energy"].add_theme_color_override("font_color", BAD)
 		_res_labels["energy"].text += "  NO ENERGY"
 	_res_boxes["spice"].tooltip_text += "\nSpice automatically covers shortfalls of food, minerals and energy (1:1)."
-	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/s for ships and starbases%s" % [game.upkeep(pid), "
-OUT OF ENERGY: ship production halted, ships at 25%% speed" if game.energy_starved(pid) else ""]
+	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/min for ships and starbases%s" % [game.upkeep(pid), "
+OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starved(pid) else ""]
 	_pop_label.text = "Pop %s" % _fmt(game.total_pop(pid))
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats %.2f food per minute." % Defs.FOOD_PER_POP_PER_MIN
 	_fleet_label.text = "%d ships · upkeep x%.2f" % [game.ship_count(pid), game.upkeep_multiplier(pid)]
@@ -1814,7 +1814,7 @@ func _add_constructor_buttons() -> void:
 	for v in Defs.VARIANTS:
 		var vd: Dictionary = Defs.VARIANTS[v]
 		var b := _panel_build_button("ship_depot_" + v, "%s Depot" % vd["label"], Defs.WEAPONS_DEPOT["cost"], Defs.WEAPONS_DEPOT["build_time"],
-			"Refits a generalist warship into a %s: %s" % [vd["label"], vd["desc"]], vd["color"])
+			"Refits a generalist warship into a %s ship: %s" % [vd["label"], vd["desc"]], vd["color"])
 		if locked:
 			b.disabled = true
 			b.tooltip_text = "Weapons Depots need the %s tech." % Defs.TECHS[Defs.WEAPONS_DEPOT["requires"]]["name"]

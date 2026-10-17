@@ -464,7 +464,7 @@ func _build_hotkeys_tab() -> void:
 			["Zoom", "Mouse wheel"],
 			["Set control group", "Ctrl + 1-9"],
 			["Select control group", "1-9"],
-			["Centre on group", "1-9 twice"],
+			["Center on group", "1-9 twice"],
 			["Clear selection, or menu", "Esc"]]:
 		var h := HBoxContainer.new()
 		var a := Label.new()

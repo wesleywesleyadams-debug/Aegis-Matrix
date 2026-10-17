@@ -688,7 +688,7 @@ const JOBS := {
 	"hangar": {"name": "Hangar Bays", "active": false, "color": Color("ffc24a"),
 		"desc": "Six bays that take corvette-sized hulls: right-click the carrier with them selected (or let them come on their own) and each is mended hull first, then armor, then launched again."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
-		"desc": "Repairs up to 4 ships within 180 px (5 points/s each: hull first, then armor, the only way to restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
+		"desc": "Repairs up to 4 ships within 180 px (5 points/s each: hull first, then armor; only tenders and carrier bays restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
 }
 
 ## Visual language for the defense layers: bars, research lines, and the
