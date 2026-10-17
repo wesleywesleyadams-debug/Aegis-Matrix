@@ -73,6 +73,13 @@ func has_room() -> bool:
 func dock(s: Ship) -> void:
 	if not has_room() or not s.can_refit(variant):
 		return
+	# Paid up front as the ship docks; no funds, no refit.
+	var price := {}
+	for k in s.def["refit"]:
+		if k != "time":
+			price[k] = s.def["refit"][k]
+	if not Game.instance.try_pay(owner_id, price):
+		return
 	bays.append({"ship": s, "left": float(s.def["refit"]["time"])})
 	s.enter_depot(self)
 	if owner_id == Game.instance.player_id:
@@ -85,8 +92,7 @@ func _physics_process(delta: float) -> void:
 	_regen_shields(delta)
 	_refit(delta)
 
-## Refits every docked ship, paying its minerals over its refit time. A ship
-## whose owner can't pay simply waits.
+## Refits every docked ship (each paid for in full as it docked).
 func _refit(delta: float) -> void:
 	if bays.is_empty():
 		return
@@ -99,13 +105,7 @@ func _refit(delta: float) -> void:
 			bays.remove_at(i)
 			continue
 		var s: Ship = ship
-		var r: Dictionary = s.def["refit"]
-		var per_sec := {}
-		for k in r:
-			if k != "time":
-				per_sec[k] = r[k] / float(r["time"])
-		var f := g.pay_over_time(owner_id, per_sec, delta)
-		bay["left"] -= delta * f
+		bay["left"] -= delta   # paid when it docked
 		if bay["left"] <= 0.0:
 			bays.remove_at(i)
 			s.leave_depot(self)
@@ -125,8 +125,9 @@ func _construct(delta: float) -> void:
 	var cs: float = g.mod(owner_id, "construct_speed")
 	for k2 in per_sec:
 		per_sec[k2] *= cs
-	var f := g.pay_over_time(owner_id, per_sec, delta) * cs
-	build_stalled = f < cs - 0.001
+	# Paid in full when the site was founded (Game.try_pay).
+	var f := cs
+	build_stalled = false
 	if build_stalled:
 		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f
@@ -166,6 +167,13 @@ func _draw() -> void:
 func cancel(s: Ship) -> void:
 	for i in bays.size():
 		if bays[i]["ship"] == s:
+			# Paid up front, so a cancelled refit is refunded in full.
+			if is_instance_valid(s):
+				var back := {}
+				for k in s.def["refit"]:
+					if k != "time":
+						back[k] = s.def["refit"][k]
+				Game.instance.add_resources(owner_id, back)
 			bays.remove_at(i)
 			if is_instance_valid(s):
 				s.leave_depot(self)

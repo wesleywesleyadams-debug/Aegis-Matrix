@@ -85,6 +85,9 @@ var build_site: Vector2
 var build_kind: String = "starbase"
 ## Which variant a depot being built will fit.
 var build_variant: String = "plasma"
+## What the current build order already paid (sites are bought up front
+## when ordered); refunded if the order is dropped or the Constructor dies.
+var build_paid: Dictionary = {}
 ## Refit (see order_refit): the variant being fitted, the depot, and the
 ## refit time still to go.
 var refit_variant: String = ""
@@ -533,6 +536,8 @@ func order_build_starbase(pos: Vector2) -> void:
 	held = false
 	if def["role"] != "constructor":
 		return
+	if not _buy_site("starbase"):
+		return
 	build_site = pos
 	build_kind = "starbase"
 	state = State.BUILD
@@ -551,6 +556,8 @@ func order_stop() -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	if not build_paid.is_empty() and state != State.BUILD:
+		refund_site()   # the build order was dropped
 	if docked:
 		return
 	if def.has("solar_sail"):
@@ -748,6 +755,7 @@ func _physics_process(delta: float) -> void:
 			if global_position.distance_to(build_site) <= 8.0:
 				var problem: String = Game.instance.site_problem(build_kind, build_site)
 				if problem == "":
+					build_paid = {}   # spent: the site is founded
 					match build_kind:
 						"depot": Game.instance.found_depot(owner_id, build_site, build_variant)
 						"station": Game.instance.found_station(owner_id, build_site)
@@ -775,6 +783,11 @@ func _physics_process(delta: float) -> void:
 					desired = _arrive(refit_depot.global_position, 1.0, hold)
 				elif refit_depot.has_room():
 					refit_depot.dock(self)
+					if not docked:
+						# Couldn't pay for the refit (the player was told): give up.
+						state = State.IDLE
+						refit_depot = null
+						move_goal = global_position
 		State.RETURN:
 			# The one it was sent to, or whichever is closest: starbase or
 			# Mining Station.
@@ -1278,6 +1291,8 @@ func order_build_station(pos: Vector2) -> void:
 	held = false
 	if def["role"] != "constructor":
 		return
+	if not _buy_site("station"):
+		return
 	build_site = pos
 	build_kind = "station"
 	state = State.BUILD
@@ -1287,6 +1302,8 @@ func order_build_station(pos: Vector2) -> void:
 func order_build_depot(pos: Vector2, v: String = "plasma") -> void:
 	held = false
 	if def["role"] != "constructor":
+		return
+	if not _buy_site("depot"):
 		return
 	build_site = pos
 	build_kind = "depot"
@@ -1513,3 +1530,22 @@ func _draw_sail_arcs(r0: float) -> void:
 			fork.append(pts[fi] + Vector2.from_angle(fa + s["kinks"][j + 1] * 3.0) * (r0 * 0.09 * (j + 1)))
 		draw_polyline(fork, Color(glow, 0.35 * fade), 3.0, true)
 		draw_polyline(fork, Color(Color.WHITE, 0.7 * fade), 1.0, true)
+
+## Pays for a site of `kind` up front (refunding any earlier unbuilt order).
+## False - and nothing paid - if the player can't afford it.
+func _buy_site(kind: String) -> bool:
+	refund_site()
+	var price: Dictionary = {"depot": Defs.WEAPONS_DEPOT, "station": Defs.MINING_STATION}.get(kind, Defs.STARBASE)["cost"]
+	if not Game.instance.try_pay(owner_id, price):
+		return false
+	build_paid = price
+	return true
+
+func refund_site() -> void:
+	if not build_paid.is_empty():
+		Game.instance.add_resources(owner_id, build_paid)
+		build_paid = {}
+
+func _die() -> void:
+	refund_site()
+	super._die()

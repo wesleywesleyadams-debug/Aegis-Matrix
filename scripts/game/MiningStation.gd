@@ -92,8 +92,9 @@ func _construct(delta: float) -> void:
 	var cs: float = g.mod(owner_id, "construct_speed")
 	for k2 in per_sec:
 		per_sec[k2] *= cs
-	var f := g.pay_over_time(owner_id, per_sec, delta) * cs
-	build_stalled = f < cs - 0.001
+	# Paid in full when the site was founded (Game.try_pay).
+	var f := cs
+	build_stalled = false
 	if build_stalled:
 		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f

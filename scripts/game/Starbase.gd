@@ -61,8 +61,8 @@ func refresh_stats() -> void:
 func _update_site_look() -> void:
 	modulate = Color(1, 1, 1, 0.45 + 0.55 * construct_progress / Defs.STARBASE["build_time"]) if under_construction else Color.WHITE
 
-## "" if allowed, otherwise a player-facing reason. Costs are paid while
-## building, so affordability isn't checked here.
+## "" if allowed, otherwise a player-facing reason. The cost is paid up
+## front by enqueue (Game.try_pay).
 func can_queue(ship_type: String) -> String:
 	if under_construction:
 		return "Starbase is still under construction"
@@ -75,21 +75,19 @@ func can_queue(ship_type: String) -> String:
 
 func enqueue(ship_type: String) -> String:
 	var why := can_queue(ship_type)
-	if why == "":
-		queue.append(ship_type)
-	return why
+	if why != "":
+		return why
+	if not Game.instance.try_pay(owner_id, Defs.SHIPS[ship_type]["cost"]):
+		return "Insufficient Funds"
+	queue.append(ship_type)
+	return ""
 
-## Cancelling refunds whatever share of the cost was already paid.
+## Cancelling refunds the full price (it was paid up front).
 func cancel(index: int) -> void:
 	if index < 0 or index >= queue.size():
 		return
-	if index == 0 and build_progress > 0.0:
-		var d: Dictionary = Defs.SHIPS[queue[0]]
-		var frac: float = build_progress / d["build_time"]
-		var refund := {}
-		for k in d["cost"]:
-			refund[k] = d["cost"][k] * frac
-		Game.instance.add_resources(owner_id, refund)
+	Game.instance.add_resources(owner_id, Defs.SHIPS[queue[index]]["cost"])
+	if index == 0:
 		build_progress = 0.0
 	queue.remove_at(index)
 
@@ -120,17 +118,8 @@ func _physics_process(delta: float) -> void:
 		build_stalled = true
 	elif not queue.is_empty():
 		var d: Dictionary = Defs.SHIPS[queue[0]]
-		var per_sec := {}
-		for k in d["cost"]:
-			per_sec[k] = d["cost"][k] / d["build_time"]
-		# Orbital yards (Constructs) build ships faster; the cost is paid at the
-		# same rate, so a hull costs the same, it just arrives sooner.
-		var rate: float = g.mod(owner_id, "build_speed")
-		for k2 in per_sec:
-			per_sec[k2] *= rate
-		var f := g.pay_over_time(owner_id, per_sec, delta)
-		build_stalled = f < 0.999
-		build_progress += delta * f * rate
+		# Paid up front; Orbital Yards (Constructs) just build it sooner.
+		build_progress += delta * g.mod(owner_id, "build_speed")
 		if build_progress >= d["build_time"]:
 			_launch(queue.pop_front())
 			build_progress = 0.0
@@ -155,8 +144,9 @@ func _construct(delta: float) -> void:
 	var cs: float = g.mod(owner_id, "construct_speed")
 	for k2 in per_sec:
 		per_sec[k2] *= cs
-	var f := g.pay_over_time(owner_id, per_sec, delta) * cs
-	build_stalled = f < cs - 0.001
+	# Paid in full when the site was founded (Game.try_pay).
+	var f := cs
+	build_stalled = false
 	if build_stalled:
 		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f
