@@ -1434,9 +1434,6 @@ func _draw_solar_shield(t: float) -> void:
 		var a := TAU * i / n
 		var wob := 1.4 * sin(a * 5.0 + t * 2.2) + 0.9 * sin(a * 9.0 - t * 3.1)
 		pts.append(Vector2.from_angle(a) * (r0 + wob))
-	# Fill as a plain circle: the wobbly outline sometimes fails to
-	# triangulate as a polygon, which made the fill blink on and off.
-	draw_circle(Vector2.ZERO, r0, Color(sc, (0.05 + 0.08 * f) * alpha / 0.8))
 	draw_polyline(pts, Color(sc, alpha), width, true)
 	draw_polyline(pts, Color(sc.lightened(0.5), alpha * 0.35), width + 3.0, true)
 	# Impact ripples: a bright flare at the hit that spreads along the edge.
