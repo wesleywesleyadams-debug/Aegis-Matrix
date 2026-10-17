@@ -82,10 +82,7 @@ static func _orion_layout() -> Dictionary:
 func _draw() -> void:
 	var bg: Dictionary = SystemGen.BACKGROUNDS.get(_settings.get("bg", "violet"), SystemGen.BACKGROUNDS["violet"])
 	var base: Color = bg["base"]
-	# The system is a disc (Game.MAP_RADIUS): dark box, the system's sky
-	# inside its edge.
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.025, 0.05))
-	draw_rect(Rect2(Vector2.ZERO, size), Color("2e3a66"), false, 1.0)
+	# The system is a disc (Game.MAP_RADIUS): just the disc, no box round it.
 	var sc := minf(size.x / MAP_SIZE.x, size.y / MAP_SIZE.y)
 	var center := size / 2.0
 	draw_circle(center, Game.MAP_RADIUS * sc, base.lightened(0.04))
