@@ -624,9 +624,9 @@ static func marked_name(ship_type: String, level: int) -> String:
 ## shield-heavy, cruiser armor-heavy) each specialist kills its favored
 ## targets 7-18% faster and the others 5-46% slower (see tools notes).
 ## color: the variant's markings and shot color.
-## Radiation Sail Array bubble radius: big enough to hold three carriers
-## (radius 64): 3 circles of r packed in a circle need r * (1 + 2/sqrt(3)).
-const SAIL_RADIUS := 140.0
+## Radiation Sail Array bubble radius: 80% of the size that held three
+## carriers (140).
+const SAIL_RADIUS := 112.0
 ## Solar shield points charged per point of energy the sail harvests.
 const SAIL_SHIELD_PER_ENERGY := 10.0
 
@@ -684,7 +684,7 @@ const JOBS := {
 	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
 		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
 	"radiation_sail": {"name": "Radiation Sail", "active": false, "color": Color("c9a0ff"),
-		"desc": "In Radiation (a star's zone or a spice nebula), harvests 15 energy a minute: first into a solar shield (100; 1 energy charges 10 shield; starts full, charges even under fire), the rest to your energy pool. The shield is a bubble three carriers wide: it soaks enemy fire on every friendly ship, construct and world inside, and blocks Radiation for everything inside, friend or foe. Touching bubbles merge into one pooled mega shield."},
+		"desc": "In Radiation (a star's zone or a spice nebula), harvests 15 energy a minute: first into a solar shield (100; 1 energy charges 10 shield; starts full, charges even under fire), the rest to your energy pool. The shield is a bubble nearly two carriers wide: it soaks enemy fire on every friendly ship, construct and world inside, and blocks Radiation for everything inside, friend or foe. Touching bubbles merge into one pooled mega shield."},
 	"hangar": {"name": "Hangar Bays", "active": false, "color": Color("ffc24a"),
 		"desc": "Six bays that take corvette-sized hulls: right-click the carrier with them selected (or let them come on their own) and each is mended hull first, then armor, then launched again."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),

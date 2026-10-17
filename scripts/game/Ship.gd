@@ -1339,7 +1339,7 @@ func shield_color() -> Color:
 
 # ---------------------------------------------------------------- solar shield look
 # The Radiation Sail Array's shield, drawn by _draw_job in world-aligned
-# space: a large shimmering bubble (Defs.SAIL_RADIUS, three carriers wide) that
+# space: a large shimmering bubble (Defs.SAIL_RADIUS, nearly two carriers wide) that
 #  - ripples gently at the edge,
 #  - pulls in purple motes while it harvests,
 #  - ripples out from where a shot lands,

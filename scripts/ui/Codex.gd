@@ -18,6 +18,7 @@ const SECTIONS := [
 	["controls", "Controls"],
 	["combat", "Combat"],
 	["ships", "Ships"],
+	["research", "Research"],
 	["economy", "Economy"],
 	["systems", "Systems"],
 	["terms", "Terminology"],
@@ -366,6 +367,7 @@ func _show(id: String) -> void:
 		"controls": _page_controls()
 		"combat": _page_combat()
 		"ships": _page_ships()
+		"research": _page_research()
 		"economy": _page_economy()
 		"systems": _page_systems()
 		"terms": _page_terms()
@@ -562,6 +564,29 @@ func _page_ships() -> void:
 			col.add_child(_card_text(SHIP_NOTES[t], DIM))
 		card.set_meta("block", true)
 		_body.add_child(card)
+
+## Every tech, tab by tab: what it needs, costs and does.
+func _page_research() -> void:
+	_heading("Research")
+	_para("Research spends energy (and spice for later tiers) over time; only one project runs at a time. Each tech needs only the tier below it in its own row; a warship's Mk II needs the class unlocked first.")
+	for g in ["warships", "weapons", "defense", "constructs", "worlds", "logistics"]:
+		var ids: Array = []
+		for id in Defs.TECHS:
+			if Defs.TECHS[id]["group"] == g:
+				ids.append(id)
+		if ids.is_empty():
+			continue
+		ids.sort_custom(func(x, y): return Defs.TECHS[x]["tier"] < Defs.TECHS[y]["tier"] if Defs.TECHS[x]["tier"] != Defs.TECHS[y]["tier"] else Defs.TECHS[x]["name"] < Defs.TECHS[y]["name"])
+		_heading(g.capitalize(), EDGE_LIT)
+		_para(Defs.TECH_GROUP_DESC.get(g, ""))
+		var rows: Array = []
+		for id in ids:
+			var t: Dictionary = Defs.TECHS[id]
+			var req: Array = []
+			for r in t.get("requires", []):
+				req.append(Defs.TECHS[r]["name"] if Defs.TECHS.has(r) else str(r))
+			rows.append([t["name"], "%d" % t["tier"], ", ".join(req) if not req.is_empty() else "-", Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t.get("desc", "")])
+		_table(["Tech", "Tier", "Requires", "Cost", "Time", "Effect"], rows)
 
 func _page_economy() -> void:
 	_heading("Planets")
@@ -821,7 +846,7 @@ const SHIP_NOTES := {
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
-	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there, charging a light-purple solar shield (100; each energy gives 10 shield; full when built, charging even under fire) before any goes to your energy pool. The shield is a bubble three carriers wide: one shared damage pillow that soaks enemy fire on every friendly ship, construct and world inside it, and while it is up nothing inside takes Radiation - friend or foe. Touching bubbles of your arrays merge into one mega shield that pools their points (three full arrays: 300); every hit is shared among the arrays in proportion to their charge, so the pool bursts for all of them at once when it hits 0. If they drift apart, each keeps its own share and becomes a separate bubble again. The array itself is always immune to Radiation. A support ship with no weapon: it can't be refitted.",
+	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there, charging a light-purple solar shield (100; each energy gives 10 shield; full when built, charging even under fire) before any goes to your energy pool. The shield is a bubble nearly two carriers wide: one shared damage pillow that soaks enemy fire on every friendly ship, construct and world inside it, and while it is up nothing inside takes Radiation - friend or foe. Touching bubbles of your arrays merge into one mega shield that pools their points (three full arrays: 300); every hit is shared among the arrays in proportion to their charge, so the pool bursts for all of them at once when it hits 0. If they drift apart, each keeps its own share and becomes a separate bubble again. The array itself is always immune to Radiation. A support ship with no weapon: it can't be refitted.",
 	"corvette": "The cheap body of a fleet, and the only hull a carrier can dock. Fast and short-ranged, it is bought in numbers.",
 	"destroyer": "A shield boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Armor and a torpedo that outranges everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
