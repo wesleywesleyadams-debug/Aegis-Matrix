@@ -168,9 +168,7 @@ func _panel_style(margin: int = 10, border: Color = EDGE) -> StyleBoxFlat:
 	return sb
 
 func _fmt(v: float) -> String:
-	if absf(v) >= 10000.0:
-		return "%.1fk" % (v / 1000.0)
-	return "%d" % int(v)
+	return Defs.short_num(v)
 
 # ---------------------------------------------------------------- layout
 

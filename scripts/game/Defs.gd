@@ -52,6 +52,15 @@ const TEAM_COLORS: Array[Color] = [
 	Color("c77dff"), Color("ff8c3a"), Color("3de0d0"), Color("f2f2f2"),
 ]
 
+## Compact amounts: 950, 1.2k, 54.3k, 230k.
+static func short_num(v: float) -> String:
+	var a := absf(v)
+	if a >= 100000.0:
+		return "%dk" % int(v / 1000.0)
+	if a >= 1000.0:
+		return "%.1fk" % (v / 1000.0)
+	return "%d" % int(v)
+
 static func team_color(owner_id: int) -> Color:
 	return TEAM_COLORS[clampi(owner_id, 0, TEAM_COLORS.size() - 1)]
 
