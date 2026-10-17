@@ -380,7 +380,7 @@ const MUSIC_CREDITS := [
 
 var _credits: Control
 
-## A Credits button under Quit, opening a full-screen Credits window with a
+## A Credits button just above Quit, opening a full-screen Credits window with a
 ## panel per area (Music, Art, Sound & AI, Engine & Development), laid out
 ## like the Options menu (same panel columns: OptionsMenu._column).
 func _build_credits() -> void:
@@ -394,7 +394,7 @@ func _build_credits() -> void:
 	var btn := Button.new()
 	btn.text = "Credits"
 	vbox.add_child(btn)
-	vbox.move_child(btn, quit_button.get_index() + 1)
+	vbox.move_child(btn, quit_button.get_index())   # Quit stays last
 	btn.pressed.connect(func(): _credits.visible = true)
 
 	_credits = ColorRect.new()
@@ -439,7 +439,7 @@ func _build_credits() -> void:
 	_credit_entry(art, "Stars, nebulae, debris rings & ion storms", "Original", "Drawn procedurally in-game")
 	_credit_entry(art, "Space backgrounds", "Original", "Generated procedurally per star system")
 	_credit_entry(art, "Interface", "Original", "Built for Stardust Dominion")
-	_credit_entry(art, "Font", "Consolas / system monospace", "Supplied by your operating system")
+	_credit_entry(art, "Font", "JetBrains Mono", "The JetBrains Mono Project Authors - SIL Open Font License 1.1")
 
 	# Sound & AI.
 	var sai := _credit_list(cols, "Sound & AI", Color("ff9a2e"))

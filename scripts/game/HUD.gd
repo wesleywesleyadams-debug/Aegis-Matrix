@@ -468,12 +468,25 @@ func _build_minimap(root: Control) -> void:
 	_score_box.anchor_bottom = 1.0
 	_score_box.offset_left = -12 - 344
 	_score_box.offset_right = -14
-	_score_box.offset_top = -12 - 232 - 30 - 52
-	_score_box.offset_bottom = -12 - 232 - 30
+	# A clear gap above the system name, split by a faint rule.
+	_score_box.offset_top = -12 - 232 - 30 - 18 - 52
+	_score_box.offset_bottom = -12 - 232 - 30 - 18
 	_score_box.alignment = BoxContainer.ALIGNMENT_END
 	_score_box.add_theme_constant_override("separation", 0)
 	_score_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_score_box)
+	var rule := ColorRect.new()
+	rule.color = Color(TEXT, 0.2)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rule.anchor_left = 1.0
+	rule.anchor_right = 1.0
+	rule.anchor_top = 1.0
+	rule.anchor_bottom = 1.0
+	rule.offset_left = -12 - 220
+	rule.offset_right = -14
+	rule.offset_top = -12 - 232 - 30 - 9
+	rule.offset_bottom = -12 - 232 - 30 - 8
+	root.add_child(rule)
 	for pid in [game.player_id, 3 - game.player_id]:
 		var l := _label("", Defs.team_color(pid), 16)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -700,12 +713,13 @@ func _refresh_research() -> void:
 		var t: Dictionary = Defs.TECHS[id]
 		var st := game.tech_state(pid, id)
 		var w: Dictionary = _tech_buttons[id]
-		var line := "%s   [%s" % [t["name"], STATE_LABELS[st]]
+		# The card's colour shows its state (see the legend); the title only
+		# adds what the colour can't: a stall or a queue place.
+		var line: String = t["name"]
 		if st == "active" and cur.get("stalled", false):
-			line += ", STALLED: insufficient funds"
+			line += "  STALLED"
 		if st == "queued":
-			line += " #%d" % (game.research_queue[pid].find(id) + 1)
-		line += "]"
+			line += "  #%d" % (game.research_queue[pid].find(id) + 1)
 		var req := ""
 		if not t["requires"].is_empty():
 			req = "\nNeeds: " + ", ".join(t["requires"].map(func(r): return Defs.TECHS[r]["name"]))
@@ -1019,7 +1033,10 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		h.set_anchors_preset(Control.PRESET_FULL_RECT)
 		h.offset_left = 6
 		h.add_theme_constant_override("separation", 12)
-		h.add_child(_icon(_ship_art(t), 2))
+		# One icon box whatever the hull, so a carrier's name still fits.
+		var art := _icon(_ship_art(t), 2)
+		art.custom_minimum_size = Vector2(minf(art.custom_minimum_size.x, 52.0), minf(art.custom_minimum_size.y, 46.0))
+		h.add_child(art)
 		var v := VBoxContainer.new()
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.alignment = BoxContainer.ALIGNMENT_CENTER

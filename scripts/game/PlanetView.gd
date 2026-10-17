@@ -183,6 +183,8 @@ func _place() -> void:
 	_deco.queue_redraw()
 	for l in [_title, _subtitle, _details]:
 		l.modulate.a = a
+	# The build picker opens beside the globe too: the details step aside.
+	_details.visible = not (_picker != null and _picker.visible)
 	_title.size = Vector2(br * 2.0, 24)
 	_title.position = bubble + Vector2(-br, -20)
 	_subtitle.size = Vector2(br * 2.0, 18)
@@ -190,14 +192,15 @@ func _place() -> void:
 	# The spice bar hangs under the bubble (see _draw_deco), so the details
 	# have to clear it: a wide gap when they sit beside the bubble, and a
 	# start below it when they sit underneath.
-	_details.size = Vector2(340, 0)
-	_details.position = Vector2(bubble.x - br - SPICE_BAR_GAP - 340.0, bubble.y - 10)
-	if _details.position.x < 8:
-		# No room on the left: float the details under the bubble, clear of
-		# the bar and its figure.
-		_details.position = Vector2(maxf(8.0, bubble.x - 170), bubble.y + br + SPICE_BAR_H + 12.0)
+	# Details sit clear of the globe: to its right, or to its left when the
+	# right edge has no room. (Under the bubble they used to run over it.)
+	_details.size = Vector2(DETAILS_W, 0)
+	var dy := clampf(center.y - ring_r * 0.45, 90.0, vp.y - 260.0)
+	if center.x + ring_r + 24.0 + DETAILS_W < vp.x - 8.0:
+		_details.position = Vector2(center.x + ring_r + 24.0, dy)
 		_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	else:
+		_details.position = Vector2(maxf(8.0, center.x - ring_r - 24.0 - DETAILS_W), dy)
 		_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	# Where the spice bar can go. A label's drawn width is not its box width
 	# (a long line overruns it), so rather than trust the gap, the two rects
@@ -213,6 +216,8 @@ func _place() -> void:
 ## starts, how much room it takes (bar plus its figure), and the gap anything
 ## beside the bubble keeps from it.
 const SPICE_BAR_TOP := 10.0
+## Width of the details text beside the globe.
+const DETAILS_W := 380.0
 const SPICE_BAR_H := 34.0
 const SPICE_BAR_GAP := 28.0
 

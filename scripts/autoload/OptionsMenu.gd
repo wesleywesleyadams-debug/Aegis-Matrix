@@ -352,6 +352,7 @@ func _track_row(t: Dictionary, enabled: bool) -> HBoxContainer:
 	name.tooltip_text = t["name"]
 	name.mouse_filter = Control.MOUSE_FILTER_PASS
 	name.clip_text = true
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# The title/lobby screen songs stand out: green when enabled, yellow when not.
 	var screen := id in [Music.TITLE_TRACK, Music.LOBBY_TRACK]
@@ -488,7 +489,7 @@ func _hotkey_row(id: String, label: String) -> HBoxContainer:
 	a.add_theme_font_size_override("font_size", 14)
 	h.add_child(a)
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(104, 28)
+	b.custom_minimum_size = Vector2(132, 28)
 	b.add_theme_font_size_override("font_size", 13)
 	b.add_theme_color_override("font_color", KEY_COLOR)
 	b.focus_mode = Control.FOCUS_NONE
