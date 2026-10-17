@@ -9,6 +9,7 @@ Each step it fills SLOTS order slots. A slot first picks an actor (or "skip"),
 then a verb from that actor's mask, then - only if the verb needs them - an
 object of the right kind and a target.
 """
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,6 +22,8 @@ OBJ_KINDS = ["ship", "building", "construct", "tech"]
 VERB_OBJ = {"build_ship": 0, "build_building": 1, "demolish": 1, "found": 2, "research": 3}
 VERB_TGT = {"move", "attack_move", "attack", "mine", "return", "colonize", "bombard", "dock", "refit", "found", "rally"}
 SLOTS = 8
+## Starting odds of "no new order" vs giving one, per slot (4 -> ~1.6 orders a decision).
+SKIP_ODDS = 4.0
 NEG = -1e9
 
 
@@ -111,6 +114,11 @@ class Policy(nn.Module):
             cand = torch.cat([actors, self.skip.expand(B, 1, -1)], 1)
             lg = (cand @ q.unsqueeze(-1)).squeeze(-1) / self.d ** 0.5
             ok = torch.cat([x["act_m"] & x["vmask"].any(-1), torch.ones(B, 1, dtype=torch.bool, device=dev)], 1)
+            # "No new order" is the default: skip starts SKIP_ODDS times as
+            # likely as all the actors together, so units keep their tasks
+            # unless an order is worth giving (learning can shift this).
+            n_ok = ok[:, :-1].sum(-1).clamp(min=1).float()
+            lg = torch.cat([lg[:, :-1], lg[:, -1:] + math.log(SKIP_ODDS) + n_ok.log().unsqueeze(-1)], 1)
             lg = lg.masked_fill(~ok, NEG)
             dist = torch.distributions.Categorical(logits=lg)
             a = dist.sample() if act is None else act[:, s, 0].where(act[:, s, 0] >= 0, torch.full_like(act[:, s, 0], A))
