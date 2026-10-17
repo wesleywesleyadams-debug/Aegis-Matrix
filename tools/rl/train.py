@@ -59,7 +59,7 @@ def main():
     ap.add_argument("--envs", type=int, default=4)
     ap.add_argument("--steps", type=int, default=128, help="steps per env per update")
     ap.add_argument("--updates", type=int, default=1000)
-    ap.add_argument("--minutes", type=float, default=80)
+    ap.add_argument("--minutes", type=float, default=40)
     ap.add_argument("--speed", type=float, default=8)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--resume", action="store_true")
