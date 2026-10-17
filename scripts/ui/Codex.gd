@@ -465,7 +465,7 @@ func _page_combat() -> void:
 	_table(["Hull", "Refit cost", "Refit time"], rrows)
 	_para("A refit with no minerals to pay for it simply waits, and the ship stays inside until you cancel it — cancelling ejects it unchanged, still a generalist. A refitted specialist can never be refitted again. If a depot is destroyed with ships inside, they are thrown clear and lose 60% of their shields, armor and hull in the blast.")
 	_heading("Defense research")
-	_para("Three lines on the research screen's Defense tab, expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech is time as well as energy.")
+	_para("Four lines on the research screen's Defense tab - shields, armor and hull below, plus screens, which cut a share of every hit (all three: -52%) - expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech is time as well as energy.")
 	_para("The shield line also raises a Radiation Sail Array's solar shield (and so a merged mega shield); it still refills just as fast, since each energy harvested recharges 10% of the maximum.")
 	var lines := {"shields": "shield", "armor": "armor", "hull": "hull"}
 	for line in lines:
