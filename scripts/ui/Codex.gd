@@ -393,7 +393,7 @@ func _page_combat() -> void:
 	_heading("Defense layers")
 	_para("Damage drains shields, then armor, then hull. A ship dies when its hull reaches 0.")
 	_table(["Layer", "Regenerates", "Notes"], [
-		[["Shields", Defs.LAYER_COLORS["shield"]], "Yes, for a little energy", "Drained inside spice nebulae"],
+		[["Shields", Defs.LAYER_COLORS["shield"]], "Yes, for a little energy", "Paused while taking damage, Radiation included"],
 		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender restores it"],
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
@@ -622,7 +622,7 @@ func _page_economy() -> void:
 
 func _page_systems() -> void:
 	_heading("Systems")
-	_para("A match is fought in one star system, chosen in the lobby. Every system is point-symmetric - both players start with the same worlds, rocks and distances, mirrored through the star - and every one has spice nebulae: endless spice for Gas Skimmers, at the price of shields drained to nothing inside them. What differs is the star, the signature feature and where the gas lies, and those decide how the match is fought.")
+	_para("A match is fought in one star system, chosen in the lobby. Every system is point-symmetric - both players start with the same worlds, rocks and distances, mirrored through the star - and every one has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside them. What differs is the star, the signature feature and where the gas lies, and those decide how the match is fought.")
 	for s in SystemGen.SYSTEMS:
 		_system_card(s)
 	_star_section()
@@ -704,7 +704,7 @@ func _system_card(s: Dictionary) -> void:
 const SYSTEM_TIPS := {
 	"orion_reach": "The even, open map. Both flank clouds are as close to the enemy as to you, so spice goes to whoever holds the middle - send skimmers with an escort.",
 	"vega_drift": "The suns' radiation sweeps the center, so the lane between bases opens and closes. Time attacks for when it is clear, and harvest the bands when the enemy fleet is elsewhere.",
-	"kharon_expanse": "Few worlds, but the most spice anywhere, all of it inside the ring. Shields fail in the gas: bring armor-heavy hulls or a Radiation Sail Array, and expect fights inside it.",
+	"kharon_expanse": "Few worlds, but the most spice anywhere, all of it inside the ring. The gas is full of Radiation: don't linger, bring tough hulls, and expect fights inside it.",
 	"tethys_cluster": "The richest worlds sit behind the debris ring, reachable only through its gaps. Hold a gap and you hold the inner system; the outer pockets are easy, safe spice.",
 	"sable_verge": "Heavy belts and sparse worlds: a mining race. Ion storms slow and blind anything they cross, and each side's spice drift is an inviting raid target.",
 }
@@ -720,19 +720,26 @@ func _star_section() -> void:
 		var sd: Dictionary = Defs.STAR_TYPES[st]
 		srows.append([[sd["label"], sd["tint"]], "%d px" % int(sd["zone"]), "%d dps" % int(sd["dps"])])
 	_table(["Star", "Radiation zone", "Damage at the surface"], srows)
-	_para("Radiation damages anything inside the zone, worst at the surface. A Radiation Sail Array protects ships around it, and its Surge blocks radiation completely for a few seconds.")
+	_heading("Radiation", Color("ffae4a"))
+	_para("Radiation is damage from the environment itself. It hurts everything of yours and the enemy's alike - ships and constructs - while they stay inside it, taking shields first, then armor, then hull like any other damage. Because it counts as being hit, shields do not regenerate while you sit in it.")
+	_table(["Source", "Where", "Damage"], [
+		[["A star", Color("ffb347")], "Its radiation zone (sizes above)", "Strongest at the surface, falling off steeply toward the edge of the zone"],
+		[["A spice nebula", Color("ff9a2e")], "Anywhere inside the gas", "%d per second, about a star's outer zone - low, but it never stops" % int(SpiceNebula.RADIATION_DPS)],
+	])
+	_para("The one exception is the Radiation Sail Array: while its solar shield is up it takes no radiation at all, and it harvests energy from it instead (see Ships).")
 
 func _page_terms() -> void:
 	_heading("Terminology")
 	var terms := [
 		["System", "The map: one star (or two), its planets, belts and features. Called a system, not a map."],
-		["Starbase", "Your production station. It builds ships, takes in cargo, defends itself, and losing them all loses the match."],
+		["Starbase", "Your production station. It builds ships, takes in cargo and defends itself. Losing every one with no Constructor left to build another loses the match (so does losing every world)."],
 		["Weapons Depot", "Constructor-built station where a generalist warship is refitted into a specialist variant, permanently."],
 		["Class", "The hull a warship was built as, and keeps for life: Corvette, Destroyer, Cruiser or Carrier. You read it off the silhouette."],
 		["Mark", "How refined a class is, Mk I to Mk IV, bought on the War Ships research tab. It applies to every ship of that class at once."],
 		["Generalist", "Any warship as built, before a refit: full damage to every defense layer."],
 		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor. One refit only, and it is permanent."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
+		["Radiation", "Damage from the environment: inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and holds off shield regeneration."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
 		["Job", "What a ship is for beyond shooting: Deep Sensors, Heat Screen, Field Repair, Hangar Bays."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
@@ -813,7 +820,7 @@ const SHIP_NOTES := {
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
-	"heatshield": "Lets a fleet fight where others can't: inside a star's radiation and inside a spice nebula, where shields normally drain away. Its solar sail harvests 15 energy a minute in those fields: it first charges its own light-purple solar shield (100, empty when built, charging even under fire), then sends the rest to your energy pool. A support ship: it can't be refitted.",
+	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there: first into its own light-purple solar shield (100, empty when built, charging even under fire), then into your energy pool. While that shield is up, Radiation can't touch it. A support ship: it can't be refitted.",
 	"corvette": "The cheap body of a fleet, and the only hull a carrier can dock. Fast and short-ranged, it is bought in numbers.",
 	"destroyer": "A shield boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Armor and a torpedo that outranges everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",

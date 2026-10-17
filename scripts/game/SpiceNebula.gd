@@ -1,10 +1,11 @@
 class_name SpiceNebula
 extends Node2D
 ## A spice nebula: spice-laden gas that Gas Skimmers harvest (anywhere inside
-## it, slowly and for ever). Anything with shields inside it loses DRAIN of
-## its max shield per second and can't regenerate; hulls are never hurt, so
-## going in is safe but leaves you exposed, and ships inside are hidden from
-## sensors that are not close by.
+## it, slowly and for ever). Its gas is radioactive like a star's outer zone:
+## anything inside takes RADIATION_DPS (shields, then armor, then hull; the
+## hits also hold off shield regen) - only a Radiation Sail Array with its
+## solar shield up is spared. Ships inside are hidden from sensors that are
+## not close by.
 ##
 ## Every system has them, in a shape that suits it (see SystemGen.nebulae):
 ##   "ring"  - a band around the node's position, between `inner` and `outer`
@@ -13,7 +14,8 @@ extends Node2D
 ## Everything else in the game asks a nebula the same questions (contains,
 ## heart_toward, exit_from, draw_on_map) and never looks at its shape.
 
-const DRAIN := 0.1
+## Low-level radiation: about a Red Dwarf's outer zone (Star.dps_at).
+const RADIATION_DPS := 4.0
 ## The cloud is painted at 1/PIXEL resolution so it matches the pixel art.
 const PIXEL := 4
 

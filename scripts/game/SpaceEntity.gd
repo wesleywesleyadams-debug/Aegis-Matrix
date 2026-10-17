@@ -105,14 +105,15 @@ func _die() -> void:
 	queue_free()
 
 func _regen_shields(delta: float) -> void:
-	# Spice nebula: shields bleed away and can't recharge while inside.
-	if max_shield > 0.0 and Game.instance.in_nebula(global_position) and not Abilities.nebula_protected(self):
-		if shield > 0.0:
-			shield = maxf(0.0, shield - max_shield * SpiceNebula.DRAIN * delta)
-			queue_redraw()
+	# Spice nebula: low-level radiation, like a star's outer zone. Taking it
+	# counts as a hit, so shields don't regenerate while it lasts.
+	if Game.instance.in_nebula(global_position):
+		var m := Abilities.radiation_mult(self)
+		if m > 0.0:
+			take_damage(SpiceNebula.RADIATION_DPS * delta * m, null)
 			if owner_id == Game.instance.player_id:
 				Game.instance.warn_nebula(global_position)
-		return
+			return
 	if max_shield > 0.0 and shield < max_shield and Game.now() - _last_hit_time > Defs.SHIELD_REGEN_DELAY:
 		var gain := minf(max_shield - shield, max_shield * Defs.SHIELD_REGEN_PER_SEC * delta)
 		# Regeneration costs a little energy (spice covers any shortfall);

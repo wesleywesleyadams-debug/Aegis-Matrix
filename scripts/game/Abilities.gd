@@ -4,8 +4,6 @@ extends RefCounted
 ## ship good at something particular. Ships call in here; the effects are
 ## drawn by Ship._draw_job in the job's accent color.
 
-const HEAT_RANGE := 170.0
-const HEAT_CUT := 0.75
 const REPAIR_RANGE := 180.0
 const REPAIR_RATE := 5.0
 const REPAIR_MAX_TARGETS := 4
@@ -57,25 +55,13 @@ static func allies_near(s: Node2D, r: float) -> Array:
 			out.append(o)
 	return out
 
-## Radiation damage multiplier (a Radiation Sail Array nearby).
+## Radiation damage multiplier: 1 for everything except a Radiation Sail
+## Array whose solar shield is up (above 0), which blocks all radiation.
 static func radiation_mult(e: SpaceEntity) -> float:
-	# A solar sail feeds on the radiation it sits in: it takes none itself.
-	if e is Ship and e.def.has("solar_sail"):
+	if e is Ship and e.def.has("solar_sail") and e.shield > 0.0:
 		return 0.0
-	var best := 1.0
-	for o in Game.instance.job_ships.get("heat_screen", []):
-		# The list is rebuilt periodically, so an array destroyed since can
-		# still be in it.
-		if not is_instance_valid(o) or o.owner_id != e.owner_id:
-			continue
-		var d2: float = o.global_position.distance_squared_to(e.global_position)
-		if d2 <= HEAT_RANGE * HEAT_RANGE or o == e:
-			best = 1.0 - HEAT_CUT
-	return best
+	return 1.0
 
-## True if a Radiation Sail Array keeps this ship's shields up in a spice nebula.
-static func nebula_protected(e: SpaceEntity) -> bool:
-	return radiation_mult(e) < 1.0
 
 ## Field Repair: heals up to REPAIR_MAX_TARGETS damaged, out-of-combat
 ## friendly ships nearby; returns them (for the repair beams).

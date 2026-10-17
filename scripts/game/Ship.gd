@@ -1200,12 +1200,7 @@ func _draw_job() -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
 	match jid:
-		"heat_screen":
-			var n := 48
-			for i in n:
-				if i % 2 == 0:
-					var a := TAU * i / n + t * 0.3
-					draw_arc(Vector2.ZERO, Abilities.HEAT_RANGE, a, a + TAU / n, 3, Color(c, 0.22), 1.5)
+		"radiation_sail":
 			# The solar shield: a light purple bubble, brighter the fuller it is.
 			if max_shield > 0.0 and shield > 0.0:
 				var f := shield / max_shield

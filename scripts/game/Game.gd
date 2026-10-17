@@ -371,7 +371,7 @@ func warn_nebula(at: Vector2) -> void:
 		return
 	_nebula_warn_ms = t
 	add_flare(at, Color("ffae4a"))
-	message.emit("Your ships are in the Spice Nebula: shields drain and won't recharge inside.", Color("ffae4a"))
+	message.emit("Your ships are in a Spice Nebula: Radiation is damaging them.", Color("ffae4a"))
 	# The radiation alarm, 25% quieter (-2.5 dB) so it isn't obtrusive; shares
 	# the alert cooldown (at most one alarm per ALERT_COOLDOWN).
 	if t - _last_alert_ms >= int(ALERT_COOLDOWN * 1000.0):
@@ -463,7 +463,7 @@ func in_storm(p: Vector2) -> bool:
 			return true
 	return false
 
-## Whether `p` is inside a spice nebula (shields drain there).
+## Whether `p` is inside a spice nebula (Radiation there, see SpiceNebula).
 func in_nebula(p: Vector2) -> bool:
 	for n in nebula_list:
 		if n.contains(p):

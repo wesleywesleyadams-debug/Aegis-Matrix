@@ -44,7 +44,7 @@ func show_system(id: String) -> void:
 		if _settings.get("feature", "") == "rings":
 			facts += "\nDebris ring: four narrow gaps funnel every fleet."
 		if _settings.get("feature", "") == "spice_nebula":
-			facts += "\nSpice Nebula: rich spice, but shields drain inside."
+			facts += "\nSpice Nebula: rich spice, but constant low Radiation inside."
 		if _settings.get("feature", "") == "storms":
 			facts += "\nIon storms: sweeping arms slow ships to 40%."
 		facts += {"flanks": "\nSpice clouds on both flanks, equally far from each base.",

@@ -143,7 +143,7 @@ const BASE_SHIPS := {
 		"solar_sail": 15.0, "shield_color": Color("c9a0ff"),
 		"hp": 200.0, "armor": 140.0, "shield": 100.0, "speed": 80.0, "radius": 11.0,
 		"cost": {"minerals": 110, "spice": 10}, "build_time": 24.0, "upkeep": 1.3,
-		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "heat_screen",
+		"weapon": "laser", "damage": 5.0, "cooldown": 0.8, "range": 150.0, "sensor": 300.0, "job": "radiation_sail",
 	},
 	"tender": {
 		"name": "Repair Tender", "role": "support",
@@ -677,8 +677,8 @@ static func damage_profile(d: Dictionary) -> Dictionary:
 const JOBS := {
 	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
 		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
-	"heat_screen": {"name": "Heat Screen", "active": false, "color": Color("ffc24a"),
-		"desc": "Friendly ships within 170 px take 75% less radiation damage and keep their shields in spice nebulae."},
+	"radiation_sail": {"name": "Radiation Sail", "active": false, "color": Color("c9a0ff"),
+		"desc": "In Radiation (a star's zone or a spice nebula), harvests 15 energy a minute: first into its own solar shield (100, starts empty, charges even under fire), the rest to your energy pool. While the solar shield is up it takes no Radiation."},
 	"hangar": {"name": "Hangar Bays", "active": false, "color": Color("ffc24a"),
 		"desc": "Six bays that take corvette-sized hulls: right-click the carrier with them selected (or let them come on their own) and each is mended hull first, then armor, then launched again."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
