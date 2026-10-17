@@ -9,7 +9,7 @@ const SAMPLE := 30.0
 
 var samples: Array = []
 ## pid -> {counter name -> int}
-var counters := {1: {}, 2: {}}
+var counters := {}   # pid -> {stat: n}, filled as players act (see count)
 var _next_sample: float = 0.0
 var _stopped := false
 
@@ -100,7 +100,7 @@ func peak(pid: int, field: String) -> int:
 static func sample(t: float) -> Dictionary:
 	var g := Game.instance
 	var out := {"t": int(t)}
-	for pid in [1, 2]:
+	for pid in g.players:
 		var pop := 0.0
 		var worlds := 0
 		for p in g.get_tree().get_nodes_in_group("planets"):

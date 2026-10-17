@@ -83,6 +83,11 @@ var system_seed: int = 0
 ## RTSController._assign_players), the same "wired up for real, not
 ## implemented yet" placeholder status the old Race/AI Opponents fields had.
 const MAX_PLAYER_SLOTS: int = 8
+## The match the lobby started: one entry per filled slot, in slot order,
+## {"pid": 1.., "type": "human"/"ai"/"neural", "team": 0 (none) or 1-4}.
+## Empty means the classic 1-vs-1 (human 1 vs AI 2), which sims and old
+## saves use.
+var match_players: Array = []
 var player_slots: Array = _default_player_slots()
 
 static func _default_player_slots() -> Array:

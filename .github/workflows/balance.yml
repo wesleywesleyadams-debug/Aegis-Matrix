@@ -3,7 +3,7 @@
 # -> Run workflow). Results are attached to the run as artifacts, and a short
 # summary is written to the run page.
 name: Balance tests
-run-name: "Balance ${{ inputs.mode }} ${{ inputs.system }} ${{ inputs.tag }}"
+run-name: "Balance ${{ inputs.mode }} ${{ inputs.system }} ${{ inputs.tag }} p${{ inputs.players }}"
 
 on:
   workflow_dispatch:
@@ -34,6 +34,9 @@ on:
       tag:
         description: "single: run label (tools/dispatch.sh uses it to find the run)"
         default: "0"
+      players:
+        description: "Sims: players per match (2-8, all AI)"
+        default: "2"
 
 env:
   GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
@@ -86,7 +89,7 @@ jobs:
         if: inputs.mode == 'sims' || inputs.mode == 'single'
         run: |
           SL_SYSTEM=${{ matrix.system }} SL_SIM=ci_${{ matrix.run }} SL_SEED=${{ matrix.system }}${{ matrix.run }}${{ github.run_id }} \
-          SL_SIM_MINUTES=${{ inputs.minutes }} SL_SIM_SCALE=${{ inputs.speed }} \
+          SL_SIM_MINUTES=${{ inputs.minutes }} SL_SIM_SCALE=${{ inputs.speed }} SL_PLAYERS=${{ inputs.players }} \
             ./godot --headless --fixed-fps 60 --path . scenes/Main.tscn 2>&1 | tee log.txt | grep -E "SIM RESULT|SCRIPT ERROR" || true
           mkdir -p out
           cp log.txt out/${{ matrix.system }}_${{ matrix.run }}.log

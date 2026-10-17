@@ -294,6 +294,28 @@ func _sync_human_player_id() -> void:
 			return
 
 func _on_start_pressed() -> void:
+	# Every filled slot is a player, numbered in slot order (up to 8). The
+	# first human slot is you; any other "human" plays as an AI for now
+	# (no networking yet).
+	GameState.match_players = []
+	var human_taken := false
+	for s in GameState.player_slots:
+		if s["slot_type"] in ["open", "closed"]:
+			continue
+		var t: String = s["slot_type"]
+		if t == "human" and human_taken:
+			t = "ai"
+		if t == "human":
+			human_taken = true
+			GameState.human_player_id = GameState.match_players.size() + 1
+		GameState.match_players.append({"pid": GameState.match_players.size() + 1, "type": t, "team": int(s.get("team", 0))})
+	if GameState.match_players.size() < 2:
+		GameState.match_players.append({"pid": GameState.match_players.size() + 1, "type": "ai", "team": 0})
+	if not human_taken:
+		GameState.match_players[0]["type"] = "human"
+		GameState.human_player_id = 1
+	# More than two players: Orion Reach is hand-built for two, so a generated
+	# layout of the same system takes its place (see Game._build_system).
 	# Any "Neural AI" slot puts the trained commander in charge of the AI side.
 	GameState.neural_ai = GameState.player_slots.any(func(s): return s["slot_type"] == "neural")
 	# Resuming a save keeps the save's own system (SaveGame restores it).

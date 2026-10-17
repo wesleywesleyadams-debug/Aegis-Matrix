@@ -289,7 +289,7 @@ func is_alive() -> bool:
 	return owner_id != 0 and pop > 0.0 and is_inside_tree()
 
 func is_enemy_of(pid: int) -> bool:
-	return owner_id != 0 and pid != 0 and owner_id != pid
+	return owner_id != 0 and pid != 0 and not Game.instance.are_allies(owner_id, pid)
 
 func under_siege() -> bool:
 	return owner_id != 0 and Game.now() - last_hit_time < SIEGE_TIME

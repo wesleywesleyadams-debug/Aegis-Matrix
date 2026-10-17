@@ -44,6 +44,9 @@ var demo_mode: bool = false
 
 var player_id: int = 1
 var players: Array[int] = [1, 2]
+## Team per player (0 = none: everyone else is an enemy). Allies share
+## nothing yet but peace - see are_allies.
+var teams := {}
 var resources := {}
 ## Net change per second over the last second, per player per resource.
 var rates := {}
@@ -132,7 +135,23 @@ func _enter_tree() -> void:
 	# name, so trainers can replay the same game with different players.
 	if sim_mode:
 		seed(hash(OS.get_environment("SL_SEED") if OS.get_environment("SL_SEED") != "" else OS.get_environment("SL_SIM")))
-	player_id = clampi(GameState.human_player_id, 1, 2)
+	# Who is playing: the lobby's filled slots (up to 8), else 1-vs-1.
+	# SL_PLAYERS=n runs an n-player sim (every side AI).
+	var n_sim := int(OS.get_environment("SL_PLAYERS"))
+	if sim_mode and n_sim > 2:
+		players.clear()
+		for i in mini(n_sim, 8):
+			players.append(i + 1)
+	elif not sim_mode and not demo_mode and GameState.match_players.size() >= 2:
+		players.clear()
+		for mp in GameState.match_players.slice(0, 8):
+			players.append(int(mp["pid"]))
+			teams[int(mp["pid"])] = int(mp.get("team", 0))
+	player_id = clampi(GameState.human_player_id, 1, players.size())
+	_init_player_data()
+
+## Fresh per-player books (resources, rates, research) for every player.
+func _init_player_data() -> void:
 	for pid in players:
 		resources[pid] = Defs.starting_resources(GameState.deathmatch)
 		rates[pid] = {}
@@ -168,6 +187,13 @@ func _ready() -> void:
 		save_data = SaveGame.read(GameState.load_save_path)
 		GameState.system_id = str(save_data.get("system", "orion_reach"))
 		GameState.system_seed = int(save_data.get("system_seed", 0))
+		# The save's own players (a 1v1 for saves made before there could be more).
+		if save_data.has("players"):
+			players.assign(save_data["players"].map(func(p): return int(p)))
+			teams = {}
+			for k in save_data.get("teams", {}):
+				teams[int(k)] = int(save_data["teams"][k])
+			_init_player_data()
 	# Dev aid: SL_SYSTEM=<id>[:seed] picks the system directly.
 	if OS.get_environment("SL_SYSTEM") != "":
 		var sp := OS.get_environment("SL_SYSTEM").split(":")
@@ -203,20 +229,25 @@ func _ready() -> void:
 		return
 	# Balance harness (SL_SIM): the AI plays both sides.
 	if OS.get_environment("SL_SIM") != "":
-		ai.setup([2, 1] if OS.get_environment("SL_AI_ORDER") == "21" else [1, 2])
+		var order: Array = players.duplicate()
+		if OS.get_environment("SL_AI_ORDER") == "21":
+			order.reverse()
+		ai.setup(order)
 		if OS.get_environment("SL_NOFOG") == "":
-			for p in [1, 2]:
+			for p in players:
 				_add_vision(p, false)
 		add_child(SimRunner.new())
 		hud.visible = false
 		hud.process_mode = Node.PROCESS_MODE_DISABLED
 		sfx.process_mode = Node.PROCESS_MODE_DISABLED
 	else:
-		ai.setup([3 - player_id])
+		ai.setup(players.filter(func(p): return p != player_id))
 		# Fog of war for the human player (SL_NOFOG=1 turns it off for dev shots).
 		if OS.get_environment("SL_NOFOG") == "":
 			vision = _add_vision(player_id, true)
-			_add_vision(3 - player_id, false)
+			for p in players:
+				if p != player_id:
+					_add_vision(p, false)
 			if loaded:
 				vision.import_state(save_data.get("fog", {}))
 	if not loaded:
@@ -287,7 +318,8 @@ func _build_system() -> void:
 	world.add_child(MapEdge.new())
 	system_settings = SystemGen.settings(GameState.system_id, GameState.system_seed)
 	_apply_system_look(system_settings)
-	if GameState.system_id == "orion_reach":
+	if GameState.system_id == "orion_reach" and players.size() == 2:
+		SystemGen.players = 2
 		# Hand-built in Main.tscn, so its nebulae are laid out here against
 		# the starbases that are already in the scene.
 		var p1 := starbases_root.get_children().filter(func(b): return b.owner_id == 1)
@@ -295,7 +327,8 @@ func _build_system() -> void:
 			for ft in SystemGen.nebulae(str(system_settings["nebula"]), p1[0].position, GameState.system_seed):
 				_add_nebula(ft)
 		return
-	var layout := SystemGen.generate(GameState.system_seed, system_settings)
+	# Beyond two players even Orion Reach is generated (its scene is a 1v1).
+	var layout := SystemGen.generate(GameState.system_seed if GameState.system_seed != 0 else 1, system_settings, players.size())
 	for root in [$World/Planets, $World/Asteroids, starbases_root, ships_root]:
 		for n in root.get_children():
 			root.remove_child(n)
@@ -459,6 +492,18 @@ func find_path(a: Vector2, b: Vector2) -> PackedVector2Array:
 ## Whether side `pid` is run by the computer (both sides in balance sims).
 func is_ai(pid: int) -> bool:
 	return ai.players.has(pid)
+
+## An enemy of pid: someone else (not neutral) who isn't an ally.
+func is_hostile(pid: int, other: int) -> bool:
+	return other != 0 and not are_allies(pid, other)
+
+## Same side: the same player, or two players on the same (non-zero) team.
+func are_allies(a: int, b: int) -> bool:
+	return a == b or (teams.get(a, 0) != 0 and teams.get(a, 0) == teams.get(b, 0))
+
+## Players still in the match (not defeated).
+func living_players() -> Array:
+	return players.filter(func(p): return not is_defeated(p))
 
 ## Whether `p` is inside an active ion-storm arm (ships crawl there).
 func in_storm(p: Vector2) -> bool:
@@ -1043,11 +1088,40 @@ func _report_music_mood() -> void:
 func _check_defeat() -> void:
 	if is_over:
 		return
-	var foe := 3 - player_id
+	# Sims (every side AI): play on until one side - a player or a team - is
+	# all that is left.
+	if sim_mode:
+		var alive := living_players()
+		if not alive.is_empty() and alive.all(func(p): return are_allies(p, alive[0])):
+			winner_pid = alive[0]
+			_end_match(alive[0] == player_id)
+		return
 	if is_defeated(player_id):
 		_end_match(false)
-	elif is_defeated(foe):
+		return
+	# Each opponent that falls is announced once; the match is won when no
+	# enemy of yours is left standing.
+	var enemies_left := false
+	for p in players:
+		if p == player_id:
+			continue
+		if is_defeated(p):
+			if not _eliminated.has(p):
+				_eliminated[p] = true
+				if players.size() > 2:
+					notify("%s has been eliminated." % player_name(p))
+		elif not are_allies(p, player_id):
+			enemies_left = true
+	if not enemies_left:
 		_end_match(true)
+
+var _eliminated := {}
+## Who won (the first survivor of the winning side; 0 while undecided).
+var winner_pid := 0
+
+## "You" for the human, otherwise "Player n" (the lobby slot's number).
+func player_name(pid: int) -> String:
+	return "You" if pid == player_id else "Player %d" % pid
 
 ## Light-blue notification for good news / progress (ship built, planet
 ## colonized, research done...). Not rate limited.

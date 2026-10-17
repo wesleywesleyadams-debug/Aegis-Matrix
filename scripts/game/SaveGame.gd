@@ -28,6 +28,8 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"timestamp": Time.get_unix_time_from_system(),
 		"clock": Game.now(),
 		"player_id": game.player_id,
+		"players": game.players,
+		"teams": game.teams,
 		"resources": game.resources,
 		"researched": {},
 		"research": game.research,

@@ -122,7 +122,19 @@ func _next_tech(game: Game, group: String) -> String:
 ## tells a player. Stockpiles and rates, both fleets, worlds, what is built,
 ## what is researched, and what its sensors know of the enemy.
 func features(game: Game, base: Starbase) -> PackedFloat32Array:
-	var foe := 3 - pid
+	# The network was trained on one opponent: with more, it watches the
+	# nearest living enemy.
+	var foe := 0
+	var foe_d := INF
+	for o in game.living_players():
+		if game.is_hostile(pid, o):
+			var ob := game.nearest_starbase(o, base.global_position if base else Vector2.ZERO)
+			var d: float = base.global_position.distance_to(ob.global_position) if base and ob else 0.0
+			if foe == 0 or d < foe_d:
+				foe = o
+				foe_d = d
+	if foe == 0:
+		foe = game.players.filter(func(o): return o != pid)[0]
 	var r: Dictionary = game.resources[pid]
 	var rates: Dictionary = game.rates[pid]
 	var v: Vision = game.visions.get(pid)

@@ -44,7 +44,7 @@ func is_alive() -> bool:
 	return not _dead and is_inside_tree()
 
 func is_enemy_of(other_owner: int) -> bool:
-	return owner_id != 0 and other_owner != 0 and owner_id != other_owner
+	return owner_id != 0 and other_owner != 0 and not (Game.instance.are_allies(owner_id, other_owner) if Game.instance else owner_id == other_owner)
 
 ## `profile` (Defs.damage_profile): "vs" multiplies damage against a layer,
 ## "pierce" skips layers (1 = shields, 2 = shields and armor). Damage works

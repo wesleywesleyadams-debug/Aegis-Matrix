@@ -23,7 +23,7 @@ func _ready() -> void:
 		max_minutes = float(OS.get_environment("SL_SIM_MINUTES"))
 	Engine.time_scale = float(OS.get_environment("SL_SIM_SCALE")) if OS.get_environment("SL_SIM_SCALE") != "" else 4.0
 	_t0_ms = Time.get_ticks_msec()
-	Game.instance.match_over.connect(func(won: bool): _finish("defeat", Game.instance.player_id if won else 3 - Game.instance.player_id))
+	Game.instance.match_over.connect(func(_won: bool): _finish("defeat", Game.instance.winner_pid))
 
 func _process(_delta: float) -> void:
 	if _done:
@@ -62,7 +62,10 @@ func _finish(reason: String, winner: int) -> void:
 		f.store_string(JSON.stringify(result))
 		f.close()
 	var last: Dictionary = samples[-1]
-	print("SIM RESULT system=%s run=%s winner=%d reason=%s minutes=%.1f real=%.0fs  P1 worlds %d ships %d  P2 worlds %d ships %d" % [
-		GameState.system_id, run_id, winner, reason, Game.now() / 60.0, (Time.get_ticks_msec() - _t0_ms) / 1000.0,
-		last["1"]["worlds"], last["1"]["warships"], last["2"]["worlds"], last["2"]["warships"]])
+	var sides := ""
+	for pid in Game.instance.players:
+		var s: Dictionary = last.get(str(pid), {})
+		sides += "  P%d worlds %d ships %d" % [pid, s.get("worlds", 0), s.get("warships", 0)]
+	print("SIM RESULT system=%s run=%s winner=%d reason=%s minutes=%.1f real=%.0fs%s" % [
+		GameState.system_id, run_id, winner, reason, Game.now() / 60.0, (Time.get_ticks_msec() - _t0_ms) / 1000.0, sides])
 	get_tree().quit()

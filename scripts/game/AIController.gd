@@ -339,17 +339,19 @@ func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 		# Fog of war: only targets we've seen. With no enemy starbase found
 		# yet, head for the mirror image of our home (systems are point-
 		# symmetric, so that's where the enemy most likely started).
-		var kp := _nearest_planet(from, game, func(pl): return v.known_owner(pl) > 0 and v.known_owner(pl) != pid and v.seen_planet_pop.get(pl, 0.0) < 4000.0)
+		var kp := _nearest_planet(from, game, func(pl): return game.is_hostile(pid, v.known_owner(pl)) and v.seen_planet_pop.get(pl, 0.0) < 4000.0)
 		var kb := v.known_enemy_base(from)
 		var home := game.nearest_starbase(pid, Vector2.ZERO)
-		var base_pos: Vector2 = kb[0] if not kb.is_empty() else (-home.global_position if home else Vector2.ZERO)
+		# Starts are evenly spaced round the star: the next one along is the
+		# nearest likely enemy home.
+		var base_pos: Vector2 = kb[0] if not kb.is_empty() else (home.global_position.rotated(TAU / game.players.size()) if home else Vector2.ZERO)
 		if kp and from.distance_to(kp.global_position) < from.distance_to(base_pos) * DETOUR:
 			return kp.global_position
 		return base_pos
-	var p := _nearest_planet(from, game, func(pl): return pl.owner_id != 0 and pl.owner_id != pid and pl.pop < 4000.0)
+	var p := _nearest_planet(from, game, func(pl): return game.is_hostile(pid, pl.owner_id) and pl.pop < 4000.0)
 	var enemy_base: Starbase = null
 	for sb in game.get_tree().get_nodes_in_group("starbases"):
-		if sb.owner_id != pid:
+		if game.is_hostile(pid, sb.owner_id) and (enemy_base == null or from.distance_to(sb.global_position) < from.distance_to(enemy_base.global_position)):
 			enemy_base = sb
 	if p and (enemy_base == null or from.distance_to(p.global_position) < from.distance_to(enemy_base.global_position) * DETOUR):
 		return p.global_position
@@ -363,7 +365,7 @@ func _finish_target(pid: int, from: Vector2, game: Game) -> Vector2:
 	var best_d := INF
 	for p in game.get_tree().get_nodes_in_group("planets"):
 		var owner_seen: int = v.known_owner(p) if v else p.owner_id
-		if owner_seen > 0 and owner_seen != pid and from.distance_to(p.global_position) < best_d:
+		if game.is_hostile(pid, owner_seen) and from.distance_to(p.global_position) < best_d:
 			best_d = from.distance_to(p.global_position)
 			best = p.global_position
 	if v:
@@ -372,7 +374,7 @@ func _finish_target(pid: int, from: Vector2, game: Game) -> Vector2:
 			best = kb[0]
 	else:
 		for sb in game.get_tree().get_nodes_in_group("starbases"):
-			if sb.owner_id != pid and from.distance_to(sb.global_position) < best_d:
+			if game.is_hostile(pid, sb.owner_id) and from.distance_to(sb.global_position) < best_d:
 				best_d = from.distance_to(sb.global_position)
 				best = sb.global_position
 	return best
@@ -440,7 +442,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 				threat = true
 				break
 	for s in ([] if v else game.get_tree().get_nodes_in_group("ships")):
-		if s.owner_id == pid or s.owner_id == 0 or not s.is_alive() or s.def["role"] != "warship":
+		if not game.is_hostile(pid, s.owner_id) or not s.is_alive() or s.def["role"] != "warship":
 			continue
 		theirs += s.max_hp + s.max_armor + s.max_shield
 		if s.global_position.distance_to(base.global_position) < 900.0:
@@ -773,7 +775,7 @@ func _defence_at(pid: int, at: Vector2, game: Game) -> Vector2:
 	var dps := 0.0
 	var tough := 0.0
 	for sb in game.get_tree().get_nodes_in_group("starbases"):
-		if sb.owner_id != pid and sb.global_position.distance_to(at) < 120.0:
+		if game.is_hostile(pid, sb.owner_id) and sb.global_position.distance_to(at) < 120.0:
 			dps += Defs.STARBASE["damage"] / Defs.STARBASE["cooldown"]
 			tough += sb.hp + sb.armor + sb.shield
 	for p in game.get_tree().get_nodes_in_group("planets"):
@@ -790,7 +792,7 @@ func _defence_at(pid: int, at: Vector2, game: Game) -> Vector2:
 				dps += sg[1] * DPS_PER_TOUGH
 	else:
 		for s in game.get_tree().get_nodes_in_group("ships"):
-			if s.owner_id != pid and s.def["role"] == "warship" and s.global_position.distance_to(at) < DEFEND_RANGE:
+			if game.is_hostile(pid, s.owner_id) and s.def["role"] == "warship" and s.global_position.distance_to(at) < DEFEND_RANGE:
 				tough += s.hp + s.armor + s.shield
 				dps += _ship_dps(s, game)
 	return Vector2(dps, tough)
@@ -819,7 +821,7 @@ func _winnable_target(pid: int, ships: Array, from: Vector2, game: Game) -> Vect
 			spots.append(v.seen_bases[sb][0])
 	else:
 		for sb in game.get_tree().get_nodes_in_group("starbases"):
-			if sb.owner_id != pid:
+			if game.is_hostile(pid, sb.owner_id):
 				spots.append(sb.global_position)
 	spots.sort_custom(func(a, b): return from.distance_to(a) < from.distance_to(b))
 	for at in spots:

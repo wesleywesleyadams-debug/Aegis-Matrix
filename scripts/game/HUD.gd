@@ -487,7 +487,7 @@ func _build_minimap(root: Control) -> void:
 	rule.offset_top = -12 - 276 - 30 - 9
 	rule.offset_bottom = -12 - 276 - 30 - 8
 	root.add_child(rule)
-	for pid in [game.player_id, 3 - game.player_id]:
+	for pid in [game.player_id] + game.players.filter(func(p): return p != game.player_id):
 		var l := _label("", Defs.team_color(pid), 16)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -1487,7 +1487,8 @@ func _show_stats(on: bool) -> void:
 		c.queue_free()
 	var st: MatchStats = game.stats
 	var me: int = game.player_id
-	var foe: int = 3 - me
+	# You first, then everyone else in player order.
+	var sides: Array = [me] + game.players.filter(func(p): return p != me)
 	var mins := int(Game.now() / 60.0)
 	var sys: Dictionary = SystemGen.find(GameState.system_id)
 	var sub := _label("%s  -  %s  -  %d:%02d" % ["VICTORY" if _won else "DEFEAT", sys.get("name", "Unknown system"), mins, int(Game.now()) % 60],
@@ -1498,19 +1499,19 @@ func _show_stats(on: bool) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
 	_stats_body.add_child(row)
-	# Summary table: stat | you | enemy.
+	# Summary table: stat | you | each other player.
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 1 + sides.size()
 	grid.add_theme_constant_override("h_separation", 36)
 	grid.add_theme_constant_override("v_separation", 6)
 	row.add_child(grid)
 	grid.add_child(_label("", DIM))
-	grid.add_child(_label("You", Defs.team_color(me), 18))
-	grid.add_child(_label("Enemy", Defs.team_color(foe), 18))
+	for p in sides:
+		grid.add_child(_label(game.player_name(p) if sides.size() > 2 or p == me else "Enemy", Defs.team_color(p), 18))
 	var lines := [
 		["Ships built", func(p): return st.get_count(p, "ships_built")],
 		["Ships lost", func(p): return st.get_count(p, "ships_lost")],
-		["Enemy ships destroyed", func(p): return st.get_count(3 - p, "ships_lost")],
+		["Enemy ships lost", func(p): return game.players.filter(func(o): return game.is_hostile(p, o)).reduce(func(a, o): return a + st.get_count(o, "ships_lost"), 0)],
 		["Worlds colonized / taken", func(p): return st.get_count(p, "planets_won")],
 		["Worlds lost", func(p): return st.get_count(p, "planets_lost")],
 		["Starbases lost", func(p): return st.get_count(p, "starbases_lost")],
@@ -1523,7 +1524,7 @@ func _show_stats(on: bool) -> void:
 	]
 	for l in lines:
 		grid.add_child(_label(l[0], TEXT))
-		for p in [me, foe]:
+		for p in sides:
 			var v := _label(str(l[1].call(p)), Color.WHITE)
 			v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			grid.add_child(v)
@@ -1541,7 +1542,7 @@ func _show_stats(on: bool) -> void:
 		var ch := StatChart.new()
 		ch.samples = st.samples
 		ch.field = c[1]
-		ch.sides = [[me, Defs.team_color(me)], [foe, Defs.team_color(foe)]]
+		ch.sides = sides.map(func(p): return [p, Defs.team_color(p), "you" if p == me else ("enemy" if sides.size() == 2 else "P%d" % p)])
 		ch.custom_minimum_size = Vector2(250, 150)
 		box.add_child(ch)
 		charts.add_child(box)
@@ -1581,7 +1582,7 @@ class StatChart extends Control:
 		# A key, so a chart read on its own still says whose line is whose.
 		var kx := size.x - 8.0
 		for i in sides.size():
-			var label: String = "you" if i == 0 else "enemy"
+			var label: String = sides[i][2] if sides[i].size() > 2 else ("you" if i == 0 else "enemy")
 			var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
 			kx -= w
 			draw_string(font, Vector2(kx, 13), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, sides[i][1])

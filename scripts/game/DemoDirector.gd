@@ -78,7 +78,7 @@ var _shots: Array = []
 
 func _plan_shots() -> void:
 	var g := Game.instance
-	for pid in [1, 2]:
+	for pid in g.players:
 		var base: Node2D = null
 		for b in g.get_tree().get_nodes_in_group("starbases"):
 			if b.owner_id == pid:

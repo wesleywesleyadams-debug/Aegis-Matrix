@@ -158,7 +158,7 @@ func _refresh() -> void:
 	# so a 100-ship blob costs about as much as a handful of ships.
 	var per_cell := {}
 	for s in tree.get_nodes_in_group("ships"):
-		if s.owner_id == pid and s.is_alive():
+		if game.are_allies(pid, s.owner_id) and s.is_alive():   # allies share sight
 			var key := _cell(s.global_position)
 			var r := sensor_range(s)
 			var deep: bool = s.def.get("job", "") == "beacon"
@@ -168,16 +168,16 @@ func _refresh() -> void:
 				per_cell[key] = [s.global_position, r, false]
 	_sources.append_array(per_cell.values())
 	for sb in tree.get_nodes_in_group("starbases"):
-		if sb.owner_id == pid and sb.is_alive():
+		if game.are_allies(pid, sb.owner_id) and sb.is_alive():
 			_sources.append([sb.global_position, sensor_range(sb), false])
 	for p in tree.get_nodes_in_group("planets"):
-		if p.owner_id == pid:
+		if p.owner_id != 0 and game.are_allies(pid, p.owner_id):
 			_sources.append([p.global_position, sensor_range(p), false])
 	for dp in tree.get_nodes_in_group("depots"):
-		if dp.owner_id == pid and dp.is_alive():
+		if game.are_allies(pid, dp.owner_id) and dp.is_alive():
 			_sources.append([dp.global_position, 300.0, false])
 	for b in tree.get_nodes_in_group("beacons"):
-		if b.owner_id == pid:
+		if game.are_allies(pid, b.owner_id):
 			_sources.append([b.global_position, b.sensor_range(), true])
 	_sight.fill(Color(FOG_COLOR.r, FOG_COLOR.g, FOG_COLOR.b, EXPLORED_ALPHA))
 	for src in _sources:
@@ -210,14 +210,14 @@ func _stamp(img: Image, p: Vector2, r: float) -> void:
 func _hide_unseen() -> void:
 	var tree := get_tree()
 	for s in tree.get_nodes_in_group("ships"):
-		if s.owner_id != pid:
+		if not game.are_allies(pid, s.owner_id):
 			s.visible = can_see(s)
 			if not s.visible and s.selected:
 				game.selection.erase(s)
 				s.selected = false
 	# Enemy starbases and depots: shown once seen, then remembered.
 	for sb in tree.get_nodes_in_group("starbases") + tree.get_nodes_in_group("depots"):
-		if sb.owner_id != pid:
+		if not game.are_allies(pid, sb.owner_id):
 			if can_see(sb):
 				sb.set_meta("seen", true)
 			sb.visible = sb.get_meta("seen", false)
@@ -272,7 +272,7 @@ func _fog_test() -> void:
 	var rocks := 0
 	var rocks_seen := 0
 	for a in get_tree().get_nodes_in_group("asteroids"):
-		if a.global_position.distance_to(home.global_position) < 900.0 and game.nearest_starbase(3 - pid, a.global_position).global_position.distance_to(a.global_position) > a.global_position.distance_to(home.global_position):
+		if a.global_position.distance_to(home.global_position) < 900.0 and game.nearest_starbase(game.players.filter(func(o): return o != pid)[0], a.global_position).global_position.distance_to(a.global_position) > a.global_position.distance_to(home.global_position):
 			rocks += 1
 			rocks_seen += int(is_explored_at(a.global_position))
 	var near_planet := 1e9
@@ -318,7 +318,7 @@ func _fog_save_test(mode: String) -> void:
 	var pl: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == 0)[0]
 	if mode == "write":
 		_stamp(_dark, Vector2(900, -500), 400.0)
-		pl.seen_owner = 3 - pid
+		pl.seen_owner = game.players.filter(func(o): return o != pid)[0]
 		print("FOGSAVE saved ", SaveGame.write(game, "fog test"))
 	var ex := 0
 	for y in rows:
@@ -335,7 +335,7 @@ func _update_intel() -> void:
 	var now := Game.now()
 	var tree := get_tree()
 	for s in tree.get_nodes_in_group("ships"):
-		if s.owner_id != pid and s.is_alive() and s.def["role"] == "warship" and can_see(s):
+		if game.is_hostile(pid, s.owner_id) and s.is_alive() and s.def["role"] == "warship" and can_see(s):
 			sightings[s.get_instance_id()] = [now, s.max_hp + s.max_armor + s.max_shield, s.global_position, Vector3(s.max_shield, s.max_armor, s.max_hp)]
 	for id in sightings.keys():
 		var sg: Array = sightings[id]
@@ -344,7 +344,7 @@ func _update_intel() -> void:
 		if now - sg[0] > SIGHTING_MEMORY or gone:
 			sightings.erase(id)
 	for sb in tree.get_nodes_in_group("starbases"):
-		if sb.owner_id != pid and sb.is_alive() and can_see(sb):
+		if game.is_hostile(pid, sb.owner_id) and sb.is_alive() and can_see(sb):
 			seen_bases[sb] = [sb.global_position, (sb.hp + sb.armor + sb.shield) / maxf(sb.max_hp + sb.max_armor + sb.max_shield, 1.0)]
 	for sb in seen_bases.keys():
 		if not is_instance_valid(sb) or not sb.is_alive():
