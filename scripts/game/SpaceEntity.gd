@@ -225,7 +225,8 @@ func draw_status(on: CanvasItem) -> void:
 		# A ring rather than corner brackets, so the marker reads the same
 		# whatever the hull under it is doing.
 		var col := Defs.team_color(owner_id)
-		on.draw_polyline(_arc_points(r, 0.0, TAU, 32), Color(col, 0.85), 1.0, true)
+		# Faint, so a large selection doesn't bury the ships in rings.
+		on.draw_polyline(_arc_points(r + 1.0, 0.0, TAU, 40), Color(col, 0.4), 1.0, true)
 	# The gauges are for damage, not for decoration: an untouched ship shows
 	# nothing above it, selected or not.
 	if not damaged:

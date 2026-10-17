@@ -2501,6 +2501,16 @@ func _enter_dev_capture() -> void:
 		for p in [Vector2(450, 250), Vector2(150, 450), Vector2(-150, 300)]:
 			_issue_command(at0 + p, false, true)
 		center_on(at0 + Vector2(150, 200))
+	if OS.get_environment("SL_SHOT_OPEN") == "selmix":
+		# Dev: a mixed selected group, for comparing selection markers.
+		var hb2 := nearest_starbase(player_id, Vector2.ZERO)
+		var at2 := hb2.global_position + Vector2(0, 320)
+		var grp2: Array = []
+		var kinds2 := ["cruiser", "destroyer", "destroyer", "corvette", "corvette", "corvette", "corvette", "corvette"]
+		for k in kinds2.size():
+			grp2.append(spawn_ship(kinds2[k], player_id, at2 + Vector2((k % 4) * 46, (k / 4) * 50)))
+		_set_selection(grp2, false)
+		center_on(at2 + Vector2(70, 25))
 	if OS.get_environment("SL_SHOT_OPEN") == "qtest":
 		# Dev: waypoints in a known square around the ship, with the screen
 		# position of each pip printed so a capture can be checked by pixel.
