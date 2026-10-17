@@ -384,11 +384,19 @@ func known_enemy_base(from: Vector2) -> Array:
 	return best
 
 func explored_fraction() -> float:
+	# Only cells inside the round system count.
 	var ex := 0
+	var total := 0
 	for y in range(0, rows, 2):
 		for x in range(0, cols, 2):
+			if not _in_system(x, y):
+				continue
+			total += 1
 			ex += int(_dark.get_pixel(x, y).a == 0.0)
-	return ex / float(((rows + 1) / 2) * ((cols + 1) / 2))
+	return ex / float(maxi(total, 1))
+
+func _in_system(x: int, y: int) -> bool:
+	return (Game.MAP_RECT.position + (Vector2(x, y) + Vector2(0.5, 0.5)) * CELL).length() < Game.MAP_RADIUS - 60.0
 
 ## The nearest unexplored spot to `from` (a coarse search), or `from` if
 ## the whole map is explored.
@@ -397,7 +405,7 @@ func nearest_unexplored(from: Vector2) -> Vector2:
 	var best_d := INF
 	for y in range(1, rows, 3):
 		for x in range(1, cols, 3):
-			if _dark.get_pixel(x, y).a > 0.0:
+			if _dark.get_pixel(x, y).a > 0.0 and _in_system(x, y):
 				var p := Game.MAP_RECT.position + (Vector2(x, y) + Vector2(0.5, 0.5)) * CELL
 				var d := from.distance_squared_to(p)
 				if d < best_d:

@@ -103,7 +103,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			base.enqueue("skimmer")
 		# Jobs: a Scout for sensors, a Repair Tender once the fleet is sizable,
 		# a Radiation Sail Array where the system has radiation hazards to fight in.
-		elif v and v.explored_fraction() < SCOUT_UNTIL and _count_role(ships, base, "scout") == 0 and base.can_queue("scout") == "":
+		# Always one Scout: it explores, then patrols.
+		elif v and _count_role(ships, base, "scout") == 0 and base.can_queue("scout") == "":
 			base.enqueue("scout")
 		elif war.size() >= 8 and _count_type(ships, base, "tender") == 0 and base.can_queue("tender") == "" and res["spice"] >= 15.0:
 			base.enqueue("tender")
@@ -414,17 +415,15 @@ func _known_free(pid: int, p: Planet, game: Game) -> bool:
 		return v.known_owner(p) == 0
 	return p.owner_id == 0
 
-## Scouting: one warship explores the nearest unexplored spot until most of
-## the system is known (only with fog of war).
-const SCOUT_UNTIL := 0.85
+## Scouting: one ship (a Scout, else the fastest warship) explores until the
+## whole system is known, then patrols it for good (only with fog of war).
+const SCOUT_UNTIL := 0.98   # "the whole system" (a few cells sit in rock fields/behind the star)
 
 func _scout(pid: int, st: Dictionary, game: Game, war: Array) -> void:
 	var v: Vision = game.visions.get(pid)
 	if v == null or war.is_empty() or Game.now() < st.get("next_scout", 0.0):
 		return
 	st["next_scout"] = Game.now() + 5.0
-	if v.explored_fraction() >= SCOUT_UNTIL:
-		return
 	# (Untyped until checked: the old scout may have been destroyed.)
 	var old = st.get("scout")
 	var sc: Ship = old if is_instance_valid(old) else null
@@ -436,8 +435,26 @@ func _scout(pid: int, st: Dictionary, game: Game, war: Array) -> void:
 			pick.sort_custom(func(a, b): return a.def["speed"] > b.def["speed"])
 		sc = pick[0]
 		st["scout"] = sc
-	if sc.state == Ship.State.IDLE or sc.global_position.distance_to(sc.move_goal) < 60.0 or v.is_explored_at(sc.move_goal):
-		sc.order_move(v.nearest_unexplored(sc.global_position))
+	var arrived: bool = sc.state == Ship.State.IDLE or sc.global_position.distance_to(sc.move_goal) < 60.0
+	if v.explored_fraction() < SCOUT_UNTIL:
+		# First uncover the whole system.
+		if arrived or v.is_explored_at(sc.move_goal):
+			sc.order_move(v.nearest_unexplored(sc.global_position))
+	elif arrived:
+		# Then patrol for good: round the system world by world, skipping
+		# ours, allies' and any already in sight, so news of the enemy
+		# (fleets, new colonies) stays current.
+		var worlds: Array = game.get_tree().get_nodes_in_group("planets").filter(func(p): return not (p.owner_id != 0 and game.are_allies(pid, p.owner_id)))
+		worlds.sort_custom(func(a, b): return a.global_position.angle() < b.global_position.angle())
+		if worlds.is_empty():
+			return
+		var i: int = st.get("patrol_i", 0)
+		for k in worlds.size():
+			var w: Node2D = worlds[(i + k) % worlds.size()]
+			if not v.is_visible_at(w.global_position) or k == worlds.size() - 1:
+				st["patrol_i"] = (i + k + 1) % worlds.size()
+				sc.order_move(w.global_position + Vector2.from_angle(randf() * TAU) * 220.0)
+				break
 
 # ---------------------------------------------------------------- strategy
 
