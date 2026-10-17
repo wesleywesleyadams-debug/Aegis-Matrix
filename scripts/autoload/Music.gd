@@ -24,6 +24,15 @@ const BUILTIN_TRACKS := [
 	["pulse", "Pulse (SRG774)"],
 	["determined_pursuit", "Determined Pursuit (Emma_MA)"],
 	["spacedman", "Spacedman (Shane Ivers)"],
+	["space_graveyard", "Space Graveyard (TinyWorlds)"],
+	["deep_space_array", "Deep Space Array (Tozan)"],
+	["surreal_truth", "The Surreal Truth (Joth)"],
+	["infestation", "Infestation in the Control Room (Joth)"],
+	["captains_log", "Final Captain's Log (Joth)"],
+	["depths_of_hell", "The Depths of Hell (Joth)"],
+	["cage_of_the_cryptid", "Cage of the Cryptid (Joth)"],
+	["unexpected_trouble", "Unexpected Trouble (section31)"],
+	["sentry", "Sentry (section31)"],
 	["game", "Stardust Dominion Synth: In-Game"],
 	["title", "Stardust Dominion Synth: Title"],
 	["lobby", "Stardust Dominion Synth: Lobby"],
@@ -97,6 +106,8 @@ func _builtin_path(id: String) -> String:
 
 ## Loads a track as a stream (imported files are read from disk).
 func _stream(id: String) -> AudioStream:
+	if id.begins_with("cue:"):
+		return _cue_stream(id.substr(4))
 	if id.begins_with("user:"):
 		var path := USER_DIR + "/" + id.substr(5)
 		if not FileAccess.file_exists(path):
@@ -218,8 +229,11 @@ func _start_playlist() -> void:
 	# Adaptive music: only this mood's songs (calm ones if the mood has none
 	# enabled; everything if calm has none either).
 	if GameState.adaptive_music:
-		var want := mood if mood != "siege" else "battle"
-		var m := pl.filter(func(id): return mood_of(id) == want)
+		var m := pl.filter(func(id): return mood_of(id) == mood)
+		if mood == "siege":
+			m.append("cue:urgent")
+		if m.is_empty() and mood == "siege":
+			m = pl.filter(func(id): return mood_of(id) == "battle")
 		if m.is_empty():
 			m = pl.filter(func(id): return mood_of(id) == "calm")
 		if not m.is_empty():
@@ -459,7 +473,8 @@ func _next_index() -> int:
 # soundtrack songs: each plays for one purpose -
 #   title        the main screen's menu loop (play_screen)
 #   victory      the win sound (Sfx plays it)
-#   transmission the end-of-match theme (play_cue, looping)
+#   transmission the end-of-match theme after a win (play_cue, looping)
+#   defeat_1-2   defeat stings; defeat_song_1-4 the end theme after a loss
 #   urgent       high-stakes music while our worlds or starbases are under
 #                attack (urgent_ping), handing back to the playlist after
 #                attack, as the "siege" mood (see moods below)
@@ -472,6 +487,7 @@ const CUE_TRIM := {"title": -2.0, "transmission": -9.0, "urgent": -2.4}
 const HOVER_SOUND := "res://assets/audio/sfx_hover_flick.wav"
 const HOVER_DB := -10.0
 var _hover_stream: AudioStream
+var _hover_ui: AudioStreamPlayer
 const HOVER_GAP_MS := 60
 ## Seconds of calm after the last attack before urgent music hands back.
 
@@ -505,7 +521,9 @@ func urgent_ping() -> void:
 const MOODS := {
 	"galactic_temple": "calm", "airy": "calm", "sector": "calm", "spacelife": "calm",
 	"magic_space": "calm", "spacedman": "calm", "through_space": "calm",
-	"pulse": "tension",
+	"pulse": "tension", "space_graveyard": "tension", "deep_space_array": "tension", "surreal_truth": "tension",
+	"infestation": "tension", "captains_log": "tension", "depths_of_hell": "tension", "cage_of_the_cryptid": "tension",
+	"unexpected_trouble": "siege", "sentry": "siege",
 	"determined_pursuit": "battle", "deus_ex_tempus": "battle", "hero_immortal": "battle",
 }
 const MOOD_RANK := {"calm": 0, "tension": 1, "battle": 2, "siege": 3}
@@ -563,12 +581,9 @@ func _set_mood(m: String) -> void:
 	if OS.get_environment("SL_MUSIC_DEBUG") != "":
 		print("MUSIC mood -> ", m)
 	_fade_next = true
-	if m == "siege":
-		play_cue("urgent")
-		return
 	_cue = ""
 	# Battle to battle-fallback (siege ending) keeps a battle song going.
-	if m == "battle" and was_battle and _current != "cue:urgent":
+	if m == "battle" and was_battle and mood_of(_current) == "battle":
 		_fade_next = false
 		return
 	_start_playlist()
@@ -597,7 +612,11 @@ func _on_button_hover(b: BaseButton) -> void:
 	_last_hover_ms = now
 	if _hover_stream == null:
 		_hover_stream = load(HOVER_SOUND)
-	_cue_ui.stream = _hover_stream
-	_cue_ui.volume_db = HOVER_DB
-	_cue_ui.pitch_scale = randf_range(0.94, 1.06)
-	_cue_ui.play()
+	# Its own player, so a hover never cuts off a victory or defeat sting.
+	if _hover_ui == null:
+		_hover_ui = AudioStreamPlayer.new()
+		add_child(_hover_ui)
+	_hover_ui.stream = _hover_stream
+	_hover_ui.volume_db = HOVER_DB
+	_hover_ui.pitch_scale = randf_range(0.94, 1.06)
+	_hover_ui.play()

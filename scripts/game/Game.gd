@@ -1117,9 +1117,11 @@ func _end_match(won: bool) -> void:
 		# The win sting and end theme come from the music cue library.
 		if won:
 			Music.play_cue_sfx("victory", -6.0)
+			Music.play_cue("transmission")
 		else:
-			sfx.play_ui("defeat")
-		Music.play_cue("transmission")
+			# One of the defeat stings, then one of the defeat songs.
+			Music.play_cue_sfx("defeat_%d" % randi_range(1, 2), -4.0)
+			Music.play_cue("defeat_song_%d" % randi_range(1, 4))
 	match_over.emit(won)
 
 # ---------------------------------------------------------------- input

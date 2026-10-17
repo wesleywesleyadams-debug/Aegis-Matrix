@@ -368,6 +368,14 @@ const MUSIC_CREDITS := [
 	["Dark Sci-Fi Audio Pack", "SRG774", "CC0", "opengameart.org/content/dark-sci-fi-audio-pack"],
 	["Determined Pursuit", "Emma_MA", "CC0", "opengameart.org/content/determined-pursuit-epic-orchestra-loop"],
 	["Spacedman", "Shane Ivers", "CC BY 4.0", "www.silvermansound.com"],
+	["Space Graveyard", "TinyWorlds", "CC0", "opengameart.org/content/space-graveyard-ambient-track"],
+	["Deep Space Array", "Tozan", "CC0", "opengameart.org/node/51793"],
+	["Ambience Pack 1: Sci Fi Horror", "Joth", "CC0", "opengameart.org/content/ambience-pack-1-sci-fi-horror"],
+	["Unexpected Trouble, Sentry", "section31", "CC0", "opengameart.org/users/section31"],
+	["Sad game over, Bittersweet", "Emma_MA", "CC0", "opengameart.org/users/emmama"],
+	["Icy Game Over", "Sudocolon", "CC0", "opengameart.org/content/icy-game-over"],
+	["Game Over, Game Over II", "Kistol", "CC0", "opengameart.org/users/kistol"],
+	["Something sad", "gearfox98", "CC0", "opengameart.org/content/something-sad"],
 ]
 
 var _credits: Control
