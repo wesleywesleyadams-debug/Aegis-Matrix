@@ -2454,6 +2454,9 @@ func _enter_dev_capture() -> void:
 		if OS.get_environment("SL_SAIL_FULL") != "":
 			hs.shield = hs.max_shield
 			center_on(hs.global_position)
+		if OS.get_environment("SL_SAIL_HALF") != "":
+			hs.shield = hs.max_shield * 0.4
+			center_on(hs.global_position)
 		# SL_SAIL_LOG: the solar sail filling its shield, then the energy pool.
 		if OS.get_environment("SL_SAIL_LOG") != "":
 			var e0: float = resources[player_id]["energy"]

@@ -1315,6 +1315,7 @@ func in_solar_field() -> bool:
 ## once the shield is full the rest goes to the owner's energy pool.
 func _solar_tick(delta: float) -> void:
 	_solar_fx_tick(delta)
+	_sail_mode = ""
 	if Game.now() < sail_down_until:
 		return
 	if not in_solar_field():
@@ -1328,8 +1329,11 @@ func _solar_tick(delta: float) -> void:
 	# Each point of energy charges Defs.SAIL_SHIELD_PER_ENERGY shield.
 	var into_shield := minf(gain, maxf(max_shield - shield, 0.0) / Defs.SAIL_SHIELD_PER_ENERGY)
 	if into_shield > 0.0:
+		_sail_mode = "charge"
 		shield = minf(max_shield, shield + into_shield * Defs.SAIL_SHIELD_PER_ENERGY)
 		queue_redraw()
+	if _sail_mode == "" and gain > 0.0:
+		_sail_mode = "full"
 	if gain > into_shield:
 		g.resources[owner_id]["energy"] += gain - into_shield
 
@@ -1354,6 +1358,9 @@ var _sail_hits: Array = []
 var _sail_shards: Array = []
 ## Game time until which the array is knocked out after its shield shattered.
 var sail_down_until := 0.0
+## What the array is doing this frame: "charge" (filling its shield), "full"
+## (shield full, energy to the stockpile) or "" (idle) - drives the arcs.
+var _sail_mode := ""
 var _sail_reform := 1.0
 var _sail_was_up := false
 
@@ -1430,3 +1437,27 @@ func _draw_solar_shield(t: float) -> void:
 		var spread := 0.15 + 1.4 * k
 		draw_arc(Vector2.ZERO, r0, h["a"] - spread, h["a"] + spread, 18, Color(sc.lightened(0.6), 0.9 * (1.0 - k)), 3.0 * (1.0 - k) + 1.0)
 		draw_circle(Vector2.from_angle(h["a"]) * r0, 4.0 * (1.0 - k) + 1.0, Color(Color.WHITE, 0.7 * (1.0 - k)))
+	_draw_sail_arcs(r0)
+
+## Electrical arcs between the hull and the bubble while the array works:
+## white/purple while charging the shield, white/yellow once it is full and
+## the energy flows to the stockpile. Each arc is re-struck a few times a
+## second at a new angle.
+func _draw_sail_arcs(r0: float) -> void:
+	if _sail_mode == "":
+		return
+	var glow: Color = shield_color() if _sail_mode == "charge" else Color("ffe066")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([get_instance_id(), int(Game.now() * 9.0)])
+	for i in 3:
+		var a := rng.randf() * TAU
+		var pts := PackedVector2Array()
+		var steps := 10
+		for j in steps + 1:
+			var k := float(j) / steps
+			var r := lerpf(10.0, r0, k)
+			var jit := 0.0 if j == 0 or j == steps else rng.randf_range(-0.09, 0.09)
+			pts.append(Vector2.from_angle(a + jit) * r)
+		draw_polyline(pts, Color(glow, 0.45), 4.0, true)
+		draw_polyline(pts, Color(Color.WHITE, 0.9), 1.4, true)
+		draw_circle(pts[steps], 2.5, Color(glow, 0.8))
