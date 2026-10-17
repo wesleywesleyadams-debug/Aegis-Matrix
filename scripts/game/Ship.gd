@@ -740,6 +740,10 @@ func _physics_process(delta: float) -> void:
 				if global_position.distance_to(bombard_target.global_position) > keep:
 					desired = _arrive(bombard_target.global_position, 1.0, keep)
 				face_target = null
+				# Fixed guns must point at the world to fire; a planet is no
+				# SpaceEntity, so it turns via face_at (ships already in range
+				# used to just sit there, pointing the wrong way).
+				face_at = bombard_target
 		State.BUILD:
 			if global_position.distance_to(build_site) <= 8.0:
 				var problem: String = Game.instance.site_problem(build_kind, build_site)
@@ -817,6 +821,8 @@ func _physics_process(delta: float) -> void:
 				# Fixed guns: come onto the bearing first.
 				if face_target == null and shoot is SpaceEntity:
 					face_target = shoot
+				elif face_target == null and face_at == null:
+					face_at = shoot
 				ready = bears_on(shoot.global_position)
 			if ready:
 				# Every gun aims the same: a shooter on the move is a worse one,

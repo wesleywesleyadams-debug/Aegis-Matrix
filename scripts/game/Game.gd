@@ -2394,6 +2394,16 @@ func _enter_dev_capture() -> void:
 				print("QFULL t=18 chain state=%s left=%d | dead-target ship state=%s left=%d" % [
 					Ship.State.keys()[m1.state], m1.order_queue.size(),
 					Ship.State.keys()[m4.state], m4.order_queue.size()]))
+	if OS.get_environment("SL_SHOT_OPEN") == "bombtest":
+		# Dev: right-click an enemy world with corvettes selected; log states.
+		var ep: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id != 0 and p.owner_id != player_id)[0]
+		var bg: Array = []
+		for k in 4:
+			bg.append(spawn_ship("corvette", player_id, ep.global_position + Vector2.from_angle(k * 1.6) * (ep.radius + 60.0)))
+		_set_selection(bg, false)
+		_issue_command(ep.global_position, false, false)
+		for t9 in [0.5, 3.0, 8.0, 15.0]:
+			get_tree().create_timer(t9).timeout.connect(func(): print("BOMB t=%.1f shield %.0f states %s dist %.0f pop %.0f" % [t9, ep.shield, str(bg.filter(func(s): return is_instance_valid(s)).map(func(s): return Ship.State.keys()[s.state])), bg[0].global_position.distance_to(ep.global_position) if is_instance_valid(bg[0]) else -1.0, ep.pop]))
 	if OS.get_environment("SL_SHOT_OPEN") == "qgroup":
 		# Dev: a dozen corvettes given a move, then three shift-queued moves
 		# (formation slots differ per ship; the route is drawn once).
