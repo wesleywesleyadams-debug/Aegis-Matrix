@@ -13,12 +13,19 @@ on the GPU, and learns from the outcome:
            builds/researches) the first time in a match, at most NEW_CAP (40)
            per match; repeats earn nothing (they could be farmed).
 
+Curriculum: the opponent starts as a sitting duck (level 1), then a turtle
+that never attacks (2), a slow scripted AI (3), the full scripted AI (4) and
+finally self-play (5): a frozen copy of itself, refreshed every SNAPSHOT
+updates.
+The agent moves up a level once it wins PROMOTE of its last 20 games at the
+current one (the level is saved in the checkpoint; --level overrides).
+
 Usage (from the project root, with the venv's python):
   sd-venv/Scripts/python.exe tools/rl/train.py --envs 4 --updates 1000
 Checkpoints and a log go to tools/rl/runs/ (not committed). --resume picks
 up the last checkpoint.
 """
-import argparse, csv, os, random, time
+import argparse, copy, csv, os, random, threading, time
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
@@ -36,6 +43,10 @@ WIN_DECAY = 12.5
 LOSS = -300.0
 VALUE_SCALE = 1.0 / 100.0
 BIG = 20.0
+## Curriculum: share of the last 20 games at a level it must win to move up.
+PROMOTE = 0.5
+## Self-play: how often (updates) the frozen opponent catches up with the learner.
+SNAPSHOT = 25
 ## Curiosity: a kind of action (verb, object) new this match, capped.
 NEW_ACTION = 2.0
 NEW_CAP = 40.0
@@ -72,6 +83,7 @@ def main():
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--reset-value", action="store_true", help="re-learn the value head (after a reward change)")
     ap.add_argument("--port", type=int, default=47100)
+    ap.add_argument("--level", type=int, default=0, help="force a curriculum level (1-4)")
     args = ap.parse_args()
     global LIMIT
     LIMIT = args.minutes * 60.0
@@ -81,9 +93,11 @@ def main():
     opt = torch.optim.Adam(pol.parameters(), lr=args.lr)
     ckpt = os.path.join(RUNS, "ckpt.pt")
     start = 0
+    level = 1
     if args.resume and os.path.exists(ckpt):
         st = torch.load(ckpt, map_location=dev)
         pol.load_state_dict(st["model"]); opt.load_state_dict(st["opt"]); start = st["update"]
+        level = st.get("level", 1)
         print("resumed at update", start)
         if args.reset_value:
             for m in pol.value:
@@ -94,11 +108,25 @@ def main():
     log = open(os.path.join(RUNS, "log.csv"), "a", newline="")
     lw = csv.writer(log)
 
+    if args.level:
+        level = args.level
+    # Self-play opponent: a frozen copy of the policy, shared by every game
+    # (a lock keeps the env threads from using it at once).
+    frozen = copy.deepcopy(pol).eval()
+    frozen_lock = threading.Lock()
+
+    def opponent(o):
+        with frozen_lock, torch.no_grad():
+            acts, _, _, _ = frozen(collate([o], dev))
+        return {"orders": [[int(a) for a in x] for x in acts[0].cpu().numpy() if x[0] >= 0]}
+    print("curriculum level", level)
     envs = [StarEnv(args.port + i, system=random.choice(SYSTEMS), minutes=args.minutes, speed=args.speed,
-                    side=random.choice([1, 2]), log=os.path.join(RUNS, f"env{i}.log")) for i in range(args.envs)]
+                    side=random.choice([1, 2]), log=os.path.join(RUNS, f"env{i}.log"), level=level) for i in range(args.envs)]
     pool = ThreadPoolExecutor(args.envs)
 
     def fresh(e):
+        e.level = level
+        e.opponent = opponent
         e.system = random.choice(SYSTEMS)
         e.side = random.choice([1, 2])
         return e.reset()
@@ -133,7 +161,12 @@ def main():
             buf["val"].append(val.cpu()); buf["rew"].append(torch.tensor(rews)); buf["done"].append(torch.tensor(dones, dtype=torch.float32))
             for i in range(args.envs):
                 if dones[i]:
-                    results.append((nxt[i].get("won"), nxt[i].get("lost"), ep_ret[i], envs[i].system))
+                    results.append((nxt[i].get("won"), nxt[i].get("lost"), ep_ret[i], envs[i].system, envs[i].level))
+                    # Promotion: wins PROMOTE of its last 20 games at this level.
+                    here = [r for r in results if r[4] == level][-20:]
+                    if level < 5 and len(here) >= 20 and sum(1 for r in here if r[0]) >= PROMOTE * 20:
+                        level += 1
+                        print(f"PROMOTED to curriculum level {level}", flush=True)
                     ep_ret[i] = 0.0
                     tried[i] = set()
             # Finished games restart (in parallel) before the next step.
@@ -179,13 +212,16 @@ def main():
                 opt.step()
                 stats.append((pl.item(), vl.item(), ent.mean().item()))
         pl, vl, en = np.mean(stats, 0)
-        recent = results[-20:]
+        recent = [r for r in results if r[4] == level][-20:]
         win = sum(1 for r in recent if r[0]) / max(len(recent), 1)
         mean_ret = np.mean([r[2] for r in recent]) if recent else 0.0
-        print(f"upd {upd + 1}  games {len(results)}  win(last20) {win:.2f}  ret {mean_ret:+.1f}  "
+        print(f"upd {upd + 1}  L{level}  games {len(results)}  win(last20) {win:.2f}  ret {mean_ret:+.1f}  "
               f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f}  {time.time() - t0:.0f}s", flush=True)
-        lw.writerow([upd + 1, len(results), win, mean_ret, pl, vl, en]); log.flush()
-        torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1}, ckpt)
+        lw.writerow([upd + 1, level, len(results), win, mean_ret, pl, vl, en]); log.flush()
+        if (upd + 1) % SNAPSHOT == 0:
+            with frozen_lock:
+                frozen.load_state_dict(pol.state_dict())
+        torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1, "level": level}, ckpt)
     for e in envs:
         e.close()
 

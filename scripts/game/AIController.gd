@@ -41,6 +41,12 @@ func setup(ai_players: Array) -> void:
 			var agent := RLAgent.new(pid, int(OS.get_environment("SL_RL_PORT")))
 			Game.instance.add_child(agent)
 			_state[pid]["nn"] = agent
+		# Self-play (curriculum level 5): the other side is a second learning
+		# agent, on SL_RL_PORT2 (the trainer runs a frozen copy of the policy).
+		elif OS.get_environment("SL_RL_PORT2") != "" and OS.get_environment("SL_RL_PORT") != "":
+			var opp := RLAgent.new(pid, int(OS.get_environment("SL_RL_PORT2")))
+			Game.instance.add_child(opp)
+			_state[pid]["nn"] = opp
 
 func _process(delta: float) -> void:
 	var game := Game.instance
@@ -232,8 +238,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				s.order_dock(best)
 
 	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
-	# Idle warships next to an enemy planet start bombarding it.
-	for s in idle.duplicate():
+	# Idle warships next to an enemy planet start bombarding it (not a turtle).
+	for s in (idle.duplicate() if not (game.rl_side > 0 and pid != game.rl_side and game.opp_level == 2) else []):
 		var ep := _nearest_planet(s.global_position, game, func(pl): return pl.is_enemy_of(pid) and (v == null or v.is_visible_at(pl.global_position)))
 		# Only a world the warships near it can actually bring down.
 		if ep and s.global_position.distance_to(ep.global_position) < 350.0 and _can_win(pid, idle.filter(func(o): return o.global_position.distance_to(ep.global_position) < 500.0), ep.global_position, game):
@@ -242,6 +248,13 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# Aggressive: any idle group that can destroy something goes for it,
 	# whatever the mode and whatever it costs (see _can_win).
 	var need := 3
+	# Training curriculum (see Game.opp_level): a turtle never attacks, a
+	# slow opponent waits for a bigger wave.
+	var vs_rl: bool = game.rl_side > 0 and pid != game.rl_side
+	if vs_rl and game.opp_level == 3:
+		need = 8
+	if vs_rl and game.opp_level == 2:
+		need = 1 << 30
 	if idle.size() >= need:
 		var goal := _winnable_target(pid, idle, base.global_position, game)
 		if goal != Vector2.INF:

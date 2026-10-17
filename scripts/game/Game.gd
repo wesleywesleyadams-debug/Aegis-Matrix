@@ -47,6 +47,12 @@ var players: Array[int] = [1, 2]
 ## Team per player (0 = none: everyone else is an enemy). Allies share
 ## nothing yet but peace - see are_allies.
 var teams := {}
+## Training curriculum (SL_OPP_LEVEL, with the learning agent on SL_RL_SIDE):
+## 1 sitting duck (no AI), 2 turtle (never attacks), 3 slow (half income,
+## bigger waves before it attacks), 4 the full scripted AI, 5 self-play
+## (the other side is a frozen copy of the learning agent, see AIController).
+var opp_level: int = clampi(int(OS.get_environment("SL_OPP_LEVEL")) if OS.get_environment("SL_OPP_LEVEL") != "" else 4, 1, 5)
+var rl_side: int = maxi(1, int(OS.get_environment("SL_RL_SIDE"))) if OS.get_environment("SL_RL_PORT") != "" else 0
 var resources := {}
 ## Net change per second over the last second, per player per resource.
 var rates := {}
@@ -232,6 +238,9 @@ func _ready() -> void:
 		var order: Array = players.duplicate()
 		if OS.get_environment("SL_AI_ORDER") == "21":
 			order.reverse()
+		# Training curriculum level 1: the learning agent's opponents do nothing.
+		if rl_side > 0 and opp_level == 1:
+			order = order.filter(func(p): return p == rl_side)
 		ai.setup(order)
 		if OS.get_environment("SL_NOFOG") == "":
 			for p in players:
@@ -531,6 +540,12 @@ func in_nebula(p: Vector2) -> bool:
 func add_resources(pid: int, amounts: Dictionary) -> void:
 	if not resources.has(pid):
 		return
+	# Curriculum level 3: the agent's opponents earn at half rate.
+	if opp_level == 3 and rl_side > 0 and pid != rl_side:
+		var half := {}
+		for k in amounts:
+			half[k] = amounts[k] * 0.5 if amounts[k] > 0.0 else amounts[k]
+		amounts = half
 	for k in amounts:
 		resources[pid][k] = resources[pid].get(k, 0.0) + amounts[k]
 		_rate_acc[pid][k] = _rate_acc[pid].get(k, 0.0) + amounts[k]

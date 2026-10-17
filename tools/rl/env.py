@@ -6,61 +6,107 @@ on one side and connects over TCP. Each step: the game sends an observation
 on for RLAgent.DECIDE seconds. Nothing here knows ship or tech names: options
 come as feature rows, so new rules show up as new rows.
 """
-import json, os, random, socket, subprocess
+import json, os, random, select, socket, subprocess
 
 GODOT = os.environ.get("GODOT", r"C:/Users/whole/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stable_win64_console.exe")
 PROJECT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+NL = bytes([10])   # one message per line
+
+
 class StarEnv:
-    def __init__(self, port, system="random", minutes=40, speed=8, side=1, players=2, seed=None, log=None):
+    """One training game. At curriculum level 5 the other side is a second
+    learning agent (SL_RL_PORT2) whose orders come from `opponent(obs)`,
+    a frozen copy of the policy set by the trainer."""
+
+    def __init__(self, port, system="random", minutes=40, speed=8, side=1, players=2, seed=None, log=None, level=4):
         self.port, self.system, self.minutes, self.speed = port, system, minutes, speed
         self.side, self.players, self.seed, self.log = side, players, seed, log
-        self.proc = self.conn = None
-        self.buf = b""
+        self.level = level   # opponent curriculum level (Game.opp_level)
+        self.opponent = None  # obs -> orders, for self-play
+        self.proc = self.conn = self.conn2 = None
+        self.bufs = {}
+
+    def _listen(self, port):
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", port))
+        srv.listen(1)
+        srv.settimeout(120)
+        return srv
 
     def reset(self):
         self.close()
-        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        srv.bind(("127.0.0.1", self.port))
-        srv.listen(1)
-        srv.settimeout(120)
+        selfplay = self.level >= 5 and self.opponent is not None
+        srv = self._listen(self.port)
+        srv2 = self._listen(self.port + 500) if selfplay else None
         env = dict(os.environ, SL_SIM=f"rl{self.port}", SL_RL_PORT=str(self.port), SL_RL_SIDE=str(self.side),
                    SL_SYSTEM=self.system, SL_SIM_MINUTES=str(self.minutes), SL_SIM_SCALE=str(self.speed),
-                   SL_PLAYERS=str(self.players), SL_SEED=str(self.seed if self.seed is not None else random.randrange(1 << 30)))
+                   SL_PLAYERS=str(self.players), SL_OPP_LEVEL=str(self.level), SL_SEED=str(self.seed if self.seed is not None else random.randrange(1 << 30)))
+        if selfplay:
+            env["SL_RL_PORT2"] = str(self.port + 500)
         out = open(self.log, "w") if self.log else subprocess.DEVNULL
         self.proc = subprocess.Popen([GODOT, "--headless", "--fixed-fps", "60", "--path", PROJECT, "scenes/Main.tscn"],
                                      env=env, stdout=out, stderr=subprocess.STDOUT)
+        # Both agents connect while the game sets up, in either order.
         self.conn, _ = srv.accept()
         srv.close()
         self.conn.settimeout(300)
-        return self._recv()
+        if srv2:
+            self.conn2, _ = srv2.accept()
+            srv2.close()
+            self.conn2.settimeout(300)
+        self.bufs = {self.conn: b"", self.conn2: b""}
+        return self._await()
 
     def step(self, action):
-        self._send(action)
-        return self._recv()
+        self._send(self.conn, action)
+        return self._await()
 
-    def _send(self, d):
-        self.conn.sendall((json.dumps(d) + "\n").encode())
+    def _await(self):
+        """The learner's next observation, answering the self-play opponent
+        (whenever it asks) in between."""
+        while True:
+            socks = [self.conn] + ([self.conn2] if self.conn2 else [])
+            for sk in socks:
+                if NL in self.bufs[sk]:
+                    break
+            else:
+                ready, _, _ = select.select(socks, [], [], 300)
+                if not ready:
+                    return self._eof()
+                for sk in ready:
+                    chunk = sk.recv(1 << 20)
+                    if not chunk:
+                        if sk is self.conn:
+                            return self._eof()
+                        self.conn2 = None
+                    else:
+                        self.bufs[sk] += chunk
+                continue
+            line, self.bufs[sk] = self.bufs[sk].split(NL, 1)
+            obs = json.loads(line)
+            if sk is self.conn:
+                return obs
+            if not obs.get("done"):
+                self._send(self.conn2, self.opponent(obs))
 
-    def _recv(self):
-        while b"\n" not in self.buf:
-            chunk = self.conn.recv(1 << 20)
-            if not chunk:
-                return {"done": True, "lost": False, "won": False, "score": 0, "enemy_score": 0, "eof": True}
-            self.buf += chunk
-        line, self.buf = self.buf.split(b"\n", 1)
-        return json.loads(line)
+    def _eof(self):
+        return {"done": True, "lost": False, "won": False, "score": 0, "enemy_score": 0, "eof": True}
+
+    def _send(self, sk, d):
+        sk.sendall(json.dumps(d).encode() + NL)
 
     def close(self):
-        if self.conn:
-            try:
-                self._send({"quit": True})
-            except OSError:
-                pass
-            self.conn.close()
-            self.conn = None
+        for sk in [self.conn, self.conn2]:
+            if sk:
+                try:
+                    self._send(sk, {"quit": True})
+                except OSError:
+                    pass
+                sk.close()
+        self.conn = self.conn2 = None
         if self.proc:
             try:
                 self.proc.wait(timeout=10)
