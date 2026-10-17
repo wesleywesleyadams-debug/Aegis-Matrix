@@ -262,7 +262,11 @@ func _draw_deco() -> void:
 		_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(0, 0, 0, 0.7 * _ring["alpha"]))
 		_deco.draw_rect(Rect2(tl, Vector2(w * frac, 8)), Color(sc, _ring["alpha"]))
 		_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(sc, 0.8 * _ring["alpha"]), false, 1.0)
-		_deco.draw_string(get_theme_default_font(), tl + Vector2(0, 24), "Spice %d / %d" % [int(planet.spice_reserve), int(planet.max_spice_reserve)], HORIZONTAL_ALIGNMENT_CENTER, w, 12, Color(sc, _ring["alpha"]))
+		# Centred under the bar but never clipped to its width (big reserves
+		# such as 5000 / 5000 run wider than the bar).
+		var sp_txt := "Spice %d / %d" % [int(planet.spice_reserve), int(planet.max_spice_reserve)]
+		var sp_w: float = get_theme_default_font().get_string_size(sp_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		_deco.draw_string(get_theme_default_font(), tl + Vector2((w - sp_w) / 2.0, 24), sp_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(sc, _ring["alpha"]))
 
 func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
 	var st := StyleBoxFlat.new()
