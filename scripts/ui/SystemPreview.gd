@@ -8,7 +8,7 @@ extends Control
 
 const KIND_COLORS := {"planet_terran": Color("3d8fc8"), "planet_desert": Color("e0a85a"), "planet_ice": Color("9ec3e0"),
 	"planet_lava": Color("ff6a2b"), "planet_gas": Color("9a5e7e"), "planet_moon": Color("8a8a98")}
-const MAP_SIZE := Vector2(3600, 2300)
+const MAP_SIZE := Vector2(3500, 3500)   # Game.MAP_RECT (a disc's bounding square)
 
 var facts: String = ""
 var _layout: Dictionary = {}

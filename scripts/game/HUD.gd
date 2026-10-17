@@ -434,8 +434,8 @@ func _build_minimap(root: Control) -> void:
 	frame.anchor_right = 1.0
 	frame.anchor_top = 1.0
 	frame.anchor_bottom = 1.0
-	frame.offset_left = -12 - 344
-	frame.offset_top = -12 - 232
+	frame.offset_left = -12 - 276
+	frame.offset_top = -12 - 276
 	frame.offset_right = -12
 	frame.offset_bottom = -12
 	frame.add_theme_stylebox_override("panel", _panel_style(4))
@@ -451,10 +451,10 @@ func _build_minimap(root: Control) -> void:
 	name_tag.anchor_right = 1.0
 	name_tag.anchor_top = 1.0
 	name_tag.anchor_bottom = 1.0
-	name_tag.offset_left = -12 - 344
+	name_tag.offset_left = -12 - 276
 	name_tag.offset_right = -14
-	name_tag.offset_top = -12 - 232 - 30
-	name_tag.offset_bottom = -12 - 232 - 4
+	name_tag.offset_top = -12 - 276 - 30
+	name_tag.offset_bottom = -12 - 276 - 4
 	name_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	name_tag.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	name_tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -466,11 +466,11 @@ func _build_minimap(root: Control) -> void:
 	_score_box.anchor_right = 1.0
 	_score_box.anchor_top = 1.0
 	_score_box.anchor_bottom = 1.0
-	_score_box.offset_left = -12 - 344
+	_score_box.offset_left = -12 - 276
 	_score_box.offset_right = -14
 	# A clear gap above the system name, split by a faint rule.
-	_score_box.offset_top = -12 - 232 - 30 - 18 - 52
-	_score_box.offset_bottom = -12 - 232 - 30 - 18
+	_score_box.offset_top = -12 - 276 - 30 - 18 - 52
+	_score_box.offset_bottom = -12 - 276 - 30 - 18
 	_score_box.alignment = BoxContainer.ALIGNMENT_END
 	_score_box.add_theme_constant_override("separation", 0)
 	_score_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -484,8 +484,8 @@ func _build_minimap(root: Control) -> void:
 	rule.anchor_bottom = 1.0
 	rule.offset_left = -12 - 220
 	rule.offset_right = -14
-	rule.offset_top = -12 - 232 - 30 - 9
-	rule.offset_bottom = -12 - 232 - 30 - 8
+	rule.offset_top = -12 - 276 - 30 - 9
+	rule.offset_bottom = -12 - 276 - 30 - 8
 	root.add_child(rule)
 	for pid in [game.player_id, 3 - game.player_id]:
 		var l := _label("", Defs.team_color(pid), 16)

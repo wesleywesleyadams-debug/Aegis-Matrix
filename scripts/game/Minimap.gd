@@ -9,7 +9,8 @@ var game: Game
 var _dragging := false
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(336, 224)
+	custom_minimum_size = Vector2(264, 264)
+	clip_contents = true   # the corner mask and view frame stay inside
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 func _process(_delta: float) -> void:
@@ -37,7 +38,7 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color("05050c"))
+	draw_circle(size / 2.0, size.x / 2.0, Color("05050c"))
 	var tree := game.get_tree()
 	# Ion storms: active arms as blue wedges, a faint outline while building.
 	for storm in tree.get_nodes_in_group("storms"):
@@ -120,6 +121,11 @@ func _draw() -> void:
 		dot.a = fade
 		draw_circle(p, 3.5, dot)
 	# Camera view rectangle.
+	# The system is round: mask the square's corners (fog included) and
+	# ring the edge.
+	var mid := size / 2.0
+	draw_arc(mid, size.x * 0.5 + size.x * 0.25, 0, TAU, 96, HUD.BG, size.x * 0.5)
+	draw_arc(mid, size.x * 0.5 - 0.5, 0, TAU, 96, Color(0.55, 0.65, 0.95, 0.5), 1.0)
 	var cam := game.camera
 	var view_size := game.get_viewport().get_visible_rect().size / cam.zoom
 	var tl := _map_to_ui(cam.get_screen_center_position() - view_size / 2.0)

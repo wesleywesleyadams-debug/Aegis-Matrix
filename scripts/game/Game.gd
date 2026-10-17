@@ -17,7 +17,11 @@ const SHIP_SCENE := preload("res://scenes/Ship.tscn")
 const STARBASE_SCENE := preload("res://scenes/Starbase.tscn")
 const PLANET_SCENE := preload("res://scenes/Planet.tscn")
 const ASTEROID_SCENE := preload("res://scenes/Asteroid.tscn")
-const MAP_RECT := Rect2(-1800, -1150, 3600, 2300)
+## The system is a disc of MAP_RADIUS round the centre, so any number of
+## players can start at even spacing; MAP_RECT is its bounding square (the
+## grids for pathing and fog are laid over it).
+const MAP_RADIUS := 1750.0
+const MAP_RECT := Rect2(-MAP_RADIUS, -MAP_RADIUS, MAP_RADIUS * 2.0, MAP_RADIUS * 2.0)
 const ZOOM_LEVELS: Array[float] = [1.0, 2.0, 3.0, 4.0, 6.0]
 const CELL := 64.0
 ## Coarse spatial hash for target searches (weapon ranges are a few hundred px).
@@ -888,7 +892,7 @@ func planet_at(world_pos: Vector2) -> Planet:
 ## space scaled to its size (Defs.PLACEMENT_RING), and two rings may not
 ## overlap, so the same rule covers starbases, depots and Mining Stations.
 func site_problem(kind: String, pos: Vector2) -> String:
-	if not MAP_RECT.grow(-60).has_point(pos):
+	if pos.length() > MAP_RADIUS - 60.0:
 		return "Too close to the edge of the system"
 	var ring := Defs.placement_ring(kind)
 	for n in get_tree().get_nodes_in_group("starbases") + get_tree().get_nodes_in_group("depots") + get_tree().get_nodes_in_group("mining_stations"):
@@ -1375,7 +1379,7 @@ func _zoom_step(dir: int, screen_pos: Vector2) -> void:
 	_clamp_camera()
 
 func _clamp_camera() -> void:
-	camera.global_position = camera.global_position.clamp(MAP_RECT.position, MAP_RECT.end)
+	camera.global_position = camera.global_position.limit_length(MAP_RADIUS)
 
 func center_on(pos: Vector2) -> void:
 	camera.global_position = pos
@@ -1522,6 +1526,8 @@ func _centroid(list: Array) -> Vector2:
 # ---------------------------------------------------------------- orders
 
 func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false) -> void:
+	# Orders stop at the edge of the system.
+	world_pos = world_pos.limit_length(MAP_RADIUS - 20.0)
 	var ships := _own_ships_selected()
 	var sb := selected_starbase()
 	if ships.is_empty():

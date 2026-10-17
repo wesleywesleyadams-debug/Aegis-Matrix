@@ -1,7 +1,7 @@
 class_name MapEdge
 extends Node2D
-## The edge of the system (Game.MAP_RECT): space beyond it is shaded off, and
-## a dashed boundary line with corner brackets marks where the playable area
+## The edge of the system (a circle of Game.MAP_RADIUS): space beyond it is shaded off, and
+## a dashed boundary line with ticks marks where the playable area
 ## ends. The camera may look past the edge, so without this the background
 ## simply carried on and nothing said the map had stopped.
 
@@ -46,31 +46,25 @@ func _ready() -> void:
 	_outside.show_behind_parent = true
 	add_child(_outside)
 
-## The four bands beyond the edge, drawn through the shader above.
+## Everything beyond the edge, as a wide ring drawn through the shader above.
 func _draw_outside() -> void:
-	var r := Game.MAP_RECT
-	_outside.draw_rect(Rect2(r.position.x - BEYOND, r.position.y - BEYOND, r.size.x + BEYOND * 2.0, BEYOND), Color.WHITE)
-	_outside.draw_rect(Rect2(r.position.x - BEYOND, r.end.y, r.size.x + BEYOND * 2.0, BEYOND), Color.WHITE)
-	_outside.draw_rect(Rect2(r.position.x - BEYOND, r.position.y, BEYOND, r.size.y), Color.WHITE)
-	_outside.draw_rect(Rect2(r.end.x, r.position.y, BEYOND, r.size.y), Color.WHITE)
+	var r0 := Game.MAP_RADIUS
+	var n := 128
+	for i in n:
+		var a0 := TAU * i / n
+		var a1 := TAU * (i + 1) / n
+		_outside.draw_colored_polygon(PackedVector2Array([
+			Vector2.from_angle(a0) * r0, Vector2.from_angle(a1) * r0,
+			Vector2.from_angle(a1) * (r0 + BEYOND), Vector2.from_angle(a0) * (r0 + BEYOND)]), Color.WHITE)
 
 func _draw() -> void:
-	var r := Game.MAP_RECT
+	var r0 := Game.MAP_RADIUS
 	# A dashed line along the edge itself.
-	var corners := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
-	for i in 4:
-		var a: Vector2 = corners[i]
-		var b: Vector2 = corners[(i + 1) % 4]
-		var length := a.distance_to(b)
-		var dir := (b - a) / length
-		var t := 0.0
-		while t < length:
-			draw_line(a + dir * t, a + dir * minf(t + DASH, length), LINE, 3.0)
-			t += DASH * 2.0
-	# Solid brackets at the corners, so the corners read even when zoomed in.
-	for i in 4:
-		var c: Vector2 = corners[i]
-		var to_next: Vector2 = (corners[(i + 1) % 4] - c).normalized()
-		var to_prev: Vector2 = (corners[(i + 3) % 4] - c).normalized()
-		draw_line(c, c + to_next * CORNER, Color(LINE, 0.9), 5.0)
-		draw_line(c, c + to_prev * CORNER, Color(LINE, 0.9), 5.0)
+	var n := int(TAU * r0 / (DASH * 2.0))
+	for i in n:
+		var a := TAU * i / n
+		draw_arc(Vector2.ZERO, r0, a, a + TAU / n * 0.5, 4, LINE, 3.0)
+	# Solid ticks every 30 degrees, so the edge reads even when zoomed in.
+	for i in 12:
+		var a := TAU * i / 12.0
+		draw_arc(Vector2.ZERO, r0, a - CORNER / r0, a + CORNER / r0, 8, Color(LINE, 0.9), 5.0)
