@@ -345,6 +345,12 @@ func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 		# Starts are evenly spaced round the star: the next one along is the
 		# nearest likely enemy home.
 		var base_pos: Vector2 = kb[0] if not kb.is_empty() else (home.global_position.rotated(TAU / game.players.size()) if home else Vector2.ZERO)
+		# Nothing hostile known and that guess already checked: sweep for
+		# the leftovers instead of idling (see _scout_target).
+		if kb.is_empty() and kp == null and v.is_visible_at(base_pos):
+			var sc := _scout_target(pid, from, game, v)
+			if sc != Vector2.INF:
+				return sc
 		if kp and from.distance_to(kp.global_position) < from.distance_to(base_pos) * DETOUR:
 			return kp.global_position
 		return base_pos
@@ -372,11 +378,32 @@ func _finish_target(pid: int, from: Vector2, game: Game) -> Vector2:
 		var kb := v.known_enemy_base(from)
 		if not kb.is_empty() and from.distance_to(kb[0]) < best_d:
 			best = kb[0]
+		if best == Vector2.INF:
+			# Clean-up: the enemy's last worlds may be out of sight; go and look.
+			best = _scout_target(pid, from, game, v)
 	else:
 		for sb in game.get_tree().get_nodes_in_group("starbases"):
 			if game.is_hostile(pid, sb.owner_id) and from.distance_to(sb.global_position) < best_d:
 				best_d = from.distance_to(sb.global_position)
 				best = sb.global_position
+	return best
+
+## Where to look for hidden enemies: the nearest world that isn't ours or an
+## ally's and isn't in sight right now (its owner may have changed since we
+## last looked). INF if every world is in view.
+func _scout_target(pid: int, from: Vector2, game: Game, v: Vision) -> Vector2:
+	var best := Vector2.INF
+	var best_d := INF
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		var ko: int = v.known_owner(p)
+		if ko != 0 and game.are_allies(pid, ko):
+			continue
+		if v.is_visible_at(p.global_position):
+			continue
+		var d := from.distance_to(p.global_position)
+		if d < best_d:
+			best_d = d
+			best = p.global_position
 	return best
 
 ## A planet this player knows to be free (seen unclaimed); without fog, any
