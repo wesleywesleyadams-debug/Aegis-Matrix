@@ -563,10 +563,6 @@ func _physics_process(delta: float) -> void:
 			_repair_timer = 0.5
 			_repairing = Abilities.repair_tick(self, 0.5)
 			queue_redraw()
-	# The queued route is drawn in local space, so it has to be redrawn as
-	# the ship moves or it slides along with it.
-	if selected and not order_queue.is_empty():
-		queue_redraw()
 	# Out of energy: weapons recharge (and engines run) at a quarter speed.
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
@@ -958,8 +954,6 @@ func _steer(desired: Vector2, delta: float, face: Node2D) -> void:
 func _draw() -> void:
 	if Engine.is_editor_hint():
 		return
-	if selected and not order_queue.is_empty():
-		_draw_waypoints()
 	_draw_job()
 	super._draw()
 
@@ -1174,24 +1168,6 @@ func _route(final: Vector2) -> Vector2:
 ## Job effects, in the job's accent color (Defs.JOBS): the Radiation Sail Array's
 ## screen (a slow shimmer ring), a Tender's green repair beams and
 ## emergency flash, and an Escort's guard ring while selected.
-## The shift-queued route, drawn while the ship is selected: a dashed line
-## through each waypoint with a pip on every stop.
-func _draw_waypoints() -> void:
-	var pts := queued_points()
-	if pts.is_empty():
-		return
-	var c := Color(1, 1, 1, 0.45)
-	var from := to_local(move_goal if state != State.IDLE else global_position)
-	for p in pts:
-		var to := to_local(p)
-		var d := to - from
-		var steps := int(maxf(d.length() / 14.0, 1.0))
-		for i in steps:
-			if i % 2 == 0:
-				draw_line(from + d * (float(i) / steps), from + d * (float(i + 1) / steps), c, 1.0)
-		draw_circle(to, 3.0, c)
-		from = to
-
 func _draw_job() -> void:
 	var jid: String = def.get("job", "")
 	if jid == "":

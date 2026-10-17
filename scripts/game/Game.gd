@@ -316,6 +316,7 @@ func _apply_system_look(st: Dictionary) -> void:
 func _build_system() -> void:
 	# The edge of the playable area, shaded off and outlined.
 	world.add_child(MapEdge.new())
+	world.add_child(RouteOverlay.new())
 	system_settings = SystemGen.settings(GameState.system_id, GameState.system_seed)
 	_apply_system_look(system_settings)
 	if GameState.system_id == "orion_reach" and players.size() == 2:
@@ -2393,6 +2394,19 @@ func _enter_dev_capture() -> void:
 				print("QFULL t=18 chain state=%s left=%d | dead-target ship state=%s left=%d" % [
 					Ship.State.keys()[m1.state], m1.order_queue.size(),
 					Ship.State.keys()[m4.state], m4.order_queue.size()]))
+	if OS.get_environment("SL_SHOT_OPEN") == "qgroup":
+		# Dev: a dozen corvettes given a move, then three shift-queued moves
+		# (formation slots differ per ship; the route is drawn once).
+		var hb := nearest_starbase(player_id, Vector2.ZERO)
+		var at0 := hb.global_position + Vector2(0, 300)
+		var grp: Array = []
+		for k in 12:
+			grp.append(spawn_ship("corvette", player_id, at0 + Vector2((k % 4) * 30, (k / 4) * 30)))
+		_set_selection(grp, false)
+		_issue_command(at0 + Vector2(300, 0), false, false)
+		for p in [Vector2(450, 250), Vector2(150, 450), Vector2(-150, 300)]:
+			_issue_command(at0 + p, false, true)
+		center_on(at0 + Vector2(150, 200))
 	if OS.get_environment("SL_SHOT_OPEN") == "qtest":
 		# Dev: waypoints in a known square around the ship, with the screen
 		# position of each pip printed so a capture can be checked by pixel.
