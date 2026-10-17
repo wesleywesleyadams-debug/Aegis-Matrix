@@ -9,7 +9,7 @@ var game: Game
 var _dragging := false
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(264, 264)
+	custom_minimum_size = Vector2(HUD.MINIMAP_D, HUD.MINIMAP_D)
 	clip_contents = true   # the corner mask and view frame stay inside
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
@@ -23,6 +23,10 @@ func _map_to_ui(p: Vector2) -> Vector2:
 func _ui_to_map(p: Vector2) -> Vector2:
 	var r := Game.MAP_RECT
 	return r.position + p / size * r.size
+
+## Only the disc is map: clicks in the corners go to the game underneath.
+func _has_point(p: Vector2) -> bool:
+	return p.distance_to(size / 2.0) <= size.x / 2.0
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -121,10 +125,8 @@ func _draw() -> void:
 		dot.a = fade
 		draw_circle(p, 3.5, dot)
 	# Camera view rectangle.
-	# The system is round: mask the square's corners (fog included) and
-	# ring the edge.
+	# The system is round (the HUD clips the minimap to its disc): ring the edge.
 	var mid := size / 2.0
-	draw_arc(mid, size.x * 0.5 + size.x * 0.25, 0, TAU, 96, HUD.BG, size.x * 0.5)
 	draw_arc(mid, size.x * 0.5 - 0.5, 0, TAU, 96, Color(0.55, 0.65, 0.95, 0.5), 1.0)
 	var cam := game.camera
 	var view_size := game.get_viewport().get_visible_rect().size / cam.zoom

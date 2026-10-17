@@ -86,6 +86,8 @@ const TIME_RATE := 0.5
 const NORMAL_SPEED := 2
 ## The build queue sits between the selection panel and the minimap.
 const MINIMAP_W := 380.0
+## The round minimap's diameter on screen.
+const MINIMAP_D := 528.0
 ## Smaller than this (per minute) counts as flat, so the arrow holds still.
 const TREND_DEADBAND := 1.0
 ## Faster than this (per minute, either way) earns a second arrow.
@@ -434,11 +436,18 @@ func _build_minimap(root: Control) -> void:
 	frame.anchor_right = 1.0
 	frame.anchor_top = 1.0
 	frame.anchor_bottom = 1.0
-	frame.offset_left = -12 - 276
-	frame.offset_top = -12 - 276
+	frame.offset_left = -12 - MINIMAP_D
+	frame.offset_top = -12 - MINIMAP_D
 	frame.offset_right = -12
 	frame.offset_bottom = -12
-	frame.add_theme_stylebox_override("panel", _panel_style(4))
+	# No box: a round mask (a fully rounded panel that clips the map to its
+	# disc), so the round system shows as a disc and nothing else.
+	var disc := StyleBoxFlat.new()
+	disc.bg_color = Color(BG, 0.94)
+	disc.set_corner_radius_all(int(MINIMAP_D))
+	disc.corner_detail = 32
+	frame.add_theme_stylebox_override("panel", disc)
+	frame.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
 	root.add_child(frame)
 	var mm := Minimap.new()
 	mm.game = game
@@ -451,10 +460,10 @@ func _build_minimap(root: Control) -> void:
 	name_tag.anchor_right = 1.0
 	name_tag.anchor_top = 1.0
 	name_tag.anchor_bottom = 1.0
-	name_tag.offset_left = -12 - 276
+	name_tag.offset_left = -12 - MINIMAP_D
 	name_tag.offset_right = -14
-	name_tag.offset_top = -12 - 276 - 30
-	name_tag.offset_bottom = -12 - 276 - 4
+	name_tag.offset_top = -12 - MINIMAP_D - 30
+	name_tag.offset_bottom = -12 - MINIMAP_D - 4
 	name_tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	name_tag.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	name_tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -466,11 +475,11 @@ func _build_minimap(root: Control) -> void:
 	_score_box.anchor_right = 1.0
 	_score_box.anchor_top = 1.0
 	_score_box.anchor_bottom = 1.0
-	_score_box.offset_left = -12 - 276
+	_score_box.offset_left = -12 - MINIMAP_D
 	_score_box.offset_right = -14
 	# A clear gap above the system name, split by a faint rule.
-	_score_box.offset_top = -12 - 276 - 30 - 18 - 52
-	_score_box.offset_bottom = -12 - 276 - 30 - 18
+	_score_box.offset_top = -12 - MINIMAP_D - 30 - 18 - 52
+	_score_box.offset_bottom = -12 - MINIMAP_D - 30 - 18
 	_score_box.alignment = BoxContainer.ALIGNMENT_END
 	_score_box.add_theme_constant_override("separation", 0)
 	_score_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -484,8 +493,8 @@ func _build_minimap(root: Control) -> void:
 	rule.anchor_bottom = 1.0
 	rule.offset_left = -12 - 220
 	rule.offset_right = -14
-	rule.offset_top = -12 - 276 - 30 - 9
-	rule.offset_bottom = -12 - 276 - 30 - 8
+	rule.offset_top = -12 - MINIMAP_D - 30 - 9
+	rule.offset_bottom = -12 - MINIMAP_D - 30 - 8
 	root.add_child(rule)
 	for pid in [game.player_id] + game.players.filter(func(p): return p != game.player_id):
 		var l := _label("", Defs.team_color(pid), 16)
