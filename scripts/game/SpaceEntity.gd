@@ -56,6 +56,12 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	_last_hit_time = Game.now()
 	# Screens (Defense) soak a slice of everything before the layers see it.
 	amount /= Game.instance.mod(owner_id, "damage_taken") if Game.instance else 1.0
+	# Under a Radiation Sail Array's bubble, its solar shield takes the hit
+	# first (the RSA's own shield layer is that same pool).
+	if Game.instance and not (self is Ship and self.def.has("solar_sail")):
+		amount = Abilities.sail_absorb(self, amount, _from)
+		if amount <= 0.0:
+			return
 	# Convoy Protocols: harvesters are armored on top of that.
 	if Game.instance and self is Ship and self.def.get("role", "") in ["miner", "skimmer"]:
 		amount /= Game.instance.mod(owner_id, "harvester_damage_taken")
@@ -108,7 +114,7 @@ func _regen_shields(delta: float) -> void:
 	# Spice nebula: low-level radiation, like a star's outer zone. Taking it
 	# counts as a hit, so shields don't regenerate while it lasts.
 	if Game.instance.in_nebula(global_position):
-		var m := Abilities.radiation_mult(self)
+		var m: float = Abilities.radiation_mult(self)
 		if m > 0.0:
 			take_damage(SpiceNebula.RADIATION_DPS * delta * m, null)
 			if owner_id == Game.instance.player_id:

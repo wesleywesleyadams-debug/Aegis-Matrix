@@ -55,12 +55,42 @@ static func allies_near(s: Node2D, r: float) -> Array:
 			out.append(o)
 	return out
 
-## Radiation damage multiplier: 1 for everything except a Radiation Sail
-## Array whose solar shield is up (above 0), which blocks all radiation.
-static func radiation_mult(e: SpaceEntity) -> float:
-	if e is Ship and e.def.has("solar_sail") and e.shield > 0.0:
-		return 0.0
-	return 1.0
+## A Radiation Sail Array with a charged solar shield whose bubble
+## (Defs.SAIL_RADIUS) contains `e`, or null. `owner_only` limits it to
+## arrays of e's own side (for soaking enemy fire).
+static func sail_cover(e: Node2D, owner_only: bool = true) -> Node2D:
+	var oid = e.get("owner_id")
+	if owner_only and (oid == null or oid == 0):
+		return null
+	for o in Game.instance.job_ships.get("radiation_sail", []):
+		if not is_instance_valid(o) or not o.is_alive() or o.shield <= 0.0:
+			continue
+		if owner_only and o.owner_id != oid:
+			continue
+		if o.global_position.distance_to(e.global_position) <= Defs.SAIL_RADIUS:
+			return o
+	return null
+
+## Radiation damage multiplier: 0 for anything inside a charged solar
+## shield's bubble - friend or foe, blocking it costs the shield nothing -
+## and 1 everywhere else.
+static func radiation_mult(e: Node2D) -> float:
+	return 0.0 if sail_cover(e, false) != null else 1.0
+
+## Weapon fire on anything under a solar shield is soaked by that shield
+## first. Returns what gets through.
+static func sail_absorb(e: Node2D, amount: float, from: Node2D) -> float:
+	if from == null or amount <= 0.0:
+		return amount
+	var rsa := sail_cover(e)
+	if rsa == null:
+		return amount
+	var soak := minf(rsa.shield, amount)
+	var before: float = rsa.shield
+	rsa.shield -= soak
+	rsa.call("_solar_hit", from, before)
+	rsa.queue_redraw()
+	return amount - soak
 
 
 ## Field Repair: heals up to REPAIR_MAX_TARGETS damaged, out-of-combat

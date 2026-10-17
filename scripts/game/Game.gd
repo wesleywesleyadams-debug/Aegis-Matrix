@@ -1817,6 +1817,14 @@ func _enter_dev_capture() -> void:
 			var off := Vector2(i % 7 * 16, i / 7 * 18)
 			spawn_ship(k, player_id, c + Vector2(-260, -40) + off).order_attack_move(c + Vector2(200, 0))
 			spawn_ship(k, foe, c + Vector2(160, -40) + off).order_attack_move(c - Vector2(200, 0))
+		# SL_BATTLE_RSA: a full-shield Radiation Sail Array in our fleet, to
+		# check its bubble soaks enemy fire on the ships around it.
+		if OS.get_environment("SL_BATTLE_RSA") != "":
+			var rsa9 := spawn_ship("heatshield", player_id, c + Vector2(-200, 0))
+			rsa9.shield = rsa9.max_shield
+			rsa9.order_attack_move(c + Vector2(200, 0))
+			for t9 in [1.0, 3.0, 5.0]:
+				get_tree().create_timer(t9).timeout.connect(func(): if is_instance_valid(rsa9): print("RSA t=%.0f shield %.0f/%.0f" % [now(), rsa9.shield, rsa9.max_shield]))
 		center_on(c)
 		if OS.get_environment("SL_SELECT_FLEET") != "":
 			# Dev: select the whole fleet a few seconds in, so the panel can be

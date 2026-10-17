@@ -1310,7 +1310,7 @@ func in_solar_field() -> bool:
 	return false
 
 ## Radiation Sail Array: harvests def.solar_sail energy a minute while in a
-## field. Each point first recharges the solar shield (1 energy = 1 shield),
+## field. Each point first recharges the solar shield (1 energy = 10 shield),
 ## with no pause after taking fire - it charges whenever energy comes in;
 ## once the shield is full the rest goes to the owner's energy pool.
 func _solar_tick(delta: float) -> void:
@@ -1323,9 +1323,10 @@ func _solar_tick(delta: float) -> void:
 		_motes.append({"a": randf() * TAU, "d": 1.0, "life": 0.0})
 	var g := Game.instance
 	var gain: float = float(def["solar_sail"]) / 60.0 * delta * g.mod(owner_id, "energy")
-	var into_shield := minf(gain, maxf(max_shield - shield, 0.0))
+	# Each point of energy charges Defs.SAIL_SHIELD_PER_ENERGY shield.
+	var into_shield := minf(gain, maxf(max_shield - shield, 0.0) / Defs.SAIL_SHIELD_PER_ENERGY)
 	if into_shield > 0.0:
-		shield += into_shield
+		shield = minf(max_shield, shield + into_shield * Defs.SAIL_SHIELD_PER_ENERGY)
 		queue_redraw()
 	if gain > into_shield:
 		g.resources[owner_id]["energy"] += gain - into_shield
@@ -1336,16 +1337,13 @@ func shield_color() -> Color:
 
 # ---------------------------------------------------------------- solar shield look
 # The Radiation Sail Array's shield, drawn by _draw_job in world-aligned
-# space: a large shimmering bubble (SAIL_RADIUS, three carriers wide) that
+# space: a large shimmering bubble (Defs.SAIL_RADIUS, three carriers wide) that
 #  - ripples gently at the edge,
 #  - pulls in purple motes while it harvests,
 #  - ripples out from where a shot lands,
 #  - flickers and thins below SAIL_LOW charge,
 #  - shatters at 0 and grows back out as it recharges.
 
-## Big enough to hold three carriers (Defs carrier radius 64): 3 circles of
-## r packed in a circle need r * (1 + 2/sqrt(3)), about 140 px.
-const SAIL_RADIUS := 140.0
 const SAIL_LOW := 0.25
 const SAIL_REFORM := 1.0
 var _motes: Array = []
@@ -1356,7 +1354,7 @@ var _sail_reform := 1.0
 var _sail_was_up := false
 
 func _sail_radius() -> float:
-	return SAIL_RADIUS
+	return Defs.SAIL_RADIUS
 
 func _solar_hit(from: SpaceEntity, before: float) -> void:
 	var a: float = (from.global_position - global_position).angle() if is_instance_valid(from) else randf() * TAU

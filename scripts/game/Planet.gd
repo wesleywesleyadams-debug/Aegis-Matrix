@@ -300,6 +300,10 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	if owner_id == 0:
 		return
 	var g := Game.instance
+	# A Radiation Sail Array's bubble soaks fire on worlds inside it too.
+	amount = Abilities.sail_absorb(self, amount, from)
+	if amount <= 0.0:
+		return
 	if g.now() - last_hit_time > SIEGE_MEMORY or siege_start_pop <= 0.0:
 		siege_start_pop = maxf(pop, 1.0)
 	if owner_id != 0:

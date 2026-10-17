@@ -726,7 +726,7 @@ func _star_section() -> void:
 		[["A star", Color("ffb347")], "Its radiation zone (sizes above)", "Strongest at the surface, falling off steeply toward the edge of the zone"],
 		[["A spice nebula", Color("ff9a2e")], "Anywhere inside the gas", "%d per second, about a star's outer zone - low, but it never stops" % int(SpiceNebula.RADIATION_DPS)],
 	])
-	_para("The one exception is the Radiation Sail Array: while its solar shield is up it takes no radiation at all, and it harvests energy from it instead (see Ships).")
+	_para("The exception is a Radiation Sail Array's bubble: while its solar shield is charged, nothing inside it - friend or foe - takes Radiation, and the array harvests energy from it (see Ships).")
 
 func _page_terms() -> void:
 	_heading("Terminology")
@@ -820,7 +820,7 @@ const SHIP_NOTES := {
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
-	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there: first into its own light-purple solar shield (100, empty when built, charging even under fire), then into your energy pool. While that shield is up, Radiation can't touch it. A support ship: it can't be refitted.",
+	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there, charging a light-purple solar shield (100; each energy gives 10 shield; empty when built, charging even under fire) before any goes to your energy pool. The shield is a bubble three carriers wide: one shared damage pillow that soaks enemy fire on every friendly ship, construct and world inside it, and while it is up nothing inside takes Radiation - friend or foe. A support ship with no weapon: it can't be refitted.",
 	"corvette": "The cheap body of a fleet, and the only hull a carrier can dock. Fast and short-ranged, it is bought in numbers.",
 	"destroyer": "A shield boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Armor and a torpedo that outranges everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
