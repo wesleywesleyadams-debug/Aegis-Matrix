@@ -191,6 +191,7 @@ var _disabled_title: Label
 var _track_status: Label
 var _file_dialog: FileDialog
 var _shuffle_checkbox: Button
+var _all_toggle: Button
 var _shuffle_label: Label
 
 ## Audio tab as three panels side by side:
@@ -226,12 +227,6 @@ func _build_music_section() -> void:
 	var pl := _column(cols, "Playlist", ENABLED_COLOR, 1.1)
 	_enabled_title = pl.get_child(0)
 	_enabled_list = _scroll_list(pl)
-	var hint := Label.new()
-	hint.text = "These play during matches in this order (random with Shuffle). Title and Lobby synths (green) only play on their own screens."
-	hint.add_theme_font_size_override("font_size", 13)
-	hint.add_theme_color_override("font_color", Color(0.7, 0.75, 0.9))
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	pl.add_child(hint)
 	# Shuffle toggle: an icon button to the right of the "Playlist" heading.
 	var head := HBoxContainer.new()
 	head.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -247,10 +242,25 @@ func _build_music_section() -> void:
 	head.add_child(_shuffle_label)
 	_update_shuffle_label()
 	_shuffle_checkbox.toggled.connect(func(_on): _update_shuffle_label())
+	var btns := HBoxContainer.new()
+	btns.add_theme_constant_override("separation", 10)
+	pl.add_child(btns)
 	var add := Button.new()
 	add.text = "Add Song..."
+	add.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add.pressed.connect(func(): _file_dialog.popup_centered_ratio(0.7))
-	pl.add_child(add)
+	btns.add_child(add)
+	# Enable All while anything is disabled, otherwise Disable All.
+	_all_toggle = Button.new()
+	_all_toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_all_toggle.pressed.connect(func():
+		var enable_all: bool = Music.available_tracks().any(func(t): return not GameState.music_playlist.has(t["id"]))
+		for t in Music.available_tracks():
+			if GameState.music_playlist.has(t["id"]) != enable_all:
+				Music.set_in_playlist(t["id"], enable_all)
+		_track_status.text = "Enabled every song." if enable_all else "Disabled every song."
+		_refresh_tracks())
+	btns.add_child(_all_toggle)
 	_track_status = Label.new()
 	_track_status.add_theme_font_size_override("font_size", 13)
 	_track_status.clip_text = true
@@ -324,6 +334,8 @@ func _refresh_tracks() -> void:
 	var disabled := tracks.filter(func(t): return not GameState.music_playlist.has(t["id"]))
 	_enabled_title.text = "Playlist (%d)" % enabled.size()
 	_disabled_title.text = "Disabled (%d)" % disabled.size()
+	if _all_toggle:
+		_all_toggle.text = "Enable All" if not disabled.is_empty() else "Disable All"
 	if enabled.is_empty():
 		_enabled_list.add_child(_list_note("Empty: no music will play."))
 	for t in enabled:
