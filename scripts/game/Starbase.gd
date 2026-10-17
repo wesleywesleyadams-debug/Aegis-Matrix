@@ -54,13 +54,13 @@ func refresh_stats() -> void:
 	max_armor = Defs.STARBASE.get("armor", 0.0) * g.mod(owner_id, "armor") * g.mod(owner_id, "structure")
 	armor = max_armor * ar_frac
 	max_shield = Defs.STARBASE["shield"] * g.mod(owner_id, "shield") * g.mod(owner_id, "structure_shield")
-	# Training curriculum level 1: the sitting duck's starbase is a fifth as
-	# tough, so the learning agent can win by accident and learn from it.
+	# Training curriculum level 1: the sitting duck's starbase is only
+	# duck_frac as tough (the trainer raises it each time the agent wins).
 	if g.rl_side > 0 and g.opp_level == 1 and owner_id != g.rl_side:
-		max_hp *= 0.2
-		max_armor *= 0.2
+		max_hp *= g.duck_frac
+		max_armor *= g.duck_frac
 		armor = max_armor * ar_frac
-		max_shield *= 0.2
+		max_shield *= g.duck_frac
 	hp = max_hp * hp_frac
 	shield = minf(shield, max_shield)
 	display_name = "Starbase (under construction)" if under_construction else Defs.STARBASE["name"]

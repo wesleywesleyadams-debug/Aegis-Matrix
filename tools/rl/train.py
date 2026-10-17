@@ -50,6 +50,11 @@ BIG = 20.0
 SIEGE = 0.1
 ## Curriculum: share of the last 20 games at a level it must win to move up.
 PROMOTE = 0.5
+## Level 1: the sitting duck's starbase starts at DUCK_START of its toughness
+## and is multiplied by DUCK_GROW (up to full) each time the agent wins.
+## Level 1 is passed only at full toughness.
+DUCK_START = 0.01
+DUCK_GROW = 1.5
 ## Self-play: how often (updates) the frozen opponent catches up with the learner.
 SNAPSHOT = 25
 POOL = 8
@@ -102,10 +107,12 @@ def main():
     ckpt = os.path.join(RUNS, "ckpt.pt")
     start = 0
     level = 1
+    duck = DUCK_START
     if args.resume and os.path.exists(ckpt):
         st = torch.load(ckpt, map_location=dev)
         pol.load_state_dict(st["model"]); opt.load_state_dict(st["opt"]); start = st["update"]
         level = st.get("level", 1)
+        duck = st.get("duck", DUCK_START)
         print("resumed at update", start)
         if args.reset_value:
             for m in pol.value:
@@ -135,7 +142,9 @@ def main():
     pool = ThreadPoolExecutor(args.envs)
 
     def fresh(e):
+        nonlocal duck
         e.level = level
+        e.duck = duck
         if level >= 5:
             if random.random() < TEST_SHARE:
                 e.level = 4   # yardstick game against the full scripted AI
@@ -178,9 +187,12 @@ def main():
             for i in range(args.envs):
                 if dones[i]:
                     results.append((nxt[i].get("won"), nxt[i].get("lost"), ep_ret[i], envs[i].system, envs[i].level))
+                    if envs[i].level == 1 and nxt[i].get("won") and envs[i].duck >= duck and duck < 1.0:
+                        duck = min(1.0, duck * DUCK_GROW)
+                        print(f"DUCK toughness now {duck:.3f}", flush=True)
                     # Promotion: wins PROMOTE of its last 20 games at this level.
                     here = [r for r in results if r[4] == level][-20:]
-                    if level < 5 and len(here) >= 20 and sum(1 for r in here if r[0]) >= PROMOTE * 20:
+                    if level < 5 and (level > 1 or duck >= 1.0) and len(here) >= 20 and sum(1 for r in here if r[0]) >= PROMOTE * 20:
                         level = 5 if level >= 2 else level + 1
                         print(f"PROMOTED to curriculum level {level}", flush=True)
                     ep_ret[i] = 0.0
@@ -233,13 +245,13 @@ def main():
         vs_ai = sum(1 for r in tests if r[0]) / max(len(tests), 1)
         win = sum(1 for r in recent if r[0]) / max(len(recent), 1)
         mean_ret = np.mean([r[2] for r in recent]) if recent else 0.0
-        print(f"upd {upd + 1}  L{level}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  ret {mean_ret:+.1f}  "
+        print(f"upd {upd + 1}  L{level}  duck {duck:.3f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  ret {mean_ret:+.1f}  "
               f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f}  {time.time() - t0:.0f}s", flush=True)
         lw.writerow([upd + 1, level, len(results), win, mean_ret, pl, vl, en]); log.flush()
         if (upd + 1) % SNAPSHOT == 0 and level >= 5:
             pool_sd.append(copy.deepcopy(pol.state_dict()))
             del pool_sd[:-POOL]
-        torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1, "level": level}, ckpt)
+        torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1, "level": level, "duck": duck}, ckpt)
     for e in envs:
         e.close()
 

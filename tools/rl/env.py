@@ -25,6 +25,7 @@ class StarEnv:
         self.side, self.players, self.seed, self.log = side, players, seed, log
         self.level = level   # opponent curriculum level (Game.opp_level)
         self.opponent = None  # obs -> orders, for self-play
+        self.duck = 1.0       # level 1: the sitting duck's starbase toughness
         self.proc = self.conn = self.conn2 = None
         self.bufs = {}
 
@@ -43,7 +44,7 @@ class StarEnv:
         srv2 = self._listen(self.port + 500) if selfplay else None
         env = dict(os.environ, SL_SIM=f"rl{self.port}", SL_RL_PORT=str(self.port), SL_RL_SIDE=str(self.side),
                    SL_SYSTEM=self.system, SL_SIM_MINUTES=str(self.minutes), SL_SIM_SCALE=str(self.speed),
-                   SL_PLAYERS=str(self.players), SL_OPP_LEVEL=str(self.level), SL_SEED=str(self.seed if self.seed is not None else random.randrange(1 << 30)))
+                   SL_PLAYERS=str(self.players), SL_OPP_LEVEL=str(self.level), SL_DUCK_FRAC=str(self.duck), SL_SEED=str(self.seed if self.seed is not None else random.randrange(1 << 30)))
         if selfplay:
             env["SL_RL_PORT2"] = str(self.port + 500)
         out = open(self.log, "w") if self.log else subprocess.DEVNULL

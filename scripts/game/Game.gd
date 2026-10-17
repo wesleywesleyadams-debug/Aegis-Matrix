@@ -52,6 +52,7 @@ var teams := {}
 ## bigger waves before it attacks), 4 the full scripted AI, 5 self-play
 ## (the other side is a frozen copy of the learning agent, see AIController).
 var opp_level: int = clampi(int(OS.get_environment("SL_OPP_LEVEL")) if OS.get_environment("SL_OPP_LEVEL") != "" else 4, 1, 5)
+var duck_frac: float = clampf(float(OS.get_environment("SL_DUCK_FRAC")) if OS.get_environment("SL_DUCK_FRAC") != "" else 1.0, 0.001, 1.0)
 var rl_side: int = maxi(1, int(OS.get_environment("SL_RL_SIDE"))) if OS.get_environment("SL_RL_PORT") != "" else 0
 var resources := {}
 ## Net change per second over the last second, per player per resource.
