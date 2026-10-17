@@ -36,6 +36,11 @@ func setup(ai_players: Array) -> void:
 				net = null
 			if net:
 				_state[pid]["nn"] = NeuralCommander.new(net, pid)
+		# The learning agent (tools/rl/): SL_RL_PORT, for side SL_RL_SIDE.
+		if OS.get_environment("SL_RL_PORT") != "" and pid == maxi(1, int(OS.get_environment("SL_RL_SIDE"))):
+			var agent := RLAgent.new(pid, int(OS.get_environment("SL_RL_PORT")))
+			Game.instance.add_child(agent)
+			_state[pid]["nn"] = agent
 
 func _process(delta: float) -> void:
 	var game := Game.instance
@@ -77,7 +82,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# scheduled rethink.
 	if v and not st.get("threat", false) and v.enemy_near(base.global_position, 900.0) > 0:
 		st["next_rethink"] = 0.0
-	var nn: NeuralCommander = st.get("nn")
+	var nn = st.get("nn")   # NeuralCommander or RLAgent: both have tick()
 	if nn == null:
 		_rethink(pid, st, game, base, war)
 	_manage_queues(pid, st, game, base)
@@ -85,7 +90,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 
 	# Research never idles: the moment a project ends the next one starts
 	# (the AI thinks every second; one project runs at a time).
-	if game.research[pid].is_empty() and game.research_queue[pid].is_empty():
+	# (The learning agent picks its own research.)
+	if not (st.get("nn") is RLAgent) and game.research[pid].is_empty() and game.research_queue[pid].is_empty():
 		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available")
 		# Prefer techs it can pay for now; fall back to anything available.
 		var payable := options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)

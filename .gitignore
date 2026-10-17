@@ -13,3 +13,4 @@ build/
 ai/train/
 ai/commander_latest.json
 sim_results/
+rl_smoke.log
