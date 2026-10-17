@@ -228,10 +228,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		if ep and s.global_position.distance_to(ep.global_position) < 350.0 and _can_win(pid, idle.filter(func(o): return o.global_position.distance_to(ep.global_position) < 500.0), ep.global_position, game):
 			s.order_bombard(ep)
 			idle.erase(s)
-	# Attack mode (clearly stronger): go now with a smaller wave.
-	var need: int = 6 if mode == "attack" else st["wave"]
-	if mode != "build_up" and idle.size() >= need:
-		# Only a fight it expects to win with ships left over (see _can_win).
+	# Aggressive: any idle group that can destroy something goes for it,
+	# whatever the mode and whatever it costs (see _can_win).
+	var need := 3
+	if idle.size() >= need:
 		var goal := _winnable_target(pid, idle, base.global_position, game)
 		if goal != Vector2.INF:
 			for s in idle:
@@ -778,12 +778,12 @@ func _depot_site(home: Vector2, game: Game) -> Vector2:
 	return Vector2.INF
 
 # ---------------------------------------------------------------- fight sense
-# The AI takes a fight only when it expects to win it with ships to spare.
+# The AI takes any fight it expects to win, however many ships it costs.
 # A side's strength is its total damage per second times its total toughness
 # (the duel tests show fights scaling that way); attackers must out-strength
-# the defence by WIN_MARGIN squared, which leaves roughly 60% of them alive.
+# the defence by WIN_MARGIN squared (just over 1: winning at all is enough).
 
-const WIN_MARGIN := 1.3
+const WIN_MARGIN := 1.02
 ## Enemy ships counted as defending a target within this range of it.
 const DEFEND_RANGE := 600.0
 ## Damage per second per point of toughness, for enemy ships known only by
