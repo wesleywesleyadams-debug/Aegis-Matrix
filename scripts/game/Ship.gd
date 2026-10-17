@@ -420,7 +420,10 @@ func cargo_cap() -> int:
 # ---------------------------------------------------------------- orders
 
 func take_damage(amount: float, from: SpaceEntity = null, profile: Dictionary = {}) -> void:
+	var sh_before := shield
 	super.take_damage(amount, from, profile)
+	if def.has("solar_sail") and shield < sh_before:
+		_solar_hit(from, sh_before)
 	if owner_id == Game.instance.player_id and hp > 0.0 and from != null:
 		Game.instance.alert("Your ships are under attack!", "alert_ships", false, global_position)
 
@@ -1201,12 +1204,7 @@ func _draw_job() -> void:
 	draw_set_transform(Vector2.ZERO, -global_rotation, Vector2.ONE)
 	match jid:
 		"radiation_sail":
-			# The solar shield: a light purple bubble, brighter the fuller it is.
-			if max_shield > 0.0 and shield > 0.0:
-				var f := shield / max_shield
-				var sc := shield_color()
-				draw_circle(Vector2.ZERO, radius + 7.0, Color(sc, 0.06 + 0.12 * f))
-				draw_arc(Vector2.ZERO, radius + 7.0, 0.0, TAU, 40, Color(sc, 0.25 + 0.45 * f), 1.5)
+			_draw_solar_shield(t)
 		"field_repair":
 			for o in _repairing:
 				if is_instance_valid(o):
@@ -1316,8 +1314,13 @@ func in_solar_field() -> bool:
 ## with no pause after taking fire - it charges whenever energy comes in;
 ## once the shield is full the rest goes to the owner's energy pool.
 func _solar_tick(delta: float) -> void:
+	_solar_fx_tick(delta)
 	if not in_solar_field():
 		return
+	_mote_timer -= delta
+	if _mote_timer <= 0.0:
+		_mote_timer = 0.12
+		_motes.append({"a": randf() * TAU, "d": 1.0, "life": 0.0})
 	var g := Game.instance
 	var gain: float = float(def["solar_sail"]) / 60.0 * delta * g.mod(owner_id, "energy")
 	var into_shield := minf(gain, maxf(max_shield - shield, 0.0))
@@ -1330,3 +1333,95 @@ func _solar_tick(delta: float) -> void:
 ## The colour this ship's shield layer is drawn in (a solar sail's is purple).
 func shield_color() -> Color:
 	return def.get("shield_color", Defs.LAYER_COLORS["shield"])
+
+# ---------------------------------------------------------------- solar shield look
+# The Radiation Sail Array's shield, drawn by _draw_job in world-aligned
+# space: a large shimmering bubble (SAIL_RADIUS, three carriers wide) that
+#  - ripples gently at the edge,
+#  - pulls in purple motes while it harvests,
+#  - ripples out from where a shot lands,
+#  - flickers and thins below SAIL_LOW charge,
+#  - shatters at 0 and grows back out as it recharges.
+
+## Big enough to hold three carriers (Defs carrier radius 64): 3 circles of
+## r packed in a circle need r * (1 + 2/sqrt(3)), about 140 px.
+const SAIL_RADIUS := 140.0
+const SAIL_LOW := 0.25
+const SAIL_REFORM := 1.0
+var _motes: Array = []
+var _mote_timer := 0.0
+var _sail_hits: Array = []
+var _sail_shards: Array = []
+var _sail_reform := 1.0
+var _sail_was_up := false
+
+func _sail_radius() -> float:
+	return SAIL_RADIUS
+
+func _solar_hit(from: SpaceEntity, before: float) -> void:
+	var a: float = (from.global_position - global_position).angle() if is_instance_valid(from) else randf() * TAU
+	_sail_hits.append({"a": a, "t": 0.0})
+	if before > 0.0 and shield <= 0.0:
+		# Shatter: fragments of the bubble fly outward and fade.
+		for i in 14:
+			var aa := TAU * i / 14.0 + randf_range(-0.1, 0.1)
+			_sail_shards.append({"a": aa, "r": _sail_radius(), "v": randf_range(30.0, 70.0), "t": 0.0})
+
+func _solar_fx_tick(delta: float) -> void:
+	for m in _motes:
+		m["life"] += delta
+		m["d"] = maxf(0.0, m["d"] - delta * 1.4)
+	_motes = _motes.filter(func(m): return m["d"] > 0.0)
+	for h in _sail_hits:
+		h["t"] += delta
+	_sail_hits = _sail_hits.filter(func(h): return h["t"] < 0.7)
+	for s in _sail_shards:
+		s["t"] += delta
+		s["r"] += s["v"] * delta
+	_sail_shards = _sail_shards.filter(func(s): return s["t"] < 0.9)
+	# Growing back out after a break.
+	var up := shield > 0.0
+	if up and not _sail_was_up:
+		_sail_reform = 0.0
+	_sail_was_up = up
+	_sail_reform = minf(1.0, _sail_reform + delta / SAIL_REFORM)
+	queue_redraw()
+
+func _draw_solar_shield(t: float) -> void:
+	var sc := shield_color()
+	var R := _sail_radius()
+	# Motes drifting in from the field, fading as they soak in.
+	for m in _motes:
+		var p: Vector2 = Vector2.from_angle(m["a"]) * R * (1.0 + 1.6 * m["d"])
+		draw_circle(p, 1.6, Color(sc, 0.25 + 0.55 * (1.0 - m["d"])))
+	# Shards of a broken bubble.
+	for s in _sail_shards:
+		var k: float = 1.0 - s["t"] / 0.9
+		draw_arc(Vector2.ZERO, s["r"], s["a"] - 0.18, s["a"] + 0.18, 4, Color(sc, 0.8 * k), 2.0)
+	if max_shield <= 0.0 or shield <= 0.0:
+		return
+	var f := shield / max_shield
+	var grow := 0.55 + 0.45 * ease(_sail_reform, 0.4)
+	var r0 := R * grow
+	var alpha := 0.35 + 0.45 * f
+	var width := 2.0
+	if f < SAIL_LOW:
+		# Failing: flicker and thin.
+		alpha *= 0.35 + 0.65 * absf(sin(t * 23.0) * sin(t * 7.3))
+		width = 1.2
+	# Shimmering edge: a soft wobble around the circle.
+	var pts := PackedVector2Array()
+	var n := 64
+	for i in n + 1:
+		var a := TAU * i / n
+		var wob := 1.4 * sin(a * 5.0 + t * 2.2) + 0.9 * sin(a * 9.0 - t * 3.1)
+		pts.append(Vector2.from_angle(a) * (r0 + wob))
+	draw_colored_polygon(pts, Color(sc, (0.05 + 0.08 * f) * alpha / 0.8))
+	draw_polyline(pts, Color(sc, alpha), width, true)
+	draw_polyline(pts, Color(sc.lightened(0.5), alpha * 0.35), width + 3.0, true)
+	# Impact ripples: a bright flare at the hit that spreads along the edge.
+	for h in _sail_hits:
+		var k: float = h["t"] / 0.7
+		var spread := 0.15 + 1.4 * k
+		draw_arc(Vector2.ZERO, r0, h["a"] - spread, h["a"] + spread, 18, Color(sc.lightened(0.6), 0.9 * (1.0 - k)), 3.0 * (1.0 - k) + 1.0)
+		draw_circle(Vector2.from_angle(h["a"]) * r0, 4.0 * (1.0 - k) + 1.0, Color(Color.WHITE, 0.7 * (1.0 - k)))

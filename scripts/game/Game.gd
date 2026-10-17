@@ -2443,6 +2443,9 @@ func _enter_dev_capture() -> void:
 		var star: Node2D = get_tree().get_nodes_in_group("stars")[0]
 		var rr: float = star.radiation_radius - 50.0
 		var hs := spawn_ship("heatshield", player_id, star.global_position + Vector2(rr, 0))
+		if OS.get_environment("SL_SAIL_FULL") != "":
+			hs.shield = hs.max_shield
+			center_on(hs.global_position)
 		# SL_SAIL_LOG: the solar sail filling its shield, then the energy pool.
 		if OS.get_environment("SL_SAIL_LOG") != "":
 			var e0: float = resources[player_id]["energy"]
