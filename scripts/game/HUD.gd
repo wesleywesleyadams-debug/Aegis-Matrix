@@ -87,7 +87,7 @@ const NORMAL_SPEED := 2
 ## The build queue sits between the selection panel and the minimap.
 const MINIMAP_W := 380.0
 ## The round minimap's diameter on screen.
-const MINIMAP_D := 528.0
+const MINIMAP_D := 327.0   # 264 x 1.24
 ## Smaller than this (per minute) counts as flat, so the arrow holds still.
 const TREND_DEADBAND := 1.0
 ## Faster than this (per minute, either way) earns a second arrow.
