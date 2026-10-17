@@ -88,7 +88,7 @@ const NORMAL_SPEED := 2
 const MINIMAP_W := 380.0
 ## Smaller than this (per minute) counts as flat, so the arrow holds still.
 const TREND_DEADBAND := 1.0
-## The starbase page switch always sits in this grid cell (key Z).
+## The starbase page switch always sits in this grid cell (the bottom-right one, key C).
 const PAGE_SWITCH_SLOT := 8
 
 func _ready() -> void:
