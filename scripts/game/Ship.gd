@@ -1446,24 +1446,35 @@ func _draw_solar_shield(t: float) -> void:
 
 ## Electrical arcs between the hull and the bubble while the array works:
 ## white/purple while charging the shield, white/yellow once it is full and
-## the energy flows to the stockpile.
+## the energy flows to the stockpile. One strike every 1-3 seconds, fading
+## out smoothly over SAIL_ARC_LIFE.
+const SAIL_ARC_LIFE := 0.5
+var _arc_next := 0.0
+var _arc_at := -10.0
+var _arc_angles: Array = []
+
 func _draw_sail_arcs(r0: float) -> void:
-	if _sail_mode == "":
-		return
-	var glow: Color = shield_color() if _sail_mode == "charge" else Color("ffe066")
 	var t := Game.now()
-	var a0 := float(get_instance_id() % 1000)
-	for i in 3:
-		# Steady arcs: each slowly circles the hull and its kinks writhe
-		# smoothly - nothing re-strikes, so nothing flickers.
-		var a := a0 + TAU * i / 3.0 + t * (0.35 + 0.1 * i)
+	if _sail_mode != "" and t >= _arc_next:
+		_arc_at = t
+		_arc_next = t + randf_range(1.0, 3.0)
+		_arc_angles = []
+		for i in randi_range(1, 3):
+			_arc_angles.append(randf() * TAU)
+	var age := t - _arc_at
+	if age > SAIL_ARC_LIFE:
+		return
+	var fade := 1.0 - age / SAIL_ARC_LIFE
+	var glow: Color = shield_color() if _sail_mode != "full" else Color("ffe066")
+	for i in _arc_angles.size():
+		var a: float = _arc_angles[i]
 		var pts := PackedVector2Array()
 		var steps := 10
 		for j in steps + 1:
 			var k := float(j) / steps
 			var r := lerpf(10.0, r0, k)
-			var jit := 0.0 if j == 0 or j == steps else 0.08 * sin(j * 1.9 + t * 2.4 + i * 2.1) * sin(j * 0.7 - t * 1.3)
+			var jit := 0.0 if j == 0 or j == steps else 0.08 * sin(j * 1.9 + i * 2.1 + a * 3.0) * sin(j * 0.7 + a)
 			pts.append(Vector2.from_angle(a + jit) * r)
-		draw_polyline(pts, Color(glow, 0.45), 4.0, true)
-		draw_polyline(pts, Color(Color.WHITE, 0.9), 1.4, true)
-		draw_circle(pts[steps], 2.5, Color(glow, 0.8))
+		draw_polyline(pts, Color(glow, 0.45 * fade), 4.0, true)
+		draw_polyline(pts, Color(Color.WHITE, 0.9 * fade), 1.4, true)
+		draw_circle(pts[steps], 2.5, Color(glow, 0.8 * fade))
