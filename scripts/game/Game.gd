@@ -2394,6 +2394,10 @@ func _enter_dev_capture() -> void:
 				print("QFULL t=18 chain state=%s left=%d | dead-target ship state=%s left=%d" % [
 					Ship.State.keys()[m1.state], m1.order_queue.size(),
 					Ship.State.keys()[m4.state], m4.order_queue.size()]))
+	if OS.get_environment("SL_NEBCHECK") != "":
+		for sb in get_tree().get_nodes_in_group("starbases"):
+			print("NEBCHECK %s base P%d in nebula: %s" % [GameState.system_id, sb.owner_id, str(in_nebula(sb.global_position))])
+		get_tree().quit()
 	if OS.get_environment("SL_SHOT_OPEN") == "bombtest":
 		# Dev: right-click an enemy world with corvettes selected; log states.
 		var ep: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id != 0 and p.owner_id != player_id)[0]
