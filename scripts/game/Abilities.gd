@@ -75,7 +75,7 @@ static func sail_cover(e: Node2D, owner_only: bool = true) -> Node2D:
 ## shield's bubble - friend or foe, blocking it costs the shield nothing -
 ## and 1 everywhere else.
 static func radiation_mult(e: Node2D) -> float:
-	# The array itself is always immune, even while knocked out.
+	# The array itself is always immune, even with its shield down.
 	if e is Ship and e.def.has("solar_sail"):
 		return 0.0
 	return 0.0 if sail_cover(e, false) != null else 1.0
