@@ -30,6 +30,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"player_id": game.player_id,
 		"players": game.players,
 		"teams": game.teams,
+		"slots": Defs.slot_of,
 		"resources": game.resources,
 		"researched": {},
 		"research": game.research,

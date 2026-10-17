@@ -149,6 +149,7 @@ func _enter_tree() -> void:
 	# Who is playing: the lobby's filled slots (up to 8), else 1-vs-1.
 	# SL_PLAYERS=n runs an n-player sim (every side AI).
 	var n_sim := int(OS.get_environment("SL_PLAYERS"))
+	Defs.slot_of = {}
 	if sim_mode and n_sim > 2:
 		players.clear()
 		for i in mini(n_sim, 8):
@@ -158,6 +159,7 @@ func _enter_tree() -> void:
 		for mp in GameState.match_players.slice(0, 8):
 			players.append(int(mp["pid"]))
 			teams[int(mp["pid"])] = int(mp.get("team", 0))
+			Defs.slot_of[int(mp["pid"])] = int(mp.get("slot", mp["pid"]))
 	player_id = clampi(GameState.human_player_id, 1, players.size())
 	_init_player_data()
 
@@ -204,6 +206,9 @@ func _ready() -> void:
 			teams = {}
 			for k in save_data.get("teams", {}):
 				teams[int(k)] = int(save_data["teams"][k])
+			Defs.slot_of = {}
+			for k in save_data.get("slots", {}):
+				Defs.slot_of[int(k)] = int(save_data["slots"][k])
 			_init_player_data()
 	# Dev aid: SL_SYSTEM=<id>[:seed] picks the system directly.
 	if OS.get_environment("SL_SYSTEM") != "":
@@ -1247,7 +1252,7 @@ var winner_pid := 0
 
 ## "You" for the human, otherwise "Player n" (the lobby slot's number).
 func player_name(pid: int) -> String:
-	return "You" if pid == player_id else "Player %d" % pid
+	return "You" if pid == player_id else "Player %d" % int(Defs.slot_of.get(pid, pid))
 
 ## Light-blue notification for good news / progress (ship built, planet
 ## colonized, research done...). Not rate limited.

@@ -15,14 +15,9 @@ extends Control
 const RACE_OPTIONS: Array = [["terran", "Terran Union"], ["vorr", "Vorr Hive"], ["aeth", "Aetheric Choir"], ["krell", "Krell Dominion"]]
 ## Index i's team value; "No Team" is stored as team 0.
 const TEAM_OPTIONS: Array = [["1", 1], ["2", 2], ["3", 3], ["4", 4], ["No Team", 0]]
-## Purely a visual accent for each slot's player-number badge -- distinct
-## from Entity.PLAYER_COLORS (which only defines real gameplay colors for
-## players 1/2, plus the fixed Gaia/Mob neutral factions) since slots
-## 3-8 here don't correspond to any actual in-match faction yet.
-const BADGE_COLORS: Array = [
-	Color(0.2, 0.45, 0.9), Color(0.85, 0.2, 0.2), Color(0.2, 0.7, 0.3), Color(0.85, 0.75, 0.2),
-	Color(0.6, 0.35, 0.8), Color(0.9, 0.55, 0.15), Color(0.3, 0.75, 0.75), Color(0.8, 0.4, 0.65),
-]
+## Each slot's number badge in that player's in-match colour (Defs.TEAM_COLORS,
+## where index 0 is neutral), so the lobby and the match agree.
+var BADGE_COLORS: Array = Defs.TEAM_COLORS.slice(1)
 ## Dimmed badge color for a slot currently set to Open -- same "available,
 ## not active" language as the old Play As buttons' UNSELECTED_MODULATE.
 const OPEN_BADGE_COLOR := Color(0.5, 0.45, 0.4)
@@ -307,7 +302,8 @@ func _on_start_pressed() -> void:
 	# (no networking yet).
 	GameState.match_players = []
 	var human_taken := false
-	for s in GameState.player_slots:
+	for si in GameState.player_slots.size():
+		var s: Dictionary = GameState.player_slots[si]
 		if s["slot_type"] in ["open", "closed"]:
 			continue
 		var t: String = s["slot_type"]
@@ -316,7 +312,9 @@ func _on_start_pressed() -> void:
 		if t == "human":
 			human_taken = true
 			GameState.human_player_id = GameState.match_players.size() + 1
-		GameState.match_players.append({"pid": GameState.match_players.size() + 1, "type": t, "team": int(s.get("team", 0))})
+		# "slot" keeps the lobby row's colour and number in the match even
+		# when empty rows before it make the pids shift down.
+		GameState.match_players.append({"pid": GameState.match_players.size() + 1, "type": t, "team": int(s.get("team", 0)), "slot": si + 1})
 	if GameState.match_players.size() < 2:
 		GameState.match_players.append({"pid": GameState.match_players.size() + 1, "type": "ai", "team": 0})
 	if not human_taken:

@@ -48,8 +48,9 @@ static func starting_resources(deathmatch: bool) -> Dictionary:
 
 const TEAM_COLORS: Array[Color] = [
 	Color("9aa0b0"), # 0: neutral
-	Color("4fb4ff"), Color("ff4f5e"), Color("ffc93d"), Color("6fe07a"),
-	Color("c77dff"), Color("ff8c3a"), Color("3de0d0"), Color("f2f2f2"),
+	# In lobby order: blue, red, green, yellow, purple, orange, teal, pink.
+	Color("4fb4ff"), Color("ff4f5e"), Color("6fe07a"), Color("ffc93d"),
+	Color("c77dff"), Color("ff8c3a"), Color("3de0d0"), Color("ff7ac8"),
 ]
 
 ## Compact amounts: 950, 1.2k, 54.3k, 230k.
@@ -63,8 +64,11 @@ static func short_num(v: float) -> String:
 		return "%.1fk" % (floorf(v / 100.0) / 10.0)
 	return "%d" % int(v)
 
+## A player's colour follows their lobby slot (Game sets slot_of each match).
+static var slot_of := {}
+
 static func team_color(owner_id: int) -> Color:
-	return TEAM_COLORS[clampi(owner_id, 0, TEAM_COLORS.size() - 1)]
+	return TEAM_COLORS[clampi(int(slot_of.get(owner_id, owner_id)), 0, TEAM_COLORS.size() - 1)]
 
 ## role: miner / warship / colony / constructor.
 ## cost is the total, paid over build_time. upkeep is energy per minute;
