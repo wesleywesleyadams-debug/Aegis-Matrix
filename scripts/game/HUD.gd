@@ -216,15 +216,15 @@ func _build_top_bar(root: Control) -> void:
 		box.mouse_filter = Control.MOUSE_FILTER_STOP
 		box.add_child(_icon("icon_" + key))
 		var l := _label("0")
-		# Longest realistic text: "54.3k -12.5/s".
-		l.custom_minimum_size = Vector2(116, 0)
+		# Longest realistic text: "54.3k ▼▼▼".
+		l.custom_minimum_size = Vector2(100, 0)
 		l.clip_text = true
 		box.add_child(l)
 		_res_labels[key] = l
 		_res_boxes[key] = box
 		h.add_child(box)
 	_pop_label = _label("Pop 0", TEXT)
-	_pop_label.custom_minimum_size = Vector2(84, 0)
+	_pop_label.custom_minimum_size = Vector2(100, 0)   # "Pop 99.9k"
 	_pop_label.clip_text = true
 	_pop_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	h.add_child(_pop_label)
@@ -232,7 +232,7 @@ func _build_top_bar(root: Control) -> void:
 	fleet.add_theme_constant_override("separation", 6)
 	fleet.add_child(_icon("icon_fleet"))
 	_fleet_label = _label("0/0")
-	_fleet_label.custom_minimum_size = Vector2(220, 0)
+	_fleet_label.custom_minimum_size = Vector2(260, 0)   # "999 ships · upkeep x9.99"
 	_fleet_label.clip_text = true
 	fleet.add_child(_fleet_label)
 	h.add_child(fleet)
@@ -1574,7 +1574,8 @@ class StatChart extends Control:
 				v_max = maxf(v_max, float(s[str(sd[0])].get(field, 0)))
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(4, 13), str(int(v_max)), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("6a7596"))
-		draw_string(font, Vector2(size.x - 44, size.y - 4), "%d min" % int(t_max / 60.0), HORIZONTAL_ALIGNMENT_RIGHT, 40, 11, Color("6a7596"))
+		var mins := "%d min" % int(t_max / 60.0)
+		draw_string(font, Vector2(size.x - 4 - font.get_string_size(mins, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x, size.y - 4), mins, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("6a7596"))
 		var pad := Vector2(6, 18)
 		var area := size - pad * 2.0
 		# The enemy first, so where the two lines sit on top of each other it is

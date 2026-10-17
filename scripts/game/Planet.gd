@@ -372,7 +372,8 @@ func _draw() -> void:
 		return
 	if depleted_timer > 0.0:
 		var f := ThemeDB.fallback_font
-		draw_string(f, Vector2(-radius, radius + 12.0), "DEPLETED", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, 8, Color(1, 0.55, 0.45))
+		var dw: float = f.get_string_size("DEPLETED", HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+		draw_string(f, Vector2(-dw / 2.0, radius + 12.0), "DEPLETED", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 0.55, 0.45))
 	var r := radius + 5.0
 	var so := shown_owner()
 	if so != 0 or focused:
