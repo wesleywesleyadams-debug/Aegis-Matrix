@@ -82,12 +82,22 @@ static func radiation_mult(e: Node2D) -> float:
 
 ## Weapon fire on anything under a solar shield is soaked by that shield
 ## first. Returns what gets through.
-static func sail_absorb(e: Node2D, amount: float, from: Node2D) -> float:
+static func sail_absorb(e: Node2D, amount: float, from: Node2D, profile: Dictionary = {}) -> float:
 	if from == null or amount <= 0.0:
+		return amount
+	# Slip and Disruptor shots slip past shields - solar ones too.
+	if int(profile.get("pierce", 0)) >= 1:
 		return amount
 	var rsa := sail_cover(e)
 	if rsa == null:
 		return amount
+	# Overcharged Coils: a share passes through, as with any shield.
+	var past := 0.0
+	if is_instance_valid(from) and from.get("owner_id") != null:
+		past = amount * clampf(Game.instance.mod(from.owner_id, "shield_pierce") - 1.0, 0.0, 1.0)
+	var rest := amount - past
+	# Plasma counts its bonus against solar shields like any shield.
+	var m: float = profile.get("vs", {}).get("shield", 1.0)
 	# Touching bubbles are one mega shield whose points are the sum of the
 	# arrays' (three full arrays: 300). A hit drains every array in
 	# proportion to what it holds, so they all reach 0 - and burst - together.
@@ -95,13 +105,13 @@ static func sail_absorb(e: Node2D, amount: float, from: Node2D) -> float:
 	var total := 0.0
 	for o in pool:
 		total += o.shield
-	var soak := minf(total, amount)
+	var soak := minf(total, rest * m)
 	for o in pool:
 		var before: float = o.shield
 		o.shield = 0.0 if soak >= total else o.shield - soak * o.shield / total
 		o.call("_solar_hit", from, before)
 		o.queue_redraw()
-	return amount - soak
+	return past + rest - soak / m
 
 ## Every charged array of the same side linked to `rsa` through touching
 ## bubbles (including rsa): together they form one mega shield.

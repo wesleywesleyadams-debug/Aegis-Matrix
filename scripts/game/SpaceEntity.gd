@@ -61,7 +61,7 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	# Under a Radiation Sail Array's bubble, the pooled solar shield takes
 	# the hit first - for an array too, so its own shield drains with the pool.
 	if Game.instance:
-		amount = Abilities.sail_absorb(self, amount, _from)
+		amount = Abilities.sail_absorb(self, amount, _from, profile)
 		if amount <= 0.0:
 			return
 	# Convoy Protocols: harvesters are armored on top of that.
@@ -75,6 +75,9 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	var src_ok := g != null and is_instance_valid(_from)
 	# Overcharged Coils: a share of the shot passes through the shields.
 	var past_shield := 0.0
+	# An array's own shield is the pooled solar shield, already handled.
+	if self is Ship and self.def.has("solar_sail"):
+		pierce = maxi(pierce, 1)
 	if pierce < 1 and shield > 0.0 and src_ok:
 		past_shield = rest * clampf(g.mod(_from.owner_id, "shield_pierce") - 1.0, 0.0, 1.0)
 		rest -= past_shield
