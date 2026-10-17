@@ -432,23 +432,20 @@ func field_job(field: int) -> String:
 
 func order_build(field: int, id: String) -> String:
 	var why := can_build(field, id)
-	if why != "":
-		return why
-	# Paid up front when ordered.
-	if not Game.instance.try_pay(owner_id, Defs.BUILDINGS[id]["cost"]):
-		return "Insufficient Funds"
-	construction_queue.append({"field": field, "id": id})
-	return ""
+	if why == "":
+		construction_queue.append({"field": field, "id": id})
+	return why
 
-## Cancels construction on a field; it was paid up front, so the full
-## price comes back (active or still queued).
+## Cancels construction on a field; the paid share of an active job is refunded.
 func cancel_build(field: int) -> void:
 	if construction.get("field", -1) == field:
-		Game.instance.add_resources(owner_id, Defs.BUILDINGS[construction["id"]]["cost"])
+		var d: Dictionary = Defs.BUILDINGS[construction["id"]]
+		var frac: float = construction["progress"] / d["time"]
+		var refund := {}
+		for k in d["cost"]:
+			refund[k] = d["cost"][k] * frac
+		Game.instance.add_resources(owner_id, refund)
 		construction = {}
-	for j in construction_queue:
-		if j["field"] == field:
-			Game.instance.add_resources(owner_id, Defs.BUILDINGS[j["id"]]["cost"])
 	construction_queue = construction_queue.filter(func(j): return j["field"] != field)
 
 func demolish(field: int) -> void:
@@ -507,7 +504,12 @@ func _run_buildings(dt: float) -> void:
 		var j: Dictionary = construction_queue.pop_front()
 		construction = {"field": j["field"], "id": j["id"], "progress": 0.0}
 	var d: Dictionary = Defs.BUILDINGS[construction["id"]]
-	construction["progress"] += dt   # paid when ordered
+	var per_sec := {}
+	for k in d["cost"]:
+		per_sec[k] = d["cost"][k] / d["time"]
+	var f := g.pay_over_time(owner_id, per_sec, dt)
+	construction_stalled = f < 0.999
+	construction["progress"] += dt * f
 	if construction["progress"] >= d["time"]:
 		buildings[construction["field"]] = construction["id"]
 		if owner_id == g.player_id:

@@ -3,7 +3,7 @@ class_name Defs
 ## types, and the tech tree. Ranges/speeds are in world pixels.
 ##
 ## Economy rules (see Game.pay_over_time): ship/starbase construction and
-## research costs are paid in full up front (Game.try_pay).
+## research costs are paid gradually over their build/research time.
 ## Progress only advances while the resources are there; any shortfall in
 ## food, minerals or energy is covered 1:1 from spice automatically.
 
@@ -56,7 +56,7 @@ static func team_color(owner_id: int) -> Color:
 	return TEAM_COLORS[clampi(owner_id, 0, TEAM_COLORS.size() - 1)]
 
 ## role: miner / warship / colony / constructor.
-## cost is the total, paid up front, built over build_time. upkeep is energy per minute;
+## cost is the total, paid over build_time. upkeep is energy per minute;
 ## harvest is how fast the hold fills, per minute (see Defs.PER_MIN).
 ## requires: tech id that must be researched before it can be queued.
 const BASE_SHIPS := {
@@ -159,7 +159,7 @@ const BASE_SHIPS := {
 const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor", "scout", "tender",
 	"corvette", "destroyer", "cruiser", "carrier", "heatshield"]
 
-## Weapons Depot: built by a Constructor like a starbase (paid up front, built over
+## Weapons Depot: built by a Constructor like a starbase (paid over
 ## build_time). Each depot is built for ONE variant (Defs.VARIANTS) and refits
 ## generalists into it: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships.
 ## Ships fly in, dock (CAPACITY at a time, hidden and safe inside) and are
@@ -175,7 +175,7 @@ const WEAPONS_DEPOT := {
 const STARBASE := {
 	"name": "Starbase", "hp": 4000.0, "armor": 2000.0, "shield": 2000.0, "radius": 26.0,
 	"weapon": "laser", "damage": 34.0, "cooldown": 0.6, "range": 260.0,
-	# Built on site by a Constructor, paid up front when ordered.
+	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 400, "spice": 20}, "build_time": 40.0,
 	"upkeep": 3.3,
 	# Station reactors and ore refineries.
@@ -284,7 +284,7 @@ static func field_count(planet_diameter_px: float) -> int:
 	var t := clampf((planet_diameter_px - FIELD_SIZE_MIN_PX) / (FIELD_SIZE_MAX_PX - FIELD_SIZE_MIN_PX), 0.0, 1.0)
 	return int(round(lerpf(MIN_FIELDS, MAX_FIELDS, t)))
 
-## Buildings placed on planet fields. Costs are paid up front like
+## Buildings placed on planet fields. Costs are paid over build time like
 ## ships. output: every resource per MINUTE (the tick maths divides by
 ## Defs.PER_MIN).
 ## only: planet kinds it can be built on (empty = any).

@@ -483,23 +483,6 @@ func _deduct(pid: int, k: String, amount: float) -> void:
 	resources[pid][k] -= amount
 	_rate_acc[pid][k] = _rate_acc[pid].get(k, 0.0) - amount
 
-## True if pid can pay `cost` in full right now (food/minerals/energy
-## shortfalls covered 1:1 from spice, as everywhere).
-func can_pay(pid: int, cost: Dictionary) -> bool:
-	return _spice_needed(resources[pid], cost, 1.0) <= resources[pid]["spice"] + 0.000001
-
-## Ships, constructs, buildings, refits and research are bought up front:
-## pays `cost` in full and returns true, or - if pid can't - pays nothing,
-## tells a human player "Insufficient Funds" and returns false.
-func try_pay(pid: int, cost: Dictionary) -> bool:
-	if not can_pay(pid, cost):
-		if pid == player_id:
-			message.emit("Insufficient Funds", Color("ff8a5a"))
-			sfx.play_ui("deny")
-		return false
-	pay_over_time(pid, cost, 1.0)
-	return true
-
 ## Pays `per_sec` (resource -> amount per second) for `dt` seconds.
 ## Any food/minerals/energy shortfall is covered 1:1 from spice. If even
 ## spice can't cover it, pays the largest fraction it can. Returns that
@@ -655,28 +638,20 @@ func queue_research(pid: int, tech_id: String) -> String:
 	# One project at a time: finish or cancel the current one first.
 	if not research[pid].is_empty() or not research_queue[pid].is_empty():
 		return "Already researching something else"
-	# Paid up front when queued.
-	if not try_pay(pid, Defs.TECHS[tech_id]["cost"]):
-		return "Insufficient Funds"
 	research_queue[pid].append(tech_id)
 	return ""
 
 func cancel_research(pid: int, tech_id: String) -> void:
-	# Drop it and anything queued that depended on it; each was paid up
-	# front, so its full price comes back.
+	# Drop it and anything queued that depended on it. Energy already spent is lost.
 	if research[pid].get("id", "") == tech_id:
 		research[pid] = {}
-		add_resources(pid, Defs.TECHS[tech_id]["cost"])
-	if tech_id in research_queue[pid]:
-		research_queue[pid].erase(tech_id)
-		add_resources(pid, Defs.TECHS[tech_id]["cost"])
+	research_queue[pid].erase(tech_id)
 	var changed := true
 	while changed:
 		changed = false
 		for t in research_queue[pid].duplicate():
 			if tech_state(pid, t) == "locked":
 				research_queue[pid].erase(t)
-				add_resources(pid, Defs.TECHS[t]["cost"])
 				changed = true
 
 func _tick_research(pid: int, dt: float) -> void:
@@ -686,8 +661,12 @@ func _tick_research(pid: int, dt: float) -> void:
 		research[pid] = {"id": research_queue[pid].pop_front(), "progress": 0.0, "stalled": false}
 	var cur: Dictionary = research[pid]
 	var t: Dictionary = Defs.TECHS[cur["id"]]
-	cur["stalled"] = false
-	cur["progress"] += dt   # paid when queued
+	var per_sec := {}
+	for k in t["cost"]:
+		per_sec[k] = t["cost"][k] / t["time"]
+	var f := pay_over_time(pid, per_sec, dt)
+	cur["stalled"] = f < 0.999
+	cur["progress"] += dt * f
 	if cur["progress"] >= t["time"]:
 		researched[pid][cur["id"]] = true
 		research[pid] = {}
@@ -1295,9 +1274,8 @@ func save_game() -> void:
 func request_build(sb: Starbase, ship_type: String) -> void:
 	var why := sb.enqueue(ship_type)
 	if why != "":
-		if why != "Insufficient Funds":   # try_pay already said so
-			message.emit(why + ".", Color("ff8a5a"))
-			sfx.play_ui("deny")
+		message.emit(why + ".", Color("ff8a5a"))
+		sfx.play_ui("deny")
 	else:
 		sfx.play_ui("click")
 
@@ -1308,9 +1286,8 @@ func request_research(tech_id: String) -> void:
 		return
 	var why := queue_research(player_id, tech_id)
 	if why != "":
-		if why != "Insufficient Funds":   # try_pay already said so
-			message.emit(why + ".", Color("ff8a5a"))
-			sfx.play_ui("deny")
+		message.emit(why + ".", Color("ff8a5a"))
+		sfx.play_ui("deny")
 	else:
 		sfx.play_ui("click")
 

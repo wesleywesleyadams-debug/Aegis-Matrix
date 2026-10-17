@@ -517,9 +517,8 @@ func _on_menu(id: int) -> void:
 		var why := planet.order_build(_menu_field, Defs.BUILDING_ORDER[id])
 		_picker.hide()
 		if why != "":
-			if why != "Insufficient Funds":   # try_pay already said so
-				game.message.emit(why + ".", HUD.BAD)
-				game.sfx.play_ui("deny")
+			game.message.emit(why + ".", HUD.BAD)
+			game.sfx.play_ui("deny")
 			return
 	game.sfx.play_ui("click")
 	refresh()

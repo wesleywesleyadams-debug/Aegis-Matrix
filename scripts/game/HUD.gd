@@ -575,7 +575,7 @@ func _build_research(root: Control) -> void:
 			toggle_research()
 			_research_modal.accept_event())
 	var v: VBoxContainer = parts[1]
-	v.add_child(_label("One project at a time. The full cost is paid when you start it (spice covers energy shortfalls); cancelling refunds it.\nClick a tech to start it; click the active one to cancel it.", DIM, 13))
+	v.add_child(_label("One project at a time. Costs are paid gradually while researching; progress pauses when you can't pay (spice covers energy shortfalls).\nClick a tech to start it; click the active one to cancel it.", DIM, 13))
 	var legend := HBoxContainer.new()
 	legend.add_theme_constant_override("separation", 10)
 	for s in ["done", "active", "available", "locked"]:
@@ -1007,7 +1007,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(198, 62)
 		b.focus_mode = Control.FOCUS_NONE
-		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.2f energy/min base (scales with fleet size)\nCost %s, paid up front; builds in %ds" % [game.ship_name(game.player_id, t), d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
+		b.tooltip_text = "%s\nShield %d  Armor %d  Hull %d  Speed %d\nUpkeep %.2f energy/min base (scales with fleet size)\nCost %s, paid over %ds" % [game.ship_name(game.player_id, t), d["shield"], d.get("armor", 0), d["hp"], d["speed"], d["upkeep"], Defs.cost_text(d["cost"]), d["build_time"]]
 		if d.has("variant"):
 			b.tooltip_text += "\n" + Defs.VARIANTS[d["variant"]]["desc"]
 		var h := HBoxContainer.new()
@@ -1145,10 +1145,10 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 		txt += "
 Starbases %d · upkeep %.2f/min each (x%.1f)" % [game.starbase_count(sb.owner_id), Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(sb.owner_id), game.starbase_upkeep_multiplier(sb.owner_id)]
 		if sb.under_construction:
-			txt += "\nConstruction %d%%%s" % [int(100.0 * sb.construct_progress / Defs.STARBASE["build_time"]), ""]
+			txt += "\nConstruction %d%%%s" % [int(100.0 * sb.construct_progress / Defs.STARBASE["build_time"]), "  STALLED: insufficient funds" if sb.build_stalled else ""]
 		elif not sb.queue.is_empty():
 			var d: Dictionary = Defs.SHIPS[sb.queue[0]]
-			txt += "\nBuilding %s %d%%%s" % [d["name"], int(100.0 * sb.build_progress / d["build_time"]), "  HALTED: out of energy" if sb.build_stalled else ""]
+			txt += "\nBuilding %s %d%%%s" % [d["name"], int(100.0 * sb.build_progress / d["build_time"]), "  STALLED: insufficient funds" if sb.build_stalled else ""]
 	_info_label.text = txt
 	if e is Starbase and _queue_row.visible:
 		var sb := e as Starbase
