@@ -3,7 +3,8 @@
 Runs N headless games at once (each a Godot process the agent plays one side
 of, against the scripted AI), batches their observations through the policy
 on the GPU, and learns from the outcome:
-  reward = change in (own score - best enemy score) / 100 each step,
+  reward = winning (+WIN_REWARD) above all; a faint hint each step from the
+           change in (own score - best enemy score) / 1000,
            +WIN_REWARD (100) for a win, -5 for a loss.
 
 Usage (from the project root, with the venv's python):
@@ -28,7 +29,9 @@ RUNS = os.path.join(os.path.dirname(__file__), "runs")
 
 
 def reward_of(prev, cur):
-    r = ((cur["score"] - cur["enemy_score"]) - (prev["score"] - prev["enemy_score"])) / 100.0
+    # Score shaping is only a faint hint (a whole game sums to a few points);
+    # winning (WIN_REWARD) is the goal.
+    r = ((cur["score"] - cur["enemy_score"]) - (prev["score"] - prev["enemy_score"])) / 1000.0
     if cur.get("done"):
         r += WIN_REWARD if cur.get("won") else (-5.0 if cur.get("lost") else 0.0)
     return float(r)
