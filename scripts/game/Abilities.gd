@@ -88,23 +88,20 @@ static func sail_absorb(e: Node2D, amount: float, from: Node2D) -> float:
 	var rsa := sail_cover(e)
 	if rsa == null:
 		return amount
-	# Touching bubbles are one mega shield: the hit drains the arrays of the
-	# whole cluster, the fullest first.
+	# Touching bubbles are one mega shield whose points are the sum of the
+	# arrays' (three full arrays: 300). A hit drains every array in
+	# proportion to what it holds, so they all reach 0 - and burst - together.
 	var pool := sail_cluster(rsa)
-	pool.sort_custom(func(x, y): return x.shield > y.shield)
-	var left := amount
+	var total := 0.0
 	for o in pool:
-		if left <= 0.0:
-			break
-		var soak := minf(o.shield, left)
-		if soak <= 0.0:
-			continue
+		total += o.shield
+	var soak := minf(total, amount)
+	for o in pool:
 		var before: float = o.shield
-		o.shield -= soak
-		left -= soak
+		o.shield = 0.0 if soak >= total else o.shield - soak * o.shield / total
 		o.call("_solar_hit", from, before)
 		o.queue_redraw()
-	return left
+	return amount - soak
 
 ## Every charged array of the same side linked to `rsa` through touching
 ## bubbles (including rsa): together they form one mega shield.

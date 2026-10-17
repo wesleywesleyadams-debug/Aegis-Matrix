@@ -420,10 +420,7 @@ func cargo_cap() -> int:
 # ---------------------------------------------------------------- orders
 
 func take_damage(amount: float, from: SpaceEntity = null, profile: Dictionary = {}) -> void:
-	var sh_before := shield
 	super.take_damage(amount, from, profile)
-	if def.has("solar_sail") and shield < sh_before:
-		_solar_hit(from, sh_before)
 	if owner_id == Game.instance.player_id and hp > 0.0 and from != null:
 		Game.instance.alert("Your ships are under attack!", "alert_ships", false, global_position)
 

@@ -56,9 +56,9 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	_last_hit_time = Game.now()
 	# Screens (Defense) soak a slice of everything before the layers see it.
 	amount /= Game.instance.mod(owner_id, "damage_taken") if Game.instance else 1.0
-	# Under a Radiation Sail Array's bubble, its solar shield takes the hit
-	# first (the RSA's own shield layer is that same pool).
-	if Game.instance and not (self is Ship and self.def.has("solar_sail")):
+	# Under a Radiation Sail Array's bubble, the pooled solar shield takes
+	# the hit first - for an array too, so its own shield drains with the pool.
+	if Game.instance:
 		amount = Abilities.sail_absorb(self, amount, _from)
 		if amount <= 0.0:
 			return

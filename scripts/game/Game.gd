@@ -1823,8 +1823,13 @@ func _enter_dev_capture() -> void:
 			var rsa9 := spawn_ship("heatshield", player_id, c + Vector2(-200, 0))
 			rsa9.shield = rsa9.max_shield
 			rsa9.order_attack_move(c + Vector2(200, 0))
+			var mates9: Array = []
+			for j9 in int(OS.get_environment("SL_BATTLE_RSA")) - 1:
+				var m9 := spawn_ship("heatshield", player_id, c + Vector2(-200, 120 * (j9 + 1) - 180))
+				m9.order_attack_move(c + Vector2(200, 0))
+				mates9.append(m9)
 			for t9 in [1.0, 3.0, 5.0, 9.0, 14.0]:
-				get_tree().create_timer(t9).timeout.connect(func(): if is_instance_valid(rsa9): print("RSA t=%.0f shield %.0f/%.0f" % [now(), rsa9.shield, rsa9.max_shield]))
+				get_tree().create_timer(t9).timeout.connect(func(): if is_instance_valid(rsa9): print("RSA t=%.0f shield %.0f/%.0f mates %s" % [now(), rsa9.shield, rsa9.max_shield, str(mates9.map(func(m): return int(m.shield) if is_instance_valid(m) else -1))]))
 		center_on(c)
 		if OS.get_environment("SL_SELECT_FLEET") != "":
 			# Dev: select the whole fleet a few seconds in, so the panel can be
