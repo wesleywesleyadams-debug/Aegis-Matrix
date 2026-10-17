@@ -242,6 +242,18 @@ func _ready() -> void:
 		if rl_side > 0 and opp_level == 1:
 			order = order.filter(func(p): return p == rl_side)
 		ai.setup(order)
+		# Dev check: the RL side's starbase shoots the enemy one; print the tally.
+		if OS.get_environment("SL_SIEGETEST") != "":
+			get_tree().create_timer(2.0).timeout.connect(func():
+				var mine: Starbase = null
+				var foe: Starbase = null
+				for sb in get_tree().get_nodes_in_group("starbases"):
+					if sb.owner_id == rl_side: mine = sb
+					elif foe == null: foe = sb
+				print("SIEGETEST foe hp ", foe.hp, "/", foe.max_hp, " shield ", foe.max_shield, " armor ", foe.max_armor)
+				for i in 40:
+					foe.take_damage(foe.max_hp * 0.05, mine)
+				print("SIEGETEST starbase_damage ", stats.get_count(rl_side, "starbase_damage"), " kills ", stats.get_count(rl_side, "starbase_kills"), " foe hp ", foe.hp if is_instance_valid(foe) else -1.0))
 		if OS.get_environment("SL_NOFOG") == "":
 			for p in players:
 				_add_vision(p, false)

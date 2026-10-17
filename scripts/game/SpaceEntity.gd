@@ -72,9 +72,10 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		amount = Abilities.sail_absorb(self, amount, _from, profile)
 		if amount <= 0.0:
 			return
-	# Training tally: damage dealt to enemy starbases, in thousandths of their hull.
+	# Training tally: damage dealt to enemy starbases, in thousandths of their
+	# whole toughness (hull + armor + shield).
 	if Game.instance and self is Starbase and _killer != 0 and self.max_hp > 0.0:
-		_siege_frac += 1000.0 * minf(amount, self.hp) / self.max_hp
+		_siege_frac += 1000.0 * minf(amount, self.hp + self.armor + self.shield) / (self.max_hp + self.max_armor + self.max_shield)
 		Game.instance.stats.count(_killer, "starbase_damage", int(_siege_frac))
 		_siege_frac -= floorf(_siege_frac)
 	# Convoy Protocols: harvesters are armored on top of that.
