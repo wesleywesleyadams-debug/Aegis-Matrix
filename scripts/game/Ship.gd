@@ -1446,7 +1446,7 @@ func _draw_solar_shield(t: float) -> void:
 
 ## Electrical arcs between the hull and the bubble while the array works:
 ## white/purple while charging the shield, white/yellow once it is full and
-## the energy flows to the stockpile. One strike every 1-3 seconds, fading
+## the energy flows to the stockpile. One strike every 0-3 seconds (sometimes two in quick succession), fading
 ## out over SAIL_ARC_LIFE like a lightning flash: a sudden bright snap that
 ## dies away, along a jagged path with a fork, different every strike.
 const SAIL_ARC_LIFE := 0.3
@@ -1458,7 +1458,7 @@ func _draw_sail_arcs(r0: float) -> void:
 	var t := Game.now()
 	if _sail_mode != "" and t >= _arc_next:
 		_arc_at = t
-		_arc_next = t + randf_range(1.0, 3.0)
+		_arc_next = t + randf_range(0.12, 3.0)
 		_arc_angles = []
 		for i in randi_range(1, 3):
 			var kinks: Array = []
