@@ -335,7 +335,22 @@ func _refresh_tracks() -> void:
 	_enabled_title.text = "Playlist (%d)" % enabled.size()
 	_disabled_title.text = "Disabled (%d)" % disabled.size()
 	if _all_toggle:
-		_all_toggle.text = "Enable All" if not disabled.is_empty() else "Disable All"
+		var enable := not disabled.is_empty()
+		_all_toggle.text = "Enable All" if enable else "Disable All"
+		# Teal (minerals) to enable, orange (spice) to disable.
+		var col: Color = Defs.RESOURCE_COLORS["minerals"] if enable else Defs.RESOURCE_COLORS["spice"]
+		for s in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			_all_toggle.add_theme_color_override(s, col if s == "font_color" else col.lightened(0.25))
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = col.darkened(0.8)
+		sb.border_color = col
+		sb.set_border_width_all(2)
+		sb.set_content_margin_all(12)
+		var sbh: StyleBoxFlat = sb.duplicate()
+		sbh.bg_color = col.darkened(0.65)
+		_all_toggle.add_theme_stylebox_override("normal", sb)
+		_all_toggle.add_theme_stylebox_override("hover", sbh)
+		_all_toggle.add_theme_stylebox_override("pressed", sbh)
 	if enabled.is_empty():
 		_enabled_list.add_child(_list_note("Empty: no music will play."))
 	for t in enabled:
