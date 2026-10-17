@@ -35,6 +35,7 @@ var _fleet_label: Label
 var _research_button: Button
 ## Green progress fill laid over the research button while a project runs.
 var _research_fill: ColorRect
+var _research_icon: TextureRect
 var _clock: Label
 var _sel_body: VBoxContainer
 ## The per-ship condition tiles of a multi-ship selection (see _add_fleet_tiles).
@@ -243,10 +244,6 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.focus_mode = Control.FOCUS_NONE
 	# The active tech's picture rides beside its name and progress.
 	_research_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	# Small enough to fit inside TOP_H with the button's padding, so the
-	# button never grows while something is researching.
-	_research_button.add_theme_constant_override("icon_max_width", 28)
-	_research_button.add_theme_constant_override("h_separation", 6)
 	_research_button.anchor_left = 1.0
 	_research_button.anchor_right = 1.0
 	_research_button.offset_right = RESEARCH_RIGHT
@@ -255,6 +252,25 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.offset_bottom = TOP_Y + TOP_H
 	_research_button.pressed.connect(toggle_research)
 	root.add_child(_research_button)
+	# The active tech's icon fills the button top to bottom. It is a child
+	# image rather than Button.icon (which would add padding and grow the
+	# button), drawn from the research panel's full-size icon scaled down
+	# smoothly; the text is moved right to clear it.
+	_research_icon = TextureRect.new()
+	_research_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_research_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_research_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_research_icon.position = Vector2(2, 2)
+	_research_icon.size = Vector2(TOP_H - 4, TOP_H - 4)
+	_research_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_research_icon.visible = false
+	_research_button.add_child(_research_icon)
+	for state in ["normal", "hover", "pressed", "disabled", "focus", "hover_pressed"]:
+		var sb := _research_button.get_theme_stylebox(state)
+		if sb:
+			sb = sb.duplicate()
+			sb.content_margin_left = TOP_H + 4
+			_research_button.add_theme_stylebox_override(state, sb)
 	# Progress shows as a green bar growing left to right across the button.
 	_research_fill = ColorRect.new()
 	_research_fill.color = Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
@@ -1262,7 +1278,7 @@ Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 	var glow := 1.0 if phase < RESEARCH_BLINK * 0.7 else 0.0
 	if cur.is_empty():
 		_research_button.text = "Research [R]"
-		_research_button.icon = null
+		_research_icon.visible = false
 		_research_button.modulate = Color.WHITE.lerp(Color("ffd46b"), glow)
 		_research_fill.visible = false
 	else:
@@ -1271,7 +1287,8 @@ Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 		var frac: float = clampf(cur["progress"] / t["time"], 0.0, 1.0)
 		# Percentage first: if the name is cut short to fit, progress is not.
 		_research_button.text = "%d%% %s" % [int(100.0 * frac), t["name"]]
-		_research_button.icon = TechIcons.icon(cur["id"])
+		_research_icon.texture = TechIcons.icon(cur["id"])
+		_research_icon.visible = true
 		_research_button.tooltip_text = "%s: %d%% complete.%s" % [t["name"], int(100.0 * frac), "\nSTALLED: not enough resources to keep paying for it." if cur["stalled"] else ""]
 		# Running: no blink, the green fill carries the progress. Stalled: the
 		# button blinks red and the fill freezes where it stopped.
