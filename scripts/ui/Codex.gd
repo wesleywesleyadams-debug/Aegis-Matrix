@@ -809,14 +809,19 @@ func _page_controls() -> void:
 	_para("The build picker on one of your worlds uses the same letters.")
 	_para("Every key here can be rebound in Options > Hotkeys, with a Reset to defaults button; the letters drawn on the buttons follow your bindings.")
 	_heading("Build grid")
-	_para("With a starbase selected these letters build ships. With no starbase selected, the same letter selects every ship of that class you own, wherever it is.")
+	_para("A starbase builds from two pages, Economy and Military, switched with the bottom-right button. With no starbase selected, a letter instead selects every ship of one class you own, wherever it is.")
+	var war: Array = Defs.BUILD_ORDER.filter(func(t): return Defs.SHIPS[t]["role"] == "warship")
+	var eco: Array = Defs.BUILD_ORDER.filter(func(t): return Defs.SHIPS[t]["role"] != "warship")
+	var keys := HUD.panel_keys()
 	var rows: Array = []
-	for i in Defs.BUILD_ORDER.size():
-		if i >= HUD.panel_keys().size():
-			break
-		var t: String = Defs.BUILD_ORDER[i]
-		rows.append([[OS.get_keycode_string(HUD.panel_keys()[i]), EDGE_LIT], Defs.SHIPS[t]["name"], Defs.cost_text(Defs.SHIPS[t]["cost"])])
-	_table(["Key", "Builds / selects", "Cost"], rows)
+	for i in mini(keys.size(), Defs.BUILD_ORDER.size()):
+		var e: String = Defs.SHIPS[eco[i]]["name"] if i < eco.size() else ""
+		var w: String = Defs.SHIPS[war[i]]["name"] if i < war.size() else ""
+		if i == HUD.PAGE_SWITCH_SLOT:
+			e = "Military >"
+			w = "< Economy"
+		rows.append([[OS.get_keycode_string(keys[i]), EDGE_LIT], e, w, Defs.SHIPS[Defs.BUILD_ORDER[i]]["name"]])
+	_table(["Key", "Economy page", "Military page", "Selects (no starbase)"], rows)
 	_heading("Everything else")
 	_table(["Action", "Key"], [
 		["Select / box select", "Left click / drag"],
