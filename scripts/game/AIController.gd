@@ -102,7 +102,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		elif (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2:
 			base.enqueue("skimmer")
 		# Jobs: a Scout for sensors, a Repair Tender once the fleet is sizable,
-		# a Heat Shield where the system has radiation hazards to fight in.
+		# a Radiation Sail Array where the system has radiation hazards to fight in.
 		elif v and v.explored_fraction() < SCOUT_UNTIL and _count_role(ships, base, "scout") == 0 and base.can_queue("scout") == "":
 			base.enqueue("scout")
 		elif war.size() >= 8 and _count_type(ships, base, "tender") == 0 and base.can_queue("tender") == "" and res["spice"] >= 15.0:
@@ -526,7 +526,7 @@ func _count_role(ships: Array, base: Starbase, role: String) -> int:
 			q += 1
 	return ships.filter(func(s): return s.def["role"] == role).size() + q
 
-## Systems where a Heat Shield earns its keep: a spice nebula or twin suns.
+## Systems where a Radiation Sail Array earns its keep: a spice nebula or twin suns.
 func _hazardous(game: Game) -> bool:
 	if not game.nebula_list.is_empty():
 		return true

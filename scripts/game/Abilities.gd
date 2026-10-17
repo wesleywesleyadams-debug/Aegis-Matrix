@@ -57,11 +57,11 @@ static func allies_near(s: Node2D, r: float) -> Array:
 			out.append(o)
 	return out
 
-## Radiation damage multiplier (a Heat Shield Frigate nearby).
+## Radiation damage multiplier (a Radiation Sail Array nearby).
 static func radiation_mult(e: SpaceEntity) -> float:
 	var best := 1.0
 	for o in Game.instance.job_ships.get("heat_screen", []):
-		# The list is rebuilt periodically, so a frigate destroyed since can
+		# The list is rebuilt periodically, so an array destroyed since can
 		# still be in it.
 		if not is_instance_valid(o) or o.owner_id != e.owner_id:
 			continue
@@ -70,7 +70,7 @@ static func radiation_mult(e: SpaceEntity) -> float:
 			best = 1.0 - HEAT_CUT
 	return best
 
-## True if a Heat Shield keeps this ship's shields up in a spice nebula.
+## True if a Radiation Sail Array keeps this ship's shields up in a spice nebula.
 static func nebula_protected(e: SpaceEntity) -> bool:
 	return radiation_mult(e) < 1.0
 

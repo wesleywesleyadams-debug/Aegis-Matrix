@@ -79,7 +79,7 @@ func _process(delta: float) -> void:
 			continue
 		var dps := dps_at(global_position.distance_to(e.global_position), e.radius)
 		if dps > 0.0:
-			# A Heat Shield Frigate nearby cuts (or, surging, blocks) radiation.
+			# A Radiation Sail Array nearby cuts (or, surging, blocks) radiation.
 			var cut := Abilities.radiation_mult(e) if e is SpaceEntity else 1.0
 			if cut <= 0.0:
 				continue

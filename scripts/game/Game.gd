@@ -2437,7 +2437,7 @@ func _enter_dev_capture() -> void:
 		get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.2).timeout.connect(func():
 			print("SKIM trips home %d, state %s, cargo %d %s, spot %.0f px from home" % [trips[0], Ship.State.keys()[sk.state], sk.cargo, sk.cargo_type, spot.distance_to(home.global_position)]))
 	if OS.get_environment("SL_SHOT_OPEN") == "jobs":
-		# Dev: job ships at work. Heat Shield + 3 corvettes inside the sun's
+		# Dev: job ships at work. Radiation Sail Array + 3 corvettes inside the sun's
 		# radiation (right) vs 3 unprotected corvettes (left); a Tender beside
 		# three half-hull destroyers; a Scout dropping a beacon.
 		var star: Node2D = get_tree().get_nodes_in_group("stars")[0]
@@ -2510,6 +2510,12 @@ func _enter_dev_capture() -> void:
 		center_on(gas_p.global_position)
 	if OS.get_environment("SL_SHOT_OPEN") == "research":
 		queue_research(player_id, "ion_cannons")
+		# SL_TOPBAR_LOG: every top-row panel and button with its rect.
+		if OS.get_environment("SL_TOPBAR_LOG") != "":
+			for c in hud.find_children("*", "Control", true, false):
+				var r: Rect2 = c.get_global_rect()
+				if c.is_visible_in_tree() and r.position.y < 40 and r.size.y > 20 and (c is PanelContainer or c is BaseButton):
+					print("TOPBAR %-18s %s %s" % [c.get_class(), str(r), c.text if c is Button else ""])
 		# SL_RESBTN_LOG: print the button's rect idle vs researching (size check).
 		if OS.get_environment("SL_RESBTN_LOG") != "":
 			print("RESBTN researching rect ", hud._research_button.get_global_rect())

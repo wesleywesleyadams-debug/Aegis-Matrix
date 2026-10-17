@@ -704,7 +704,7 @@ func _system_card(s: Dictionary) -> void:
 const SYSTEM_TIPS := {
 	"orion_reach": "The even, open map. Both flank clouds are as close to the enemy as to you, so spice goes to whoever holds the middle - send skimmers with an escort.",
 	"vega_drift": "The suns' radiation sweeps the center, so the lane between bases opens and closes. Time attacks for when it is clear, and harvest the bands when the enemy fleet is elsewhere.",
-	"kharon_expanse": "Few worlds, but the most spice anywhere, all of it inside the ring. Shields fail in the gas: bring armor-heavy hulls or a Heat Shield Frigate, and expect fights inside it.",
+	"kharon_expanse": "Few worlds, but the most spice anywhere, all of it inside the ring. Shields fail in the gas: bring armor-heavy hulls or a Radiation Sail Array, and expect fights inside it.",
 	"tethys_cluster": "The richest worlds sit behind the debris ring, reachable only through its gaps. Hold a gap and you hold the inner system; the outer pockets are easy, safe spice.",
 	"sable_verge": "Heavy belts and sparse worlds: a mining race. Ion storms slow and blind anything they cross, and each side's spice drift is an inviting raid target.",
 }
@@ -720,7 +720,7 @@ func _star_section() -> void:
 		var sd: Dictionary = Defs.STAR_TYPES[st]
 		srows.append([[sd["label"], sd["tint"]], "%d px" % int(sd["zone"]), "%d dps" % int(sd["dps"])])
 	_table(["Star", "Radiation zone", "Damage at the surface"], srows)
-	_para("Radiation damages anything inside the zone, worst at the surface. A Heat Shield Frigate protects ships around it, and its Surge blocks radiation completely for a few seconds.")
+	_para("Radiation damages anything inside the zone, worst at the surface. A Radiation Sail Array protects ships around it, and its Surge blocks radiation completely for a few seconds.")
 
 func _page_terms() -> void:
 	_heading("Terminology")

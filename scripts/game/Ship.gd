@@ -1167,7 +1167,7 @@ func _route(final: Vector2) -> Vector2:
 		_path.remove_at(0)
 	return _path[0] if not _path.is_empty() else final
 
-## Job effects, in the job's accent color (Defs.JOBS): the Heat Shield's
+## Job effects, in the job's accent color (Defs.JOBS): the Radiation Sail Array's
 ## screen (a slow shimmer ring), a Tender's green repair beams and
 ## emergency flash, and an Escort's guard ring while selected.
 ## The shift-queued route, drawn while the ship is selected: a dashed line
