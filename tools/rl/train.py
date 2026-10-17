@@ -72,10 +72,11 @@ DUCK_GROW = 1.5
 ##   hunt:   a fleet starts midway across the map; find and destroy it.
 ##   expand: economy only; own Game.EXPAND_GOAL worlds to win.
 STAGES = ["strike", "hunt", "expand", "L1", "L2", "L5"]
-DRILL_MINUTES = {"strike": 3.0, "hunt": 6.0, "expand": 8.0}
+DRILL_MINUTES = {"strike": 5.0, "hunt": 6.0, "expand": 8.0}
 ## Strike / hunt: the enemy starbase's toughness (an 8-ship fleet sent
-## straight in wins in under a minute at 0.1; at full it can't).
-DRILL_DUCK = 0.1
+## straight in wins in under a minute at 0.1; at full it can't). 0.05 for an
+## easier start.
+DRILL_DUCK = 0.05
 ## Reward parts, for the per-game breakdown.
 PARTS = ["win", "loss", "trade", "siege", "damage", "bombard", "discover", "big", "curious"]
 ## Self-play: how often (updates) the frozen opponent catches up with the learner.

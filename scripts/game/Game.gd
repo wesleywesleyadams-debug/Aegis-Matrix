@@ -3253,7 +3253,8 @@ func _drill_fleet() -> void:
 	var a: Vector2 = mine.global_position
 	var b: Vector2 = foe.global_position
 	var dir := (b - a).normalized()
-	var at: Vector2 = b - dir * 320.0 if drill == "strike" else (a + b) * 0.5 + dir.orthogonal() * randf_range(-500.0, 500.0)
+	# Strike starts inside the starbase's gun range (260), so the fight is on at once.
+	var at: Vector2 = b - dir * 180.0 if drill == "strike" else (a + b) * 0.5 + dir.orthogonal() * randf_range(-500.0, 500.0)
 	var kinds := ["destroyer", "destroyer", "corvette", "corvette", "corvette", "corvette", "corvette", "corvette"]
 	for i in kinds.size():
 		var s9 := spawn_ship(kinds[i], rl_side, at + Vector2(i % 4 * 18 - 27, i / 4 * 20 - 10).rotated(dir.angle()))
