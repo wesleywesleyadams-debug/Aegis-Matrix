@@ -1040,18 +1040,32 @@ func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	fx_root.add_child(e)
 	sfx.play_at("boom_big" if scale_mult >= 1.0 else "boom", pos, -6.0)
 
-func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2, col: Color = Color("7fd8ff")) -> void:
+## How faint and how small a shield-hit flash is.
+const SHIELD_HIT_ALPHA := 0.35
+const SHIELD_HIT_SCALE := 0.75
+
+## `prev` is the flash this target already shows: a new hit restarts it
+## (facing the new shot) instead of stacking another on top.
+func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2, col: Color = Color("7fd8ff"), prev: Effect = null) -> Effect:
 	if sim_mode:
-		return
+		return null
+	sfx.play_at("shield", pos, -12.0)
+	if is_instance_valid(prev) and not prev.is_queued_for_deletion():
+		prev._t = 0.0
+		prev.global_position = pos
+		prev.rotation = (from_pos - pos).angle()
+		return prev
 	var e := Effect.new()
 	e.texture = Defs.tex("shield_hit")
 	e.fps = 16.0
+	# Kept subtle: a faint, smaller flicker rather than a full flash.
 	e.modulate = col
+	e.alpha = SHIELD_HIT_ALPHA
 	e.global_position = pos
 	e.rotation = (from_pos - pos).angle()
-	e.scale = Vector2.ONE * maxf(1.0, round(r / 8.0)) / Defs.ART_SCALE
+	e.scale = Vector2.ONE * maxf(1.0, round(r / 8.0)) * SHIELD_HIT_SCALE / Defs.ART_SCALE
 	fx_root.add_child(e)
-	sfx.play_at("shield", pos, -12.0)
+	return e
 
 # ---------------------------------------------------------------- events
 
