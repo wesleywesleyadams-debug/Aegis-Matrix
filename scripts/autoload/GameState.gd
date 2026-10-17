@@ -268,11 +268,21 @@ func _enforce_fullscreen() -> void:
 ## hook, so it survives a force-quit or crash the same as a clean exit --
 ## there's no window where a change is only in memory and not yet safe on
 ## disk.
+## Dev and test runs (screenshots, sims, duels, training) never write the
+## player's settings: they only read them.
+static func _dev_run() -> bool:
+	for k in ["SL_SHOT", "SL_SIM", "SL_DUEL", "SL_TITLE_SHOT", "SL_LOBBY_SHOT", "SL_CODEX_SHOT", "SL_OPTIONS_TAB", "SL_NN_WEIGHTS", "SL_HOVER_TEST", "SL_MIXVARIANTS"]:
+		if OS.get_environment(k) != "":
+			return true
+	return false
+
 func save_settings() -> void:
 	save_global_settings()
 	save_account_settings()
 
 func save_global_settings() -> void:
+	if _dev_run():
+		return
 	var config := ConfigFile.new()
 	config.set_value("accounts", "list", accounts)
 	config.set_value("accounts", "stay_signed_in", stay_signed_in)
@@ -280,6 +290,8 @@ func save_global_settings() -> void:
 	config.save(GLOBAL_SETTINGS_PATH)
 
 func save_account_settings() -> void:
+	if _dev_run():
+		return
 	var config := ConfigFile.new()
 	config.set_value("audio", "master_volume_db", master_volume_db)
 	config.set_value("audio", "music_volume_db", music_volume_db)
