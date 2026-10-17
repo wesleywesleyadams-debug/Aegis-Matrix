@@ -58,7 +58,8 @@ static func short_num(v: float) -> String:
 	if a >= 100000.0:
 		return "%dk" % int(v / 1000.0)
 	if a >= 1000.0:
-		return "%.1fk" % (v / 1000.0)
+		# Rounded down, so it never shows more than there is (7935 -> 7.9k).
+		return "%.1fk" % (floorf(v / 100.0) / 10.0)
 	return "%d" % int(v)
 
 static func team_color(owner_id: int) -> Color:
