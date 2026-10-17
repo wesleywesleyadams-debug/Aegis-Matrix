@@ -55,11 +55,12 @@ const TEAM_COLORS: Array[Color] = [
 ## Compact amounts: 950, 1.2k, 54.3k, 230k.
 static func short_num(v: float) -> String:
 	var a := absf(v)
-	# Rounded to the nearest shown digit: 7935 -> 7.9k, 123500 -> 124k.
+	# Rounded down, so it never shows more than there is: 7935 -> 7.9k,
+	# 123500 -> 123k, 99960 -> 99.9k.
 	if a >= 100000.0:
-		return "%dk" % roundi(v / 1000.0)
+		return "%dk" % int(floorf(v / 1000.0))
 	if a >= 1000.0:
-		return "%.1fk" % (roundf(v / 100.0) / 10.0)
+		return "%.1fk" % (floorf(v / 100.0) / 10.0)
 	return "%d" % int(v)
 
 static func team_color(owner_id: int) -> Color:
