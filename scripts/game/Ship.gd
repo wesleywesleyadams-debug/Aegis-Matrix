@@ -1447,8 +1447,9 @@ func _draw_solar_shield(t: float) -> void:
 ## Electrical arcs between the hull and the bubble while the array works:
 ## white/purple while charging the shield, white/yellow once it is full and
 ## the energy flows to the stockpile. One strike every 1-3 seconds, fading
-## out smoothly over SAIL_ARC_LIFE.
-const SAIL_ARC_LIFE := 0.5
+## out over SAIL_ARC_LIFE like a lightning flash: a sudden bright snap that
+## dies away, along a jagged path with a fork, different every strike.
+const SAIL_ARC_LIFE := 0.3
 var _arc_next := 0.0
 var _arc_at := -10.0
 var _arc_angles: Array = []
@@ -1460,21 +1461,33 @@ func _draw_sail_arcs(r0: float) -> void:
 		_arc_next = t + randf_range(1.0, 3.0)
 		_arc_angles = []
 		for i in randi_range(1, 3):
-			_arc_angles.append(randf() * TAU)
+			var kinks: Array = []
+			for j in 11:
+				kinks.append(randf_range(-0.1, 0.1))
+			_arc_angles.append({"a": randf() * TAU, "kinks": kinks, "fork": randi_range(3, 6), "fork_dir": [-1.0, 1.0].pick_random()})
 	var age := t - _arc_at
 	if age > SAIL_ARC_LIFE:
 		return
-	var fade := 1.0 - age / SAIL_ARC_LIFE
+	var fade := pow(1.0 - age / SAIL_ARC_LIFE, 2.0)
 	var glow: Color = shield_color() if _sail_mode != "full" else Color("ffe066")
 	for i in _arc_angles.size():
-		var a: float = _arc_angles[i]
+		var s: Dictionary = _arc_angles[i]
+		var a: float = s["a"]
 		var pts := PackedVector2Array()
 		var steps := 10
 		for j in steps + 1:
 			var k := float(j) / steps
 			var r := lerpf(10.0, r0, k)
-			var jit := 0.0 if j == 0 or j == steps else 0.08 * sin(j * 1.9 + i * 2.1 + a * 3.0) * sin(j * 0.7 + a)
+			var jit: float = 0.0 if j == 0 or j == steps else s["kinks"][j]
 			pts.append(Vector2.from_angle(a + jit) * r)
 		draw_polyline(pts, Color(glow, 0.45 * fade), 4.0, true)
 		draw_polyline(pts, Color(Color.WHITE, 0.9 * fade), 1.4, true)
 		draw_circle(pts[steps], 2.5, Color(glow, 0.8 * fade))
+		# A short fork splitting off partway out.
+		var fi: int = s["fork"]
+		var fork := PackedVector2Array([pts[fi]])
+		var fa: float = a + s["kinks"][fi] + 0.25 * s["fork_dir"]
+		for j in 3:
+			fork.append(pts[fi] + Vector2.from_angle(fa + s["kinks"][j + 1] * 3.0) * (r0 * 0.09 * (j + 1)))
+		draw_polyline(fork, Color(glow, 0.35 * fade), 3.0, true)
+		draw_polyline(fork, Color(Color.WHITE, 0.7 * fade), 1.0, true)
