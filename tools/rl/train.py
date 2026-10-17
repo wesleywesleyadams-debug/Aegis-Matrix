@@ -24,7 +24,8 @@ skipped. In self-play each game's opponent is a past version of itself from
 a pool (a new one joins every SNAPSHOT updates, the last POOL kept), and
 TEST_SHARE of games are against the full scripted AI as a fixed yardstick.
 The agent moves up a level once it wins PROMOTE of its last 20 games at the
-current one (the level is saved in the checkpoint; --level overrides).
+current one (the stage is saved in the checkpoint; --stage overrides). First come
+three drills - strike, hunt, expand - before real matches (see STAGES).
 
 Usage (from the project root, with the venv's python):
   sd-venv/Scripts/python.exe tools/rl/train.py --envs 4 --updates 1000
@@ -64,6 +65,19 @@ PROMOTE = 0.5
 ## Level 1 is passed only at full toughness.
 DUCK_START = 0.01
 DUCK_GROW = 1.5
+## The curriculum, in order: three drills (short practice scenarios against a
+## sitting duck), then real matches - sitting duck (L1), turtle (L2) and
+## self-play (L5). Each is passed by winning PROMOTE of its last 20 games.
+##   strike: a fleet starts beside the enemy starbase; destroy it.
+##   hunt:   a fleet starts midway across the map; find and destroy it.
+##   expand: economy only; own Game.EXPAND_GOAL worlds to win.
+STAGES = ["strike", "hunt", "expand", "L1", "L2", "L5"]
+DRILL_MINUTES = {"strike": 3.0, "hunt": 6.0, "expand": 8.0}
+## Strike / hunt: the enemy starbase's toughness (an 8-ship fleet sent
+## straight in wins in under a minute at 0.1; at full it can't).
+DRILL_DUCK = 0.1
+## Reward parts, for the per-game breakdown.
+PARTS = ["win", "loss", "trade", "siege", "damage", "bombard", "discover", "big", "curious"]
 ## Self-play: how often (updates) the frozen opponent catches up with the learner.
 SNAPSHOT = 25
 POOL = 8
@@ -77,21 +91,24 @@ RUNS = os.path.join(os.path.dirname(__file__), "runs")
 
 
 def reward_of(prev, cur):
-    r = 0.0
+    """The step's reward, split into PARTS (they sum to the reward)."""
+    p = dict.fromkeys(PARTS, 0.0)
     a, b = prev.get("tally", {}), cur.get("tally", {})
     if a and b:
         d = lambda k: max(0, b.get(k, 0) - a.get(k, 0))
-        r += VALUE_SCALE * (d("kill_value") - d("lost_value"))
-        r += SIEGE * d("starbase_damage") + DAMAGE * d("damage_dealt")
-        r += BOMBARD * d("pop_bombarded") + DISCOVER * d("discovered")
-        r += BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
+        p["trade"] = VALUE_SCALE * (d("kill_value") - d("lost_value"))
+        p["siege"] = SIEGE * d("starbase_damage")
+        p["damage"] = DAMAGE * d("damage_dealt")
+        p["bombard"] = BOMBARD * d("pop_bombarded")
+        p["discover"] = DISCOVER * d("discovered")
+        p["big"] = BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
     if cur.get("done"):
         if cur.get("won"):
             # 1000 for an instant win, 750 at 20 min, 500 at 40, 0 at 80+.
-            r += max(0.0, WIN_REWARD - WIN_DECAY * cur.get("t", 0.0) / 60.0)
+            p["win"] = max(0.0, WIN_REWARD - WIN_DECAY * cur.get("t", 0.0) / 60.0)
         elif cur.get("lost"):
-            r += LOSS
-    return float(r)
+            p["loss"] = LOSS
+    return p
 
 
 def main():
@@ -106,7 +123,7 @@ def main():
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--reset-value", action="store_true", help="re-learn the value head (after a reward change)")
     ap.add_argument("--port", type=int, default=47100)
-    ap.add_argument("--level", type=int, default=0, help="force a curriculum level (1-4)")
+    ap.add_argument("--stage", default="", help="force a curriculum stage (" + ", ".join(STAGES) + ")")
     args = ap.parse_args()
     global LIMIT
     LIMIT = args.minutes * 60.0
@@ -116,12 +133,12 @@ def main():
     opt = torch.optim.Adam(pol.parameters(), lr=args.lr)
     ckpt = os.path.join(RUNS, "ckpt.pt")
     start = 0
-    level = 1
+    si = 0          # index into STAGES
     duck = DUCK_START
     if args.resume and os.path.exists(ckpt):
         st = torch.load(ckpt, map_location=dev)
         pol.load_state_dict(st["model"]); opt.load_state_dict(st["opt"]); start = st["update"]
-        level = st.get("level", 1)
+        si = st.get("stage", 0)
         duck = st.get("duck", DUCK_START)
         print("resumed at update", start)
         if args.reset_value:
@@ -133,8 +150,9 @@ def main():
     log = open(os.path.join(RUNS, "log.csv"), "a", newline="")
     lw = csv.writer(log)
 
-    if args.level:
-        level = args.level
+    if args.stage:
+        si = STAGES.index(args.stage)
+    stage = lambda: STAGES[si]
     # Self-play: a pool of past versions; each game gets its own frozen copy
     # (one per env, so the env threads never share one).
     pool_sd = [copy.deepcopy(pol.state_dict())]
@@ -146,18 +164,24 @@ def main():
                 acts, _, _, _ = net(collate([o], dev))
             return {"orders": [[int(a) for a in x] for x in acts[0].cpu().numpy() if x[0] >= 0]}
         return opponent
-    print("curriculum level", level)
+    print("curriculum stage", stage())
     envs = [StarEnv(args.port + i, system=random.choice(SYSTEMS), minutes=args.minutes, speed=args.speed,
-                    side=random.choice([1, 2]), log=os.path.join(RUNS, f"env{i}.log"), level=level) for i in range(args.envs)]
+                    side=random.choice([1, 2]), log=os.path.join(RUNS, f"env{i}.log")) for i in range(args.envs)]
+    games = open(os.path.join(RUNS, "games.csv"), "a", newline="")
+    gw = csv.writer(games)
     pool = ThreadPoolExecutor(args.envs)
 
     def fresh(e):
-        nonlocal duck
-        e.level = level
-        e.duck = duck
-        if level >= 5:
+        s = stage()
+        e.stage = s
+        e.drill = s if s in DRILL_MINUTES else ""
+        e.minutes = DRILL_MINUTES.get(s, args.minutes)
+        e.level = {"L2": 2, "L5": 5}.get(s, 1)
+        e.duck = duck if s == "L1" else (DRILL_DUCK if s in ["strike", "hunt"] else 1.0)
+        if s == "L5":
             if random.random() < TEST_SHARE:
                 e.level = 4   # yardstick game against the full scripted AI
+                e.stage = "L4"
             else:
                 k = envs.index(e)
                 frozens[k].load_state_dict(random.choice(pool_sd))
@@ -168,6 +192,7 @@ def main():
 
     obs = list(pool.map(fresh, envs))
     ep_ret = [0.0] * args.envs
+    ep_parts = [dict.fromkeys(PARTS, 0.0) for _ in range(args.envs)]
     tried = [set() for _ in range(args.envs)]   # action kinds used this match
     results = []
     gamma, lam, clip = 0.995, 0.95, 0.2
@@ -182,13 +207,16 @@ def main():
             nxt = list(pool.map(lambda iv: envs[iv[0]].step(iv[1]), enumerate(orders)))
             rews, dones = [], []
             for i in range(args.envs):
-                r = reward_of(obs[i], nxt[i])
+                parts = reward_of(obs[i], nxt[i])
                 for o in orders[i]["orders"]:
                     kind = (o[1], o[2])   # verb, object (-1 = none)
                     if kind not in tried[i]:
                         tried[i].add(kind)
                         if len(tried[i]) * NEW_ACTION <= NEW_CAP:
-                            r += NEW_ACTION
+                            parts["curious"] += NEW_ACTION
+                for k, v in parts.items():
+                    ep_parts[i][k] += v
+                r = float(sum(parts.values()))
                 ep_ret[i] += r
                 rews.append(r)
                 dones.append(bool(nxt[i].get("done")))
@@ -196,16 +224,22 @@ def main():
             buf["val"].append(val.cpu()); buf["rew"].append(torch.tensor(rews)); buf["done"].append(torch.tensor(dones, dtype=torch.float32))
             for i in range(args.envs):
                 if dones[i]:
-                    results.append((nxt[i].get("won"), nxt[i].get("lost"), ep_ret[i], envs[i].system, envs[i].level))
-                    if envs[i].level == 1 and nxt[i].get("won") and envs[i].duck >= duck and duck < 1.0:
+                    won = bool(nxt[i].get("won"))
+                    results.append((won, nxt[i].get("lost"), ep_ret[i], envs[i].system, envs[i].stage, dict(ep_parts[i])))
+                    gw.writerow([upd + 1, envs[i].stage, int(won), round(nxt[i].get("t", 0.0) / 60.0, 2), round(ep_ret[i], 1)]
+                                + [round(ep_parts[i][k], 1) for k in PARTS])
+                    games.flush()
+                    if envs[i].stage == "L1" and won and envs[i].duck >= duck and duck < 1.0:
                         duck = min(1.0, duck * DUCK_GROW)
                         print(f"DUCK toughness now {duck:.3f}", flush=True)
-                    # Promotion: wins PROMOTE of its last 20 games at this level.
-                    here = [r for r in results if r[4] == level][-20:]
-                    if level < 5 and (level > 1 or duck >= 1.0) and len(here) >= 20 and sum(1 for r in here if r[0]) >= PROMOTE * 20:
-                        level = 5 if level >= 2 else level + 1
-                        print(f"PROMOTED to curriculum level {level}", flush=True)
+                    # Promotion: wins PROMOTE of its last 20 games at this stage.
+                    here = [r for r in results if r[4] == stage()][-20:]
+                    if si < len(STAGES) - 1 and (stage() != "L1" or duck >= 1.0) and len(here) >= 20 \
+                            and sum(1 for r in here if r[0]) >= PROMOTE * 20:
+                        si += 1
+                        print(f"PROMOTED to curriculum stage {stage()}", flush=True)
                     ep_ret[i] = 0.0
+                    ep_parts[i] = dict.fromkeys(PARTS, 0.0)
                     tried[i] = set()
             # Finished games restart (in parallel) before the next step.
             redo = [i for i in range(args.envs) if dones[i]]
@@ -250,18 +284,20 @@ def main():
                 opt.step()
                 stats.append((pl.item(), vl.item(), ent.mean().item()))
         pl, vl, en = np.mean(stats, 0)
-        recent = [r for r in results if r[4] == level][-20:]
-        tests = [r for r in results if r[4] == 4][-20:]
+        recent = [r for r in results if r[4] == stage()][-20:]
+        tests = [r for r in results if r[4] == "L4"][-20:]
         vs_ai = sum(1 for r in tests if r[0]) / max(len(tests), 1)
         win = sum(1 for r in recent if r[0]) / max(len(recent), 1)
         mean_ret = np.mean([r[2] for r in recent]) if recent else 0.0
-        print(f"upd {upd + 1}  L{level}  duck {duck:.3f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  ret {mean_ret:+.1f}  "
+        print(f"upd {upd + 1}  {stage()}  duck {duck:.3f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  ret {mean_ret:+.1f}  "
               f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f}  {time.time() - t0:.0f}s", flush=True)
-        lw.writerow([upd + 1, level, len(results), win, mean_ret, pl, vl, en]); log.flush()
-        if (upd + 1) % SNAPSHOT == 0 and level >= 5:
+        if recent and (upd + 1) % 10 == 0:
+            print("  parts/game " + "  ".join(f"{k} {np.mean([r[5][k] for r in recent]):+.1f}" for k in PARTS), flush=True)
+        lw.writerow([upd + 1, stage(), len(results), win, mean_ret, pl, vl, en]); log.flush()
+        if (upd + 1) % SNAPSHOT == 0 and stage() == "L5":
             pool_sd.append(copy.deepcopy(pol.state_dict()))
             del pool_sd[:-POOL]
-        torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1, "level": level, "duck": duck}, ckpt)
+        torch.save({"model": pol.state_dict(), "opt": opt.state_dict(), "update": upd + 1, "stage": si, "duck": duck}, ckpt)
     for e in envs:
         e.close()
 

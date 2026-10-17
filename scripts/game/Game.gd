@@ -53,6 +53,10 @@ var teams := {}
 ## (the other side is a frozen copy of the learning agent, see AIController).
 var opp_level: int = clampi(int(OS.get_environment("SL_OPP_LEVEL")) if OS.get_environment("SL_OPP_LEVEL") != "" else 4, 1, 5)
 var duck_frac: float = clampf(float(OS.get_environment("SL_DUCK_FRAC")) if OS.get_environment("SL_DUCK_FRAC") != "" else 1.0, 0.001, 1.0)
+var drill: String = OS.get_environment("SL_DRILL")
+## The expand drill is won by owning this many more worlds than at the start.
+const EXPAND_GOAL := 2
+var _drill_goal := 1 << 30
 var rl_side: int = maxi(1, int(OS.get_environment("SL_RL_SIDE"))) if OS.get_environment("SL_RL_PORT") != "" else 0
 var resources := {}
 ## Net change per second over the last second, per player per resource.
@@ -243,6 +247,18 @@ func _ready() -> void:
 		if rl_side > 0 and opp_level == 1:
 			order = order.filter(func(p): return p == rl_side)
 		ai.setup(order)
+		# Training drills (SL_DRILL): short practice scenarios for the learning
+		# agent against a sitting duck. strike / hunt give it a fleet beside /
+		# midway to the enemy starbase; expand is won by owning worlds.
+		if rl_side > 0 and drill in ["strike", "hunt"]:
+			get_tree().create_timer(0.5).timeout.connect(_drill_fleet)
+		if rl_side > 0 and drill == "expand":
+			get_tree().create_timer(0.5).timeout.connect(func():
+				_drill_goal = _drill_worlds() + EXPAND_GOAL
+				# Dev check (SL_DRILLTEST): hand it the worlds, to see the win fire.
+				if OS.get_environment("SL_DRILLTEST") != "":
+					for pl in get_tree().get_nodes_in_group("planets").filter(func(q): return q.owner_id == 0 and q.is_habitable()).slice(0, EXPAND_GOAL):
+						pl.colonize(rl_side))
 		# Dev check: the RL side's starbase shoots the enemy one; print the tally.
 		if OS.get_environment("SL_SIEGETEST") != "":
 			get_tree().create_timer(2.0).timeout.connect(func():
@@ -1150,6 +1166,10 @@ func _report_music_mood() -> void:
 
 func _check_defeat() -> void:
 	if is_over:
+		return
+	if drill == "expand" and rl_side > 0 and _drill_worlds() >= _drill_goal:
+		winner_pid = rl_side
+		_end_match(rl_side == player_id)
 		return
 	# Each player that falls is announced once, and everything they had left
 	# goes to whoever beat them.
@@ -3201,3 +3221,30 @@ func _duel() -> void:
 			print(line)
 			get_tree().quit()
 			return
+
+
+## Drill fleet for the learning agent: beside the enemy starbase (strike) or
+## halfway to it, off to one side (hunt).
+func _drill_fleet() -> void:
+	var mine: Starbase = null
+	var foe: Starbase = null
+	for sb in get_tree().get_nodes_in_group("starbases"):
+		if sb.owner_id == rl_side:
+			mine = sb
+		elif foe == null and is_hostile(rl_side, sb.owner_id):
+			foe = sb
+	if mine == null or foe == null:
+		return
+	var a: Vector2 = mine.global_position
+	var b: Vector2 = foe.global_position
+	var dir := (b - a).normalized()
+	var at: Vector2 = b - dir * 320.0 if drill == "strike" else (a + b) * 0.5 + dir.orthogonal() * randf_range(-500.0, 500.0)
+	var kinds := ["destroyer", "destroyer", "corvette", "corvette", "corvette", "corvette", "corvette", "corvette"]
+	for i in kinds.size():
+		var s9 := spawn_ship(kinds[i], rl_side, at + Vector2(i % 4 * 18 - 27, i / 4 * 20 - 10).rotated(dir.angle()))
+		# Dev check (SL_DRILLTEST): send it in, to time a clean run.
+		if OS.get_environment("SL_DRILLTEST") != "":
+			s9.order_attack_move(b)
+
+func _drill_worlds() -> int:
+	return get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == rl_side).size()
