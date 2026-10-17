@@ -28,8 +28,12 @@ func show_system(id: String) -> void:
 		_layout = {}
 		facts = "A different system every match."
 	else:
-		# Dev: SL_LAYOUT_PLAYERS=n previews the n-player layout.
-		var n_pl := maxi(2, int(OS.get_environment("SL_LAYOUT_PLAYERS")))
+		# Laid out for the players filled in the lobby (SL_LAYOUT_PLAYERS=n
+		# overrides, for dev shots).
+		var n_pl := GameState.player_slots.filter(func(s): return not s["slot_type"] in ["open", "closed"]).size()
+		if OS.get_environment("SL_LAYOUT_PLAYERS") != "":
+			n_pl = int(OS.get_environment("SL_LAYOUT_PLAYERS"))
+		n_pl = clampi(n_pl, 2, 8)
 		_layout = _orion_layout() if id == "orion_reach" and n_pl == 2 else SystemGen.generate(int(sys.get("seed", 0)), _settings, n_pl)
 		var worlds := 0
 		for p in _layout["planets"]:
@@ -78,10 +82,14 @@ static func _orion_layout() -> Dictionary:
 func _draw() -> void:
 	var bg: Dictionary = SystemGen.BACKGROUNDS.get(_settings.get("bg", "violet"), SystemGen.BACKGROUNDS["violet"])
 	var base: Color = bg["base"]
-	draw_rect(Rect2(Vector2.ZERO, size), base.lightened(0.04))
+	# The system is a disc (Game.MAP_RADIUS): dark box, the system's sky
+	# inside its edge.
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.025, 0.05))
 	draw_rect(Rect2(Vector2.ZERO, size), Color("2e3a66"), false, 1.0)
 	var sc := minf(size.x / MAP_SIZE.x, size.y / MAP_SIZE.y)
 	var center := size / 2.0
+	draw_circle(center, Game.MAP_RADIUS * sc, base.lightened(0.04))
+	draw_arc(center, Game.MAP_RADIUS * sc, 0, TAU, 96, Color(0.55, 0.65, 0.95, 0.55), 1.0)
 	if _random:
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(0, center.y + 10), "?", HORIZONTAL_ALIGNMENT_CENTER, size.x, 36, Color(0.7, 0.75, 0.9, 0.8))

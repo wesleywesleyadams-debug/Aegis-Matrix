@@ -246,9 +246,17 @@ func _team_index(team: int) -> int:
 			return i
 	return TEAM_OPTIONS.size() - 1
 
+## The system map and its facts line (see the System panel).
+var _preview: SystemPreview
+var _facts: Label
+
 func _on_slot_selected(index: int, slot_index: int) -> void:
 	var slot_type: String = ["human", "ai", "neural", "open"][index]
 	GameState.player_slots[slot_index]["slot_type"] = slot_type
+	# The map is laid out for however many players are filled in.
+	if _preview:
+		_preview.show_system(GameState.system_id)
+		_facts.text = _preview.facts
 	_sync_human_player_id()
 	_update_row_visuals(slot_index)
 	GameState.save_settings()
@@ -397,10 +405,12 @@ func _setup_system_picker() -> void:
 	row.get_parent().move_child(desc, row.get_index() + 1)
 	# Map preview and a facts line (star type, worlds, asteroids).
 	var preview := SystemPreview.new()
+	_preview = preview
 	preview.custom_minimum_size = Vector2(0, 262)
 	row.get_parent().add_child(preview)
 	row.get_parent().move_child(preview, desc.get_index() + 1)
 	var facts := Label.new()
+	_facts = facts
 	facts.add_theme_font_size_override("font_size", 15)
 	facts.add_theme_color_override("font_color", Color(0.85, 0.88, 1.0))
 	facts.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
