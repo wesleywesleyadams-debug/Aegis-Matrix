@@ -1412,8 +1412,7 @@ func _draw_solar_shield(t: float) -> void:
 	var alpha := 0.35 + 0.45 * f
 	var width := 2.0
 	if f < SAIL_LOW:
-		# Failing: flicker and thin.
-		alpha *= 0.35 + 0.65 * absf(sin(t * 23.0) * sin(t * 7.3))
+		# Running low: the edge thins (no flicker).
 		width = 1.2
 	# Shimmering edge: a soft wobble around the circle.
 	var pts := PackedVector2Array()
