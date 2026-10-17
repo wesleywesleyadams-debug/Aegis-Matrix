@@ -178,7 +178,11 @@ var ui_font: String = "console"
 var master_volume_db: float = 0.0
 var music_volume_db: float = -8.0
 ## In-game music playlist: track ids (see Music.available_tracks()).
-var music_playlist: Array = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "galactic_temple", "sector", "airy", "pulse", "determined_pursuit", "spacedman", "space_graveyard", "deep_space_array", "surreal_truth", "infestation", "captains_log", "depths_of_hell", "cage_of_the_cryptid", "unexpected_trouble", "sentry", "title", "lobby"]
+var music_playlist: Array = default_playlist()
+
+## Every built-in song, enabled (the default playlist).
+static func default_playlist() -> Array:
+	return preload("res://scripts/autoload/Music.gd").BUILTIN_TRACKS.map(func(t): return t[0])
 ## Shuffle: play the in-game songs in random order instead of list order.
 var music_shuffle: bool = false
 ## Adaptive music: in a match, songs follow what is happening (Music.MOODS).
@@ -379,7 +383,7 @@ func _reset_account_settings_to_defaults() -> void:
 	music_volume_db = -8.0
 	audio_enabled = true
 	music_enabled = true
-	music_playlist = ["through_space", "spacelife", "magic_space", "deus_ex_tempus", "hero_immortal", "galactic_temple", "sector", "airy", "pulse", "determined_pursuit", "spacedman", "space_graveyard", "deep_space_array", "surreal_truth", "infestation", "captains_log", "depths_of_hell", "cage_of_the_cryptid", "unexpected_trouble", "sentry", "title", "lobby"]
+	music_playlist = default_playlist()
 	music_shuffle = false
 	adaptive_music = true
 	hotkeys = {}
