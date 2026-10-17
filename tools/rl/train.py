@@ -3,9 +3,9 @@
 Runs N headless games at once (each a Godot process the agent plays one side
 of, against the scripted AI), batches their observations through the policy
 on the GPU, and learns from the outcome:
-  reward = winning (+WIN_REWARD) above all; a faint hint each step from the
-           change in (own score - best enemy score) / 1000,
-           +WIN_REWARD (100) for a win, -5 for a loss.
+  reward = ONLY for winning, and more the sooner it comes: WIN_REWARD x
+           (2 - time / time limit) - 200 for an instant win, 100 for a win
+           at the buzzer. Nothing for anything else, losing included.
 
 Usage (from the project root, with the venv's python):
   sd-venv/Scripts/python.exe tools/rl/train.py --envs 4 --updates 1000
@@ -22,19 +22,17 @@ from env import StarEnv
 from model import Policy, collate, SLOTS
 
 SYSTEMS = ["orion_reach", "vega_drift", "kharon_expanse", "tethys_cluster", "sable_verge", "random"]
-## Winning is what matters: a big reward next to the small per-step score
-## signal (and -5 for a loss).
+## The only reward: winning, scaled up the faster it happens.
 WIN_REWARD = 100.0
+## The game's time limit in seconds (set from --minutes).
+LIMIT = 2400.0
 RUNS = os.path.join(os.path.dirname(__file__), "runs")
 
 
 def reward_of(prev, cur):
-    # Score shaping is only a faint hint (a whole game sums to a few points);
-    # winning (WIN_REWARD) is the goal.
-    r = ((cur["score"] - cur["enemy_score"]) - (prev["score"] - prev["enemy_score"])) / 1000.0
-    if cur.get("done"):
-        r += WIN_REWARD if cur.get("won") else (-5.0 if cur.get("lost") else 0.0)
-    return float(r)
+    if cur.get("done") and cur.get("won"):
+        return float(WIN_REWARD * (2.0 - min(cur.get("t", LIMIT) / LIMIT, 1.0)))
+    return 0.0
 
 
 def main():
@@ -48,6 +46,8 @@ def main():
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--port", type=int, default=47100)
     args = ap.parse_args()
+    global LIMIT
+    LIMIT = args.minutes * 60.0
     os.makedirs(RUNS, exist_ok=True)
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pol = Policy().to(dev)
