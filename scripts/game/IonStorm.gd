@@ -118,6 +118,24 @@ func setup() -> void:
 	_noise.fractal_octaves = 6
 	_noise.fractal_gain = 0.6
 
+## Starts the storm as far from every starting base as its path allows (it
+## then roams freely): tries points along its loop and keeps the one whose
+## nearest base is furthest away.
+func start_clear_of(bases: Array) -> void:
+	var base_phase := phase
+	var best := phase
+	var best_d := -1.0
+	for i in 96:
+		phase = base_phase + TAU * i / 96.0
+		var c := center_at(0.0)
+		var near := INF
+		for b in bases:
+			near = minf(near, c.distance_to(b))
+		if near > best_d:
+			best_d = near
+			best = phase
+	phase = best
+
 ## Where the storm's centre is at match time t.
 func center_at(t: float) -> Vector2:
 	var u := phase + t * DRIFT_SPEED

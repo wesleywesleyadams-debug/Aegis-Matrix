@@ -91,6 +91,7 @@ func _draw() -> void:
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(0, center.y + 10), "?", HORIZONTAL_ALIGNMENT_CENTER, size.x, 36, Color(0.7, 0.75, 0.9, 0.8))
 		return
+	var _storm_starts: Array = []
 	for ft in _layout.get("features", []):
 		if ft["type"] == "storms":
 			# Each drifting storm where it starts the match.
@@ -99,6 +100,8 @@ func _draw() -> void:
 			st.radius = float(ft.get("radius", 280.0))
 			st.phase = float(ft.get("phase", 0.0))
 			st.setup()
+			st.start_clear_of(_layout.get("starbases", []).map(func(s): return s["pos"]) + _storm_starts)
+			_storm_starts.append(st.center_at(0.0))
 			st.draw_on_map(self, func(p): return center + p * sc, sc, 0.0)
 			st.free()
 	for ft in _layout.get("features", []):

@@ -357,12 +357,17 @@ func _build_system() -> void:
 	for s in layout["ships"]:
 		var ship := spawn_ship(s["type"], s["owner"], s["pos"])
 		ship.rotation = s["rot"]
+	var storm_starts: Array = []
 	for ft in layout.get("features", []):
 		if ft["type"] == "storms":
 			var storm := IonStorm.new()
 			storm.seed_value = int(ft.get("seed", 1))
 			storm.radius = float(ft.get("radius", 280.0))
 			storm.phase = ft["phase"]
+			storm.setup()
+			# Far from every starting base and from the storms already placed.
+			storm.start_clear_of(layout["starbases"].map(func(s): return s["pos"]) + storm_starts)
+			storm_starts.append(storm.center_at(0.0))
 			world.add_child(storm)
 		if ft["type"] == "rings":
 			var ring := DebrisRing.new()
