@@ -181,6 +181,8 @@ func colonize(pid: int) -> void:
 	if not is_habitable():
 		return
 	var old := owner_id
+	if old != 0 and old != pid:
+		Game.instance.note_attack(old, pid)   # taken from them
 	owner_id = pid
 	construction = {}
 	construction_queue.clear()
@@ -300,6 +302,8 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	if owner_id == 0:
 		return
 	var g := Game.instance
+	if is_instance_valid(from) and from.get("owner_id") != null:
+		g.note_attack(owner_id, int(from.get("owner_id")))
 	# A Radiation Sail Array's bubble soaks fire on worlds inside it too.
 	amount = Abilities.sail_absorb(self, amount, from)
 	if amount <= 0.0:

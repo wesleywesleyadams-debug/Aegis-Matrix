@@ -54,6 +54,8 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 	if _dead:
 		return
 	_last_hit_time = Game.now()
+	if Game.instance and is_instance_valid(_from):
+		Game.instance.note_attack(owner_id, _from.owner_id)
 	# Screens (Defense) soak a slice of everything before the layers see it.
 	# Each screen tech cuts its own share off (all three: -52%).
 	if Game.instance:

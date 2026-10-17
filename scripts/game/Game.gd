@@ -1088,6 +1088,19 @@ func _report_music_mood() -> void:
 func _check_defeat() -> void:
 	if is_over:
 		return
+	# Each player that falls is announced once, and everything they had left
+	# goes to whoever beat them.
+	for p in players:
+		if p != player_id or sim_mode:
+			if is_defeated(p) and not _eliminated.has(p):
+				_eliminated[p] = true
+				var heir := _heir_of(p)
+				if players.size() > 2 and not sim_mode:
+					notify("%s has been eliminated%s." % [player_name(p), "" if heir == 0 else " by %s" % player_name(heir).to_lower() if heir == player_id else " by %s" % player_name(heir)])
+				if heir != 0:
+					_hand_over(p, heir)
+				if sim_mode:
+					print("ELIMINATED P%d at %.1f min, everything to P%d" % [p, now() / 60.0, heir])
 	# Sims (every side AI): play on until one side - a player or a team - is
 	# all that is left.
 	if sim_mode:
@@ -1099,23 +1112,53 @@ func _check_defeat() -> void:
 	if is_defeated(player_id):
 		_end_match(false)
 		return
-	# Each opponent that falls is announced once; the match is won when no
-	# enemy of yours is left standing.
+	# The match is won when no enemy of yours is left standing.
 	var enemies_left := false
 	for p in players:
-		if p == player_id:
-			continue
-		if is_defeated(p):
-			if not _eliminated.has(p):
-				_eliminated[p] = true
-				if players.size() > 2:
-					notify("%s has been eliminated." % player_name(p))
-		elif not are_allies(p, player_id):
+		if p != player_id and not is_defeated(p) and not are_allies(p, player_id):
 			enemies_left = true
 	if not enemies_left:
 		_end_match(true)
 
 var _eliminated := {}
+## Who last hurt or took something from each player (victim -> attacker).
+var last_attacker := {}
+
+func note_attack(victim: int, attacker: int) -> void:
+	if victim != 0 and is_hostile(victim, attacker):
+		last_attacker[victim] = attacker
+
+## Who inherits a fallen player: whoever last hit them, if still standing;
+## otherwise the strongest enemy of theirs still in the match. 0 if none.
+func _heir_of(loser: int) -> int:
+	var h: int = last_attacker.get(loser, 0)
+	if h != 0 and not is_defeated(h):
+		return h
+	var best := 0
+	for p in living_players():
+		if is_hostile(loser, p) and (best == 0 or stats.score(p) > stats.score(best)):
+			best = p
+	return best
+
+## Everything `from` still owns - ships, starbases, stations, depots,
+## beacons and worlds - changes hands to `to`, ready to use.
+func _hand_over(from: int, to: int) -> void:
+	var tree := get_tree()
+	for e in tree.get_nodes_in_group("entities") + tree.get_nodes_in_group("planets") + tree.get_nodes_in_group("beacons"):
+		if e.owner_id != from:
+			continue
+		e.owner_id = to
+		# Team-coloured trim, wherever each kind keeps it.
+		for prop in ["team", "team_sprite", "_team"]:
+			var trim = e.get(prop)
+			if trim is CanvasItem:
+				trim.modulate = Defs.team_color(to)
+		if e is Ship:
+			e.order_stop()
+		if e.has_method("refresh_stats"):
+			e.refresh_stats()
+		e.queue_redraw()
+	selection_changed.emit()
 ## Who won (the first survivor of the winning side; 0 while undecided).
 var winner_pid := 0
 
