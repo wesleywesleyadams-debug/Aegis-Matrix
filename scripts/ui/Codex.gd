@@ -741,7 +741,7 @@ func _page_terms() -> void:
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
 		["Radiation", "Damage from the environment: inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and holds off shield regeneration."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
-		["Job", "What a ship is for beyond shooting: Deep Sensors, Heat Screen, Field Repair, Hangar Bays."],
+		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair, Hangar Bays."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
 		["Upkeep", "Energy per minute for ships and starbases, rising as your fleet grows."],
