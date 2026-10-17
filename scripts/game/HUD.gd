@@ -243,7 +243,9 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.focus_mode = Control.FOCUS_NONE
 	# The active tech's picture rides beside its name and progress.
 	_research_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_research_button.add_theme_constant_override("icon_max_width", 40)
+	# Small enough to fit inside TOP_H with the button's padding, so the
+	# button never grows while something is researching.
+	_research_button.add_theme_constant_override("icon_max_width", 28)
 	_research_button.add_theme_constant_override("h_separation", 6)
 	_research_button.anchor_left = 1.0
 	_research_button.anchor_right = 1.0
@@ -473,9 +475,12 @@ func _build_messages(root: Control) -> void:
 	_messages = VBoxContainer.new()
 	_messages.anchor_left = 0.5
 	_messages.anchor_right = 0.5
+	# Centred on the screen: a line wider than the box grows it equally both
+	# ways (not just to the right), and it sits clear of the top bar.
 	_messages.offset_left = -420
 	_messages.offset_right = 420
-	_messages.offset_top = 70
+	_messages.offset_top = 112
+	_messages.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_messages.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_messages)
 

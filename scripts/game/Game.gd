@@ -2510,6 +2510,19 @@ func _enter_dev_capture() -> void:
 		center_on(gas_p.global_position)
 	if OS.get_environment("SL_SHOT_OPEN") == "research":
 		queue_research(player_id, "ion_cannons")
+		# SL_RESBTN_LOG: print the button's rect idle vs researching (size check).
+		if OS.get_environment("SL_RESBTN_LOG") != "":
+			print("RESBTN researching rect ", hud._research_button.get_global_rect())
+			await get_tree().create_timer(0.5).timeout
+			print("RESBTN researching rect ", hud._research_button.get_global_rect(), " min ", hud._research_button.get_combined_minimum_size())
+			research[player_id] = {}
+			research_queue[player_id] = []
+			await get_tree().create_timer(0.5).timeout
+			print("RESBTN idle rect ", hud._research_button.get_global_rect(), " min ", hud._research_button.get_combined_minimum_size())
+			queue_research(player_id, "orbital_elevators")
+			research[player_id] = {"id": "orbital_elevators", "progress": 1.0, "stalled": false}
+			await get_tree().create_timer(0.5).timeout
+			print("RESBTN long-name rect ", hud._research_button.get_global_rect(), " min ", hud._research_button.get_combined_minimum_size())
 		queue_research(player_id, "particle_lances")
 	if OS.get_environment("SL_SHOT_OPEN") == "sbdps":
 		# Dev: park enemy corvettes inside starbase range and report how much
