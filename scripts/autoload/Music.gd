@@ -422,7 +422,6 @@ func _next_index() -> int:
 # the Dark Sci-Fi Audio Pack, see CREDITS.md). They are never offered as
 # soundtrack songs: each plays for one purpose -
 #   title        the main screen's menu loop (play_screen)
-#   hover        button hover (every Button, see _on_node_added)
 #   victory      the win sound (Sfx plays it)
 #   transmission the end-of-match theme (play_cue, looping)
 #   urgent       high-stakes music while our worlds or starbases are under
@@ -432,7 +431,11 @@ func _next_index() -> int:
 const CUE_DIR := "res://assets/audio/cues/cue_%s.ogg"
 ## Loudness trims (dB) so the cues sit with the soundtrack.
 const CUE_TRIM := {"title": -2.0, "transmission": -9.0, "urgent": -2.4}
-const HOVER_DB := -16.0
+## Button hover: a short, quiet flick (synthesised: filtered noise + a tiny
+## falling chirp, 22 ms).
+const HOVER_SOUND := "res://assets/audio/sfx_hover_flick.wav"
+const HOVER_DB := -10.0
+var _hover_stream: AudioStream
 const HOVER_GAP_MS := 60
 ## Seconds of calm after the last attack before urgent music hands back.
 const URGENT_HOLD := 25.0
@@ -477,6 +480,7 @@ func play_cue_sfx(name: String, volume_db: float = 0.0) -> void:
 	_set_loop(s, false)
 	_cue_ui.stream = s
 	_cue_ui.volume_db = volume_db
+	_cue_ui.pitch_scale = 1.0
 	_cue_ui.play()
 
 func _on_node_added(n: Node) -> void:
@@ -490,4 +494,9 @@ func _on_button_hover(b: BaseButton) -> void:
 	if now - _last_hover_ms < HOVER_GAP_MS:
 		return
 	_last_hover_ms = now
-	play_cue_sfx("hover", HOVER_DB)
+	if _hover_stream == null:
+		_hover_stream = load(HOVER_SOUND)
+	_cue_ui.stream = _hover_stream
+	_cue_ui.volume_db = HOVER_DB
+	_cue_ui.pitch_scale = randf_range(0.94, 1.06)
+	_cue_ui.play()
