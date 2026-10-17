@@ -1307,7 +1307,7 @@ func in_solar_field() -> bool:
 	return false
 
 ## Radiation Sail Array: harvests def.solar_sail energy a minute while in a
-## field. Each point first recharges the solar shield (1 energy = 10 shield),
+## field. Each point first recharges the solar shield (1 energy = 10% of its maximum),
 ## with no pause after taking fire - it charges whenever energy comes in;
 ## once the shield is full the rest goes to the owner's energy pool.
 func _solar_tick(delta: float) -> void:
@@ -1322,11 +1322,13 @@ func _solar_tick(delta: float) -> void:
 		_motes.append({"a": randf() * TAU, "d": 1.0, "life": 0.0, "out": was_full})
 	var g := Game.instance
 	var gain: float = float(def["solar_sail"]) / 60.0 * delta * g.mod(owner_id, "energy")
-	# Each point of energy charges Defs.SAIL_SHIELD_PER_ENERGY shield.
-	var into_shield := minf(gain, maxf(max_shield - shield, 0.0) / Defs.SAIL_SHIELD_PER_ENERGY)
+	# Each point of energy charges Defs.SAIL_SHIELD_FRAC_PER_ENERGY of the
+	# maximum (10%), so shield techs don't slow the refill.
+	var per_energy := maxf(max_shield * Defs.SAIL_SHIELD_FRAC_PER_ENERGY, 0.001)
+	var into_shield := minf(gain, maxf(max_shield - shield, 0.0) / per_energy)
 	if into_shield > 0.0:
 		_sail_mode = "charge"
-		shield = minf(max_shield, shield + into_shield * Defs.SAIL_SHIELD_PER_ENERGY)
+		shield = minf(max_shield, shield + into_shield * per_energy)
 		queue_redraw()
 	if _sail_mode == "" and gain > 0.0:
 		_sail_mode = "full"
