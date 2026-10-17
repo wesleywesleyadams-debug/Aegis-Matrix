@@ -135,7 +135,7 @@ const BASE_SHIPS := {
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0, "sensor": 600.0, "job": "beacon",
 	},
 	"heatshield": {
-		"name": "Radiation Sail Array", "role": "support",
+		"name": "Radiation Sail Array", "short": "Rad Sail Array", "role": "support",
 		# Solar sail: no ordinary shield. Inside a star's radiation or a spice
 		# nebula it harvests "solar_sail" energy a minute, charging a solar
 		# shield (base "shield", starts empty) first and sending the rest to the

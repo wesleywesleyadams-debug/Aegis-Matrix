@@ -1019,7 +1019,7 @@ func _build_starbase_controls(sb: Starbase) -> void:
 		var v := VBoxContainer.new()
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.alignment = BoxContainer.ALIGNMENT_CENTER
-		v.add_child(_label(game.ship_name(game.player_id, t), Defs.VARIANTS[d["variant"]]["color"] if d.has("variant") else TEXT, 13))
+		v.add_child(_label(d.get("short", game.ship_name(game.player_id, t)), Defs.VARIANTS[d["variant"]]["color"] if d.has("variant") else TEXT, 13))
 		v.add_child(CostRow.make(d["cost"], 12, -1.0, 1))
 		h.add_child(v)
 		b.add_child(h)
