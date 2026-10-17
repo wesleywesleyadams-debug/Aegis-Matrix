@@ -28,3 +28,7 @@ The title and lobby music and all sound effects are generated procedurally by
 - "Game Over" and "Game Over II" by Kistol - https://opengameart.org/content/game-over , https://opengameart.org/content/game-over-ii - CC0 - cues/cue_defeat_song_2.ogg, cues/cue_defeat_song_3.ogg
 - "Something sad" by gearfox98 - https://opengameart.org/content/something-sad - CC0 - cues/cue_defeat_song_4.ogg
 (All files above were converted to OGG and loudness-normalised.)
+
+## Font
+
+- **JetBrains Mono** - Copyright 2020 The JetBrains Mono Project Authors. SIL Open Font License 1.1 (see assets/fonts/JetBrainsMono-OFL.txt).
