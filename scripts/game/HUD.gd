@@ -177,11 +177,13 @@ const HUD_GAP := 20
 const HUD_SIDE := 12
 const MENU_W := 170
 const SPEED_W := 368
-const RESEARCH_W := 200
+## The research button also takes the space the match clock used to have;
+## the clock now sits under the resource bar (CLOCK_W x CLOCK_H).
+const RESEARCH_W := 306
 const CLOCK_W := 86
+const CLOCK_H := 30
 const SPEED_RIGHT := -HUD_SIDE - MENU_W - HUD_GAP
-const CLOCK_RIGHT := SPEED_RIGHT - SPEED_W - HUD_GAP
-const RESEARCH_RIGHT := CLOCK_RIGHT - CLOCK_W - HUD_GAP
+const RESEARCH_RIGHT := SPEED_RIGHT - SPEED_W - HUD_GAP
 const TOP_BAR_RIGHT := RESEARCH_RIGHT - RESEARCH_W - HUD_GAP
 
 func _build_top_bar(root: Control) -> void:
@@ -231,8 +233,8 @@ func _build_top_bar(root: Control) -> void:
 ## Research button and match clock, in their own panel between the resource
 ## bar and the speed controls.
 func _build_research_panel(root: Control) -> void:
-	# The research button stands on its own, like the Menu button; the match
-	# clock gets its own small panel beside it.
+	# The research button stands on its own, like the Menu button, at one
+	# fixed size whether or not anything is being researched.
 	_research_button = Button.new()
 	_research_button.text = "Research [R]"
 	_research_button.clip_text = true
@@ -262,14 +264,14 @@ func _build_research_panel(root: Control) -> void:
 	_research_fill.offset_bottom = TOP_Y + TOP_H - 2
 	root.add_child(_research_fill)
 
+	# The match clock: top left, just under the resource bar.
 	var panel := PanelContainer.new()
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
-	panel.offset_right = CLOCK_RIGHT
-	panel.offset_left = CLOCK_RIGHT - CLOCK_W
-	panel.offset_top = TOP_Y
-	panel.offset_bottom = TOP_Y + TOP_H
-	panel.add_theme_stylebox_override("panel", _panel_style(8))
+	panel.offset_left = HUD_SIDE
+	panel.offset_right = HUD_SIDE + CLOCK_W
+	panel.offset_top = TOP_Y + TOP_H + 6
+	panel.offset_bottom = TOP_Y + TOP_H + 6 + CLOCK_H
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", _panel_style(4))
 	root.add_child(panel)
 	var h := HBoxContainer.new()
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
