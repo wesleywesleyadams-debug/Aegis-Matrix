@@ -37,6 +37,33 @@ func _ready() -> void:
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.scale = Vector2.ONE * PIXEL
 	add_child(sprite)
+	queue_redraw()
+
+## The edge, exactly where Radiation starts (contains()): a dashed amber line,
+## so a player can tell inside from out at a glance.
+const EDGE := Color(1.0, 0.68, 0.3, 0.55)
+const EDGE_DASH := 22.0
+
+func _draw() -> void:
+	if shape == "cloud":
+		_dashed_arc(radius, 0.0, TAU)
+		return
+	var a0 := -PI if arc_half >= PI else arc_mid - arc_half
+	var a1 := PI if arc_half >= PI else arc_mid + arc_half
+	_dashed_arc(inner, a0, a1)
+	_dashed_arc(outer, a0, a1)
+	if arc_half < PI:
+		# Close off the ends of a partial band.
+		for a in [a0, a1]:
+			draw_line(Vector2.from_angle(a) * inner, Vector2.from_angle(a) * outer, EDGE, 2.0)
+
+func _dashed_arc(r: float, a0: float, a1: float) -> void:
+	var step := EDGE_DASH / r
+	var a := a0
+	while a < a1:
+		draw_arc(Vector2.ZERO, r, a, minf(a + step, a1), 6, EDGE, 2.0)
+		a += step * 2.0
+
 
 ## Builds one from a SystemGen feature dict.
 static func from_feature(ft: Dictionary) -> SpiceNebula:
