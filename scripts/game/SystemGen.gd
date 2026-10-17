@@ -25,7 +25,7 @@ const SYSTEMS := [
 		"bg": "verdant", "names": "myth", "feature": "rings", "nebula": "pockets", "arrival": "You arrive in the Tethys Cluster. A wall of rubble rings the inner worlds; find the gaps.",
 		"params": {"planets": 5, "belts": 3, "spice": 0.1}},
 	{"id": "sable_verge", "name": "Sable Verge", "seed": 4419, "desc": "Heavy belts, swept by ion storms.", "star": "blue_giant", "star_name": "Sable",
-		"bg": "ash", "names": "stone", "feature": "storms", "nebula": "drifts", "arrival": "You arrive at the Sable Verge. Ion storms wheel around a blue giant; time your moves.",
+		"bg": "ash", "names": "stone", "feature": "storms", "nebula": "drifts", "arrival": "You arrive at the Sable Verge. Ion storms drift around a blue giant; mind where they roam.",
 		"params": {"planets": 3, "belts": 3, "spice": 0.05}},
 	{"id": "random", "name": "Random", "desc": "A new system every match.", "arrival": "You arrive in uncharted space."},
 ]
@@ -203,7 +203,12 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 	# extra spice rocks (the ring itself is symmetric; the rocks are mirrored).
 	var features: Array = []
 	if params.get("feature", "") == "storms":
-		features.append({"type": "storms", "inner": star_clear - 60.0, "phase": rng.randf() * TAU})
+		# Drifting storm clouds, spread evenly along their loops (one more
+		# than there are players, at least three).
+		var n_storms := maxi(3, players + 1)
+		var ph0 := rng.randf() * TAU
+		for k in n_storms:
+			features.append({"type": "storms", "seed": seed + 101 * k, "radius": rng.randf_range(240.0, 330.0), "phase": ph0 + TAU * k / n_storms})
 	if ring_radius > 0.0:
 		# Two gaps per wedge, turned with it.
 		var g1 := rng.randf_range(0.3, 1.1) * wedge / (PI / 2.0)

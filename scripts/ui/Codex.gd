@@ -711,7 +711,7 @@ func _system_card(s: Dictionary) -> void:
 			"binary": "Twin suns: two radiation zones circle the center, and the safe lane between them keeps moving.",
 			"spice_nebula": "Spice nebula: a full ring of gas around the star, seeded with extra spice rocks.",
 			"rings": "Debris ring: an impassable wall of rubble with four narrow gaps, which makes those gaps chokepoints.",
-			"storms": "Ion storms: sweeping arms slow ships to 40% and halve sensors while they pass.",
+			"storms": "Ion storms: ragged clouds of charged gas drift around the system, crackling with lightning. Ships inside move at 40% speed and see half as far.",
 		}.get(feature, feature), EDGE_LIT))
 	var ntext: String = {
 		"flanks": "Spice nebulae: one cloud on each flank, equally far from both bases - the contested middle.",

@@ -360,7 +360,8 @@ func _build_system() -> void:
 	for ft in layout.get("features", []):
 		if ft["type"] == "storms":
 			var storm := IonStorm.new()
-			storm.inner = ft["inner"]
+			storm.seed_value = int(ft.get("seed", 1))
+			storm.radius = float(ft.get("radius", 280.0))
 			storm.phase = ft["phase"]
 			world.add_child(storm)
 		if ft["type"] == "rings":
@@ -2076,20 +2077,18 @@ func _enter_dev_capture() -> void:
 			print("RING samples inside debris: %d" % stats["in_debris"]))
 		center_on(Vector2.from_angle(ang) * ring.radius)
 	if OS.get_environment("SL_SHOT_OPEN") == "storm":
-		# Dev: a corvette parked on an arm vs one well away; logs stage + speed.
+		# Dev: a corvette in a storm's centre vs one well away; logs speed.
 		var storm = get_tree().get_nodes_in_group("storms")[0]
-		var t_on := 60.0
-		var arm_dir := Vector2.from_angle(storm.arm_angle(t_on))
-		var off_dir := Vector2.from_angle(storm.arm_angle(t_on) + PI / 2.0)
-		var a := spawn_ship("corvette", player_id, arm_dir * 800.0)
-		var b := spawn_ship("corvette", player_id, off_dir * 800.0)
+		var arm_dir: Vector2 = storm.center_at(now()) / 800.0
+		var a := spawn_ship("corvette", player_id, storm.center_at(now()))
+		var b := spawn_ship("corvette", player_id, -storm.center_at(now()).normalized() * 300.0)
 		for s in [a, b]:
 			s.order_stop()
 			s.max_hp = 1e6
 			s.hp = 1e6
 		for t in [5.0, 50.0, 60.0, 80.0]:
 			get_tree().create_timer(t).timeout.connect(func():
-				print("STORM t=%.0f stage %s  in-arm ship speed %.0f (in storm %s)  control speed %.0f" % [now(), storm.stage(now()), a.max_speed(), str(in_storm(a.global_position)), b.max_speed()]))
+				print("STORM t=%.0f  in-storm ship speed %.0f (in storm %s)  control speed %.0f" % [now(), a.max_speed(), str(in_storm(a.global_position)), b.max_speed()]))
 		center_on(arm_dir * 800.0)
 	if OS.get_environment("SL_NEURAL") != "":
 		get_tree().create_timer(58.0).timeout.connect(func():

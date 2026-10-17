@@ -93,15 +93,14 @@ func _draw() -> void:
 		return
 	for ft in _layout.get("features", []):
 		if ft["type"] == "storms":
-			for arm in 2:
-				var mid: float = ft["phase"] + PI * arm
-				# Out to the edge of the round system, not past it.
-				var reach: float = Game.MAP_RADIUS * sc
-				var wedge := PackedVector2Array([center + Vector2.from_angle(mid - IonStorm.HALF_WIDTH) * ft["inner"] * sc])
-				for s in 9:
-					wedge.append(center + Vector2.from_angle(mid - IonStorm.HALF_WIDTH + IonStorm.HALF_WIDTH * 2.0 * s / 8.0) * reach)
-				wedge.append(center + Vector2.from_angle(mid + IonStorm.HALF_WIDTH) * ft["inner"] * sc)
-				draw_colored_polygon(wedge, Color(0.5, 0.75, 1.0, 0.14))
+			# Each drifting storm where it starts the match.
+			var st := IonStorm.new()
+			st.seed_value = int(ft.get("seed", 1))
+			st.radius = float(ft.get("radius", 280.0))
+			st.phase = float(ft.get("phase", 0.0))
+			st.setup()
+			st.draw_on_map(self, func(p): return center + p * sc, sc, 0.0)
+			st.free()
 	for ft in _layout.get("features", []):
 		if ft["type"] == "rings":
 			for i in 96:
