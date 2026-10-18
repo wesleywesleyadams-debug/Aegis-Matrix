@@ -589,6 +589,10 @@ func _page_research() -> void:
 			rows.append([t["name"], "%d" % t["tier"], ", ".join(req) if not req.is_empty() else "-", Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t.get("desc", "")])
 		_table(["Tech", "Tier", "Requires", "Cost", "Time", "Effect"], rows)
 
+## A tech effect as a whole percent (Defs.TECHS), so text stays in step with balance.
+func _pct(tech: String, effect: String) -> int:
+	return int(round(float(Defs.TECHS[tech]["effects"].get(effect, 0.0)) * 100.0))
+
 func _page_economy() -> void:
 	_heading("Planets")
 	_para("A planet's size is its number of fields, one building each, and its population cap is size x %d. Colonies start at %d pops. Pops eat %s food per minute; an unfed world shrinks instead of growing. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP), str(Defs.FOOD_PER_POP_PER_MIN)])
@@ -619,6 +623,9 @@ func _page_economy() -> void:
 		hrows.append([row[0], row[2], [row[3].capitalize(), Defs.RESOURCE_COLORS[row[3]]],
 			"%.0f/min" % rate, "%d" % int(d["cargo"]), "%ds" % int(float(d["cargo"]) / rate * Defs.PER_MIN)])
 	_table(["Ship", "Source", "Yields", "Gather", "Hold", "Fill time"], hrows)
+	_para("Rates are at base. The Logistics techs speed up every harvester - Mining Barges and Gas Skimmers alike: Cutting Lasers, Resonance Drills and Mass Drivers add +%d%%, +%d%% and +%d%% gather rate, Deep-Core Drills and Bulk Holds +%d%% and +%d%% hold, and Logistics Command +%d%% of each. A Radiation Sail Array also gathers: %d energy a minute while it sits in Radiation (a star's zone or a spice nebula)." % [
+		_pct("cutting_lasers", "harvest"), _pct("resonance_drills", "harvest"), _pct("mass_drivers", "harvest"),
+		_pct("deep_drills", "cargo"), _pct("bulk_holds", "cargo"), _pct("logistics_command", "harvest"), int(Defs.SHIPS["heatshield"]["solar_sail"])])
 	_para("Asteroids run dry and vanish (a small mineral rock holds about %d, a large one about %d; spice rocks hold about a third as much), gas giants refill after a pause, and a spice nebula never runs out. The Logistics techs raise hold size, gather rate and speed." % [
 		int(round(16.0 * 16.0 * Defs.ASTEROID_MINERALS_PER_PX2 / 10.0)) * 10, int(round(26.0 * 26.0 * Defs.ASTEROID_MINERALS_PER_PX2 / 10.0)) * 10])
 	_heading("Buildings")
