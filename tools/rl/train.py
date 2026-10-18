@@ -15,6 +15,8 @@ on the GPU, and learns from the outcome:
          + DISCOVER: 10 the first time each enemy starbase/world is seen
          + APPROACH: 0.05 per unit its spearhead closes on a seen enemy starbase
            (minus the same for moving away)
+         + COHESION: 0.02 per unit its armed ships draw together (minus the
+           same for spreading out)
          + BIG (20) per enemy starbase destroyed, enemy world depopulated, or
            new world colonized
          + curiosity: NEW_ACTION (2) for each kind of action (verb + what it
@@ -67,6 +69,10 @@ DISCOVER = 10.0
 ## away costs the same, so it can't be farmed (about 10-15 for a final approach,
 ## since a starbase is usually only seen from close in).
 APPROACH = 0.05
+## Per unit its armed ships' mean distance to their nearest companion shrinks
+## (minus the same as it grows): keeps fleets together. Ships drifting from
+## 30 to 500 apart cost about 9.
+COHESION = 0.02
 ## Curriculum: share of the last 20 games at a level it must win to move up.
 PROMOTE = 0.5
 ## Level 1: the sitting duck's starbase starts at DUCK_START of its toughness
@@ -96,7 +102,7 @@ DRILL_TOUGH = (0.03, 0.3)
 ## game in env 0 is traced for a replay image (runs/replays/).
 KEEP_EVERY = 50
 ## Reward parts, for the per-game breakdown.
-PARTS = ["win", "loss", "trade", "siege", "damage", "bombard", "discover", "approach", "big", "curious"]
+PARTS = ["win", "loss", "trade", "siege", "damage", "bombard", "discover", "approach", "cohesion", "big", "curious"]
 ## Self-play: how often (updates) the frozen opponent catches up with the learner.
 SNAPSHOT = 25
 POOL = 8
@@ -128,6 +134,8 @@ def reward_of(prev, cur, real_match=False):
         p["bombard"] = BOMBARD * d("pop_bombarded")
         p["discover"] = DISCOVER * d("discovered")
         p["big"] = BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
+    if "gathered" in prev and "gathered" in cur:
+        p["cohesion"] = COHESION * (cur["gathered"] - prev["gathered"])
     if "closed" in prev and "closed" in cur:
         p["approach"] = APPROACH * (cur["closed"] - prev["closed"])
     if cur.get("done"):

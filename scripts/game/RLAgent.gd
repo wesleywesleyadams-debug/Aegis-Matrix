@@ -114,6 +114,7 @@ func _observe(game: Game, base: Starbase, done: bool) -> Dictionary:
 		"score": game.stats.score(pid),
 		"enemy_score": _enemy_score(game),
 		"closed": _fleet_distance(game),
+		"gathered": _fleet_cohesion(game),
 		"tally": {"ship_kills": game.stats.get_count(pid, "ship_kills"), "construct_kills": game.stats.get_count(pid, "construct_kills"),
 			"starbase_kills": game.stats.get_count(pid, "starbase_kills"), "starbase_damage": game.stats.get_count(pid, "starbase_damage"),
 			"damage_dealt": game.stats.get_count(pid, "damage_dealt"), "pop_bombarded": game.stats.get_count(pid, "pop_bombarded"), "discovered": game.stats.get_count(pid, "discovered"),
@@ -478,6 +479,36 @@ func _fleet_distance(game: Game) -> float:
 		_closed += lead.reduce(func(acc, k): return acc + _near_prev[k] - cur[k], 0.0) / lead.size()
 	_near_prev = cur
 	return _closed
+
+## Training: how much its armed ships have drawn together, summed over the
+## match. Each decision adds the drop in their spread (_spread), over the
+## ships alive both then and now (so losses and new builds don't count);
+## spreading out subtracts the same.
+var _pos_prev := {}       # armed ship instance id -> position last decision
+var _gathered := 0.0
+
+func _fleet_cohesion(game: Game) -> float:
+	var cur := {}
+	for sh in game.get_tree().get_nodes_in_group("ships"):
+		if sh.owner_id == pid and sh.is_alive() and not sh.docked and sh.def.get("weapon", "") != "":
+			cur[sh.get_instance_id()] = sh.global_position
+	var both: Array = _pos_prev.keys().filter(func(k): return cur.has(k))
+	if both.size() >= 2:
+		_gathered += _spread(both, _pos_prev) - _spread(both, cur)
+	_pos_prev = cur
+	return _gathered
+
+## Mean distance from each ship to its nearest companion (capped at 1000):
+## separate groups are fine, stragglers count.
+func _spread(ids: Array, pos: Dictionary) -> float:
+	var t := 0.0
+	for k in ids:
+		var best := 1000.0
+		for k2 in ids:
+			if k2 != k:
+				best = minf(best, pos[k].distance_to(pos[k2]))
+		t += best
+	return t / ids.size()
 
 func _write_trace(game: Game) -> void:
 	var path := OS.get_environment("SL_TRACE")
