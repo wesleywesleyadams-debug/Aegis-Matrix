@@ -543,9 +543,10 @@ func _build_minimap(root: Control) -> void:
 			_score_labels.append(l)
 			lines += 1
 		_score_box.add_child(row)
-	_score_box.add_theme_constant_override("separation", 4)
+	# A clear gap between teams.
+	_score_box.add_theme_constant_override("separation", 12)
 	# Grow upward to fit every line (the box is anchored to the bottom).
-	_score_box.offset_top = minf(_score_box.offset_top, _score_box.offset_bottom - lines * 22 - (keys.size() - 1) * 4)
+	_score_box.offset_top = minf(_score_box.offset_top, _score_box.offset_bottom - lines * 22 - (keys.size() - 1) * 12)
 	_update_scores()
 	# Filled once the system is built (Game sets it up before the first frame).
 	(func():
