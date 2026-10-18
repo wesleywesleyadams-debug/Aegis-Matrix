@@ -169,8 +169,12 @@ def main():
     if args.resume and os.path.exists(ckpt):
         st = torch.load(ckpt, map_location=dev)
         # strict=False: parts added since (e.g. group orders) start fresh.
+        # Fewer order slots than the checkpoint: keep the first SLOTS.
+        reshaped = st["model"]["slot"].shape[0] != SLOTS
+        if reshaped:
+            st["model"]["slot"] = st["model"]["slot"][:SLOTS]
         missing = pol.load_state_dict(st["model"], strict=False).missing_keys
-        if missing:
+        if missing or reshaped:
             print("new model parts:", ", ".join(missing))
             opt = torch.optim.Adam(pol.parameters(), lr=args.lr)
         else:

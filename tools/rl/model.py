@@ -21,7 +21,10 @@ OBJ_KINDS = ["ship", "building", "construct", "tech"]
 # Which object kind a verb takes (index into OBJ_KINDS), and which verbs take a target.
 VERB_OBJ = {"build_ship": 0, "build_building": 1, "demolish": 1, "found": 2, "research": 3}
 VERB_TGT = {"move", "attack_move", "attack", "mine", "return", "colonize", "bombard", "dock", "refit", "found", "rally"}
-SLOTS = 8
+## Orders per decision. Cut from 8 to 4 (update 2300): it was filling ~7 of 8
+## with single-ship orders; fewer slots make it choose what matters, and a
+## group order is the cheap way to move many ships.
+SLOTS = 4
 ## Starting odds of "no new order" vs giving one, per slot (4 -> ~1.6 orders a decision).
 SKIP_ODDS = 4.0
 NEG = -1e9
