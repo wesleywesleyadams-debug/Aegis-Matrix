@@ -682,6 +682,8 @@ func _build_research(root: Control) -> void:
 	# One line saying what the open tab is for (Defs.TECH_GROUP_DESC).
 	var blurb := _label("", DIM, 14)
 	blurb.custom_minimum_size = Vector2(0, 22)
+	# Clipped, never wider than the pages: a long blurb must not resize the panel.
+	blurb.clip_text = true
 	v.add_child(blurb)
 	var pages := {}
 
@@ -759,6 +761,13 @@ func _build_research(root: Control) -> void:
 	# for fit (SL_RESEARCH_TAB=weapons|constructs|worlds|logistics|defense).
 	_research_tabs = buttons
 	_research_pages = pages
+	# Every tab the same size (the largest), so the panel doesn't resize or
+	# shift when you click through them.
+	var biggest := Vector2.ZERO
+	for id in pages:
+		biggest = biggest.max(pages[id].get_combined_minimum_size())
+	for id in pages:
+		pages[id].custom_minimum_size = biggest
 	# The top bar's Research button (and its progress fill) draw above the
 	# open panel, so the active project stays visible from any tab.
 	_research_button.move_to_front()
