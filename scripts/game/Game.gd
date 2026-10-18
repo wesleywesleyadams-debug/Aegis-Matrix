@@ -149,6 +149,10 @@ func _enter_tree() -> void:
 	# Who is playing: the lobby's filled slots (up to 8), else 1-vs-1.
 	# SL_PLAYERS=n runs an n-player sim (every side AI).
 	var n_sim := int(OS.get_environment("SL_PLAYERS"))
+	# Dev (SL_NEURAL_TEST): a 1-v-1 against a Neural AI slot, without the lobby.
+	if OS.get_environment("SL_NEURAL_TEST") != "" and not sim_mode:
+		GameState.match_players = [{"pid": 1, "type": "human", "team": 0, "slot": 1}, {"pid": 2, "type": "neural", "team": 0, "slot": 2}]
+		GameState.human_player_id = 1
 	Defs.slot_of = {}
 	if sim_mode and n_sim > 2:
 		players.clear()
@@ -296,6 +300,7 @@ func _ready() -> void:
 		hud.process_mode = Node.PROCESS_MODE_DISABLED
 		sfx.process_mode = Node.PROCESS_MODE_DISABLED
 	else:
+		_start_rl_server()
 		ai.setup(players.filter(func(p): return p != player_id))
 		# Fog of war for the human player (SL_NOFOG=1 turns it off for dev shots).
 		if OS.get_environment("SL_NOFOG") == "":
@@ -1252,7 +1257,11 @@ var winner_pid := 0
 
 ## "You" for the human, otherwise "Player n" (the lobby slot's number).
 func player_name(pid: int) -> String:
-	return "You" if pid == player_id else "Player %d" % int(Defs.slot_of.get(pid, pid))
+	if pid == player_id:
+		return "You"
+	if rl_server_pid > 0 and player_type(pid) == "neural":
+		return "Neural AI v%d" % rl_version
+	return "Player %d" % int(Defs.slot_of.get(pid, pid))
 
 ## Light-blue notification for good news / progress (ship built, planet
 ## colonized, research done...). Not rate limited.
@@ -3237,6 +3246,46 @@ func _duel() -> void:
 			get_tree().quit()
 			return
 
+
+## Neural AI slots in a normal match are played by the learning agent: the
+## game starts tools/rl/serve.py (the training venv's Python, next to the
+## project as ../sd-venv, or SL_RL_PYTHON) with the newest checkpoint, and
+## each such side's RLAgent connects to it. If it can't start, those sides
+## fall back to the older neural commander / scripted AI.
+const RL_SERVE_PORT := 47900
+var rl_server_pid := -1
+## The training update of the checkpoint playing this match ("v3800"), 0 if none.
+var rl_version := 0
+
+func player_type(pid: int) -> String:
+	for mp in GameState.match_players:
+		if int(mp["pid"]) == pid:
+			return str(mp.get("type", "ai"))
+	return "ai"
+
+func _start_rl_server() -> void:
+	var sides := players.filter(func(p): return p != player_id and player_type(p) == "neural").size()
+	if sides == 0:
+		return
+	var root := ProjectSettings.globalize_path("res://")
+	var py := OS.get_environment("SL_RL_PYTHON")
+	if py == "":
+		py = root.path_join("../sd-venv/Scripts/python.exe").simplify_path()
+	var script := root.path_join("tools/rl/serve.py")
+	if not FileAccess.file_exists(py) or not FileAccess.file_exists(script):
+		push_warning("Neural AI: no Python at %s - using the older AI" % py)
+		return
+	var ckpt := NeuralVersion.newest_path()
+	if ckpt == "":
+		push_warning("Neural AI: no trained checkpoint yet - using the older AI")
+		return
+	rl_version = NeuralVersion.of(ckpt)
+	rl_server_pid = OS.create_process(py, [script, "--port", str(RL_SERVE_PORT), "--sides", str(sides), "--ckpt", ckpt])
+
+func _exit_tree() -> void:
+	if rl_server_pid > 0:
+		OS.kill(rl_server_pid)
+		rl_server_pid = -1
 
 ## Drill fleet for the learning agent: beside the enemy starbase (strike) or
 ## halfway to it, off to one side (hunt).

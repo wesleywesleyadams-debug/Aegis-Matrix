@@ -153,8 +153,9 @@ func _populate_players_grid() -> void:
 		slot_option.clip_text = true
 		slot_option.add_item(_username)
 		slot_option.add_item("AI")
-		# Experimental: the trained neural commander (res://ai/commander.json).
-		slot_option.add_item("Neural AI")
+		# The learning AI (tools/rl/), labelled with its trained version.
+		var nv := NeuralVersion.label()
+		slot_option.add_item("Neural " + nv if nv != "" else "Neural AI")   # "Neural v3800" fits the box
 		# Single-player has no Open slots (nobody else can join): unused slots
 		# are simply Closed, so every opponent is AI.
 		slot_option.add_item("Closed" if _single() else "Open")

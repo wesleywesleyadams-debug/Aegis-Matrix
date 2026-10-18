@@ -25,7 +25,7 @@ func setup(ai_players: Array) -> void:
 		# Self-play training: the opposing side runs another network.
 		elif OS.get_environment("SL_NN_OPP_WEIGHTS") != "" and int(OS.get_environment("SL_NN_SIDE")) != pid:
 			path = OS.get_environment("SL_NN_OPP_WEIGHTS")
-		elif GameState.neural_ai and OS.get_environment("SL_SIM") == "":
+		elif GameState.neural_ai and OS.get_environment("SL_SIM") == "" and Game.instance.rl_server_pid <= 0:
 			path = "res://ai/commander.json"
 		if path != "":
 			var net := NeuralNet.load_json(path)
@@ -47,6 +47,13 @@ func setup(ai_players: Array) -> void:
 			var opp := RLAgent.new(pid, int(OS.get_environment("SL_RL_PORT2")))
 			Game.instance.add_child(opp)
 			_state[pid]["nn"] = opp
+		# A normal match: a lobby "Neural AI" slot is played by the learning
+		# agent, through the server Game started (Game.RL_SERVE_PORT).
+		elif Game.instance.rl_server_pid > 0 and Game.instance.player_type(pid) == "neural":
+			var live := RLAgent.new(pid, Game.RL_SERVE_PORT, 30000)
+			Game.instance.add_child(live)
+			_state[pid]["nn"] = live
+			print("Neural AI v%d plays P%d: %s" % [Game.instance.rl_version, pid, "connected" if live.connected() else "no server - scripted AI instead"])
 
 func _process(delta: float) -> void:
 	var game := Game.instance
@@ -65,8 +72,9 @@ func _process(delta: float) -> void:
 		_think(pid, st, game)
 
 func _think(pid: int, st: Dictionary, game: Game) -> void:
-	# The learning agent runs its whole side itself: nothing scripted.
-	if st.get("nn") is RLAgent:
+	# The learning agent runs its whole side itself: nothing scripted (unless
+	# it lost its server, in a normal match - then the scripted AI takes over).
+	if st.get("nn") is RLAgent and (game.sim_mode or st["nn"].connected()):
 		st["nn"].tick(game, game.nearest_starbase(pid, Vector2.ZERO), self)
 		return
 	var base := game.nearest_starbase(pid, Vector2.ZERO)

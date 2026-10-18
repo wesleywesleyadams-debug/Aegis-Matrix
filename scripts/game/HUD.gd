@@ -1257,6 +1257,9 @@ func _process(delta: float) -> void:
 func _side_name(pid: int) -> String:
 	if pid == game.player_id:
 		return GameState.active_account if GameState.active_account != "" else "You"
+	# A Neural AI side shows which trained version is playing ("Neural AI v3800").
+	if game.rl_server_pid > 0 and game.player_type(pid) == "neural":
+		return "Neural AI v%d" % game.rl_version
 	return "AI Opponent"
 
 func _update_scores() -> void:

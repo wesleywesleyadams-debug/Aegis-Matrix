@@ -56,15 +56,27 @@ var counts := {}
 var _trace: FileAccess = null
 var _found := {}   # enemy starbases / worlds seen this match (instance id)
 
-func _init(side: int, port: int) -> void:
+## wait_ms: how long to keep trying to reach the trainer / server (in a
+## normal match the game has just started it, and it needs a few seconds).
+func _init(side: int, port: int, wait_ms: int = 10000) -> void:
 	pid = side
-	_tcp.connect_to_host("127.0.0.1", port)
 	var t0 := Time.get_ticks_msec()
-	while _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTING and Time.get_ticks_msec() - t0 < 10000:
-		_tcp.poll()
-		OS.delay_msec(5)
+	while Time.get_ticks_msec() - t0 < wait_ms:
+		_tcp = StreamPeerTCP.new()
+		_tcp.connect_to_host("127.0.0.1", port)
+		while _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTING and Time.get_ticks_msec() - t0 < wait_ms:
+			_tcp.poll()
+			OS.delay_msec(5)
+		if _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+			break
+		OS.delay_msec(250)
 	if _tcp.get_status() != StreamPeerTCP.STATUS_CONNECTED:
 		push_error("RLAgent: no trainer on port %d" % port)
+
+## False if the trainer / server never answered (the side then falls back to
+## the scripted AI).
+func connected() -> bool:
+	return _tcp.get_status() == StreamPeerTCP.STATUS_CONNECTED and not _done_sent
 
 func _ready() -> void:
 	Game.instance.match_over.connect(func(_won: bool): _finish())
@@ -82,7 +94,10 @@ func tick(game: Game, base: Starbase, _ai: AIController) -> void:
 	_write_trace(game)
 	var reply := _receive()
 	if reply.get("quit", false):
-		game.get_tree().quit()
+		# Training runs end here; a normal match just loses its connection
+		# (AIController falls back to the scripted AI).
+		if game.sim_mode:
+			game.get_tree().quit()
 		return
 	for o in reply.get("orders", []):
 		if o is Array and o.size() == 4:
