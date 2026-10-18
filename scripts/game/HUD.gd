@@ -1321,8 +1321,9 @@ func _side_name(pid: int) -> String:
 		return GameState.active_account if GameState.active_account != "" else "You"
 	# A Neural AI side shows which trained version is playing ("Neural AI v3800").
 	if game.rl_server_pid > 0 and game.player_type(pid) == "neural":
-		return "Neural AI v%d" % game.rl_version
-	return "AI Opponent"
+		return "Neural AI %d v%d" % [int(Defs.slot_of.get(pid, pid)), game.rl_version]
+	# Named by lobby slot, so several AIs can be told apart ("AI 3").
+	return "AI %d" % int(Defs.slot_of.get(pid, pid))
 
 func _update_scores() -> void:
 	if _score_box == null:
