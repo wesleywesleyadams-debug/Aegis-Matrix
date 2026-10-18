@@ -435,7 +435,7 @@ const TECHS := {
 	"mass_drivers": {"name": "Mass Drivers", "group": "logistics", "tier": 3, "requires": ["resonance_drills"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
 		"effects": {"harvest": 0.60}, "desc": "Harvesters gather 60% faster."},
 	"logistics_command": {"name": "Logistics Command", "group": "logistics", "tier": 3, "requires": ["bulk_holds"], "cost": {"energy": 755, "spice": 140}, "time": 225.0,
-		"effects": {"harvest": 0.25, "cargo": 0.25}, "desc": "Harvesters gather 25% faster and carry +25% per load."},
+		"effects": {"harvest": 0.25, "cargo": 0.25}, "desc": "Harvesters gather 25% faster. Harvesters carry +25% per load."},
 
 	# --- Defense: a fourth line, soaking damage before the layers see it.
 	"flak_screens": {"name": "Flak Screens", "group": "defense", "line": "screens", "tier": 1, "requires": [], "cost": {"energy": 65}, "time": 50.0,
