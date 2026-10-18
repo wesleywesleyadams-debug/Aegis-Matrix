@@ -153,6 +153,12 @@ func _enter_tree() -> void:
 	if OS.get_environment("SL_NEURAL_TEST") != "" and not sim_mode:
 		GameState.match_players = [{"pid": 1, "type": "human", "team": 0, "slot": 1}, {"pid": 2, "type": "neural", "team": 0, "slot": 2}]
 		GameState.human_player_id = 1
+	# Dev (SL_TEAMS_TEST): five players - two teams of two and one loner.
+	if OS.get_environment("SL_TEAMS_TEST") != "" and not sim_mode:
+		GameState.match_players = []
+		for i in 5:
+			GameState.match_players.append({"pid": i + 1, "type": "human" if i == 0 else "ai", "team": [1, 2, 1, 2, 0][i], "slot": i + 1})
+		GameState.human_player_id = 1
 	Defs.slot_of = {}
 	if sim_mode and n_sim > 2:
 		players.clear()

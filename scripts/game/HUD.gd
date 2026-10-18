@@ -42,6 +42,7 @@ var _sel_body: VBoxContainer
 var _fleet_tiles: Array = []
 ## The per-side score lines above the minimap.
 var _score_box: VBoxContainer
+var _score_labels: Array[Label] = []
 var _score_timer := 0.0
 var _messages: VBoxContainer
 var _overlay: Control
@@ -494,13 +495,57 @@ func _build_minimap(root: Control) -> void:
 	rule.offset_top = -12 - MINIMAP_D - 30 - 9
 	rule.offset_bottom = -12 - MINIMAP_D - 30 - 8
 	root.add_child(rule)
-	for pid in [game.player_id] + game.players.filter(func(p): return p != game.player_id):
-		var l := _label("", Defs.team_color(pid), 16)
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-		l.add_theme_constant_override("outline_size", 6)
-		l.set_meta("pid", pid)
-		_score_box.add_child(l)
+	# Grouped by team (your team first, then by team number): each team's
+	# lines get a bracket on the left with "Team N" beside it. Players on no
+	# team (team 0) stand alone, unbracketed.
+	var groups := {}
+	for pid in game.players:
+		var t: int = game.teams.get(pid, 0)
+		var key: int = t if t > 0 else -pid
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(pid)
+	var mine: int = game.teams.get(game.player_id, 0)
+	var my_key: int = mine if mine > 0 else -game.player_id
+	var keys: Array = groups.keys()
+	var rank := func(k: int) -> int: return (0 if k == my_key else 10000) + (1000 if k < 0 else 0) + absi(k)
+	keys.sort_custom(func(a, b): return rank.call(a) < rank.call(b))
+	var lines := 0
+	for key in keys:
+		var members: Array = groups[key]
+		members.sort_custom(func(a, b): return (0 if a == game.player_id else 100) + a < (0 if b == game.player_id else 100) + b)
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_END
+		row.add_theme_constant_override("separation", 6)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if key > 0:
+			var tag := _label("Team %d" % key, Color(TEXT, 0.7), 13)
+			tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+			tag.add_theme_constant_override("outline_size", 5)
+			row.add_child(tag)
+			var br := ScoreBracket.new()
+			br.custom_minimum_size = Vector2(6, 0)
+			br.color = Color(TEXT, 0.55)
+			row.add_child(br)
+		row.add_child(col)
+		for pid in members:
+			var l := _label("", Defs.team_color(pid), 16)
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+			l.add_theme_constant_override("outline_size", 6)
+			l.set_meta("pid", pid)
+			col.add_child(l)
+			_score_labels.append(l)
+			lines += 1
+		_score_box.add_child(row)
+	_score_box.add_theme_constant_override("separation", 4)
+	# Grow upward to fit every line (the box is anchored to the bottom).
+	_score_box.offset_top = minf(_score_box.offset_top, _score_box.offset_bottom - lines * 22 - (keys.size() - 1) * 4)
 	_update_scores()
 	# Filled once the system is built (Game sets it up before the first frame).
 	(func():
@@ -843,6 +888,22 @@ const FLEET_TILE := Vector2(46, 44)
 ## One selected ship: its sprite with a shield/armor/hull bar under it, so a
 ## glance at the panel says which ships in the fleet are hurt. Live: the HUD
 ## repaints them on its own refresh tick.
+## The bracket left of a team's score lines: a vertical stroke with short
+## ticks at both ends, as tall as the team's lines.
+class ScoreBracket extends Control:
+	var color := Color.WHITE
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		var h := size.y
+		var x := 1.0
+		draw_line(Vector2(x, 3), Vector2(x, h - 3), color, 1.5)
+		draw_line(Vector2(x, 3), Vector2(size.x, 3), color, 1.5)
+		draw_line(Vector2(x, h - 3), Vector2(size.x, h - 3), color, 1.5)
+
 class FleetTile extends Control:
 	var host: SpaceEntity
 	const BAR_H := 3.0
@@ -1265,7 +1326,7 @@ func _side_name(pid: int) -> String:
 func _update_scores() -> void:
 	if _score_box == null:
 		return
-	for l in _score_box.get_children():
+	for l in _score_labels:
 		var pid: int = l.get_meta("pid")
 		l.text = "%s   %d" % [_side_name(pid), game.stats.score(pid)]
 
