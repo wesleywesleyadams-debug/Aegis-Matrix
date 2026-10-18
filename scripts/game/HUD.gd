@@ -33,6 +33,7 @@ var _res_boxes := {}
 var _pop_label: Label
 var _fleet_label: Label
 var _research_button: Button
+var _research_pages := {}
 ## Green progress fill laid over the research button while a project runs.
 var _research_fill: ColorRect
 var _research_icon: TextureRect
@@ -267,7 +268,7 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.offset_left = RESEARCH_RIGHT - RESEARCH_W
 	_research_button.offset_top = TOP_Y
 	_research_button.offset_bottom = TOP_Y + TOP_H
-	_research_button.pressed.connect(toggle_research)
+	_research_button.pressed.connect(_on_research_button)
 	root.add_child(_research_button)
 	# The active tech's icon fills the button top to bottom. It is a child
 	# image rather than Button.icon (which would add padding and grow the
@@ -750,6 +751,11 @@ func _build_research(root: Control) -> void:
 	# Dev: every tab is reachable from a capture, so each one can be checked
 	# for fit (SL_RESEARCH_TAB=weapons|constructs|worlds|logistics|defense).
 	_research_tabs = buttons
+	_research_pages = pages
+	# The top bar's Research button (and its progress fill) draw above the
+	# open panel, so the active project stays visible from any tab.
+	_research_button.move_to_front()
+	_research_fill.move_to_front()
 	var close := Button.new()
 	close.text = "Close [R]"
 	close.focus_mode = Control.FOCUS_NONE
@@ -761,6 +767,24 @@ func show_planet(p: Planet) -> void:
 	if p and not p.in_sight:
 		p = null
 	planet_view.show_planet(p)
+
+## The top-bar Research button: opens / closes the panel, or - while the
+## panel is open on another tab - jumps to the active project's tab.
+func _on_research_button() -> void:
+	var cur: Dictionary = game.research[game.player_id]
+	if _research_modal.visible and not cur.is_empty():
+		var tab: Button = _research_tabs.get(Defs.TECHS[cur["id"]]["group"])
+		if tab and not _active_tech_on_page():
+			tab.pressed.emit()
+			return
+	toggle_research()
+
+func _active_tech_on_page() -> bool:
+	var cur: Dictionary = game.research[game.player_id]
+	if cur.is_empty():
+		return false
+	var page = _research_pages.get(Defs.TECHS[cur["id"]]["group"])
+	return page != null and page.visible
 
 func research_open() -> bool:
 	return _research_modal.visible
@@ -805,6 +829,11 @@ func _refresh_research() -> void:
 		w["bar"].color = BAD if st == "active" and cur.get("stalled", false) else (GOOD if st == "done" else EDGE_LIT)
 		w["bar"].offset_right = -2 - (1.0 - frac) * (w["button"].custom_minimum_size.x - 4.0)
 		w["bar"].visible = frac > 0.0
+		w["fill"].visible = st == "active"
+		if st == "active":
+			w["fill"].anchor_right = clampf(frac, 0.0, 1.0)
+			w["fill"].offset_right = -2.0 * frac
+			w["fill"].color = Color(BAD.r, BAD.g, BAD.b, 0.3) if cur.get("stalled", false) else Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
 
 func show_pause(on: bool) -> void:
 	_pause.visible = on
@@ -1384,6 +1413,10 @@ Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 	# A long hold on the state colour, then a short one back on white.
 	var phase: float = fmod(Time.get_ticks_msec() / 1000.0, RESEARCH_BLINK)
 	var glow := 1.0 if phase < RESEARCH_BLINK * 0.7 else 0.0
+	# Panel open: the button stays up only while the active project is on a
+	# tab you aren't looking at (its card shows the progress otherwise).
+	var show_btn: bool = not _research_modal.visible or (not cur.is_empty() and not _active_tech_on_page())
+	_research_button.visible = show_btn
 	if cur.is_empty():
 		_research_button.text = "Research [R]"
 		_research_icon.visible = false
@@ -1401,7 +1434,7 @@ Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 		# Running: no blink, the green fill carries the progress. Stalled: the
 		# button blinks red and the fill freezes where it stopped.
 		_research_button.modulate = Color.WHITE.lerp(BAD, 0.35 + 0.65 * glow) if cur["stalled"] else Color.WHITE
-		_research_fill.visible = true
+		_research_fill.visible = show_btn
 		_research_fill.offset_left = RESEARCH_RIGHT - RESEARCH_W + 2
 		_research_fill.offset_right = RESEARCH_RIGHT - RESEARCH_W + 2 + (RESEARCH_W - 4) * frac
 		_research_fill.color = Color(BAD.r, BAD.g, BAD.b, 0.3) if cur["stalled"] else Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
@@ -1820,6 +1853,16 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	pic.size = Vector2(TECH_ICON, TECH_ICON)
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(pic)
+	# The active tech's progress: a translucent fill growing left to right
+	# across the card, the same as the top bar's Research button.
+	var fill := ColorRect.new()
+	fill.anchor_bottom = 1.0
+	fill.offset_left = 2
+	fill.offset_top = 2
+	fill.offset_bottom = -2
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fill.visible = false
+	b.add_child(fill)
 	var box := VBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	box.offset_left = TECH_ICON_PAD
@@ -1874,7 +1917,7 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	bar.offset_bottom = -2
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(bar)
-	_tech_buttons[id] = {"button": b, "label": lab, "desc": desc, "bar": bar, "req": req, "req_label": req_label}
+	_tech_buttons[id] = {"button": b, "label": lab, "desc": desc, "bar": bar, "req": req, "req_label": req_label, "fill": fill}
 	return b
 
 # ---------------------------------------------------------------- weapons depot
