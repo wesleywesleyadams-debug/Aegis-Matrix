@@ -515,14 +515,14 @@ func _page_ships() -> void:
 			row0.append("+%d%%" % int(round(Defs.MARK_BONUS[cls][i] * 100.0)))
 		mrows0.append(row0)
 	_table(["Class", Defs.HULL_MARKS[1], Defs.HULL_MARKS[2], Defs.HULL_MARKS[3]], mrows0)
-	_para("Every warship has small chevrons beside it, one per mark: one at Mk I, four at Mk IV. Each class researches its own marks, so each is a separate investment. A mark applies to every ship of that class you own the moment research finishes.")
+	_para("Every warship has small chevrons beside it, one per mark: one at Mk I, four at Mk IV. Each class researches its own marks, so each class is a separate investment. A mark applies to every ship of that class the moment research finishes, existing ships included.")
 	_heading("Variant — the color")
 	_para("A variant keeps its class's hull; only its chevrons change color. Generalists wear yellow chevrons. Each variant has its own color, the same as its shots:")
 	var crows: Array = [[["Generalist", Defs.GENERALIST_COLOR], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	for tv in Defs.VARIANTS:
 		crows.append([[Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]], ["^ ^ ^", Defs.VARIANTS[tv]["color"]]])
 	_table(["Variant", "Chevrons"], crows)
-	_para("Chevron count shows rank; color shows fit. The Combat page covers what each variant does to damage.")
+	_para("Chevron count shows rank; color shows variant. The Combat page covers what each variant does to damage.")
 	_heading("Every ship")
 	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat).")
 	for t in Defs.BUILD_ORDER:
@@ -775,7 +775,7 @@ func _page_terms() -> void:
 		["Radiation", "Environmental damage inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and stops shield regeneration."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
 		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair, Hangar Bays."],
-		["Mega Shield", "Touching Radiation Sail Array bubbles of yours merged into one. Its points are their sum (three full arrays: 300), every hit is shared by charge, and it bursts for all of them at 0. If they drift apart, each keeps its share as its own bubble."],
+		["Mega Shield", "Touching Radiation Sail Array bubbles of yours merged into one. Its points are their sum (three full arrays: 300), every hit is shared among them by charge, and it bursts for all of them at 0. If they drift apart, each keeps its share as its own bubble."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
 		["Upkeep", "Energy per minute for ships and starbases, rising as your fleet grows."],
@@ -816,7 +816,7 @@ func _page_controls() -> void:
 	_para("The build picker on one of your worlds uses the same letters.")
 	_para("Rebind any key in Options > Hotkeys, which has a Reset to defaults button. Button letters follow your bindings.")
 	_heading("Build grid")
-	_para("A starbase builds from two pages, Economy and Military, switched with the bottom-right button. With no starbase selected, a letter selects every ship of one class you own.")
+	_para("A starbase builds from two pages, Economy and Military, switched with the bottom-right button. With no starbase selected, a letter selects every ship of one class you own, anywhere on the map.")
 	var war: Array = Defs.BUILD_ORDER.filter(func(t): return Defs.SHIPS[t]["role"] == "warship")
 	var eco: Array = Defs.BUILD_ORDER.filter(func(t): return Defs.SHIPS[t]["role"] != "warship")
 	var keys := HUD.panel_keys()

@@ -345,7 +345,7 @@ const TECHS := {
 	"fusion_drives": {"name": "Fusion Drives", "group": "logistics", "tier": 2, "requires": ["ion_thrusters"], "cost": {"energy": 145, "spice": 25}, "time": 85.0,
 		"effects": {"speed": 0.25}, "desc": "+25% ship speed."},
 	"gas_skimming": {"name": "Gas Skimming", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 50.0,
-		"effects": {}, "desc": "Unlocks the Gas Skimmer: gas giants and nebulae."},
+		"effects": {}, "desc": "Unlocks the Gas Skimmer: mines gas giants and nebulae."},
 	"particle_lances": {"name": "Particle Lances", "group": "weapons", "tier": 2, "requires": ["ion_cannons"], "cost": {"energy": 135, "spice": 30}, "time": 90.0,
 		"effects": {"damage": 0.25}, "desc": "+25% weapon damage: ships, constructs, worlds."},
 	"ion_thrusters": {"name": "Ion Thrusters", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 80}, "time": 60.0,
