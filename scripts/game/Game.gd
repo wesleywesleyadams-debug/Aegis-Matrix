@@ -68,6 +68,9 @@ var _rate_hist := {}
 var researched := {}      # pid -> {tech_id: true}
 var research := {}        # pid -> {"id": String, "progress": float, "stalled": bool} or {}
 var research_queue := {}  # pid -> Array of tech ids
+## Progress kept on techs that were switched away from (or cancelled), so
+## they resume where they left off: pid -> {tech id: seconds of progress}.
+var research_paused := {}
 
 var selection: Array[SpaceEntity] = []
 var focused_planet: Planet
@@ -182,6 +185,7 @@ func _init_player_data() -> void:
 		researched[pid] = {}
 		research[pid] = {}
 		research_queue[pid] = []
+		research_paused[pid] = {}
 
 func _ready() -> void:
 	process_physics_priority = -10
@@ -770,9 +774,10 @@ func queue_research(pid: int, tech_id: String) -> String:
 	return ""
 
 func cancel_research(pid: int, tech_id: String) -> void:
-	# Drop it and anything queued that depended on it. Energy already spent is lost.
+	# Stop it (its progress is kept for later) and drop anything queued that
+	# depended on it.
 	if research[pid].get("id", "") == tech_id:
-		research[pid] = {}
+		_pause_active(pid)
 	research_queue[pid].erase(tech_id)
 	var changed := true
 	while changed:
@@ -782,11 +787,32 @@ func cancel_research(pid: int, tech_id: String) -> void:
 				research_queue[pid].erase(t)
 				changed = true
 
+## Puts the active tech aside with its progress, leaving nothing active.
+func _pause_active(pid: int) -> void:
+	var cur: Dictionary = research[pid]
+	if not cur.is_empty() and cur["progress"] > 0.0:
+		research_paused[pid][cur["id"]] = cur["progress"]
+	research[pid] = {}
+
+## Makes `tech_id` the active project now, resuming any progress it has; the
+## project it replaces is paused (see research_paused).
+func switch_research(pid: int, tech_id: String) -> void:
+	_pause_active(pid)
+	research_queue[pid].erase(tech_id)
+	research[pid] = {"id": tech_id, "progress": float(research_paused[pid].get(tech_id, 0.0)), "stalled": false}
+	research_paused[pid].erase(tech_id)
+
+## Progress a paused tech will resume from (0 if none).
+func paused_progress(pid: int, tech_id: String) -> float:
+	return float(research_paused.get(pid, {}).get(tech_id, 0.0))
+
 func _tick_research(pid: int, dt: float) -> void:
 	if research[pid].is_empty():
 		if research_queue[pid].is_empty():
 			return
-		research[pid] = {"id": research_queue[pid].pop_front(), "progress": 0.0, "stalled": false}
+		var next: String = research_queue[pid].pop_front()
+		research[pid] = {"id": next, "progress": float(research_paused[pid].get(next, 0.0)), "stalled": false}
+		research_paused[pid].erase(next)
 	var cur: Dictionary = research[pid]
 	var t: Dictionary = Defs.TECHS[cur["id"]]
 	var per_sec := {}
@@ -1513,6 +1539,12 @@ func request_build(sb: Starbase, ship_type: String) -> void:
 func request_research(tech_id: String) -> void:
 	if tech_state(player_id, tech_id) in ["active", "queued"]:
 		cancel_research(player_id, tech_id)
+		sfx.play_ui("click")
+		return
+	# Already researching something else: switch to this one (the other
+	# pauses and keeps its progress).
+	if tech_state(player_id, tech_id) == "available" and not research[player_id].is_empty():
+		switch_research(player_id, tech_id)
 		sfx.play_ui("click")
 		return
 	var why := queue_research(player_id, tech_id)
@@ -2588,6 +2620,21 @@ func _enter_dev_capture() -> void:
 		await get_tree().process_frame
 		print("DELTEST starbase alive while asked: ", is_instance_valid(hb3) and hb3.is_alive())
 		center_on(hb3.global_position)
+	if OS.get_environment("SL_SHOT_OPEN") == "rswitch":
+		# Dev: research A, switch to B, back to A - A must resume.
+		request_research("ion_cannons")
+		await get_tree().create_timer(10.0).timeout
+		var a1: float = research[player_id]["progress"]
+		request_research("targeting_arrays")
+		print("RSWITCH A at ", snappedf(a1, 0.1), "s; now ", research[player_id]["id"], " from ", research[player_id]["progress"], "; A kept ", snappedf(paused_progress(player_id, "ion_cannons"), 0.1))
+		await get_tree().create_timer(5.0).timeout
+		request_research("ion_cannons")
+		print("RSWITCH back: ", research[player_id]["id"], " from ", snappedf(research[player_id]["progress"], 0.1), "s; B kept ", snappedf(paused_progress(player_id, "targeting_arrays"), 0.1))
+		# Back on B briefly, so the Weapons tab shows A paused... then show it.
+		request_research("targeting_arrays")
+		hud.toggle_research()
+		await get_tree().process_frame
+		hud._research_tabs["weapons"].pressed.emit()
 	if OS.get_environment("SL_SHOT_OPEN") == "qtest":
 		# Dev: waypoints in a known square around the ship, with the screen
 		# position of each pip printed so a capture can be checked by pixel.

@@ -658,7 +658,7 @@ func _build_research(root: Control) -> void:
 			toggle_research()
 			_research_modal.accept_event())
 	var v: VBoxContainer = parts[1]
-	v.add_child(_label("One project at a time. Costs are paid gradually while researching; progress pauses when you can't pay (spice covers energy shortfalls).\nClick a tech to start it; click the active one to cancel it.", DIM, 13))
+	v.add_child(_label("One project at a time. Costs are paid gradually while researching; progress pauses when you can't pay (spice covers energy shortfalls).\nClick a tech to research it. Picking another pauses the current one, which keeps its progress; click the active one to pause it.", DIM, 13))
 	var legend := HBoxContainer.new()
 	legend.add_theme_constant_override("separation", 10)
 	for s in ["done", "active", "available", "locked"]:
@@ -809,6 +809,9 @@ func _refresh_research() -> void:
 			line += "  STALLED"
 		if st == "queued":
 			line += "  #%d" % (game.research_queue[pid].find(id) + 1)
+		var kept: float = game.paused_progress(pid, id) if st != "active" else 0.0
+		if kept > 0.0:
+			line += "  PAUSED %d%%" % int(100.0 * kept / t["time"])
 		w["label"].text = line
 		w["desc"].text = t["desc"]
 		# Prerequisites: a padlock and the techs' names.
@@ -829,11 +832,17 @@ func _refresh_research() -> void:
 		w["bar"].color = BAD if st == "active" and cur.get("stalled", false) else (GOOD if st == "done" else EDGE_LIT)
 		w["bar"].offset_right = -2 - (1.0 - frac) * (w["button"].custom_minimum_size.x - 4.0)
 		w["bar"].visible = frac > 0.0
-		w["fill"].visible = st == "active"
+		w["fill"].visible = st == "active" or kept > 0.0
 		if st == "active":
 			w["fill"].anchor_right = clampf(frac, 0.0, 1.0)
 			w["fill"].offset_right = -2.0 * frac
 			w["fill"].color = Color(BAD.r, BAD.g, BAD.b, 0.3) if cur.get("stalled", false) else Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
+		elif kept > 0.0:
+			# Paused: its kept progress, greyed.
+			var kf: float = clampf(kept / t["time"], 0.0, 1.0)
+			w["fill"].anchor_right = kf
+			w["fill"].offset_right = -2.0 * kf
+			w["fill"].color = Color(1, 1, 1, 0.12)
 
 func show_pause(on: bool) -> void:
 	_pause.visible = on

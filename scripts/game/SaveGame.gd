@@ -35,6 +35,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"researched": {},
 		"research": game.research,
 		"research_queue": game.research_queue,
+		"research_paused": game.research_paused,
 		"ai": game.ai._state.duplicate(true),
 		"planets": {},
 		"asteroids": {},
@@ -209,6 +210,12 @@ static func apply(game: Game, data: Dictionary) -> bool:
 	for pid_s in data.get("research", {}):
 		var r: Dictionary = data["research"][pid_s]
 		game.research[int(pid_s)] = r if r.is_empty() or Defs.TECHS.has(r.get("id", "")) else {}
+	for pid_s in data.get("research_paused", {}):
+		var kept := {}
+		for t in data["research_paused"][pid_s]:
+			if Defs.TECHS.has(t):
+				kept[t] = float(data["research_paused"][pid_s][t])
+		game.research_paused[int(pid_s)] = kept
 	for pid_s in data.get("research_queue", {}):
 		game.research_queue[int(pid_s)] = Array(data["research_queue"][pid_s]).filter(func(t): return Defs.TECHS.has(t))
 	for pid_s in data.get("ai", {}):

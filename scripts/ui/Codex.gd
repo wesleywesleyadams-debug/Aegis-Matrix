@@ -569,7 +569,7 @@ func _page_ships() -> void:
 ## Every tech, tab by tab: what it needs, costs and does.
 func _page_research() -> void:
 	_heading("Research")
-	_para("Research spends energy (and spice for later tiers) over time. Only one project runs at a time. Each tech needs only the tier below it in its row. A warship's Mk II needs the class unlocked first.")
+	_para("Research spends energy (and spice for later tiers) over time. Only one project runs at a time. Picking another tech pauses the current one, and a paused tech resumes where it left off. Each tech needs only the tier below it in its row. A warship's Mk II needs the class unlocked first.")
 	for g in ["warships", "weapons", "defense", "constructs", "worlds", "logistics"]:
 		var ids: Array = []
 		for id in Defs.TECHS:
