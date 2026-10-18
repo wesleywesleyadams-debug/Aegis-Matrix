@@ -22,6 +22,13 @@ func _ready() -> void:
 	if OS.get_environment("SL_SIM_MINUTES") != "":
 		max_minutes = float(OS.get_environment("SL_SIM_MINUTES"))
 	Engine.time_scale = float(OS.get_environment("SL_SIM_SCALE")) if OS.get_environment("SL_SIM_SCALE") != "" else 4.0
+	# SL_PHYS_TICKS: physics steps per game second (default 60). Fewer is
+	# cheaper per game second; training checks it doesn't change outcomes.
+	# Enough physics steps per frame to keep up with the time scale, so a
+	# faster sim never runs physics in slow motion.
+	Engine.max_physics_steps_per_frame = maxi(8, ceili(Engine.time_scale) + 1)
+	if OS.get_environment("SL_PHYS_TICKS") != "":
+		Engine.physics_ticks_per_second = int(OS.get_environment("SL_PHYS_TICKS"))
 	_t0_ms = Time.get_ticks_msec()
 	Game.instance.match_over.connect(func(_won: bool): _finish("defeat", Game.instance.winner_pid))
 

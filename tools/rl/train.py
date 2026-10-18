@@ -161,7 +161,10 @@ def main():
     ap.add_argument("--steps", type=int, default=128, help="steps per env per update")
     ap.add_argument("--updates", type=int, default=1000)
     ap.add_argument("--minutes", type=float, default=12)
-    ap.add_argument("--speed", type=float, default=8)
+    # 16x: 27% faster than 8x with physics unchanged (60 steps per game
+    # second; SimRunner raises the steps-per-frame cap to keep up) - same
+    # kills per game over 8 seeds.
+    ap.add_argument("--speed", type=float, default=16)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--ent", type=float, default=0.01, help="exploration bonus (entropy weight)")
     ap.add_argument("--resume", action="store_true")
