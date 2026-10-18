@@ -34,6 +34,7 @@ var _pop_label: Label
 var _fleet_label: Label
 var _research_button: Button
 var _research_pages := {}
+var _research_box: Control   # the research panel's content, for its left edge
 ## Green progress fill laid over the research button while a project runs.
 var _research_fill: ColorRect
 var _research_icon: TextureRect
@@ -658,6 +659,7 @@ func _build_research(root: Control) -> void:
 			toggle_research()
 			_research_modal.accept_event())
 	var v: VBoxContainer = parts[1]
+	_research_box = v
 	v.add_child(_label("One project at a time. Costs are paid gradually while researching; progress pauses when you can't pay (spice covers energy shortfalls).\nClick a tech to research it. Picking another pauses the current one, which keeps its progress; click the active one to pause it.", DIM, 13))
 	var legend := HBoxContainer.new()
 	legend.add_theme_constant_override("separation", 10)
@@ -770,6 +772,40 @@ func show_planet(p: Planet) -> void:
 
 ## The top-bar Research button: opens / closes the panel, or - while the
 ## panel is open on another tab - jumps to the active project's tab.
+## Where the Research button sits: in the top bar, or - with the research
+## panel open - in the free margin left of the panel, under the clock.
+func _place_research_button(frac: float) -> void:
+	var b := _research_button
+	var f := _research_fill
+	if _research_modal.visible and _research_box:
+		var panel_left: float = _research_box.get_parent().get_global_rect().position.x
+		var l := 12.0
+		var r: float = maxf(l + TOP_H * 2.0, panel_left - 12.0)
+		var top := float(TOP_Y + TOP_H + 60)
+		for c in [b, f]:
+			c.anchor_left = 0.0
+			c.anchor_right = 0.0
+		b.offset_left = l
+		b.offset_right = r
+		b.offset_top = top
+		b.offset_bottom = top + TOP_H
+		f.offset_left = l + 2.0
+		f.offset_right = l + 2.0 + (r - l - 4.0) * frac
+		f.offset_top = top + 2.0
+		f.offset_bottom = top + TOP_H - 2.0
+	else:
+		for c in [b, f]:
+			c.anchor_left = 1.0
+			c.anchor_right = 1.0
+		b.offset_left = RESEARCH_RIGHT - RESEARCH_W
+		b.offset_right = RESEARCH_RIGHT
+		b.offset_top = TOP_Y
+		b.offset_bottom = TOP_Y + TOP_H
+		f.offset_left = RESEARCH_RIGHT - RESEARCH_W + 2
+		f.offset_right = RESEARCH_RIGHT - RESEARCH_W + 2 + (RESEARCH_W - 4) * frac
+		f.offset_top = TOP_Y + 2
+		f.offset_bottom = TOP_Y + TOP_H - 2
+
 func _on_research_button() -> void:
 	var cur: Dictionary = game.research[game.player_id]
 	if _research_modal.visible and not cur.is_empty():
@@ -1444,8 +1480,7 @@ Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 		# button blinks red and the fill freezes where it stopped.
 		_research_button.modulate = Color.WHITE.lerp(BAD, 0.35 + 0.65 * glow) if cur["stalled"] else Color.WHITE
 		_research_fill.visible = show_btn
-		_research_fill.offset_left = RESEARCH_RIGHT - RESEARCH_W + 2
-		_research_fill.offset_right = RESEARCH_RIGHT - RESEARCH_W + 2 + (RESEARCH_W - 4) * frac
+		_place_research_button(frac)
 		_research_fill.color = Color(BAD.r, BAD.g, BAD.b, 0.3) if cur["stalled"] else Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
 	var s := int(Game.now())
 	_clock.text = "%02d:%02d" % [s / 60, s % 60]
