@@ -255,6 +255,7 @@ def main():
     for upd in range(start, args.updates):
         t0 = time.time()
         buf = {"obs": [], "act": [], "logp": [], "val": [], "rew": [], "done": []}
+        n_group = n_single = 0   # this update's orders to groups vs single ships
         for step in range(args.steps):
             with torch.no_grad():
                 acts, logp, _, val = pol(collate(obs, dev))
@@ -263,6 +264,13 @@ def main():
             nxt = list(pool.map(lambda iv: envs[iv[0]].step(iv[1]), enumerate(orders)))
             rews, dones = [], []
             for i in range(args.envs):
+                acts_i = obs[i]["actors"]
+                for o in orders[i]["orders"]:
+                    if 0 <= o[0] < len(acts_i) and acts_i[o[0]]["entity"] >= 0:
+                        if acts_i[o[0]].get("group"):
+                            n_group += 1
+                        else:
+                            n_single += 1
                 parts = reward_of(obs[i], nxt[i], envs[i].drill == "")
                 for o in orders[i]["orders"]:
                     kind = (o[1], o[2])   # verb, object (-1 = none)
@@ -353,7 +361,7 @@ def main():
         vs_ai = sum(1 for r in tests if r[0]) / max(len(tests), 1)
         win = sum(1 for r in recent if r[0]) / max(len(recent), 1)
         mean_ret = np.mean([r[2] for r in recent]) if recent else 0.0
-        print(f"upd {upd + 1}  {stage()}  duck {duck:.3f}  drill {drill_d.get(stage(), 0):.2f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  ret {mean_ret:+.1f}  "
+        print(f"upd {upd + 1}  {stage()}  duck {duck:.3f}  drill {drill_d.get(stage(), 0):.2f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  group {n_group / max(1, n_group + n_single):.0%} of {n_group + n_single}  ret {mean_ret:+.1f}  "
               f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f}  {time.time() - t0:.0f}s", flush=True)
         if recent and (upd + 1) % 10 == 0:
             print("  parts/game " + "  ".join(f"{k} {np.mean([r[5][k] for r in recent]):+.1f}" for k in PARTS), flush=True)
