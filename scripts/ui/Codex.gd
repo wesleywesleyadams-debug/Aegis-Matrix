@@ -375,14 +375,14 @@ func _show(id: String) -> void:
 
 func _page_overview() -> void:
 	_heading("Stardust Dominion")
-	_para("You lose the match when you hold no worlds, or when you have no starbase left and no Constructor to build one. You win when the enemy does. Starbases build your ships and take in what your harvesters haul, and worlds feed and power everything, so both are worth protecting - and both are what you go after.")
+	_para("You lose when you hold no worlds, or when you have no starbase and no Constructor to build one. You win when the enemy does. Starbases build your ships and take in what harvesters haul. Worlds feed and power everything. Protect both, and go after the enemy's.")
 	_plate([["starbase", "Starbase", EDGE_LIT], ["planet_terran_s", "Worlds"], ["ship_miner", "Harvesters"],
 		["ship_corvette", "Warships"], ["asteroid_0", "Belts"]], 68.0, true,
-		"Lose every world, or every starbase with no Constructor to raise another, and the match is over.")
+		"Lose every world, or every starbase with no Constructor to build another, and you lose.")
 	_heading("The loop", EDGE_LIT)
-	_para("Mine the belts and gas giants, settle free worlds, build farms and power plants so your population and fleet can grow, research what your strategy needs, and take the fight to the enemy before their economy outgrows yours.")
+	_para("Mine belts and gas giants, settle free worlds, and build farms and power plants so your population and fleet can grow. Research what your strategy needs. Attack before the enemy's economy outgrows yours.")
 	_heading("What you can see", EDGE_LIT)
-	_para("Sensors give fog of war. Unexplored space is black; explored space you can't currently see is dimmed and shows only terrain and the last owner you saw on a planet. Enemy ships and shots appear only inside your sensor range, and an enemy starbase stays on your map once you have seen it. Ships in a spice nebula are hidden unless something of yours is close, a Scout is close, or one of its beacons is watching; ion storms halve sensor range. The AI plays under exactly the same rules.")
+	_para("Sensors give fog of war. Unexplored space is black. Explored space you can't see now is dimmed and shows only terrain and each planet's last known owner. Enemy ships and shots show only inside your sensor range. An enemy starbase stays on your map once seen. Ships in a spice nebula are hidden unless something of yours or a Scout is close, or a Scout beacon watches. Ion storms halve sensor range. The AI follows the same rules.")
 	_heading("Resources", EDGE_LIT)
 	_table(["Resource", "Comes from", "Pays for"], [
 		[["Food", Color("8fe060")], "Farms only", "%.2f per pop per minute (spice covers a shortfall); an unfed world shrinks as fast as it would grow" % Defs.FOOD_PER_POP_PER_MIN],
@@ -399,9 +399,9 @@ func _page_combat() -> void:
 		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender or a carrier's hangar bays restore it"],
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
-	_para("Shields - on ships, constructs and worlds alike - only recharge once they have gone %d s without taking damage, then refill at %s%% of their maximum each second. So focused fire keeps them down, while fire spread across a fleet lets the ships you are not hitting recover." % [int(Defs.SHIELD_REGEN_DELAY), String.num(Defs.SHIELD_REGEN_PER_SEC * 100.0, 1)])
+	_para("Shields on ships, constructs and worlds only recharge after %d s without damage, then refill %s%% of their maximum each second. Focused fire keeps them down. Spread fire lets unhit ships recover." % [int(Defs.SHIELD_REGEN_DELAY), String.num(Defs.SHIELD_REGEN_PER_SEC * 100.0, 1)])
 	_heading("Generalists")
-	_para("Each class leans on a different layer - corvettes on hull, destroyers on armor, cruisers on shields, carriers evenly - which is what gives specialists something to specialize against.")
+	_para("Each class leans on a different layer: corvettes on hull, destroyers on armor, cruisers on shields, carriers evenly. That gives specialists a target.")
 	var rows: Array = []
 	for t in Defs.MARK_LINES:
 		var d: Dictionary = Defs.SHIPS[t]
@@ -417,7 +417,7 @@ func _page_combat() -> void:
 		[str(int(sb["hp"])), Defs.LAYER_COLORS["hull"]], "hull"])
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
 	_heading("Specialist variants")
-	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers entirely for much less. Every variant costs the same as its generalist. A variant shows as the color of its mark chevrons, which matches the color of its shots.")
+	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers for much less. Every variant costs the same as its generalist. Its chevrons and shots share one color.")
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
 		"slip": "orange V-shot", "disruptor": "purple V-shot"}
@@ -434,7 +434,7 @@ func _page_combat() -> void:
 		vrows.append([[vd["label"], vd["color"]], effect, "%d%%" % int(vd["damage"] * 100.0), [shots[v], vd["color"]], ["^ ^ ^", vd["color"]]])
 	_table(["Variant", "Effect", "Base damage", "Shots", "Chevrons"], vrows)
 	_heading("Which variant against what")
-	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is the same, lower kills faster. Figures come straight from the ships' current stats.")
+	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is equal, lower kills faster.")
 	var head: Array = ["Target"]
 	for v in Defs.VARIANTS:
 		head.append(Defs.VARIANTS[v]["label"])
@@ -452,21 +452,21 @@ func _page_combat() -> void:
 	mrows.append(sbrow)
 	_table(head, mrows)
 	_heading("Hull marks", EDGE_LIT)
-	_para("A mark is rank, not purpose: it comes from the Warships research tab and raises damage and every defense layer, while a variant comes from a Weapons Depot and decides what the ship is good against. The two stack. The Ships page lays out class, mark and variant side by side.")
+	_para("A mark is rank. It comes from the Warships research tab and raises damage and every defense layer. A variant comes from a Weapons Depot and sets what the ship is good against. They stack. The Ships page compares class, mark and variant.")
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
-	_para("Starbases build generalists only. Once the Depots tech is researched, a Constructor builds a depot (one button per variant) for %s over %ds, and every depot is built for ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on — the depot wears your color and its variant's marking." % [
+	_para("Starbases build generalists only. After researching Depots, a Constructor can build a depot (one button per variant) for %s over %ds. Each depot makes ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on. It wears your color and its variant's marking." % [
 		Defs.cost_text(wd["cost"]), int(wd["build_time"])])
-	_para("Send generalists in by right-clicking the depot (or with the refit buttons in their panel). They fly in and dock — %d at a time, hidden and safe inside — and are refitted automatically as minerals allow. Each hull has its own cost and time:" % int(wd["capacity"]))
+	_para("Right-click the depot (or use the refit buttons in the ship panel) to send generalists in. They dock, %d at a time, hidden and safe, and are refitted automatically as minerals allow. Each hull has its own cost and time:" % int(wd["capacity"]))
 	var rrows: Array = []
 	for t in Defs.VARIANTS_OF:
 		var r: Dictionary = Defs.SHIPS[t]["refit"]
 		rrows.append([Defs.SHIPS[t]["name"], "%d minerals" % int(r["minerals"]), "%ds" % int(r["time"])])
 	_table(["Hull", "Refit cost", "Refit time"], rrows)
-	_para("A refit with no minerals to pay for it simply waits, and the ship stays inside until you cancel it — cancelling ejects it unchanged, still a generalist. A refitted specialist can never be refitted again. If a depot is destroyed with ships inside, they are thrown clear and lose 60% of their shields, armor and hull in the blast.")
+	_para("A refit with no minerals waits, and the ship stays inside until you cancel. Cancelling ejects it unchanged, still a generalist. A specialist can't be refitted again. If a depot is destroyed with ships inside, they are thrown clear and lose 60% of their shields, armor and hull.")
 	_heading("Defense research")
-	_para("Four lines on the research screen's Defense tab - shields, armor and hull below, plus screens, which cut a share of every hit (all three: -52%) - expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech is time as well as energy.")
-	_para("The shield line also raises a Radiation Sail Array's solar shield (and so a merged mega shield); it still refills just as fast, since each energy harvested recharges 10% of the maximum.")
+	_para("Four lines on the Defense tab: shields, armor and hull below, plus screens, which cut a share of every hit (all three: -52%). They are expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech costs time as well as energy.")
+	_para("The shield line also raises a Radiation Sail Array's solar shield (and a merged mega shield). It refills just as fast, since each energy harvested recharges 10% of the maximum.")
 	var lines := {"shields": "shield", "armor": "armor", "hull": "hull"}
 	for line in lines:
 		var lrows: Array = []
@@ -476,7 +476,7 @@ func _page_combat() -> void:
 				lrows.append([[t["name"], Defs.LAYER_COLORS[lines[line]]], "Tier %d" % t["tier"], Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t["desc"]])
 		_table([line.to_upper(), "", "Cost", "Time", "Effect"], lrows)
 	_heading("Ship jobs")
-	_para("Jobs are what a ship is for beyond its guns. Passive jobs always work; an active one is used with Q or its button in the ship panel.")
+	_para("Jobs are what a ship does besides shooting. Passive jobs always work. Use an active one with Q or its ship panel button.")
 	var jrows: Array = []
 	for j in Defs.JOBS:
 		var jd: Dictionary = Defs.JOBS[j]
@@ -494,7 +494,7 @@ func _page_ships() -> void:
 	# conflating them, so they are laid out side by side here before the
 	# stat cards: what it IS, how GOOD it is, and what it is FOR.
 	_heading("Class, Mark and Variant")
-	_para("Every warship is described by three separate things. Its CLASS is the hull it was built as and never changes. Its MARK is how refined that hull is, bought on the Warships research tab. Its VARIANT is what it was refitted to specialize in, bought at a Weapons Depot. A Mk IV Reaver Corvette is all three at once: a corvette, taken to the top mark, fitted to hunt hull.")
+	_para("Every warship has three separate traits. Its CLASS is the hull it was built as and never changes. Its MARK is how refined that hull is, bought on the Warships research tab. Its VARIANT is its specialty, from a Weapons Depot refit. A Mk IV Reaver Corvette is all three: a corvette, at the top mark, fitted to hunt hull.")
 	_table(["System", "Comes from", "Changes", "You can tell by"], [
 		[["Class", TEXT], "What you build it as", "Never", "The hull's silhouette"],
 		[["Mark", EDGE_LIT], "Warships research", "Every ship of that class, at once", "How many chevrons beside it"],
@@ -504,10 +504,10 @@ func _page_ships() -> void:
 	var cls_plate: Array = []
 	for cls in Defs.MARK_LINES:
 		cls_plate.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
-	_plate(cls_plate, 104.0, true, "One shape per class, for life: a corvette is an A, a destroyer a Y, a cruiser an X, a carrier an H.")
-	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow, a destroyer a tail boom forking into two prongs, a cruiser four wings crossed at a hub, and a carrier two nacelles either side of a hangar spine. You can read a fleet's composition from its silhouettes alone.")
+	_plate(cls_plate, 104.0, true, "One shape per class, for life: corvette A, destroyer Y, cruiser X, carrier H.")
+	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow. A destroyer is a tail boom forking into two prongs. A cruiser is four wings crossed at a hub. A carrier is two nacelles either side of a hangar spine. Silhouettes show a fleet's makeup.")
 	_heading("Mark — the rank")
-	_para("Each mark adds to damage, hull, armor and shields alike. Later marks are worth more than earlier ones, and bigger classes gain more from each, which pays back their costlier research. Bonus over Mk I:")
+	_para("Each mark adds to damage, hull, armor and shields alike. Later marks are worth more, and bigger classes gain more from each. Bonus over Mk I:")
 	var mrows0: Array = []
 	for cls in Defs.MARK_LINES:
 		var row0: Array = [[Defs.SHIPS[cls]["name"], TEXT]]
@@ -515,14 +515,14 @@ func _page_ships() -> void:
 			row0.append("+%d%%" % int(round(Defs.MARK_BONUS[cls][i] * 100.0)))
 		mrows0.append(row0)
 	_table(["Class", Defs.HULL_MARKS[1], Defs.HULL_MARKS[2], Defs.HULL_MARKS[3]], mrows0)
-	_para("Every warship carries small chevrons beside it, one per mark: one at Mk I, up to four at Mk IV. Each class researches its own marks, so a corvette fleet and a cruiser fleet are separate investments, and a mark applies to every ship of that class you already own the moment the research lands.")
+	_para("Every warship has small chevrons beside it, one per mark: one at Mk I, four at Mk IV. Each class researches its own marks, so each is a separate investment. A mark applies to every ship of that class you own the moment research finishes.")
 	_heading("Variant — the color")
-	_para("A variant keeps its class's hull exactly; only its mark chevrons change color. Generalists wear yellow chevrons, and each variant its own color - the same color as its shots:")
+	_para("A variant keeps its class's hull; only its chevrons change color. Generalists wear yellow chevrons. Each variant has its own color, the same as its shots:")
 	var crows: Array = [[["Generalist", Defs.GENERALIST_COLOR], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	for tv in Defs.VARIANTS:
 		crows.append([[Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]], ["^ ^ ^", Defs.VARIANTS[tv]["color"]]])
 	_table(["Variant", "Chevrons"], crows)
-	_para("So a glance at a fleet reads its rank from the count and its fit from the color. What each variant does to damage is on the Combat page.")
+	_para("Chevron count shows rank; color shows fit. The Combat page covers what each variant does to damage.")
 	_heading("Every ship")
 	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat).")
 	for t in Defs.BUILD_ORDER:
@@ -569,7 +569,7 @@ func _page_ships() -> void:
 ## Every tech, tab by tab: what it needs, costs and does.
 func _page_research() -> void:
 	_heading("Research")
-	_para("Research spends energy (and spice for later tiers) over time; only one project runs at a time. Each tech needs only the tier below it in its own row; a warship's Mk II needs the class unlocked first.")
+	_para("Research spends energy (and spice for later tiers) over time. Only one project runs at a time. Each tech needs only the tier below it in its row. A warship's Mk II needs the class unlocked first.")
 	for g in ["warships", "weapons", "defense", "constructs", "worlds", "logistics"]:
 		var ids: Array = []
 		for id in Defs.TECHS:
@@ -595,7 +595,7 @@ func _pct(tech: String, effect: String) -> int:
 
 func _page_economy() -> void:
 	_heading("Planets")
-	_para("A planet's size is its number of fields, one building each, and its population cap is size x %d. Colonies start at %d pops. Pops eat %s food per minute; an unfed world shrinks instead of growing. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP), str(Defs.FOOD_PER_POP_PER_MIN)])
+	_para("A planet's size is its number of fields, one building each. Its population cap is size x %d. Colonies start at %d pops. Pops eat %s food per minute; an unfed world shrinks instead of growing. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP), str(Defs.FOOD_PER_POP_PER_MIN)])
 	var prows: Array = []
 	for p in Defs.PLANET_TYPES:
 		var pd: Dictionary = Defs.PLANET_TYPES[p]
@@ -609,8 +609,8 @@ func _page_economy() -> void:
 	_heading("Harvesting")
 	_plate([["ship_miner", "Mining Barge"], ["asteroid_big_0", "Mineral asteroid"], ["spice_0", "Spice asteroid"],
 		["ship_skimmer", "Gas Skimmer"], ["planet_gas_s", "Gas giant"], ["starbase", "Starbase"]], 76.0, true,
-		"A barge works rock, a skimmer works gas giants and spice nebulae; both haul their loads to a starbase or a Mining Station.")
-	_para("A harvester parks on a node and fills its hold at a steady rate, then hauls the load to the nearest starbase and comes back. The gather rate never changes with distance — distance only adds flying time, so a forward starbase is worth building for a far belt.")
+		"Barges work rock; skimmers work gas giants and spice nebulae. Both haul to a starbase or Mining Station.")
+	_para("A harvester parks on a node, fills its hold at a steady rate, hauls the load to the nearest starbase and returns. Distance never changes the gather rate, only flying time, so build a forward starbase for a far belt.")
 	var hrows: Array = []
 	for row in [
 		["Mining Barge", "miner", "Mineral asteroid", "minerals", 1.0],
@@ -623,10 +623,10 @@ func _page_economy() -> void:
 		hrows.append([row[0], row[2], [row[3].capitalize(), Defs.RESOURCE_COLORS[row[3]]],
 			"%.0f/min" % rate, "%d" % int(d["cargo"]), "%ds" % int(float(d["cargo"]) / rate * Defs.PER_MIN)])
 	_table(["Ship", "Source", "Yields", "Gather", "Hold", "Fill time"], hrows)
-	_para("Rates are at base. The Logistics techs speed up every harvester - Mining Barges and Gas Skimmers alike: Cutting Lasers, Resonance Drills and Mass Drivers add +%d%%, +%d%% and +%d%% gather rate, Deep-Core Drills and Bulk Holds +%d%% and +%d%% hold, and Logistics Command +%d%% of each. A Radiation Sail Array also gathers: %d energy a minute while it sits in Radiation (a star's zone or a spice nebula)." % [
+	_para("Rates are at base. Logistics techs speed up every harvester, Mining Barges and Gas Skimmers alike: Cutting Lasers, Resonance Drills and Mass Drivers add +%d%%, +%d%% and +%d%% gather rate, Deep-Core Drills and Bulk Holds +%d%% and +%d%% hold, and Logistics Command +%d%% of each. A Radiation Sail Array also gathers %d energy a minute while in Radiation (a star's zone or a spice nebula)." % [
 		_pct("cutting_lasers", "harvest"), _pct("resonance_drills", "harvest"), _pct("mass_drivers", "harvest"),
 		_pct("deep_drills", "cargo"), _pct("bulk_holds", "cargo"), _pct("logistics_command", "harvest"), int(Defs.SHIPS["heatshield"]["solar_sail"])])
-	_para("Asteroids run dry and vanish (a small mineral rock holds about %d, a large one about %d; spice rocks hold about a third as much), gas giants refill after a pause, and a spice nebula never runs out. The Logistics techs raise hold size, gather rate and speed." % [
+	_para("Asteroids run dry and vanish (a small mineral rock holds about %d, a large one about %d; spice rocks hold about a third as much). Gas giants refill after a pause. A spice nebula never runs out. Logistics techs raise hold size, gather rate and speed." % [
 		int(round(16.0 * 16.0 * Defs.ASTEROID_MINERALS_PER_PX2 / 10.0)) * 10, int(round(26.0 * 26.0 * Defs.ASTEROID_MINERALS_PER_PX2 / 10.0)) * 10])
 	_heading("Buildings")
 	var bplate: Array = []
@@ -638,24 +638,24 @@ func _page_economy() -> void:
 		var bd: Dictionary = Defs.BUILDINGS[b]
 		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), bd["desc"]])
 	_table(["Building", "Cost", "Time", "Effect"], brows)
-	_para("A building you have finished always runs; there is no staffing to meet. What a world's population decides is how MUCH it produces: every pop adds %s%% to the output of every Farm, Power Plant, Mining Complex and Spice Extractor on it, so a world of 30,000 makes four times what the same buildings make on a bare colony. A Molten world's Power Plants make a further x%.2f, which is the one thing that barren rock is good for." % [str(Defs.OUTPUT_PER_POP * 100.0), Defs.PLANET_TYPES["planet_lava"]["energy_mult"]])
+	_para("A finished building always runs; no staffing needed. Population sets how MUCH a world produces: every pop adds %s%% to the output of every Farm, Power Plant, Mining Complex and Spice Extractor on it, so a world of 30,000 makes four times what the same buildings make on a bare colony. A Molten world's Power Plants make a further x%.2f, the one thing that barren rock is good for." % [str(Defs.OUTPUT_PER_POP * 100.0), Defs.PLANET_TYPES["planet_lava"]["energy_mult"]])
 	_heading("Food")
-	_para("Food is on the same scale as every other resource, and like the rest it is counted per minute. One Farm feeds exactly %d pops on a fully fertile world - and only a fraction of that on a poor one, since a Farm grows in proportion to the world's fertility; past that a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
+	_para("Food is counted per minute, like every other resource. One Farm feeds exactly %d pops on a fully fertile world, and only a fraction of that on a poor one, since output scales with fertility. Past that, a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
 	_table(["", "Rate"], [
 		["A pop eats", "%.2f/min" % Defs.FOOD_PER_POP_PER_MIN],
 		["A Farm grows", "%d/min" % int(Defs.BUILDINGS["farm"]["output"]["food"])],
 		["1,000 pops eat", "%d/min" % int(1000.0 * Defs.FOOD_PER_POP_PER_MIN)],
 		["A Farm supports", "%d pops" % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN)],
 	])
-	_para("Spice covers a food shortfall 1:1, and pops living on it keep growing. When neither food nor spice can feed a world it starves: growth runs backwards at the same rate it would have grown, and the shortage only lifts once the world has been fed for %d seconds straight." % int(Defs.REGROW_SECONDS))
+	_para("Spice covers a food shortfall 1:1, and pops living on it keep growing. If neither food nor spice can feed a world, it starves: growth runs backwards at the rate it would have grown. The shortage lifts only after the world has been fed for %d seconds straight." % int(Defs.REGROW_SECONDS))
 	_heading("Defense Battery")
-	_para("A world with a Defense Battery is no longer a free kill: each one adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries make a colony something a raiding party has to commit to." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
+	_para("A world with a Defense Battery is no free kill. Each battery adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries force a raiding party to commit." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
 	_heading("Upkeep")
-	_para("Every ship costs energy per minute, and the total is multiplied as the fleet grows (1 + (ships/%d)^2), so fleets plateau instead of growing forever. Starbases have their own steeper curve, which makes more than a handful expensive. With no energy in the stockpile, starbases stop producing and your ships move and fire at %d%% speed." % [int(Defs.UPKEEP_SCALE_SHIPS), int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
+	_para("Every ship costs energy per minute, and the total is multiplied as the fleet grows (1 + (ships/%d)^2), so fleets plateau. Starbases have their own steeper curve, so more than a handful is expensive. With no energy in stock, starbases stop producing and your ships move and fire at %d%% speed." % [int(Defs.UPKEEP_SCALE_SHIPS), int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
 
 func _page_systems() -> void:
 	_heading("Systems")
-	_para("A match is fought in one star system, chosen in the lobby. Every system is symmetric - every player starts with the same worlds, rocks and distances, arranged evenly around the star - and every one has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside them. What differs is the star, the signature feature and where the gas lies, and those decide how the match is fought.")
+	_para("A match is fought in one star system, chosen in the lobby. Every system is symmetric: each player starts with the same worlds, rocks and distances, arranged evenly around the star. Every system has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside. Systems differ in star, signature feature and gas placement, and these decide how the match is fought.")
 	for s in SystemGen.SYSTEMS:
 		_system_card(s)
 	_star_section()
@@ -754,12 +754,12 @@ func _star_section() -> void:
 		srows.append([[sd["label"], sd["tint"]], "%d px" % int(sd["zone"]), "%d dps" % int(sd["dps"])])
 	_table(["Star", "Radiation zone", "Damage at the surface"], srows)
 	_heading("Radiation", Color("ffae4a"))
-	_para("Radiation is damage from the environment itself. It hurts everything of yours and the enemy's alike - ships and constructs - while they stay inside it, taking shields first, then armor, then hull like any other damage. Because it counts as being hit, shields do not regenerate while you sit in it.")
+	_para("Radiation is environmental damage. It hurts all ships and constructs, yours and the enemy's, while they stay inside, taking shields first, then armor, then hull. It counts as being hit, so shields don't regenerate inside it.")
 	_table(["Source", "Where", "Damage"], [
-		[["A star", Color("ffb347")], "Its radiation zone (sizes above)", "Strongest at the surface, falling off steeply toward the edge of the zone"],
-		[["A spice nebula", Color("ff9a2e")], "Anywhere inside the gas", "%d per second, about a star's outer zone - low, but it never stops" % int(SpiceNebula.RADIATION_DPS)],
+		[["A star", Color("ffb347")], "Its radiation zone (sizes above)", "Strongest at the surface, falling steeply toward the edge"],
+		[["A spice nebula", Color("ff9a2e")], "Anywhere inside the gas", "%d per second, about a star's outer zone: low, but constant" % int(SpiceNebula.RADIATION_DPS)],
 	])
-	_para("The exception is a Radiation Sail Array's bubble: while its solar shield is charged, nothing inside it - friend or foe - takes Radiation, and the array harvests energy from it (see Ships).")
+	_para("The exception is a Radiation Sail Array's bubble: while its solar shield is charged, nothing inside it, friend or foe, takes Radiation, and the array harvests energy from it (see Ships).")
 
 func _page_terms() -> void:
 	_heading("Terminology")
@@ -772,10 +772,10 @@ func _page_terms() -> void:
 		["Generalist", "Any warship as built, before a refit: full damage to every defense layer."],
 		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor. One refit only, and it is permanent."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
-		["Radiation", "Damage from the environment: inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and holds off shield regeneration."],
+		["Radiation", "Environmental damage inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and stops shield regeneration."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
 		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair, Hangar Bays."],
-		["Mega Shield", "Touching bubbles of your Radiation Sail Arrays merged into one: its points are the sum of theirs (three full arrays: 300), every hit is shared among them by charge, and it bursts for all of them at once at 0. Drift apart and each keeps its share as its own bubble."],
+		["Mega Shield", "Touching Radiation Sail Array bubbles of yours merged into one. Its points are their sum (three full arrays: 300), every hit is shared by charge, and it bursts for all of them at 0. If they drift apart, each keeps its share as its own bubble."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
 		["Upkeep", "Energy per minute for ships and starbases, rising as your fleet grows."],
@@ -804,7 +804,7 @@ func _notification(what: int) -> void:
 
 func _page_controls() -> void:
 	_heading("Panel grid")
-	_para("The buttons in the bottom-left panel are wired to a grid of keys, in the order they appear, and each button shows its letter in the corner. The letters never move: whatever the selected ship, starbase or depot offers, the first button is Q, the fourth A, the seventh Z.")
+	_para("The bottom-left panel's buttons map to a grid of keys, in order, and each shows its letter in the corner. Letters never move: whatever is selected, the first button is Q, the fourth A, the seventh Z.")
 	var pk := HUD.panel_keys()
 	var krows: Array = []
 	for r in 4:
@@ -814,9 +814,9 @@ func _page_controls() -> void:
 		krows.append([["First row", "Second row", "Third row", "Overflow"][r], ["   ".join(ks), EDGE_LIT]])
 	_table(["Row", "Keys"], krows)
 	_para("The build picker on one of your worlds uses the same letters.")
-	_para("Every key here can be rebound in Options > Hotkeys, with a Reset to defaults button; the letters drawn on the buttons follow your bindings.")
+	_para("Rebind any key in Options > Hotkeys, which has a Reset to defaults button. Button letters follow your bindings.")
 	_heading("Build grid")
-	_para("A starbase builds from two pages, Economy and Military, switched with the bottom-right button. With no starbase selected, a letter instead selects every ship of one class you own, wherever it is.")
+	_para("A starbase builds from two pages, Economy and Military, switched with the bottom-right button. With no starbase selected, a letter selects every ship of one class you own.")
 	var war: Array = Defs.BUILD_ORDER.filter(func(t): return Defs.SHIPS[t]["role"] == "warship")
 	var eco: Array = Defs.BUILD_ORDER.filter(func(t): return Defs.SHIPS[t]["role"] != "warship")
 	var keys := HUD.panel_keys()

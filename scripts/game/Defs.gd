@@ -305,17 +305,17 @@ static func field_count(planet_diameter_px: float) -> int:
 ## only: planet kinds it can be built on (empty = any).
 const BUILDINGS := {
 	"farm": {"name": "Farm", "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
-		"desc": "+20 food/min at base on a fertile world (x0.15 to x1.0 by world type), more with population: feeds 2,000 pops at full fertility (boosted by Hydroponics)."},
+		"desc": "+20 food/min at base on a fertile world (x0.15 to x1.0 by world type), more with population. Feeds 2,000 pops at full fertility (boosted by Hydroponics)."},
 	"generator": {"name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 20.0}, "only": [],
 		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world."},
 	"mine": {"name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],
 		"desc": "+20 minerals/min at base, more with population."},
 	"habitat": {"name": "Habitat", "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
-		"desc": "+1,500 population cap, and population is what raises every other building's output."},
+		"desc": "+1,500 population cap. Population raises every other building's output."},
 	"battery": {"name": "Defense Battery", "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
 		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px)."},
 	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 20.0}, "only": [],
-		"desc": "+20 spice/min at base, more with population, drawn from the planet's spice reserve (large on barren worlds, tiny on lush ones)."},
+		"desc": "+20 spice/min at base, more with population. Drains the planet's spice reserve (large on barren worlds, tiny on lush ones)."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor", "battery"]
 ## Defense Battery: shield added per battery, and its gun.
@@ -345,7 +345,7 @@ const TECHS := {
 	"fusion_drives": {"name": "Fusion Drives", "group": "logistics", "tier": 2, "requires": ["ion_thrusters"], "cost": {"energy": 145, "spice": 25}, "time": 85.0,
 		"effects": {"speed": 0.25}, "desc": "+25% ship speed."},
 	"gas_skimming": {"name": "Gas Skimming", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 50.0,
-		"effects": {}, "desc": "Unlocks the Gas Skimmer: mines gas giants and spice nebulae."},
+		"effects": {}, "desc": "Unlocks the Gas Skimmer: gas giants and nebulae."},
 	"particle_lances": {"name": "Particle Lances", "group": "weapons", "tier": 2, "requires": ["ion_cannons"], "cost": {"energy": 135, "spice": 30}, "time": 90.0,
 		"effects": {"damage": 0.25}, "desc": "+25% weapon damage: ships, constructs, worlds."},
 	"ion_thrusters": {"name": "Ion Thrusters", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 80}, "time": 60.0,
@@ -368,7 +368,7 @@ const TECHS := {
 
 	# --- Constructs: what you build rather than fly.
 	"garrison_guns": {"name": "Garrison Guns", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 70}, "time": 50.0,
-		"effects": {"structure_damage": 0.50}, "desc": "+50% construct weapon damage (starbases, stations)."},
+		"effects": {"structure_damage": 0.50}, "desc": "+50% construct weapon damage."},
 	"orbital_yards": {"name": "Orbital Yards", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 90}, "time": 60.0,
 		"effects": {"build_speed": 0.20}, "desc": "Starbases build ships 20% faster."},
 	"modular_frames": {"name": "Modular Frames", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 65}, "time": 50.0,
@@ -415,7 +415,7 @@ const TECHS := {
 	"shipyard_networks": {"name": "Shipyard Networks", "group": "constructs", "tier": 3, "requires": ["forward_bases"], "cost": {"energy": 780, "spice": 170}, "time": 235.0,
 		"effects": {"build_speed": 0.25}, "desc": "Starbases build ships 25% faster."},
 	"orbital_elevators": {"name": "Orbital Elevators", "group": "constructs", "tier": 3, "requires": ["rapid_assembly"], "cost": {"energy": 720, "spice": 120}, "time": 215.0,
-		"effects": {"construct_speed": 0.50, "upkeep": -0.10}, "desc": "Constructs are built 50% faster, -10% fleet upkeep."},
+		"effects": {"construct_speed": 0.50, "upkeep": -0.10}, "desc": "Constructs build 50% faster, -10% fleet upkeep."},
 
 	# --- Worlds: feeding a population you chose to grow.
 	"rationing": {"name": "Rationing", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 45}, "time": 40.0,
@@ -425,7 +425,7 @@ const TECHS := {
 	"gene_forges": {"name": "Gene Forges", "group": "worlds", "tier": 3, "requires": ["gene_clinics"], "cost": {"energy": 665, "spice": 130}, "time": 215.0,
 		"effects": {"growth": 0.80, "max_pop": 0.10}, "desc": "+80% population growth, +10% population cap."},
 	"planetary_citadels": {"name": "Planetary Citadels", "group": "worlds", "tier": 3, "requires": ["planetary_shields"], "cost": {"energy": 755, "spice": 160}, "time": 235.0,
-		"effects": {"planet_shield": 0.60, "planet_damage": 0.25}, "desc": "+60% planetary shield, +25% planetary battery damage."},
+		"effects": {"planet_shield": 0.60, "planet_damage": 0.25}, "desc": "+60% planetary shield, +25% battery damage."},
 
 	# --- Logistics: tier 3 is a choice of what a harvester is good at.
 	"convoy_protocols": {"name": "Convoy Protocols", "group": "logistics", "tier": 2, "requires": ["gas_skimming"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
@@ -447,7 +447,7 @@ const TECHS := {
 
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 80, "spice": 10}, "time": 60.0,
-		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot: refits warships into variants."},
+		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot (variant refits)."},
 	"carriers": {"name": "Carriers", "group": "warships", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 155, "spice": 40}, "time": 240.0,
 		"effects": {"unlock_carrier": 1.0}, "desc": "Unlocks the Carrier."},
 	"carrier_mk2": {"name": "Mk II Carrier", "group": "warships", "class": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 145}, "time": 85.0,
@@ -455,7 +455,7 @@ const TECHS := {
 	"carrier_mk3": {"name": "Mk III Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk2"], "cost": {"energy": 340, "spice": 55}, "time": 205.0,
 		"effects": {"mark_carrier": 1.0}, "desc": "+37% damage, hull, armor and shields over Mk I."},
 	"carrier_mk4": {"name": "Mk IV Carrier", "group": "warships", "class": "carrier", "tier": 3, "requires": ["carrier_mk3"], "cost": {"energy": 1660, "spice": 310}, "time": 260.0,
-		"effects": {"mark_carrier": 1.0}, "desc": "+105% damage, hull, armor and shields over Mk I."},
+		"effects": {"mark_carrier": 1.0}, "desc": "+105% damage, hull, armor, shields over Mk I."},
 	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 60.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
 	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 135, "spice": 30}, "time": 150.0,
@@ -503,11 +503,11 @@ const TECHS := {
 	"adaptive_hulls": {"name": "Adaptive Hulls", "group": "defense", "line": "hull", "tier": 3, "requires": ["nanite_plating"], "cost": {"energy": 890, "spice": 200}, "time": 260.0,
 		"effects": {"hull": 0.45}, "desc": "+45% hull: ships and constructs."},
 	"solar_collectors": {"name": "Solar Collectors", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 45.0,
-		"effects": {"energy": 0.15}, "desc": "+15% energy output: worlds, starbases, Sail Arrays."},
+		"effects": {"energy": 0.15}, "desc": "+15% energy: worlds, starbases, Sail Arrays."},
 	"plasma_reactors": {"name": "Plasma Reactors", "group": "worlds", "tier": 2, "requires": ["solar_collectors"], "cost": {"energy": 130, "spice": 20}, "time": 80.0,
-		"effects": {"energy": 0.25}, "desc": "+25% energy output: worlds, starbases, Sail Arrays."},
+		"effects": {"energy": 0.25}, "desc": "+25% energy: worlds, starbases, Sail Arrays."},
 	"dark_matter": {"name": "Dark Matter Reactors", "group": "worlds", "tier": 3, "requires": ["plasma_reactors"], "cost": {"spice": 200}, "time": 215.0,
-		"effects": {"energy": 0.50}, "desc": "+50% energy output: worlds, starbases, Sail Arrays."},
+		"effects": {"energy": 0.50}, "desc": "+50% energy: worlds, starbases, Sail Arrays."},
 	"spice_navigation": {"name": "Spice Navigation", "group": "logistics", "tier": 3, "requires": ["convoy_protocols"], "cost": {"spice": 200}, "time": 180.0,
 		"effects": {"speed": 0.15, "growth": 0.25}, "desc": "+15% ship speed, +25% population growth."},
 }
@@ -524,12 +524,12 @@ static func cost_text(cost: Dictionary) -> String:
 
 ## What each research group is for, shown under the tabs (HUD._build_research).
 const TECH_GROUP_DESC := {
-	"warships": "Unlock each warship class and raise its mark, Mk I through Mk IV. Every class is its own line, and a mark refines a hull rather than reshaping it.",
+	"warships": "Unlock each warship class and raise its mark, Mk I through Mk IV. Every class is its own line.",
 	"weapons": "Weapon output for everything you own, warship and starbase alike.",
-	"defense": "The three layers damage works through — shields, armor, hull — plus screens, which soak a slice of everything first. Pick a line and commit.",
+	"defense": "The three damage layers (shields, armor, hull), plus screens, which soak a slice of every hit first. Pick a line and commit.",
 	"constructs": "Starbases, depots and the other things you build rather than fly.",
 	"worlds": "Feeding and growing your colonies: food, population and the cap on both.",
-	"logistics": "Hauling, skimming and fleet movement — how fast your cargo and your ships get there.",
+	"logistics": "Hauling, skimming and fleet movement: how fast cargo and ships get there.",
 	"general": "Everything else.",
 }
 
@@ -657,9 +657,9 @@ const VARIANTS := {
 	"reaver": {"label": "Reaver", "vs": {"hull": 1.9}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("58e07a"),
 		"desc": "80% base damage, x1.9 against hull."},
 	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.65, "cost": 1.0, "color": Color("ff7a14"),
-		"desc": "Shots slip past shields straight to armor and hull, at 65% base damage."},
+		"desc": "Shots skip shields and hit armor and hull, at 65% base damage."},
 	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.4, "cost": 1.0, "color": Color("b06cff"),
-		"desc": "Shots pass through shields and armor straight to the hull, at 40% base damage."},
+		"desc": "Shots skip shields and armor and hit the hull, at 40% base damage."},
 }
 ## Which variants each generalist has so far.
 const VARIANTS_OF := {
@@ -700,11 +700,11 @@ const JOBS := {
 	"beacon": {"name": "Deep Sensors", "active": true, "cooldown": 45.0, "duration": 90.0, "color": Color("7fe8ff"),
 		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
 	"radiation_sail": {"name": "Radiation Sail", "active": false, "color": Color("c9a0ff"),
-		"desc": "In Radiation (a star's zone or a spice nebula), harvests 15 energy a minute: first into a solar shield (100; 1 energy charges 10% of it; starts full, charges even under fire), the rest to your energy pool. The shield is a bubble nearly two carriers wide: it soaks enemy fire on every friendly ship, construct and world inside, and blocks Radiation for everything inside, friend or foe. Touching bubbles merge into one pooled mega shield."},
+		"desc": "In Radiation (a star's zone or a spice nebula), harvests 15 energy a minute: first into a solar shield (100; 1 energy charges 10% of it; starts full, charges even under fire), the rest to your energy pool. The shield is a bubble nearly two carriers wide. It soaks enemy fire on every friendly ship, construct and world inside, and blocks Radiation for everything inside, friend or foe. Touching bubbles merge into one pooled mega shield."},
 	"hangar": {"name": "Hangar Bays", "active": false, "color": Color("ffc24a"),
-		"desc": "Six bays that take corvette-sized hulls: right-click the carrier with them selected (or let them come on their own) and each is mended hull first, then armor, then launched again."},
+		"desc": "Six bays for corvette-sized hulls: right-click the carrier with them selected (or let them dock on their own). Each is mended hull first, then armor, then launched."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
-		"desc": "Repairs up to 4 ships within 180 px (5 points/s each: hull first, then armor; only tenders and carrier bays restore armor) once they're out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
+		"desc": "Repairs up to 4 ships within 180 px (5 points/s each: hull first, then armor; only tenders and carrier bays restore armor) once out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
 }
 
 ## Visual language for the defense layers: bars, research lines, and the
