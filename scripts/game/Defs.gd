@@ -339,9 +339,9 @@ const TECHS := {
 	"bulk_holds": {"name": "Bulk Holds", "group": "logistics", "tier": 2, "requires": ["deep_drills"], "cost": {"energy": 120, "spice": 20}, "time": 75.0,
 		"effects": {"cargo": 0.50}, "desc": "Harvesters carry +50% per load."},
 	"cutting_lasers": {"name": "Cutting Lasers", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 45.0,
-		"effects": {"harvest": 0.30}, "desc": "+30% gather rate."},
+		"effects": {"harvest": 0.30}, "desc": "Harvesters gather 30% faster."},
 	"resonance_drills": {"name": "Resonance Drills", "group": "logistics", "tier": 2, "requires": ["cutting_lasers"], "cost": {"energy": 135, "spice": 20}, "time": 80.0,
-		"effects": {"harvest": 0.40}, "desc": "+40% gather rate."},
+		"effects": {"harvest": 0.40}, "desc": "Harvesters gather 40% faster."},
 	"fusion_drives": {"name": "Fusion Drives", "group": "logistics", "tier": 2, "requires": ["ion_thrusters"], "cost": {"energy": 145, "spice": 25}, "time": 85.0,
 		"effects": {"speed": 0.25}, "desc": "+25% ship speed."},
 	"gas_skimming": {"name": "Gas Skimming", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 50.0,
@@ -433,9 +433,9 @@ const TECHS := {
 	"jump_drives": {"name": "Jump Drives", "group": "logistics", "tier": 3, "requires": ["fusion_drives"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
 		"effects": {"speed": 0.40, "upkeep": -0.10}, "desc": "+40% ship speed, -10% fleet upkeep."},
 	"mass_drivers": {"name": "Mass Drivers", "group": "logistics", "tier": 3, "requires": ["resonance_drills"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
-		"effects": {"harvest": 0.60}, "desc": "+60% gather rate."},
+		"effects": {"harvest": 0.60}, "desc": "Harvesters gather 60% faster."},
 	"logistics_command": {"name": "Logistics Command", "group": "logistics", "tier": 3, "requires": ["bulk_holds"], "cost": {"energy": 755, "spice": 140}, "time": 225.0,
-		"effects": {"harvest": 0.25, "cargo": 0.25}, "desc": "+25% gather rate, +25% cargo."},
+		"effects": {"harvest": 0.25, "cargo": 0.25}, "desc": "Harvesters gather 25% faster and carry +25% per load."},
 
 	# --- Defense: a fourth line, soaking damage before the layers see it.
 	"flak_screens": {"name": "Flak Screens", "group": "defense", "line": "screens", "tier": 1, "requires": [], "cost": {"energy": 65}, "time": 50.0,
