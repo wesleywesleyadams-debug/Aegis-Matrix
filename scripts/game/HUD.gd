@@ -763,6 +763,18 @@ func _build_research(root: Control) -> void:
 	_research_pages = pages
 	# Every tab the same size (the largest), so the panel doesn't resize or
 	# shift when you click through them.
+	# The row-name column too: as wide as the widest name on any tab (e.g.
+	# FORTIFICATION), so the cards start at the same x on every tab.
+	var head_w := 0.0
+	for id in pages:
+		var g: GridContainer = pages[id]
+		for k in range(0, g.get_child_count(), g.columns):
+			head_w = maxf(head_w, g.get_child(k).get_combined_minimum_size().x)
+	for id in pages:
+		var g2: GridContainer = pages[id]
+		for k in range(0, g2.get_child_count(), g2.columns):
+			var c: Control = g2.get_child(k)
+			c.custom_minimum_size.x = head_w
 	var biggest := Vector2.ZERO
 	for id in pages:
 		biggest = biggest.max(pages[id].get_combined_minimum_size())
