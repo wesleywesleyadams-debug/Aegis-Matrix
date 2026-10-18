@@ -278,7 +278,9 @@ def main():
                     gw.writerow([upd + 1, envs[i].stage, int(won), round(nxt[i].get("t", 0.0) / 60.0, 2), round(ep_ret[i], 1)]
                                 + [round(ep_parts[i][k], 1) for k in PARTS])
                     games.flush()
-                    if envs[i].stage in drill_d and envs[i].drill_d == drill_d[envs[i].stage]:
+                    # Every finished drill game moves its difficulty a step, even
+                    # one launched (as a spare) before the last change.
+                    if envs[i].stage in drill_d:
                         k = envs[i].stage
                         drill_d[k] = round(min(1.0, max(0.0, drill_d[k] + (DRILL_STEP if won else -DRILL_STEP))), 3)
                     if envs[i].trace:
