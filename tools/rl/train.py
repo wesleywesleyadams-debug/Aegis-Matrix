@@ -161,10 +161,7 @@ def main():
     ap.add_argument("--steps", type=int, default=128, help="steps per env per update")
     ap.add_argument("--updates", type=int, default=1000)
     ap.add_argument("--minutes", type=float, default=12)
-    # 16x: 27% faster than 8x with physics unchanged (60 steps per game
-    # second; SimRunner raises the steps-per-frame cap to keep up) - same
-    # kills per game over 8 seeds.
-    ap.add_argument("--speed", type=float, default=16)
+    ap.add_argument("--speed", type=float, default=8)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--ent", type=float, default=0.01, help="exploration bonus (entropy weight)")
     ap.add_argument("--resume", action="store_true")
@@ -277,12 +274,17 @@ def main():
         t0 = time.time()
         buf = {"obs": [], "act": [], "logp": [], "val": [], "rew": [], "done": []}
         n_group = n_single = 0   # this update's orders to groups vs single ships
+        t_act = t_env = t_swap = 0.0   # where this update's time goes
         for step in range(args.steps):
+            ta = time.time()
             with torch.no_grad():
                 acts, logp, _, val = pol(collate(obs, dev))
             acts_np = acts.cpu().numpy()
+            t_act += time.time() - ta
             orders = [{"orders": [[int(a) for a in o] for o in acts_np[i] if o[0] >= 0]} for i in range(args.envs)]
+            te = time.time()
             nxt = list(pool.map(lambda iv: envs[iv[0]].step(iv[1]), enumerate(orders)))
+            t_env += time.time() - te
             rews, dones = [], []
             for i in range(args.envs):
                 acts_i = obs[i]["actors"]
@@ -335,12 +337,15 @@ def main():
                     tried[i] = set()
             # Finished games swap in their slot's spare; the finished one is
             # closed and relaunched as the next spare in the background.
+            ts = time.time()
             for i in range(args.envs):
                 if dones[i]:
                     nxt[i] = spares[i].result()
                     envs[i], spare_envs[i] = spare_envs[i], envs[i]
                     spares[i] = launcher.submit(fresh, spare_envs[i])
+            t_swap += time.time() - ts
             obs = nxt
+        t_learn = time.time()
         # GAE.
         with torch.no_grad():
             _, _, _, last_v = pol(collate(obs, dev))
@@ -391,7 +396,8 @@ def main():
         mean_ret = np.mean([r[2] for r in recent]) if recent else 0.0
         print(f"upd {upd + 1}  {stage()}  duck {duck:.3f}  drill {drill_d.get(stage(), 0):.2f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  group {n_group / max(1, n_group + n_single):.0%} of {n_group + n_single}  ret {mean_ret:+.1f}  "
               f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f} clipped {clipfrac:.0%} kl {kl:.3f}  "
-              f"see " + "/".join(f"{a:.0%}" for a in aux_accs) + f"  {time.time() - t0:.0f}s", flush=True)
+              f"see " + "/".join(f"{a:.0%}" for a in aux_accs) + f"  {time.time() - t0:.0f}s"
+              f" (games {t_env:.0f} + choose {t_act:.0f} + swap {t_swap:.0f} + learn {time.time() - t_learn:.0f})", flush=True)
         if recent and (upd + 1) % 10 == 0:
             print("  parts/game " + "  ".join(f"{k} {np.mean([r[5][k] for r in recent]):+.1f}" for k in PARTS), flush=True)
         lw.writerow([upd + 1, stage(), len(results), win, mean_ret, pl, vl, en]); log.flush()
