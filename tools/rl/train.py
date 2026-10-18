@@ -109,6 +109,8 @@ POOL = 8
 TEST_SHARE = 0.2
 ## Curiosity: a kind of action (verb, object) new this match, capped.
 NEW_ACTION = 2.0
+## Share of the damage-taken cost that applies in drills (full in real matches).
+DRILL_HURT = 0.5
 ## A real match (not a drill) that runs out of time.
 TIMEOUT = -100.0
 ## Rewards are multiplied by this before training (what is logged stays in
@@ -130,9 +132,11 @@ def reward_of(prev, cur, real_match=False):
     if a and b:
         d = lambda k: max(0, b.get(k, 0) - a.get(k, 0))
         p["trade"] = VALUE_SCALE * (d("kill_value") - d("lost_value"))
-        # Damage taken costs exactly what the same damage dealt earns.
-        p["siege"] = SIEGE * (d("starbase_damage") - d("starbase_hurt"))
-        p["damage"] = DAMAGE * (d("damage_dealt") - d("damage_hurt"))
+        # Damage taken costs what the same damage dealt earns - half that in
+        # drills, so it leans toward attacking while it learns to fight.
+        hurt = 1.0 if real_match else DRILL_HURT
+        p["siege"] = SIEGE * (d("starbase_damage") - hurt * d("starbase_hurt"))
+        p["damage"] = DAMAGE * (d("damage_dealt") - hurt * d("damage_hurt"))
         p["bombard"] = BOMBARD * d("pop_bombarded")
         p["discover"] = DISCOVER * d("discovered")
         p["big"] = BIG * (d("starbase_kills") + d("planet_kills") + d("colonized"))
