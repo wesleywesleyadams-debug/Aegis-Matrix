@@ -366,15 +366,21 @@ def main():
                 opt.zero_grad(); loss.backward()
                 torch.nn.utils.clip_grad_norm_(pol.parameters(), 0.5)
                 opt.step()
-                stats.append((pl.item(), vl.item(), ent.mean().item()))
-        pl, vl, en = np.mean(stats, 0)
+                # Diagnostics: share of samples whose ratio is outside the clip
+                # (they get no gradient), and approx. KL from the old policy.
+                with torch.no_grad():
+                    lr_ = lp - flat_logp[idx].to(dev)
+                    clipped = ((ratio - 1).abs() > clip).float().mean().item()
+                    kl = ((torch.exp(lr_) - 1) - lr_).mean().item()
+                stats.append((pl.item(), vl.item(), ent.mean().item(), clipped, kl))
+        pl, vl, en, clipfrac, kl = np.mean(stats, 0)
         recent = [r for r in results if r[4] == stage()][-20:]
         tests = [r for r in results if r[4] == "L4"][-20:]
         vs_ai = sum(1 for r in tests if r[0]) / max(len(tests), 1)
         win = sum(1 for r in recent if r[0]) / max(len(recent), 1)
         mean_ret = np.mean([r[2] for r in recent]) if recent else 0.0
         print(f"upd {upd + 1}  {stage()}  duck {duck:.3f}  drill {drill_d.get(stage(), 0):.2f}  games {len(results)}  win(last20) {win:.2f}  vsAI {vs_ai:.2f}/{len(tests)}  group {n_group / max(1, n_group + n_single):.0%} of {n_group + n_single}  ret {mean_ret:+.1f}  "
-              f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f}  {time.time() - t0:.0f}s", flush=True)
+              f"pol {pl:+.3f} val {vl:.3f} ent {en:.2f} clipped {clipfrac:.0%} kl {kl:.3f}  {time.time() - t0:.0f}s", flush=True)
         if recent and (upd + 1) % 10 == 0:
             print("  parts/game " + "  ".join(f"{k} {np.mean([r[5][k] for r in recent]):+.1f}" for k in PARTS), flush=True)
         lw.writerow([upd + 1, stage(), len(results), win, mean_ret, pl, vl, en]); log.flush()
