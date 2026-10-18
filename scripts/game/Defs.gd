@@ -314,8 +314,8 @@ const BUILDINGS := {
 		"desc": "+1,500 population cap, and population is what raises every other building's output."},
 	"battery": {"name": "Defense Battery", "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
 		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px)."},
-	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 36.0}, "only": [],
-		"desc": "+36 spice/min at base, more with population, drawn from the planet's spice reserve (large on barren worlds, tiny on lush ones)."},
+	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 20.0}, "only": [],
+		"desc": "+20 spice/min at base, more with population, drawn from the planet's spice reserve (large on barren worlds, tiny on lush ones)."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor", "battery"]
 ## Defense Battery: shield added per battery, and its gun.
@@ -553,10 +553,11 @@ static var SHIPS: Dictionary = _with_variants()
 ## mark makes that class alone tougher and harder-hitting, so late-game
 ## corvettes are a different animal from the ones built in minute one.
 ## A harvester fills its hold at "harvest" units a second while parked on a
-## node, then hauls the load home. Spice fills slower than ore, nebula gas
-## slower still.
-const HARVEST_SPICE_MULT := 0.4
-const HARVEST_NEBULA_MULT := 0.6
+## node, then hauls the load home. Spice and nebula gas fill at the same rate
+## as ore (a Mining Barge 36/min on any rock, a Gas Skimmer 18/min on a gas
+## giant or in a nebula); these stay as knobs.
+const HARVEST_SPICE_MULT := 1.0
+const HARVEST_NEBULA_MULT := 1.0
 
 ## Which classes have a mark line (see HULL_MARKS).
 const MARK_LINES := ["corvette", "destroyer", "cruiser", "carrier"]

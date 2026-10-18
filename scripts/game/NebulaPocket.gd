@@ -8,7 +8,7 @@ var resource: String = "spice"
 var amount: int = 1_000_000
 var radius: float = 18.0
 ## Nebula spice never runs out, so it comes slowly: harvesters gather at
-## Defs.HARVEST_NEBULA_MULT of their normal rate here.
+## Defs.HARVEST_NEBULA_MULT of their normal rate here (1.0: full rate).
 
 func _ready() -> void:
 	add_to_group("nebula_pockets")

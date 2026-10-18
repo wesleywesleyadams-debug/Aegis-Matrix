@@ -405,7 +405,7 @@ func max_speed() -> float:
 	return _speed_cache
 
 ## How fast this ship fills its hold on `node`, per minute (Defs.PER_MIN).
-## Spice comes in slower than ore, and nebula gas slower still.
+## (Spice and nebula gas: Defs.HARVEST_SPICE_MULT / HARVEST_NEBULA_MULT, now 1.)
 func harvest_rate(node: Node2D) -> float:
 	var base: float = float(def.get("harvest", 0.5)) * Game.instance.mod(owner_id, "harvest")
 	if node is NebulaPocket:
