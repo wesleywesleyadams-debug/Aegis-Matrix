@@ -143,6 +143,18 @@ func _label(text: String, color: Color = TEXT, size: int = 16) -> Label:
 	l.add_theme_font_size_override("font_size", size)
 	return l
 
+## A small pixel padlock (7x8, white, tinted where used) for tech prerequisites.
+static var _padlock: ImageTexture
+static func _padlock_tex() -> ImageTexture:
+	if _padlock == null:
+		var rows := [".XXXXX.", "X.....X", "X.....X", "XXXXXXX", "XXXXXXX", "XXX.XXX", "XXX.XXX", "XXXXXXX"]
+		var img := Image.create(7, 8, false, Image.FORMAT_RGBA8)
+		for y in rows.size():
+			for x in 7:
+				img.set_pixel(x, y, Color.WHITE if rows[y][x] == "X" else Color(0, 0, 0, 0))
+		_padlock = ImageTexture.create_from_image(img)
+	return _padlock
+
 func _icon(name: String, scale_px: int = 2) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = Defs.tex(name)
@@ -773,11 +785,12 @@ func _refresh_research() -> void:
 			line += "  STALLED"
 		if st == "queued":
 			line += "  #%d" % (game.research_queue[pid].find(id) + 1)
-		var req := ""
-		if not t["requires"].is_empty():
-			req = "\nNeeds: " + ", ".join(t["requires"].map(func(r): return Defs.TECHS[r]["name"]))
 		w["label"].text = line
-		w["desc"].text = t["desc"] + req
+		w["desc"].text = t["desc"]
+		# Prerequisites: a padlock and the techs' names.
+		w["req"].visible = not t["requires"].is_empty()
+		w["req_label"].text = ", ".join(t["requires"].map(func(r): return Defs.TECHS[r]["name"]))
+		w["req_label"].add_theme_color_override("font_color", MUTED if st == "locked" else TEXT)
 		for style in ["normal", "hover", "pressed"]:
 			var sb: StyleBoxFlat = _panel_style(6, STATE_COLORS[st].lightened(0.3 if style == "normal" else 0.55))
 			sb.bg_color = STATE_COLORS[st].darkened(0.3 if style != "hover" else 0.15)
@@ -1835,6 +1848,23 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	desc.add_theme_font_size_override("font_size", 14)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(desc)
+	var req := HBoxContainer.new()
+	req.add_theme_constant_override("separation", 6)
+	req.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var lock := TextureRect.new()
+	lock.texture = _padlock_tex()
+	lock.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	lock.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	lock.custom_minimum_size = Vector2(14, 16)
+	lock.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	lock.modulate = MUTED
+	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	req.add_child(lock)
+	var req_label := Label.new()
+	req_label.add_theme_font_size_override("font_size", 14)
+	req_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	req.add_child(req_label)
+	box.add_child(req)
 	b.add_child(box)
 	var bar := ColorRect.new()
 	bar.anchor_top = 1.0
@@ -1844,7 +1874,7 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	bar.offset_bottom = -2
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(bar)
-	_tech_buttons[id] = {"button": b, "label": lab, "desc": desc, "bar": bar}
+	_tech_buttons[id] = {"button": b, "label": lab, "desc": desc, "bar": bar, "req": req, "req_label": req_label}
 	return b
 
 # ---------------------------------------------------------------- weapons depot
