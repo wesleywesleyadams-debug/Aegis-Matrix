@@ -2634,7 +2634,8 @@ func _enter_dev_capture() -> void:
 		request_research("targeting_arrays")
 		hud.toggle_research()
 		await get_tree().process_frame
-		hud._research_tabs["weapons"].pressed.emit()
+		var tab_env := OS.get_environment("SL_RESEARCH_TAB")
+		hud._research_tabs[tab_env if tab_env != "" else "weapons"].pressed.emit()
 	if OS.get_environment("SL_SHOT_OPEN") == "qtest":
 		# Dev: waypoints in a known square around the ship, with the screen
 		# position of each pip printed so a capture can be checked by pixel.

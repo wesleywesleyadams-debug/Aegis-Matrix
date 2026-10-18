@@ -35,6 +35,11 @@ var _fleet_label: Label
 var _research_button: Button
 var _research_pages := {}
 var _research_box: Control   # the research panel's content, for its left edge
+## Research panel open: small cards (icon + name + progress) in the margin
+## left of the panel for the active tech and every paused one that is not on
+## the tab being viewed.
+var _side_techs: VBoxContainer
+var _side_ids: Array = []
 ## Green progress fill laid over the research button while a project runs.
 var _research_fill: ColorRect
 var _research_icon: TextureRect
@@ -772,39 +777,106 @@ func show_planet(p: Planet) -> void:
 
 ## The top-bar Research button: opens / closes the panel, or - while the
 ## panel is open on another tab - jumps to the active project's tab.
-## Where the Research button sits: in the top bar, or - with the research
-## panel open - in the free margin left of the panel, under the clock.
+func _update_side_techs() -> void:
+	if _side_techs == null:
+		_side_techs = VBoxContainer.new()
+		_side_techs.add_theme_constant_override("separation", 8)
+		_side_techs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_research_modal.get_parent().add_child(_side_techs)
+	var pid := game.player_id
+	var ids: Array = []
+	if _research_modal.visible:
+		var cur: Dictionary = game.research[pid]
+		var paused: Array = game.research_paused.get(pid, {}).keys()
+		paused.sort_custom(func(a, b): return game.paused_progress(pid, a) / Defs.TECHS[a]["time"] > game.paused_progress(pid, b) / Defs.TECHS[b]["time"])
+		for id in ([cur["id"]] if not cur.is_empty() else []) + paused:
+			var page = _research_pages.get(Defs.TECHS[id]["group"])
+			if page == null or not page.visible:
+				ids.append(id)
+	_side_techs.visible = not ids.is_empty()
+	if ids.is_empty():
+		return
+	_side_techs.move_to_front()
+	var panel_left: float = _research_box.get_parent().get_global_rect().position.x
+	var w: float = maxf(140.0, panel_left - 24.0)
+	_side_techs.position = Vector2(12, TOP_Y + TOP_H + 60)
+	_side_techs.size = Vector2(w, 0)
+	if ids != _side_ids:
+		_side_ids = ids
+		for c in _side_techs.get_children():
+			c.queue_free()
+		for id in ids:
+			_side_techs.add_child(_side_card(id, w))
+	for c in _side_techs.get_children():
+		if c.is_queued_for_deletion():
+			continue
+		var id: String = c.get_meta("tech")
+		var t: Dictionary = Defs.TECHS[id]
+		var cur2: Dictionary = game.research[pid]
+		var active: bool = cur2.get("id", "") == id
+		var frac: float = clampf((cur2["progress"] if active else game.paused_progress(pid, id)) / t["time"], 0.0, 1.0)
+		var fill: ColorRect = c.get_meta("fill")
+		fill.anchor_right = frac
+		fill.offset_right = -2.0 * frac
+		fill.color = (Color(BAD.r, BAD.g, BAD.b, 0.3) if cur2.get("stalled", false) else Color(GOOD.r, GOOD.g, GOOD.b, 0.3)) if active else Color(1, 1, 1, 0.12)
+		c.get_meta("label").text = "%s\n%d%%%s" % [t["name"], int(100.0 * frac), "" if active else "  PAUSED"]
+		var col: Color = STATE_COLORS["active" if active else "available"]
+		for style in ["normal", "hover", "pressed"]:
+			var sb: StyleBoxFlat = _panel_style(6, col.lightened(0.3 if style == "normal" else 0.55))
+			sb.bg_color = col.darkened(0.3 if style != "hover" else 0.15)
+			c.add_theme_stylebox_override(style, sb)
+
+## A side card: the tech's icon and name, like its card on the panel.
+## Clicking it researches it (the same as clicking its card).
+func _side_card(id: String, w: float) -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(w, 64)
+	b.set_meta("tech", id)
+	b.tooltip_text = Defs.TECHS[id]["desc"]
+	var fill := ColorRect.new()
+	fill.anchor_bottom = 1.0
+	fill.offset_left = 2
+	fill.offset_top = 2
+	fill.offset_bottom = -2
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(fill)
+	var pic := TextureRect.new()
+	pic.texture = TechIcons.icon(id)
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.position = Vector2(6, 6)
+	pic.size = Vector2(52, 52)
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(pic)
+	var lab := Label.new()
+	lab.position = Vector2(66, 8)
+	lab.size = Vector2(w - 72, 48)
+	lab.clip_text = true
+	lab.add_theme_font_size_override("font_size", 14)
+	lab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(lab)
+	b.set_meta("fill", fill)
+	b.set_meta("label", lab)
+	b.pressed.connect(func(): game.request_research(id); _refresh_research())
+	return b
+
+## The Research button's place in the top bar, and its progress fill.
 func _place_research_button(frac: float) -> void:
 	var b := _research_button
 	var f := _research_fill
-	if _research_modal.visible and _research_box:
-		var panel_left: float = _research_box.get_parent().get_global_rect().position.x
-		var l := 12.0
-		var r: float = maxf(l + TOP_H * 2.0, panel_left - 12.0)
-		var top := float(TOP_Y + TOP_H + 60)
-		for c in [b, f]:
-			c.anchor_left = 0.0
-			c.anchor_right = 0.0
-		b.offset_left = l
-		b.offset_right = r
-		b.offset_top = top
-		b.offset_bottom = top + TOP_H
-		f.offset_left = l + 2.0
-		f.offset_right = l + 2.0 + (r - l - 4.0) * frac
-		f.offset_top = top + 2.0
-		f.offset_bottom = top + TOP_H - 2.0
-	else:
-		for c in [b, f]:
-			c.anchor_left = 1.0
-			c.anchor_right = 1.0
-		b.offset_left = RESEARCH_RIGHT - RESEARCH_W
-		b.offset_right = RESEARCH_RIGHT
-		b.offset_top = TOP_Y
-		b.offset_bottom = TOP_Y + TOP_H
-		f.offset_left = RESEARCH_RIGHT - RESEARCH_W + 2
-		f.offset_right = RESEARCH_RIGHT - RESEARCH_W + 2 + (RESEARCH_W - 4) * frac
-		f.offset_top = TOP_Y + 2
-		f.offset_bottom = TOP_Y + TOP_H - 2
+	for c in [b, f]:
+		c.anchor_left = 1.0
+		c.anchor_right = 1.0
+	b.offset_left = RESEARCH_RIGHT - RESEARCH_W
+	b.offset_right = RESEARCH_RIGHT
+	b.offset_top = TOP_Y
+	b.offset_bottom = TOP_Y + TOP_H
+	f.offset_left = RESEARCH_RIGHT - RESEARCH_W + 2
+	f.offset_right = RESEARCH_RIGHT - RESEARCH_W + 2 + (RESEARCH_W - 4) * frac
+	f.offset_top = TOP_Y + 2
+	f.offset_bottom = TOP_Y + TOP_H - 2
 
 func _on_research_button() -> void:
 	var cur: Dictionary = game.research[game.player_id]
@@ -1460,7 +1532,8 @@ Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 	var glow := 1.0 if phase < RESEARCH_BLINK * 0.7 else 0.0
 	# Panel open: the button stays up only while the active project is on a
 	# tab you aren't looking at (its card shows the progress otherwise).
-	var show_btn: bool = not _research_modal.visible or (not cur.is_empty() and not _active_tech_on_page())
+	var show_btn: bool = not _research_modal.visible
+	_update_side_techs()
 	_research_button.visible = show_btn
 	if cur.is_empty():
 		_research_button.text = "Research [R]"
