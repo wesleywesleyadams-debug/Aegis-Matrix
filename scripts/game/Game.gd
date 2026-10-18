@@ -1426,6 +1426,11 @@ func _handle_key(e: InputEventKey) -> void:
 		else:
 			hud.show_pause(true)
 		return
+	# Delete: the first selected ship or construct of yours self-destructs;
+	# Shift+Delete: every one selected. A starbase asks first.
+	if k == KEY_DELETE:
+		_self_destruct(e.shift_pressed)
+		return
 	if k >= KEY_1 and k <= KEY_9:
 		var n := k - KEY_0
 		if e.ctrl_pressed:
@@ -1606,6 +1611,33 @@ func center_on(pos: Vector2) -> void:
 	_clamp_camera()
 
 # ---------------------------------------------------------------- selection
+
+func _self_destruct(all: bool) -> void:
+	var mine: Array = selection.filter(func(x): return is_instance_valid(x) and x.is_alive() and x.owner_id == player_id)
+	if mine.is_empty():
+		return
+	var doomed: Array = mine if all else [mine[0]]
+	var bases := doomed.filter(func(x): return x is Starbase).size()
+	if bases == 0:
+		_detonate(doomed)
+		return
+	var ask := ConfirmationDialog.new()
+	ask.title = "Self-destruct"
+	ask.dialog_text = ("Really self-destruct your starbase?" if bases == 1 else "Really self-destruct %d starbases?" % bases) 		+ ("" if doomed.size() == bases else "
+(%d other selected units go with it.)" % (doomed.size() - bases))
+	ask.ok_button_text = "Self-destruct"
+	ask.cancel_button_text = "Cancel"
+	ask.confirmed.connect(func(): _detonate(doomed))
+	ask.visibility_changed.connect(func(): if not ask.visible: ask.queue_free())
+	hud.add_child(ask)
+	ask.popup_centered()
+
+## Blows up each of `list` as if destroyed, with no one credited for the kill.
+func _detonate(list: Array) -> void:
+	for x in list:
+		if is_instance_valid(x) and x.is_alive():
+			x._killer = 0
+			x._die()
 
 func _set_selection(list: Array, additive: bool) -> void:
 	list = list.filter(func(e): return is_instance_valid(e))
@@ -2531,6 +2563,31 @@ func _enter_dev_capture() -> void:
 			grp2.append(spawn_ship(kinds2[k], player_id, at2 + Vector2((k % 4) * 46, (k / 4) * 50)))
 		_set_selection(grp2, false)
 		center_on(at2 + Vector2(70, 25))
+	if OS.get_environment("SL_SHOT_OPEN") == "deltest":
+		# Dev: Delete / Shift+Delete on 6 corvettes, then Delete on the
+		# starbase (its confirmation stays up for the capture).
+		var hb3 := nearest_starbase(player_id, Vector2.ZERO)
+		var grp3: Array = []
+		for k in 6:
+			grp3.append(spawn_ship("corvette", player_id, hb3.global_position + Vector2(200 + k * 30, 200)))
+		_set_selection(grp3, false)
+		var key := func(shift: bool):
+			var ev := InputEventKey.new()
+			ev.keycode = KEY_DELETE
+			ev.pressed = true
+			ev.shift_pressed = shift
+			_handle_key(ev)
+		key.call(false)
+		await get_tree().process_frame
+		print("DELTEST after Delete: ", grp3.filter(func(x): return is_instance_valid(x) and x.is_alive()).size(), " of 6 alive")
+		key.call(true)
+		await get_tree().process_frame
+		print("DELTEST after Shift+Delete: ", grp3.filter(func(x): return is_instance_valid(x) and x.is_alive()).size(), " of 6 alive")
+		_set_selection([hb3], false)
+		key.call(false)
+		await get_tree().process_frame
+		print("DELTEST starbase alive while asked: ", is_instance_valid(hb3) and hb3.is_alive())
+		center_on(hb3.global_position)
 	if OS.get_environment("SL_SHOT_OPEN") == "qtest":
 		# Dev: waypoints in a known square around the ship, with the screen
 		# position of each pip printed so a capture can be checked by pixel.

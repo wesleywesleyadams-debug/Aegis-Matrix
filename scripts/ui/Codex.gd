@@ -842,6 +842,7 @@ func _page_controls() -> void:
 		["Center on a control group", ["1-9 twice", EDGE_LIT]],
 		["Pause and resume", ["Pause key, or the Pause button", EDGE_LIT]],
 		["Game speed", ["-  /  =  (Backspace resets)", EDGE_LIT]],
+		["Self-destruct one selected unit / all selected (starbases ask first)", ["Delete  /  Shift + Delete", EDGE_LIT]],
 		["Clear the selection; with nothing selected, the menu", ["Esc", EDGE_LIT]],
 	])
 
