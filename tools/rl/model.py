@@ -63,6 +63,31 @@ def collate(obs_list, device):
     return {k: v.to(device) for k, v in d.items()}
 
 
+## Auxiliary perception tasks, trained alongside the policy so the encoder
+## learns to pick things out of the scene faster than sparse rewards teach it.
+## Each is a pointer question over the targets, answered from the entity
+## features alone (RLAgent._row: kind one-hot 0-9, owner rel 10-13, abs pos
+## 16-17, dps 22) - general facts about the scene, not strategy.
+AUX_QUESTIONS = ["enemy_starbase", "any_enemy", "enemy_nearest_my_fleet", "my_warship"]
+
+
+def aux_answers(x):
+    """[B, Q, T] bool: which targets answer each AUX question (none = skip)."""
+    f = torch.cat([x["ent"], x["pts"]], 1)
+    m = torch.cat([x["ent_m"], x["pts_m"]], 1)
+    kind, mine, enemy = f[..., :10], f[..., 10] > 0.5, f[..., 12] > 0.5
+    pos, armed = f[..., 16:18], f[..., 22] > 0.0
+    starbase, ship = kind[..., 1] > 0.5, kind[..., 0] > 0.5
+    my_war = mine & ship & armed & m
+    cnt = my_war.sum(1, keepdim=True).clamp(min=1)
+    centre = (pos * my_war.unsqueeze(-1)).sum(1) / cnt                      # [B,2]
+    dist = (pos - centre.unsqueeze(1)).norm(dim=-1).masked_fill(~(enemy & m), 1e9)
+    nearest = torch.zeros_like(m)
+    nearest.scatter_(1, dist.argmin(1, keepdim=True), True)
+    nearest &= (enemy & m).any(1, keepdim=True) & (my_war.sum(1, keepdim=True) > 0)
+    return torch.stack([enemy & starbase & m, enemy & m, nearest, my_war], 1)
+
+
 class Policy(nn.Module):
     def __init__(self, f_ent=27, f_obj=53, f_self=13, d=96, layers=2, heads=4):
         super().__init__()
@@ -76,6 +101,9 @@ class Policy(nn.Module):
         self.skip = nn.Parameter(torch.randn(d) * 0.1)
         self.group = nn.Parameter(torch.randn(d) * 0.1)
         self.group_size = nn.Parameter(torch.randn(d) * 0.02)
+        # Auxiliary "seeing" questions (see aux_loss): one learned query each.
+        self.aux_q = nn.Parameter(torch.randn(len(AUX_QUESTIONS), d) * 0.1)
+        self.aux_head = nn.Linear(3 * d, d)
         self.verb_emb = nn.Embedding(len(VERBS), d)
         self.q_actor = nn.Linear(2 * d, d)
         self.verb_head = nn.Sequential(nn.Linear(3 * d, d), nn.ReLU(), nn.Linear(d, len(VERBS)))
@@ -104,6 +132,23 @@ class Policy(nn.Module):
         tgt_m = torch.cat([x["ent_m"], x["pts_m"]], 1)
         objs = self.obj_in(x["obj"])
         return g, actors, targets, tgt_m, objs
+
+    def aux_loss(self, x):
+        """Mean cross-entropy over the AUX questions that have an answer, and
+        each question's top-1 accuracy (nan if never answerable)."""
+        g, _, targets, tgt_m, _ = self.encode(x)
+        B, Q = g.shape[0], self.aux_q.shape[0]
+        q = self.aux_head(torch.cat([g.unsqueeze(1).expand(B, Q, -1), self.aux_q.expand(B, Q, -1)], -1))   # [B,Q,d]
+        lg = (q @ targets.transpose(1, 2)).masked_fill(~tgt_m.unsqueeze(1), -1e9)                     # [B,Q,T]
+        ans = aux_answers(x)
+        has = ans.any(-1)                                                                             # [B,Q]
+        logp = torch.log_softmax(lg, -1)
+        # Probability mass on any right answer.
+        nll = -torch.logsumexp(logp.masked_fill(~ans, -1e9), -1)
+        loss = (nll * has).sum() / has.sum().clamp(min=1)
+        hit = ans.gather(-1, lg.argmax(-1, keepdim=True)).squeeze(-1).float()
+        acc = [(hit[:, k] * has[:, k]).sum().item() / has[:, k].sum().item() if has[:, k].any() else float("nan") for k in range(Q)]
+        return loss, acc
 
     def forward(self, x, act=None):
         """Samples SLOTS orders (or scores the given ones). Returns orders

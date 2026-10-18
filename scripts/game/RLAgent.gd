@@ -121,6 +121,9 @@ func _observe(game: Game, base: Starbase, done: bool) -> Dictionary:
 			"damage_hurt": game.stats.get_count(pid, "damage_hurt"), "starbase_hurt": game.stats.get_count(pid, "starbase_hurt"), "planet_kills": game.stats.get_count(pid, "planet_kills"),
 			"colonized": game.stats.get_count(pid, "colonized"), "kill_value": game.stats.get_count(pid, "kill_value"), "lost_value": game.stats.get_count(pid, "lost_value")},
 		"entities": ents,
+		# Dev (SL_RL_LABELS): the entity row of a visible enemy starbase, as a
+		# ground-truth label for offline perception tests. Never used in training.
+		"label_foe_sb": _ents.find(_ents.filter(func(e): return e is Starbase and e.is_enemy_of(pid)).front()) if OS.get_environment("SL_RL_LABELS") != "" and _ents.any(func(e): return e is Starbase and e.is_enemy_of(pid)) else -1,
 		"actors": _actor_rows(game, home),
 		"objects": _object_rows(game),
 		"targets": _target_rows(game, home, ents.size()),
