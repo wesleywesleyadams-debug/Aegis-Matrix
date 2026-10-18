@@ -168,7 +168,14 @@ def main():
     drill_d = {"strike": 0.0, "hunt": 0.0}
     if args.resume and os.path.exists(ckpt):
         st = torch.load(ckpt, map_location=dev)
-        pol.load_state_dict(st["model"]); opt.load_state_dict(st["opt"]); start = st["update"]
+        # strict=False: parts added since (e.g. group orders) start fresh.
+        missing = pol.load_state_dict(st["model"], strict=False).missing_keys
+        if missing:
+            print("new model parts:", ", ".join(missing))
+            opt = torch.optim.Adam(pol.parameters(), lr=args.lr)
+        else:
+            opt.load_state_dict(st["opt"])
+        start = st["update"]
         si = st.get("stage", 0)
         duck = st.get("duck", DUCK_START)
         drill_d.update(st.get("drill_d", {}))

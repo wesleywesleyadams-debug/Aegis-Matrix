@@ -248,7 +248,32 @@ func _actor_rows(game: Game, home: Vector2) -> Array:
 			continue
 		_actors.append(["entity", e])
 		rows.append({"entity": i, "mask": _mask(m)})
+	# Group orders: each cluster of 2+ of its armed ships (within GROUP_RADIUS
+	# of the first one, in nearest-to-home order) is also an actor, shown as
+	# its lead ship's row with "group" set. An order to it goes to every ship
+	# in it, so one decision can move a fleet; single ships stay orderable.
+	var taken := {}
+	for i in _ents.size():
+		var lead = _ents[i]
+		if not (lead is Ship) or lead.owner_id != pid or lead.docked or lead.def.get("weapon", "") == "" or taken.has(lead):
+			continue
+		var grp: Array = []
+		for j in range(i, _ents.size()):
+			var s2 = _ents[j]
+			if s2 is Ship and s2.owner_id == pid and not s2.docked and s2.def.get("weapon", "") != "" and not taken.has(s2) \
+					and s2.global_position.distance_to(lead.global_position) <= GROUP_RADIUS:
+				grp.append(s2)
+		if grp.size() < 2:
+			continue
+		for s3 in grp:
+			taken[s3] = true
+		_actors.append(["group", grp])
+		rows.append({"entity": i, "group": grp.size(),
+			"mask": _mask({"stop": true, "move": true, "attack_move": true, "attack": true, "bombard": true})})
 	return rows
+
+## How close (units) ships must be to the lead to join its group order.
+const GROUP_RADIUS := 250.0
 
 func _mask(m: Dictionary) -> Array:
 	return VERBS.map(func(vb): return 1 if m.get(vb, false) else 0)
@@ -329,6 +354,16 @@ func _order(game: Game, ai: int, vi: int, oi: int, ti: int) -> void:
 	if ai < 0 or ai >= _actors.size() or vi < 0 or vi >= VERBS.size():
 		return
 	var verb: String = VERBS[vi]
+	if _actors[ai][0] == "group":
+		# The same order for every ship still alive in the group.
+		var ships: Array = _actors[ai][1]
+		_actors[ai] = ["entity", null]
+		for s in ships:
+			if is_instance_valid(s):
+				_actors[ai][1] = s
+				_order(game, ai, vi, oi, ti)
+		_actors[ai] = ["group", ships]
+		return
 	var actor = _actors[ai][1]
 	if actor != null and not is_instance_valid(actor):
 		return

@@ -41,6 +41,7 @@ def collate(obs_list, device):
     pts = torch.zeros(B, P, fe); pts_m = torch.zeros(B, P, dtype=torch.bool)
     obj = torch.zeros(B, O, fo); obj_m = torch.zeros(B, O, dtype=torch.bool)
     act_ent = torch.full((B, A), -1, dtype=torch.long); act_m = torch.zeros(B, A, dtype=torch.bool)
+    act_grp = torch.zeros(B, A)   # group size (0 = a single unit)
     vmask = torch.zeros(B, A, len(VERBS), dtype=torch.bool)
     me = torch.zeros(B, fs)
     for b, o in enumerate(obs_list):
@@ -51,10 +52,11 @@ def collate(obs_list, device):
         t = torch.tensor(o["objects"], dtype=torch.float32); obj[b, :len(t)] = t; obj_m[b, :len(t)] = True
         for i, a in enumerate(o["actors"]):
             act_ent[b, i] = a["entity"]; act_m[b, i] = True
+            act_grp[b, i] = a.get("group", 0)
             vmask[b, i] = torch.tensor(a["mask"], dtype=torch.bool)
         me[b] = torch.tensor(o["self"], dtype=torch.float32)
     d = dict(ent=ent, ent_m=ent_m, pts=pts, pts_m=pts_m, obj=obj, obj_m=obj_m,
-             act_ent=act_ent, act_m=act_m, vmask=vmask, me=me)
+             act_ent=act_ent, act_m=act_m, act_grp=act_grp, vmask=vmask, me=me)
     return {k: v.to(device) for k, v in d.items()}
 
 
@@ -69,6 +71,8 @@ class Policy(nn.Module):
         self.slot = nn.Parameter(torch.randn(SLOTS, d) * 0.1)
         self.empire = nn.Parameter(torch.randn(d) * 0.1)
         self.skip = nn.Parameter(torch.randn(d) * 0.1)
+        self.group = nn.Parameter(torch.randn(d) * 0.1)
+        self.group_size = nn.Parameter(torch.randn(d) * 0.02)
         self.verb_emb = nn.Embedding(len(VERBS), d)
         self.q_actor = nn.Linear(2 * d, d)
         self.verb_head = nn.Sequential(nn.Linear(3 * d, d), nn.ReLU(), nn.Linear(d, len(VERBS)))
@@ -90,6 +94,9 @@ class Policy(nn.Module):
         idx = x["act_ent"].clamp(min=0)
         actors = torch.gather(ents, 1, idx.unsqueeze(-1).expand(-1, -1, self.d))
         actors = torch.where((x["act_ent"] < 0).unsqueeze(-1), self.empire.expand_as(actors), actors)
+        # A group order: the lead ship's encoding, marked as a group and its size.
+        grp = x["act_grp"].unsqueeze(-1)
+        actors = actors + (grp > 0).float() * self.group + torch.log1p(grp) * self.group_size
         targets = torch.cat([ents, pts], 1)
         tgt_m = torch.cat([x["ent_m"], x["pts_m"]], 1)
         objs = self.obj_in(x["obj"])
