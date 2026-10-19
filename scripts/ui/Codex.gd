@@ -570,24 +570,95 @@ func _page_ships() -> void:
 func _page_research() -> void:
 	_heading("Research")
 	_para("Research spends energy (and spice for later tiers) over time. Only one project runs at a time. Picking another tech pauses the current one, and a paused tech resumes where it left off. Each tech needs only the tier below it in its row. A warship's Mk II needs the class unlocked first.")
-	for g in ["warships", "weapons", "defense", "constructs", "worlds", "logistics"]:
-		var ids: Array = []
-		for id in Defs.TECHS:
-			if Defs.TECHS[id]["group"] == g:
-				ids.append(id)
-		if ids.is_empty():
-			continue
-		ids.sort_custom(func(x, y): return Defs.TECHS[x]["tier"] < Defs.TECHS[y]["tier"] if Defs.TECHS[x]["tier"] != Defs.TECHS[y]["tier"] else Defs.TECHS[x]["name"] < Defs.TECHS[y]["name"])
-		_heading(g.capitalize(), EDGE_LIT)
+	# Each tab as it appears on the research screen: named rows, three
+	# columns, the same cards (icon, cost, effect, padlock for what it needs).
+	for g in ["warships", "weapons", "mods", "defense", "constructs", "worlds", "logistics"]:
+		_heading(g.capitalize(), TechIcons.GROUP_COLORS.get(g, EDGE_LIT))
 		_para(Defs.TECH_GROUP_DESC.get(g, ""))
-		var rows: Array = []
-		for id in ids:
-			var t: Dictionary = Defs.TECHS[id]
-			var req: Array = []
-			for r in t.get("requires", []):
-				req.append(Defs.TECHS[r]["name"] if Defs.TECHS.has(r) else str(r))
-			rows.append([t["name"], "%d" % t["tier"], ", ".join(req) if not req.is_empty() else "-", Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t.get("desc", "")])
-		_table(["Tech", "Tier", "Requires", "Cost", "Time", "Effect"], rows)
+		_tech_tree(g, _research_rows(g))
+
+## A tab's rows, [name, [three tech ids]], in the research screen's layout.
+func _research_rows(g: String) -> Array:
+	match g:
+		"warships":
+			var rows: Array = [["UNLOCKS", ["destroyers", "cruisers", "carriers"]]]
+			for c in ["corvette", "destroyer", "cruiser", "carrier"]:
+				rows.append([c.to_upper(), ["%s_mk2" % c, "%s_mk3" % c, "%s_mk4" % c]])
+			return rows
+		"defense":
+			var out: Array = []
+			for line in ["shields", "armor", "hull", "screens"]:
+				var ids: Array = ["", "", ""]
+				for id in Defs.TECHS:
+					if Defs.TECHS[id].get("line", "") == line:
+						ids[Defs.TECHS[id]["tier"] - 1] = id
+				out.append([line.to_upper(), ids])
+			return out
+	return HUD.TECH_ROWS.get(g, [])
+
+func _tech_tree(g: String, rows: Array) -> void:
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 8)
+	grid.add_child(Control.new())
+	for tier in [1, 2, 3]:
+		grid.add_child(_label("" if g == "mods" else "TIER %d" % tier, DIM, 13))
+	var col: Color = TechIcons.GROUP_COLORS.get(g, EDGE_LIT)
+	for r in rows:
+		var head := _label(r[0], col, 14)
+		head.custom_minimum_size = Vector2(110, 0)
+		head.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		grid.add_child(head)
+		for id in r[1]:
+			grid.add_child(_tech_card(id) if id != "" and Defs.TECHS.has(id) else Control.new())
+	grid.set_meta("block", true)
+	_body.add_child(grid)
+
+func _tech_card(id: String) -> Control:
+	var t: Dictionary = Defs.TECHS[id]
+	var card := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("1c2550")
+	sb.border_color = Color("3a4a85")
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(4)
+	sb.set_content_margin_all(6)
+	card.add_theme_stylebox_override("panel", sb)
+	card.custom_minimum_size = Vector2(330, 0)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	card.add_child(h)
+	var pic := TextureRect.new()
+	pic.texture = TechIcons.icon(id)
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.custom_minimum_size = Vector2(72, 72)
+	h.add_child(pic)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 1)
+	h.add_child(v)
+	v.add_child(_label(t["name"], TEXT, 14))
+	v.add_child(CostRow.make(t["cost"], 13, t["time"]))
+	var d := _label(t["desc"], DIM, 12)
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	d.custom_minimum_size = Vector2(230, 0)
+	v.add_child(d)
+	if not t["requires"].is_empty():
+		var req := HBoxContainer.new()
+		req.add_theme_constant_override("separation", 5)
+		var lock := TextureRect.new()
+		lock.texture = HUD._padlock_tex()
+		lock.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		lock.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		lock.custom_minimum_size = Vector2(12, 14)
+		lock.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		lock.modulate = Color("8a96bd")
+		req.add_child(lock)
+		req.add_child(_label(", ".join(t["requires"].map(func(r): return Defs.TECHS[r]["name"] if Defs.TECHS.has(r) else str(r))), DIM, 12))
+		v.add_child(req)
+	return card
 
 ## A tech effect as a whole percent (Defs.TECHS), so text stays in step with balance.
 func _pct(tech: String, effect: String) -> int:
@@ -655,7 +726,7 @@ func _page_economy() -> void:
 
 func _page_systems() -> void:
 	_heading("Systems")
-	_para("A match is fought in one star system, chosen in the lobby. Every system is symmetric: each player starts with the same worlds, rocks and distances, arranged evenly around the star. Every system has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside. Systems differ in star, signature feature and gas placement, and these decide how the match is fought.")
+	_para("A match is fought in one star system, chosen in the lobby. Every system is symmetric: each player starts with the same worlds, rocks and distances, arranged evenly around the star. Every system but the Silent Void has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside. Systems differ in star, signature feature and gas placement, and these decide how the match is fought.")
 	for s in SystemGen.SYSTEMS:
 		_system_card(s)
 	_star_section()
@@ -739,6 +810,7 @@ const SYSTEM_TIPS := {
 	"vega_drift": "The suns' radiation sweeps the center, so the lane between bases opens and closes. Time attacks for when it is clear, and harvest the bands when the enemy fleet is elsewhere.",
 	"kharon_expanse": "Few worlds, but the most spice anywhere, all of it inside the ring. The gas is full of Radiation: don't linger, bring tough hulls, and expect fights inside it.",
 	"tethys_cluster": "The richest worlds sit behind the debris ring, reachable only through its gaps. Hold a gap and you hold the inner system; the outer pockets are easy, safe spice.",
+	"silent_void": "Nothing in the way and nothing to hide in: no nebulae, storms or rings, only the star's own zone. Spice comes from rocks and Spice Extractors, so it is scarce. Fleets meet in the open.",
 	"sable_verge": "Heavy belts and sparse worlds: a mining race. Ion storms slow and blind anything they cross, and each side's spice drift is an inviting raid target.",
 }
 

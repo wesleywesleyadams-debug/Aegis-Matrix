@@ -716,6 +716,18 @@ static func _with_variants() -> Dictionary:
 	return out
 
 ## A ship def's damage profile: {"vs": layer multipliers, "pierce": 0-2}.
+## How a Mod (Game.active_mod) changes its class's weapon. dmg / cd / range
+## multiply damage per shot, cooldown and range; same damage per second as the
+## laser unless noted (docs/MODS.md).
+##   weapon - what is fired (Projectile / Game.arc_strike)
+##   run    - attack runs: after each shot the ship peels away while it reloads
+##   chain  - Arc: shares of the damage for the target, then each extra jump
+const MOD_WEAPONS := {
+	"mod_proton_torpedoes": {"weapon": "torpedo", "dmg": 3.0, "cd": 3.0, "run": true},
+	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 1.0 / 3.0, "cd": 1.0 / 3.0, "range": 0.75},
+	"mod_arc_emitters": {"weapon": "arc", "chain": [0.6, 0.2, 0.2], "jump": 120.0},
+}
+
 static func damage_profile(d: Dictionary) -> Dictionary:
 	if not d.has("variant"):
 		return {"vs": {}, "pierce": 0}

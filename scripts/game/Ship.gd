@@ -130,6 +130,10 @@ var _direct := false
 ## inside it (an enemy parked there) and they have at least this much hull.
 const SUN_RISK_HP := 0.6
 var target: SpaceEntity
+## The class's active weapon Mod (Defs.MOD_WEAPONS entry), {} for none.
+var weapon_mod := {}
+## Attack runs (Proton Torpedoes): seconds left peeling away after a shot.
+var _run_out := 0.0
 ## True when `target` came from an attack order (player or AI), not from the
 ## ship picking a fight on its own: turrets focus only an ordered target.
 var target_ordered := false
@@ -326,7 +330,7 @@ func _rebuild_flames(tex: Texture2D, art_scale: Vector2) -> void:
 
 ## Weapon reach, after the Weapons line ("range").
 func weapon_range() -> float:
-	return float(def["range"]) * (Game.instance.mod(owner_id, "range") if Game.instance else 1.0)
+	return float(def["range"]) * float(weapon_mod.get("range", 1.0)) * (Game.instance.mod(owner_id, "range") if Game.instance else 1.0)
 
 ## Turret sprites for a hull that has mounts: positions are fractions of the
 ## sprite (x along the hull from the stern, y off the keel), so they sit
@@ -459,6 +463,10 @@ func _nearest_resource() -> Node2D:
 ## Re-derives hull/armor/shield caps from research, keeping current fractions.
 func refresh_stats() -> void:
 	var g := Game.instance
+	# The weapon Mod this class fires with (Defs.MOD_WEAPONS), if any.
+	var cls: String = str(Defs.SHIPS[ship_type].get("base", ship_type))
+	var m := g.active_mod(owner_id, cls) if def.get("role", "") == "warship" else ""
+	weapon_mod = Defs.MOD_WEAPONS.get(m, {})
 	display_name = g.ship_name(owner_id, ship_type)
 	_apply_mark()
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
@@ -643,6 +651,7 @@ func _physics_process(delta: float) -> void:
 	# Out of energy: weapons recharge (and engines run) at a quarter speed.
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
+	_run_out -= delta
 	for i in _t_cd.size():
 		_t_cd[i] -= delta * power
 	_acquire_timer -= delta
@@ -718,12 +727,17 @@ func _physics_process(delta: float) -> void:
 			else:
 				var d := global_position.distance_to(target.global_position)
 				var keep: float = weapon_range() * 0.8
-				if d > keep:
-					desired = _arrive(target.global_position, 1.0)
-				# A turreted hull (the carrier) lets its mounts do the aiming and
-				# keeps its own heading; only fixed guns need the nose on target.
-				if not def.has("turrets"):
-					face_target = target
+				if weapon_mod.get("run", false) and _run_out > 0.0:
+					# Breaking away after a launch: curve out and off to the side.
+					var away := (global_position - target.global_position).normalized()
+					desired = (away + away.orthogonal() * 0.8).normalized() * max_speed()
+				else:
+					if d > keep * (0.6 if weapon_mod.get("run", false) else 1.0):
+						desired = _arrive(target.global_position, 1.0)
+					# A turreted hull (the carrier) lets its mounts do the aiming and
+					# keeps its own heading; only fixed guns need the nose on target.
+					if not def.has("turrets"):
+						face_target = target
 		State.DOCK_GO:
 			# Fly to the carrier and take the bay reserved on arrival.
 			if not is_instance_valid(dock_carrier) or not dock_carrier.is_alive():
@@ -914,11 +928,19 @@ func _physics_process(delta: float) -> void:
 				var acc := lerpf(1.0, MOVING_ACCURACY, clampf(velocity.length() / maxf(max_speed(), 1.0), 0.0, 1.0))
 				if Game.instance.duel_nomovepen:
 					acc = 1.0
+				var wpn: String = weapon_mod.get("weapon", def["weapon"])
+				dmg *= float(weapon_mod.get("dmg", 1.0))
 				for g in int(def.get("guns", 1)):
 					if randf() >= acc:
 						continue
-					Game.instance.fire(self, shoot, def["weapon"], dmg)
-				_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+					if wpn == "arc":
+						Game.instance.arc_strike(self, shoot, dmg, weapon_mod["chain"], weapon_mod["jump"])
+					else:
+						Game.instance.fire(self, shoot, wpn, dmg)
+				_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+				# Attack run: peel away for half the reload, then come round again.
+				if weapon_mod.get("run", false):
+					_run_out = _cooldown * 0.5
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)

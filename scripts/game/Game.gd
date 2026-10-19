@@ -993,9 +993,9 @@ func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
 
 ## Up to `count` enemies of `from` within `max_dist`, nearest first, scored
 ## like nearest_enemy (warships before civilian hulls at similar range).
-func enemies_near(from: SpaceEntity, max_dist: float, count: int) -> Array:
+func enemies_near(from: SpaceEntity, max_dist: float, count: int, around: Vector2 = Vector2.INF) -> Array:
 	var found: Array = []   # [score, entity]
-	var fp := from.global_position
+	var fp := from.global_position if around == Vector2.INF else around
 	var pid := from.owner_id
 	var reach := max_dist + 40.0
 	var lo := Vector2i(((fp - Vector2(reach, reach)) / BIG_CELL).floor())
@@ -1156,7 +1156,27 @@ func fire(from: Node2D, to: Node2D, weapon: String, damage: float) -> void:
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"))
 	if not sim_mode:
-		sfx.play_at("laser" if weapon == "laser" else "torpedo", from.global_position, -8.0)
+		sfx.play_at("laser" if weapon in ["laser", "kinetic"] else "torpedo", from.global_position, -8.0)
+
+## Arc Emitters: the target takes chain[0] of the damage at once, then the
+## arc jumps to the nearest other enemies within `jump` of it for the rest.
+func arc_strike(from: Ship, to: Node2D, damage: float, chain: Array, jump: float) -> void:
+	var dmg := damage * mod(from.owner_id, "damage")
+	var profile := Defs.damage_profile(from.def)
+	var hits: Array = [to]
+	for e in enemies_near(from, jump, chain.size() + 1, to.global_position):
+		if e != to and hits.size() < chain.size():
+			hits.append(e)
+	var pts := PackedVector2Array([from.global_position])
+	for i in hits.size():
+		var h: Node2D = hits[i]
+		h.take_damage(dmg * float(chain[i]), from, profile)
+		pts.append(h.global_position)
+	if not sim_mode:
+		var arc := ArcFx.new()
+		arc.setup(pts, from.def.has("variant"), Defs.VARIANTS[from.def["variant"]]["color"] if from.def.has("variant") else Color("bfe6ff"))
+		fx_root.add_child(arc)
+		sfx.play_at("laser", from.global_position, -8.0)
 
 func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	if sim_mode:
@@ -2686,6 +2706,39 @@ func _enter_dev_capture() -> void:
 		await get_tree().process_frame
 		print("DELTEST starbase alive while asked: ", is_instance_valid(hb3) and hb3.is_alive())
 		center_on(hb3.global_position)
+	if OS.get_environment("SL_SHOT_OPEN") == "modduel":
+		# Dev: 6 of our corvettes with SL_MOD (or none) vs 6 plain ones; prints
+		# how much damage each side has dealt at the capture.
+		var foe_d: int = 2 if player_id == 1 else 1
+		var mid := OS.get_environment("SL_MOD")
+		if mid != "":
+			researched[player_id][mid] = true
+			_on_tech_done(player_id, mid)
+		var c0 := _clear_spot(400.0)
+		print("MODDUEL spot ", c0)
+		var ours: Array = []
+		var theirs: Array = []
+		for k in 6:
+			ours.append(spawn_ship("corvette", player_id, c0 + Vector2(-220, -60 + k * 24)))
+			theirs.append(spawn_ship("corvette", foe_d, c0 + Vector2(220, -60 + k * 24)))
+		for k in 6:
+			ours[k].order_attack(theirs[k])
+			theirs[k].order_attack(ours[k])
+		center_on(c0)
+		# SL_DUEL_SPEED: faster duels for number-only runs (physics stays 60/s).
+		if OS.get_environment("SL_DUEL_SPEED") != "":
+			Engine.time_scale = float(OS.get_environment("SL_DUEL_SPEED"))
+			Engine.max_physics_steps_per_frame = ceili(Engine.time_scale) + 1
+		var tough := func(list: Array) -> float:
+			return list.reduce(func(a, s): return a + (s.hp + s.armor + s.shield if is_instance_valid(s) and s.is_alive() else 0.0), 0.0)
+		var full: float = tough.call(ours)
+		await get_tree().create_timer(float(OS.get_environment("SL_DUEL_T")) if OS.get_environment("SL_DUEL_T") != "" else 8.0).timeout
+		print("MODDUEL %s: we dealt %.0f, they dealt %.0f, ours alive %d, theirs alive %d" % [mid if mid != "" else "laser",
+			full - tough.call(theirs), full - tough.call(ours),
+			ours.filter(func(s): return is_instance_valid(s) and s.is_alive()).size(), theirs.filter(func(s): return is_instance_valid(s) and s.is_alive()).size()])
+		# SL_DUEL_QUIT: number-only runs (headless, no capture) end here.
+		if OS.get_environment("SL_DUEL_QUIT") != "":
+			get_tree().quit()
 	if OS.get_environment("SL_SHOT_OPEN") == "modtest":
 		# Dev: Proton Torpedoes, then Kinetic Repeaters replaces it, then switch
 		# it off; the Mods tab and the status line are left up for the capture.
@@ -3497,6 +3550,39 @@ func _exit_tree() -> void:
 	if rl_server_pid > 0:
 		OS.kill(rl_server_pid)
 		rl_server_pid = -1
+
+## Dev tests: a test arena. Every hazard is removed (spice nebulae, ion
+## storms, debris rings, asteroids) and the returned point is clear of star
+## radiation and at least `pad` + 600 from every starbase and world, so a
+## test fight is decided by the ships alone. Worlds stay (a player with
+## none would lose at once).
+func _clear_spot(pad: float) -> Vector2:
+	for g in ["nebulae", "storms", "debris_rings", "asteroids"]:
+		for n in get_tree().get_nodes_in_group(g):
+			n.remove_from_group(g)
+			n.queue_free()
+	nebula_list = []
+	storm_list = []
+	ring_list = []
+	var best := Vector2.ZERO
+	var best_d := -1.0
+	for r in [600.0, 800.0, 1000.0, 1200.0, 1400.0]:
+		for k in 36:
+			var c: Vector2 = Vector2.from_angle(TAU * k / 36.0) * r
+			if c.length() + pad > MAP_RADIUS - 40.0:
+				continue
+			var clear := INF
+			for st in get_tree().get_nodes_in_group("stars"):
+				if c.distance_to(st.global_position) < st.radiation_radius + pad:
+					clear = -1.0
+			if clear < 0.0:
+				continue
+			for e in get_tree().get_nodes_in_group("starbases") + get_tree().get_nodes_in_group("planets"):
+				clear = minf(clear, c.distance_to(e.global_position))
+			if clear > best_d:
+				best_d = clear
+				best = c
+	return best
 
 ## Drill fleet for the learning agent: beside the enemy starbase (strike) or
 ## halfway to it, off to one side (hunt).

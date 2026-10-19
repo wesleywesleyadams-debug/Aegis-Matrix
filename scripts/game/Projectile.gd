@@ -20,13 +20,14 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
 	target = to
 	damage = dmg
 	homing = weapon == "torpedo"
-	speed = 85.0 if homing else 210.0
+	# Kinetic Repeater slugs: fast and small.
+	speed = 85.0 if homing else (320.0 if weapon == "kinetic" else 210.0)
 	# Misses expire just past weapon range instead of crossing the map.
 	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
-	texture = Defs.tex("bolt_" + weapon)
+	texture = Defs.tex("bolt_" + ("laser" if weapon == "kinetic" else weapon))
 	# Bolt art is drawn at Defs.ART_SCALE like the rest of the sprites.
-	scale = Vector2.ONE / Defs.ART_SCALE
+	scale = Vector2.ONE / Defs.ART_SCALE * (0.55 if weapon == "kinetic" else 1.0)
 	# Shot colors: generalists (and starbases) fire yellow; specialists fire
 	# their variant's color (the layer they hit hardest: light blue shields,
 	# red armor, green hull).
