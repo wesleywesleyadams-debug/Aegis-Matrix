@@ -106,6 +106,9 @@ func _fire_turrets(delta: float) -> void:
 		var wpn: String = weapon_mod.get("weapon", def["weapon"])
 		var n_proj: int = int(weapon_mod.get("count", 1))
 		var spread: float = float(weapon_mod.get("spread", 0.0))
+		if weapon_mod.has("fan"):
+			# A fresh fan width every launch, so no two runs land alike.
+			spread = deg_to_rad(randf_range(weapon_mod["fan"][0], weapon_mod["fan"][1])) * 0.5
 		var shot: float = dmg * float(weapon_mod.get("dmg", 1.0))
 		for k in per:
 			if randf() < acc or wpn == "missile":   # missiles never miss
