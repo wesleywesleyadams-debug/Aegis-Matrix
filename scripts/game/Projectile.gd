@@ -18,8 +18,8 @@ var vs_class := {}
 var life: float = 3.0
 var _vel: Vector2
 
-## Flak: burst share and radius; bomblet: unguided, bursts on the first ship
-## it touches (friend or foe - only enemies are hurt).
+## Flak: burst share and radius; bomblet: unguided, bursts on the first enemy
+## it touches (it passes through friendly hulls).
 var splash := 0.0
 var splash_r := 0.0
 var free_flight := false
@@ -100,10 +100,11 @@ func _physics_process(delta: float) -> void:
 		# Unguided bomblet: bursts on the first ship in its path.
 		var nxt := global_position + _vel * delta
 		for x in Game.instance.hulls_near(global_position.lerp(nxt, 0.5), _vel.length() * delta + 6.0):
-			if x == shooter:
-				continue   # clears its own hull on the way out
+			# Flies straight through its own side and allies; only an enemy sets it off.
+			if x == shooter or x.owner_id == owner_pid or not x.is_enemy_of(owner_pid):
+				continue
 			if Geometry2D.get_closest_point_to_segment(x.global_position, global_position, nxt).distance_to(x.global_position) <= x.radius:
-				# Bursts on whatever it touches; the blast hurts enemies only.
+				# Bursts on the first enemy it touches; the blast hurts enemies only.
 				Game.instance.splash(x.global_position, splash_r, damage * splash, owner_pid, shooter, profile, vs_class)
 				queue_free()
 				return
@@ -127,9 +128,6 @@ func _physics_process(delta: float) -> void:
 		var near := Geometry2D.get_closest_point_to_segment(target.global_position, global_position, next_pos)
 		if near.distance_to(target.global_position) <= target.radius:
 			if splash > 0.0:
-				# A world is not a hull the blast finds: it takes its share directly.
-				if target is Planet:
-					target.take_damage(damage * splash, shooter if is_instance_valid(shooter) else null, profile)
 				Game.instance.splash(near, splash_r, damage * splash, owner_pid, shooter, profile, vs_class)
 				queue_free()
 				return

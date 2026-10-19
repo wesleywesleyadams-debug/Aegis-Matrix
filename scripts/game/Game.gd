@@ -1186,6 +1186,10 @@ func splash(pos: Vector2, r: float, damage: float, pid: int, from: Node2D, profi
 		if x.owner_id != pid and x.is_enemy_of(pid) and x.global_position.distance_to(pos) <= r + x.radius:
 			var mult: float = float(vs_class.get(str(x.def.get("base", x.ship_type)), 1.0)) if x is Ship and not vs_class.is_empty() else 1.0
 			x.take_damage(damage * mult, src, profile)
+	# Enemy worlds inside the blast take their share too.
+	for w in get_tree().get_nodes_in_group("planets"):
+		if w.owner_id != pid and w.is_enemy_of(pid) and w.global_position.distance_to(pos) <= r + w.radius:
+			w.take_damage(damage, src, profile)
 	spawn_blast(pos, r)
 
 ## Every live ship and construct with any part near `pos` (the coarse grid,

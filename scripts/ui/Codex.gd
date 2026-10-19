@@ -464,6 +464,24 @@ func _page_combat() -> void:
 		rrows.append([Defs.SHIPS[t]["name"], "%d minerals" % int(r["minerals"]), "%ds" % int(r["time"])])
 	_table(["Hull", "Refit cost", "Refit time"], rrows)
 	_para("A refit with no minerals waits, and the ship stays inside until you cancel. Cancelling ejects it unchanged, still a generalist. A specialist can't be refitted again. If a depot is destroyed with ships inside, they are thrown clear and lose 60% of their shields, armor and hull.")
+	_heading("Weapon Mods")
+	_para("The Mods research tab changes what a ship class fires. Each class has three Mods and can use one at a time. Researching another Mod for that class replaces the old one, which is lost and must be researched again to come back; the old one keeps working until the new one finishes.")
+	_para("Click an active Mod's card to switch it off: the class goes back to its standard laser and the card turns yellow. Switched-off Mods are listed under the clock; click one there (or its card) to switch it back on. Switching is free and instant.")
+	_para("A Mod sets the weapon's shape; a Weapons Depot variant still sets its damage profile, so a Plasma corvette with Proton Torpedoes fires torpedoes that hit shields x2.2. Bombs, torpedoes and missiles attack hit-and-run: the ship closes, fires, then peels away while it reloads.")
+	var modrows: Array = []
+	for cls in ["corvette", "destroyer", "cruiser", "carrier"]:
+		for id in Defs.TECHS:
+			if Defs.TECHS[id].get("mod", "") == cls:
+				modrows.append([cls.capitalize(), Defs.TECHS[id]["name"], Defs.TECHS[id]["desc"], "yes" if Defs.MOD_WEAPONS.has(id) else "coming"])
+	_table(["Class", "Mod", "Effect", "In game"], modrows)
+	_para("Exploding shots deal %d%% of their damage to every enemy inside the blast, the target included, so bunched-up ships take more. Spread out against them." % int(Defs.AOE_SHARE * 100.0))
+	var arows: Array = []
+	for w in [["flak", "Flak Cannons shell"], ["missile", "Homing Missile"], ["proton", "Proton Torpedo"], ["bomblet", "Cluster Bomb bomblet"]]:
+		arows.append([w[1], "%d" % int(Defs.AOE_RADIUS[w[0]]), "%d%%" % int(Defs.AOE_SHARE * 100.0)])
+	_table(["Shot", "Blast radius", "Damage to each enemy"], arows)
+	var vs: Dictionary = Defs.MOD_WEAPONS["mod_proton_torpedoes"]["vs_class"]
+	_para("Proton Torpedoes are built to hunt big hulls: x%.2f damage to destroyers, x%.2f to cruisers and x%.2f to carriers, and a little weaker than lasers against corvettes. They steer gently, so a ship that turns hard can shake one off." % [vs["destroyer"], vs["cruiser"], vs["carrier"]])
+
 	_heading("Defense research")
 	_para("Four lines on the Defense tab: shields, armor and hull below, plus screens, which cut a share of every hit (all three: -52%). They are expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech costs time as well as energy.")
 	_para("The shield line also raises a Radiation Sail Array's solar shield (and a merged mega shield). It refills just as fast, since each energy harvested recharges 10% of the maximum.")
@@ -847,6 +865,9 @@ func _page_terms() -> void:
 		["Radiation", "Environmental damage inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and stops shield regeneration."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
 		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair, Hangar Bays."],
+		["Mod", "A research option that changes one ship class's weapon (Mods tab). One per class; another replaces it; click an active one to switch it off."],
+		["Blast", "The area an exploding shot hits: every enemy inside takes part of its damage, the target included."],
+		["Hit-and-run", "How bomb, torpedo and missile ships attack: close in, fire, peel away while reloading, come round again."],
 		["Mega Shield", "Touching Radiation Sail Array bubbles of yours merged into one. Its points are their sum (three full arrays: 300), every hit is shared among them by charge, and it bursts for all of them at 0. If they drift apart, each keeps its share as its own bubble."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
