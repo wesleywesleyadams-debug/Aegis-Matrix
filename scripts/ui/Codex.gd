@@ -472,8 +472,8 @@ func _page_combat() -> void:
 	vgrid.columns = 3
 	vgrid.add_theme_constant_override("h_separation", 16)
 	vgrid.add_theme_constant_override("v_separation", 12)
-	for vu in [["generalist", "Generalist", "No weak matchup: the safe pick when you don't know the enemy, and as good as any vs starbases."],
-			["plasma", "Plasma", "Cruiser- and carrier-heavy fleets of uncertain mix: the safest specialist."],
+	for vu in [["generalist", "Generalist", "No weak matchup: the safe pick when you don't know the enemy. Against starbases every variant is about even."],
+			["plasma", "Plasma", "Cruiser- and carrier-heavy fleets of uncertain mix: loses less badly than Slip or Disruptor when the guess is wrong."],
 			["breacher", "Breacher", "Destroyers: the clear best pick against them."],
 			["reaver", "Ravager", "Corvette swarms, and bombarding worlds (it hits population hardest)."],
 			["slip", "Slip", "Cruisers. Badly outclassed by corvettes and destroyers."],
@@ -503,7 +503,7 @@ func _page_combat() -> void:
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
 	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x3.0).")
-	_pic("hit_run", "Bombs, torpedoes and missiles attack hit-and-run.", Vector2(460, 150))
+	_pic("hit_run", "Proton Torpedoes, Cluster Bombs and Homing Missiles attack hit-and-run.", Vector2(460, 150))
 	# The Mods tab as it appears on the research screen.
 	_tech_tree("mods", _research_rows("mods"))
 	var coming: Array = []
@@ -930,7 +930,7 @@ func _system_card(s: Dictionary) -> void:
 	var ntext: String = {
 		"flanks": "Spice nebulae: one cloud on each flank, equally far from both bases - the contested middle.",
 		"bands": "Spice nebulae: two arcs of gas across the lane between the bases, just outside the suns' orbit.",
-		"pockets": "Spice nebulae: six small clouds scattered outside the debris ring, near the outer worlds.",
+		"pockets": "Spice nebulae: a few small clouds scattered outside the debris ring, near the outer worlds.",
 		"drifts": "Spice nebulae: a great cloud on each base's flank - your own to harvest, the enemy's to raid.",
 	}.get(s.get("nebula", ""), "")
 	if ntext != "":
@@ -944,9 +944,9 @@ func _system_card(s: Dictionary) -> void:
 const SYSTEM_TIPS := {
 	"orion_reach": "The even, open map. Both flank clouds are as close to the enemy as to you, so spice goes to whoever holds the middle - send skimmers with an escort.",
 	"vega_drift": "The suns' radiation sweeps the center, so the lane between bases opens and closes. Time attacks for when it is clear, and harvest the bands when the enemy fleet is elsewhere.",
-	"kharon_expanse": "Few worlds, but the most spice anywhere, all of it inside the ring. The gas is full of Radiation: don't linger, bring tough hulls, and expect fights inside it.",
-	"tethys_cluster": "The richest worlds sit behind the debris ring, reachable only through its gaps. Hold a gap and you hold the inner system; the outer pockets are easy, safe spice.",
-	"silent_void": "Nothing in the way and nothing to hide in: no nebulae, storms or rings, only the star's own zone. Spice comes from rocks and Spice Extractors, so it is scarce. Fleets meet in the open.",
+	"kharon_expanse": "Few worlds, but a wide spice ring around the star with extra spice rocks in it. The gas carries low Radiation: shields stay down while you are inside, so expect drawn-out fights there.",
+	"tethys_cluster": "The debris ring splits the system: inner worlds are reachable only through its gaps. Hold a gap and you hold the inner system; the outer pockets are easy, safe spice.",
+	"silent_void": "Nothing in the way and nothing to hide in: no nebulae, storms or rings, only the star's own zone. With no nebulae, spice comes only from rocks and Spice Extractors. Fleets meet in the open.",
 	"sable_verge": "Heavy belts and sparse worlds: a mining race. Ion storms slow and blind anything they cross, and each side's spice drift is an inviting raid target.",
 }
 
@@ -984,8 +984,8 @@ func _page_terms() -> void:
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
 		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair."],
 		["Mod", "A research option that changes one ship class's weapon (Mods tab). One per class; another replaces it; click an active one to switch it off."],
-		["Blast", "The area an exploding shot hits: every enemy inside takes part of its damage, the target included."],
-		["Hit-and-run", "How bomb, torpedo and missile ships attack: close in, fire, peel away while reloading, come round again."],
+		["Blast", "The area an exploding shot hits: every enemy inside takes its full damage, the target included."],
+		["Hit-and-run", "How Proton Torpedo, Cluster Bomb and Homing Missile ships attack: close in, fire, peel away while reloading, come round again."],
 		["Mega Shield", "Touching Radiation Sail Array bubbles of yours merged into one. Its points are their sum (three full arrays: 300), every hit is shared among them by charge, and it bursts for all of them at 0. If they drift apart, each keeps its share as its own bubble."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],
@@ -1083,7 +1083,7 @@ const SHIP_NOTES := {
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, a Mining Station as a forward drop-off, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
-	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there, charging a light-purple solar shield (100; each energy recharges 10% of it; full when built, charging even under fire) before any goes to your energy pool. The shield is a bubble nearly two carriers wide: one shared damage pillow that soaks enemy fire on every friendly ship, construct and world inside it, and while it is up nothing inside takes Radiation - friend or foe. Touching bubbles of your arrays merge into one mega shield that pools their points (three full arrays: 300); every hit is shared among the arrays in proportion to their charge, so the pool bursts for all of them at once when it hits 0. If they drift apart, each keeps its own share and becomes a separate bubble again. Shield techs on the Defense tab (Deflector Arrays, Phase Shields, Aegis Matrix) raise a solar shield's maximum like any other shield - all three: +90%, 190 points - and since each energy recharges 10% of the maximum, a bigger shield refills just as fast. Variant rules apply to solar shields as to any shield: Plasma hits them at x2.2, Slip and Disruptor shots pass straight through the bubble, and Overcharged Coils lets 25% of each hit through. The array itself is always immune to Radiation. A support ship with no weapon: it can't be refitted.",
+	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there, charging a light-purple solar shield (100; each energy recharges 10% of it; full when built, charging even under fire) before any goes to your energy pool. The shield is a bubble nearly two carriers wide: one shared damage pillow that soaks enemy fire on every friendly ship, construct and world inside it, and while it is up nothing inside takes Radiation - friend or foe. Touching bubbles of your arrays merge into one mega shield that pools their points (three full arrays: 300); every hit is shared among the arrays in proportion to their charge, so the pool bursts for all of them at once when it hits 0. If they drift apart, each keeps its own share and becomes a separate bubble again. Shield techs on the Defense tab (Deflector Arrays, Phase Shields, Aegis Matrix) raise a solar shield's maximum like any other shield - all three: +90%, 190 points - and since each energy recharges 10% of the maximum, a bigger shield refills just as fast. Variant rules apply to solar shields as to any shield: Plasma hits them at x3.0, Slip and Disruptor shots pass straight through the bubble, and Overcharged Coils lets 25% of each hit through. The array itself is always immune to Radiation. A support ship with no weapon: it can't be refitted.",
 	"corvette": "The cheap body of a fleet. Fast and short-ranged, it is bought in numbers.",
 	"destroyer": "An armored boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Heavy shields and three laser turrets that outrange everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",

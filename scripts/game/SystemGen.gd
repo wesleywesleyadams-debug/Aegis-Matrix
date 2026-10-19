@@ -28,7 +28,7 @@ const SYSTEMS := [
 		"bg": "ash", "names": "stone", "feature": "storms", "nebula": "drifts", "arrival": "You arrive at the Sable Verge. Ion storms drift around a blue giant; mind where they roam.",
 		"params": {"planets": 3, "belts": 3, "spice": 0.05}},
 	# No feature and no "nebula": no spice nebulae, ion storms or debris rings.
-	# Spice comes from rocks (a higher share of them) and Spice Extractors.
+	# Spice comes only from rocks and Spice Extractors.
 	{"id": "silent_void", "name": "Silent Void", "seed": 5521, "desc": "No hazards: no nebulae, storms or rings.", "star": "yellow", "star_name": "Hush",
 		"bg": "ash", "names": "stone", "arrival": "You arrive in the Silent Void. Nothing here but worlds, rock and the quiet dark.",
 		"params": {"planets": 4, "belts": 2, "spice": 0.2}},
