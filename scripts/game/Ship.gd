@@ -711,7 +711,7 @@ func free_bay() -> int:
 	return -1
 
 func is_carrier() -> bool:
-	return def.get("bays", 0) > 0
+	return def.get("base", ship_type) == "carrier"
 
 ## Whether this ship is small enough to sit in a carrier's bay.
 ## Carriers no longer have hangar bays, so nothing docks.

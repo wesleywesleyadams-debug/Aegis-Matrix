@@ -22,6 +22,9 @@ const FIRE_REACH := 90.0
 const TURN := 4.0
 const FIRE_CONE := 0.25
 var heading := 0.0
+## How far past the target's hull a drone runs out before turning back in.
+const PASS_ROOM := 140.0
+var _extending := false
 
 var carrier: Ship = null
 var slot := 0
@@ -84,6 +87,13 @@ func _physics_process(delta: float) -> void:
 	var goal: Vector2
 	if tgt != null:
 		goal = tgt.global_position   # fly at it; the turn limit makes passes
+		# Too close to bring the nose round: run out to gain room, then turn
+		# back in for the next pass (else it would circle the target forever).
+		var away := global_position - tgt.global_position
+		if _extending or (away.length() < tgt.radius + PASS_ROOM * 0.5 and absf(angle_difference(heading, (-away).angle())) > PI * 0.5):
+			_extending = away.length() < tgt.radius + PASS_ROOM
+			if _extending:
+				goal = global_position + away.normalized() * 100.0
 	else:
 		var a := Game.now() * ORBIT_SPEED + TAU * slot / 4.0
 		goal = home + Vector2.from_angle(a) * reach

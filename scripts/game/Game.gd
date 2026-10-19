@@ -2767,6 +2767,9 @@ func _enter_dev_capture() -> void:
 		# Dev: 6 of our corvettes with SL_MOD (or none) vs 6 plain ones; prints
 		# how much damage each side has dealt at the capture.
 		var foe_d: int = 2 if player_id == 1 else 1
+		# The duel's orders are the whole test: no AI player may override them
+		# (it would pull its ships back or send them elsewhere).
+		ai.process_mode = Node.PROCESS_MODE_DISABLED
 		var mid := OS.get_environment("SL_MOD")
 		if mid != "":
 			researched[player_id][mid] = true
@@ -2799,9 +2802,13 @@ func _enter_dev_capture() -> void:
 			theirs.append(spawn_ship(foe_type, foe_d, c0 + Vector2(260, -80 + k * (160.0 / n_foe))))
 		for k in ours.size():
 			ours[k].drones_ready = true   # drone carriers start with all their drones out
-			ours[k].order_attack(theirs[k % theirs.size()])
+			# SL_FOE_AMOVE: a free fight - both sides attack-move at each other
+			# and pick their own targets (so drones get shot at).
+			if OS.get_environment("SL_FOE_AMOVE") != "":
+				ours[k].order_attack_move(c0 + Vector2(260, 0))
+			else:
+				ours[k].order_attack(theirs[k % theirs.size()])
 		for k in theirs.size():
-			# SL_FOE_AMOVE: foes attack-move instead, picking their own targets.
 			if OS.get_environment("SL_FOE_AMOVE") != "":
 				theirs[k].order_attack_move(c0 + Vector2(-240, 0))
 			else:
