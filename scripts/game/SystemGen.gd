@@ -185,6 +185,7 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 	_home_belt(rng, placed, half_rocks, fwd_c, roundi(rng.randi_range(7, 9) * bs["density"]), rng.randi_range(1, 2), 110.0 * bs["spread"])
 	var back_c := home - to_star * 130.0 - to_star.orthogonal() * 60.0 * belt_side
 	_home_belt(rng, placed, half_rocks, back_c, 0, rng.randi_range(3, 4), 50.0)
+	var spice_belts: Array = [[back_c, 50.0, 1.0]]   # [center, spread, richness] for the spice top-up below
 
 	# Other worlds: type by distance from the star (hot inside, cold outside).
 	var n_planets: int = params.get("planets", 4)
@@ -229,6 +230,7 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 		if rng.randf() < 0.25 + spice_chance * 1.5:
 			var c := _on_ellipse(a0, t)
 			var rich := rng.randf_range(0.6, 1.5)
+			spice_belts.append([c, 70.0 * bs["spread"], rich])
 			for k in roundi(rng.randi_range(4, 6) * bs["density"]):
 				var p := _free_spot(rng, placed, c, 70.0 * bs["spread"], 26.0)
 				if p != Vector2.INF and _in_wedge(p) and _inside(p):
@@ -281,6 +283,20 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 			_claim(placed, p, 12.0)
 			if half_rocks.filter(func(r): return r["pos"].length() > inner and r["pos"].length() < outer and str(r["variant"]).begins_with("spice")).size() >= 7:
 				break
+
+	# Spice is rare but worth the same per rock: about a third of all rocks
+	# (give or take a little by seed) are spice. Short of that, the spice
+	# belts grow; a spice-rich system (Kharon's ring) may run over.
+	var share := rng.randf_range(0.30, 0.36)
+	var have := half_rocks.filter(func(r): return str(r["variant"]).begins_with("spice")).size()
+	var tries := 0
+	while have < share * half_rocks.size() and tries < 300:
+		var sb_: Array = spice_belts[tries % spice_belts.size()]
+		tries += 1
+		var p := _free_spot(rng, placed, sb_[0], float(sb_[1]) * (1.4 + tries / 40.0), 26.0)
+		if p != Vector2.INF and _in_wedge(p) and _inside(p):
+			half_rocks.append(_rock(rng, "spice", p, float(sb_[2])))
+			have += 1
 
 	if params.has("nebula"):
 		features.append_array(nebulae(str(params["nebula"]), sb_pos, seed))
