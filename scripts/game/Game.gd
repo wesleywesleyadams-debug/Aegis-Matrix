@@ -693,7 +693,9 @@ func upkeep_multiplier(pid: int, extra: float = 1.0) -> float:
 		for n in get_tree().get_nodes_in_group(grp):
 			if n.owner_id == pid:
 				m *= Defs.UPKEEP_WEIGHT_SMALL
-	return m
+	# Upkeep research (Orbital Elevators, Jump Drives) shrinks the multiplier
+	# itself: -10% each.
+	return m * mod(pid, "upkeep")
 
 func harvester_count(pid: int) -> int:
 	var n := 0
@@ -754,10 +756,9 @@ func ship_speed_factor(pid: int) -> float:
 	return Defs.ENERGY_STARVED_FACTOR if energy_starved(pid) else 1.0
 
 ## Energy upkeep per minute: every ship's and construct's own upkeep, times
-## the empire-wide multiplier, times upkeep research (Orbital Elevators,
-## Jump Drives: -10% each, on the whole pool).
+## the empire-wide multiplier (which upkeep research already shrinks).
 func upkeep(pid: int) -> float:
-	return base_upkeep(pid) * upkeep_multiplier(pid) * mod(pid, "upkeep")
+	return base_upkeep(pid) * upkeep_multiplier(pid)
 
 ## The summed upkeep of everything a player owns, before the multiplier.
 func base_upkeep(pid: int) -> float:

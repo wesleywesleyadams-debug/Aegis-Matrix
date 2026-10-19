@@ -424,7 +424,7 @@ const TECHS := {
 	"shipyard_networks": {"name": "Shipyard Networks", "group": "constructs", "tier": 3, "requires": ["forward_bases"], "cost": {"energy": 780, "spice": 170}, "time": 235.0,
 		"effects": {"build_speed": 0.25}, "desc": "Starbases build ships 25% faster."},
 	"orbital_elevators": {"name": "Orbital Elevators", "group": "constructs", "tier": 3, "requires": ["rapid_assembly"], "cost": {"energy": 720, "spice": 120}, "time": 215.0,
-		"effects": {"construct_speed": 0.50, "upkeep": -0.10}, "desc": "Constructs build 50% faster, -10% fleet upkeep."},
+		"effects": {"construct_speed": 0.50, "upkeep": -0.10}, "desc": "Constructs build 50% faster, -10% empire upkeep multiplier."},
 
 	# --- Worlds: feeding a population you chose to grow.
 	"rationing": {"name": "Rationing", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 45}, "time": 40.0,
@@ -440,7 +440,7 @@ const TECHS := {
 	"convoy_protocols": {"name": "Convoy Protocols", "group": "logistics", "tier": 2, "requires": ["gas_skimming"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
 		"effects": {"harvester_damage_taken": 0.43}, "desc": "Harvesters take 30% less damage."},
 	"jump_drives": {"name": "Jump Drives", "group": "logistics", "tier": 3, "requires": ["fusion_drives"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
-		"effects": {"speed": 0.40, "upkeep": -0.10}, "desc": "+40% ship speed, -10% fleet upkeep."},
+		"effects": {"speed": 0.40, "upkeep": -0.10}, "desc": "+40% ship speed, -10% empire upkeep multiplier."},
 	"mass_drivers": {"name": "Mass Drivers", "group": "logistics", "tier": 3, "requires": ["resonance_drills"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
 		"effects": {"harvest": 0.60}, "desc": "Harvesters gather 60% faster."},
 	"logistics_command": {"name": "Logistics Command", "group": "logistics", "tier": 3, "requires": ["bulk_holds"], "cost": {"energy": 755, "spice": 140}, "time": 225.0,

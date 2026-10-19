@@ -2106,7 +2106,7 @@ func _add_constructor_buttons() -> void:
 	var grid := _button_grid()
 	var n := game.starbase_count(pid)
 	var now_u: float = game.upkeep(pid)
-	var next_u: float = (game.base_upkeep(pid) + Defs.STARBASE["upkeep"]) * game.upkeep_multiplier(pid, Defs.UPKEEP_WEIGHT["starbase"]) * game.mod(pid, "upkeep")
+	var next_u: float = (game.base_upkeep(pid) + Defs.STARBASE["upkeep"]) * game.upkeep_multiplier(pid, Defs.UPKEEP_WEIGHT["starbase"])
 	var sb := _panel_build_button("starbase", "Starbase", Defs.STARBASE["cost"], Defs.STARBASE["build_time"], "Found Starbase — %s over %ds.\nBuilds ships and takes deliveries. You have %d; the next raises your total upkeep from %.1f to %.1f energy/min." % [
 		Defs.cost_text(Defs.STARBASE["cost"]), int(Defs.STARBASE["build_time"]), n, now_u, next_u])
 	sb.pressed.connect(game.start_starbase_placement)
