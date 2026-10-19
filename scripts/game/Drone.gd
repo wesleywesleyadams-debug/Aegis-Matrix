@@ -7,7 +7,8 @@ extends SpaceEntity
 
 const HULL := 60.0   # all hull: no shields or armor, and no marks or tech change it
 
-const SPEED := 240.0
+## Flight speed; SL_DRONE_SPEED / SL_DRONE_R override it and the hit radius for tuning runs.
+var SPEED := 240.0
 ## Patrol: drones circle the carrier at the edge of their reach this fast
 ## (radians a second), spread evenly by slot.
 const ORBIT_SPEED := 0.25
@@ -44,6 +45,10 @@ func _init() -> void:
 	max_hp = HULL
 	hp = HULL
 	radius = 5.0
+	if OS.get_environment("SL_DRONE_SPEED") != "":
+		SPEED = float(OS.get_environment("SL_DRONE_SPEED"))
+	if OS.get_environment("SL_DRONE_R") != "":
+		radius = float(OS.get_environment("SL_DRONE_R"))
 	display_name = "Interceptor Drone"
 
 ## Not in "entities": selection, saves and the neural AI never see drones.
