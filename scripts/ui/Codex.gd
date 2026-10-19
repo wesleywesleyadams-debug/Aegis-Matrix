@@ -412,17 +412,19 @@ func _page_combat() -> void:
 	])
 	_pic("shield_regen", "Spread fire lets unhit ships recover; focused fire keeps their shields down.", Vector2(460, 150))
 	_heading("Generalists")
-	_para("Each class leans on a different layer: corvettes on hull, destroyers on armor, cruisers on shields, carriers evenly. That gives specialists a target.")
+	_para("Each class leans on a different layer: corvettes on hull, destroyers on armor, cruisers on shields, carriers on shields and armor. That gives specialists a target.")
 	var rows: Array = []
 	for t in Defs.MARK_LINES:
 		var d: Dictionary = Defs.SHIPS[t]
-		var lean := "hull"
-		if d["shield"] >= d["armor"] and d["shield"] >= d["hp"]:
-			lean = "shields"
-		elif d["armor"] >= d["shield"] and d["armor"] >= d["hp"]:
-			lean = "armor"
+		# The layer(s) it leans on: the biggest, or two tied for biggest.
+		var top: float = maxf(d["shield"], maxf(d.get("armor", 0.0), d["hp"]))
+		var leans: Array = []
+		for l in [["shields", "shield", d["shield"]], ["armor", "armor", d.get("armor", 0.0)], ["hull", "hull", d["hp"]]]:
+			if float(l[2]) >= top * 0.97:
+				leans.append(l)
+		var lean_cell: Variant = [leans[0][0], Defs.LAYER_COLORS[leans[0][1]]] if leans.size() == 1 else " + ".join(leans.map(func(l): return l[0]))
 		rows.append([d["name"], [str(int(d["shield"])), Defs.LAYER_COLORS["shield"]], [str(int(d.get("armor", 0))), Defs.LAYER_COLORS["armor"]],
-			[str(int(d["hp"])), Defs.LAYER_COLORS["hull"]], [lean, Defs.LAYER_COLORS[lean.trim_suffix("s")]]])
+			[str(int(d["hp"])), Defs.LAYER_COLORS["hull"]], lean_cell])
 	var sb: Dictionary = Defs.STARBASE
 	rows.append(["Starbase", [str(int(sb["shield"])), Defs.LAYER_COLORS["shield"]], [str(int(sb.get("armor", 0))), Defs.LAYER_COLORS["armor"]],
 		[str(int(sb["hp"])), Defs.LAYER_COLORS["hull"]], "hull"])

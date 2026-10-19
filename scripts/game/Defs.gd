@@ -130,7 +130,7 @@ const BASE_SHIPS := {
 		# About twice a cruiser in every dimension: slower across the map and
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one.
-		"hp": 1433.0, "armor": 1433.0, "shield": 1434.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
+		"hp": 1075.0, "armor": 1612.5, "shield": 1612.5, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": 12.0, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
