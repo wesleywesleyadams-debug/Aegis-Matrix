@@ -704,6 +704,42 @@ func _tech_card(id: String) -> Control:
 func _pct(tech: String, effect: String) -> int:
 	return int(round(float(Defs.TECHS[tech]["effects"].get(effect, 0.0)) * 100.0))
 
+## The asteroid sizes side by side at their true relative size, each with
+## what it holds (worked out exactly as Asteroid does, so it can't drift).
+func _rock_sizes() -> void:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _panel_style())
+	card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 34)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_child(row)
+	const K := 3.0   # screen px per world px
+	for it in [["asteroid_0", 1.0, "Small mineral", "minerals"], ["asteroid_big_0", 1.0, "Big mineral", "minerals"],
+			["spice_0", 1.0, "Spice", "spice"], ["spice_0", SystemGen.BIG_SPICE, "Large spice", "spice"]]:
+		var tex := Defs.tex(it[0])
+		var w: float = tex.get_width() * float(it[1]) / Defs.ART_SCALE
+		var per: float = Defs.ASTEROID_SPICE_PER_PX2 if it[3] == "spice" else Defs.ASTEROID_MINERALS_PER_PX2
+		var holds := int(round(w * w * per / 10.0)) * 10
+		var cell := VBoxContainer.new()
+		cell.alignment = BoxContainer.ALIGNMENT_END
+		cell.add_theme_constant_override("separation", 4)
+		var art := TextureRect.new()
+		art.texture = tex
+		art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.custom_minimum_size = Vector2(w, w) * K
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		cell.add_child(art)
+		var cap := _label(it[2], TEXT, 15)
+		cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell.add_child(cap)
+		var amt := _label("%d %s" % [holds, it[3]], Defs.RESOURCE_COLORS[it[3]], 15)
+		amt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell.add_child(amt)
+		row.add_child(cell)
+	_body.add_child(card)
+
 func _page_economy() -> void:
 	_heading("Planets")
 	_para("A planet's size is its number of fields, one building each. Its population cap is size x %d. Colonies start at %d pops. Pops eat %s food per minute; an unfed world shrinks instead of growing. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP), str(Defs.FOOD_PER_POP_PER_MIN)])
@@ -737,8 +773,9 @@ func _page_economy() -> void:
 	_para("Rates are at base. Logistics techs speed up every harvester, Mining Barges and Gas Skimmers alike: Cutting Lasers, Resonance Drills and Mass Drivers add +%d%%, +%d%% and +%d%% gather rate, Deep-Core Drills and Bulk Holds +%d%% and +%d%% hold, and Logistics Command +%d%% of each. A Radiation Sail Array also gathers %d energy a minute while in Radiation (a star's zone or a spice nebula)." % [
 		_pct("cutting_lasers", "harvest"), _pct("resonance_drills", "harvest"), _pct("mass_drivers", "harvest"),
 		_pct("deep_drills", "cargo"), _pct("bulk_holds", "cargo"), _pct("logistics_command", "harvest"), int(Defs.SHIPS["heatshield"]["solar_sail"])])
-	_para("Asteroids run dry and vanish (a small mineral rock holds about %d, a large one about %d; spice rocks hold about a third as much). Gas giants refill after a pause. A spice nebula never runs out. Logistics techs raise hold size, gather rate and speed." % [
-		int(round(16.0 * 16.0 * Defs.ASTEROID_MINERALS_PER_PX2 / 10.0)) * 10, int(round(26.0 * 26.0 * Defs.ASTEROID_MINERALS_PER_PX2 / 10.0)) * 10])
+	_heading("Asteroid sizes")
+	_para("Every rock of a size holds the same amount, on every map. Belts differ in their mix: a rich belt has more big rocks, a poor one mostly small. Rocks run dry and vanish; gas giants refill after a pause, and a spice nebula never runs out.")
+	_rock_sizes()
 	_heading("Buildings")
 	var bplate: Array = []
 	for b in Defs.BUILDING_ORDER:
