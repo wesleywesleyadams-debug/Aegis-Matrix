@@ -61,8 +61,7 @@ func _fire_turrets(delta: float) -> void:
 		_fly_drones(delta)
 		return
 	elif not _drones.is_empty():
-		_drones.clear()
-		queue_redraw()
+		_clear_drones()
 	var g := Game.instance
 	var rng := weapon_range()
 	var ordered: Node2D = null
@@ -212,13 +211,55 @@ func _tractor_keep() -> float:
 
 ## Interceptor Drones: they circle the carrier; any enemy within reach of
 ## the carrier draws a drone out, which closes to 40 and fires lasers.
+## The turrets become launch doors. The carrier builds one drone every
+## DRONE_BUILD seconds while short of its full set (a full set takes a
+## minute), each flying out of a door; a lost drone is rebuilt the same way.
+const DRONE_BUILD := 15.0
+const DOOR_OPEN := 0.8
 func _fly_drones(delta: float) -> void:
 	var g := Game.instance
 	var cfg: Array = weapon_mod["drones"]
 	var count: int = int(cfg[0])
 	var reach: float = float(cfg[1])
+	var sf: float = g.ship_speed_factor(owner_id)
+	if _drones.is_empty():
+		_drone_timer = DRONE_BUILD
+		for ts in _turret_sprites:
+			ts.visible = false   # the mounts are launch doors now
+		if not is_instance_valid(_door_layer):
+			_door_layer = Node2D.new()
+			_door_layer.draw.connect(_draw_doors.bind(_door_layer))
+			add_child(_door_layer)
+		_door_layer.queue_redraw()
 	while _drones.size() < count:
-		_drones.append({"pos": global_position, "cd": randf(), "tgt": null})
+		_drones.append(null)
+		_door_open.append(-10.0)
+	var empty := -1
+	for i in count:
+		if not (is_instance_valid(_drones[i]) and _drones[i].is_alive()):
+			_drones[i] = null
+			if empty < 0:
+				empty = i
+	if empty < 0:
+		_drone_timer = DRONE_BUILD
+	else:
+		_drone_timer -= delta * sf
+		if _drone_timer <= 0.0:
+			_drone_timer = DRONE_BUILD
+			# Launch from a door (one per mount, round the hull).
+			var door: int = empty % maxi(_turret_sprites.size(), 1)
+			var d := Drone.new()
+			d.owner_id = owner_id
+			d.carrier = self
+			d.cd = randf()
+			g.fx_root.add_child(d)
+			d.global_position = _turret_sprites[door].global_position if not _turret_sprites.is_empty() else global_position
+			_drones[empty] = d
+			_door_open[door] = Game.now()
+	for k in _door_open.size():
+		if Game.now() - _door_open[k] < DOOR_OPEN:
+			_door_layer.queue_redraw()
+			break
 	_t_scan -= delta
 	if _t_scan <= 0.0:
 		_t_scan = SCAN_INTERVAL
@@ -229,28 +270,72 @@ func _fly_drones(delta: float) -> void:
 	var per: float = float(def.get("guns", 4)) / float(count)
 	var t := Game.now()
 	for i in count:
-		var dr: Dictionary = _drones[i]
+		var dr: Drone = _drones[i]
+		if dr == null:
+			continue
 		var tg = ordered
 		if tg == null:
-			tg = dr["tgt"]
+			tg = dr.tgt
 			if not (is_instance_valid(tg) and tg.is_alive() and global_position.distance_to(tg.global_position) <= reach + tg.radius):
 				tg = _t_near[i % _t_near.size()] if not _t_near.is_empty() else null
-				if tg != null and not (is_instance_valid(tg) and tg.is_alive()):
+				if not (is_instance_valid(tg) and tg.is_alive()):
 					tg = null
-		dr["tgt"] = tg
+		dr.tgt = tg
 		var goal: Vector2
 		if tg != null:
-			goal = tg.global_position + (dr["pos"] - tg.global_position).normalized() * (tg.radius + 40.0)
+			goal = tg.global_position + (dr.global_position - tg.global_position).normalized() * (tg.radius + 40.0)
 		else:
 			goal = global_position + Vector2.from_angle(t * 1.2 + TAU * i / count) * (radius + 30.0)
-		dr["pos"] = (dr["pos"] as Vector2).move_toward(goal, 240.0 * delta * g.ship_speed_factor(owner_id))
-		dr["cd"] = float(dr["cd"]) - delta * g.ship_speed_factor(owner_id)
-		if tg != null and dr["cd"] <= 0.0 and (dr["pos"] as Vector2).distance_to(tg.global_position) <= tg.radius + 70.0:
-			dr["cd"] = def["cooldown"] / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+		dr.global_position = dr.global_position.move_toward(goal, 240.0 * delta * sf)
+		dr.cd -= delta * sf
+		if tg != null and dr.cd <= 0.0 and dr.global_position.distance_to(tg.global_position) <= tg.radius + 70.0:
+			dr.cd = def["cooldown"] / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 			var k: float = float(weapon_mod.get("vs_class", {}).get(tg.def.get("base", tg.get("ship_type")), 1.0)) if tg is Ship else 1.0
 			tg.take_damage(dmg * per * k * g.mod(owner_id, "damage"), self, Defs.damage_profile(def))
-			dr["shot"] = [dr["pos"], tg.global_position, t]
+			dr.shot(tg.global_position)
+
+## The launch doors, drawn on a layer above the hull (see _fly_drones).
+func _draw_doors(L: Node2D) -> void:
+	var tc := Defs.team_color(owner_id)
+	for k in _turret_sprites.size():
+		var ts: Sprite2D = _turret_sprites[k]
+		# The turret art's round mount: radius 6.5 px, 4.5 px behind the
+		# sprite's center (ship_turret.png), so the door sits exactly on it.
+		var c: Vector2 = ts.position + Vector2(-4.5, 0).rotated(ts.rotation) * ts.scale
+		var r: float = 6.5 * ts.scale.x
+		var age: float = Game.now() - (_door_open[k] if k < _door_open.size() else -10.0)
+		var open: float = clampf(1.0 - absf(age / DOOR_OPEN * 2.0 - 1.0), 0.0, 1.0) if age < DOOR_OPEN else 0.0
+		L.draw_circle(c, r, Color("0b0f1e"))
+		if open > 0.0:
+			L.draw_circle(c, r * 0.8, Color(1.0, 0.85, 0.4, 0.8 * open))
+		# Two half-disc leaves that slide apart to open.
+		var gap: float = r * open
+		for side in [-1.0, 1.0]:
+			var pts := PackedVector2Array()
+			for q in 13:
+				var a: float = PI * 0.5 + PI * q / 12.0
+				var v := Vector2.from_angle(a) * r * 0.92
+				pts.append(c + Vector2(v.x * -side if side > 0.0 else v.x, v.y) + Vector2(side * gap, 0))
+			L.draw_colored_polygon(pts, Color("7d88a8") if side < 0.0 else Color("6b7594"))
+		L.draw_arc(c, r, 0.0, TAU, 20, Color("4a5370"), maxf(r * 0.18, 0.5))
+		L.draw_arc(c, r * 1.05, 0.0, TAU, 20, Color(tc, 0.8), maxf(r * 0.1, 0.4))
+
+## Recalls (frees) every drone: the Mod was switched off or the carrier is gone.
+func _clear_drones() -> void:
+	for d in _drones:
+		if is_instance_valid(d):
+			d.queue_free()
+	_drones.clear()
+	_door_open.clear()
+	if is_instance_valid(_door_layer):
+		_door_layer.queue_free()
+	for ts in _turret_sprites:
+		if is_instance_valid(ts):
+			ts.visible = true
 	queue_redraw()
+
+func _exit_tree() -> void:
+	_clear_drones()
 
 ## Point-Defense: the nearest enemy missile, torpedo or bomblet within `r`
 ## not already being shot by another of this ship's turrets.
@@ -357,8 +442,13 @@ var _t_far_scan := 0.0
 var _tr_frame := -1
 var _tr_acc := 1.0
 var _tr_prev := 1.0
-## Interceptor Drones: each {pos (world), cd, tgt}.
+## Interceptor Drones (Drone nodes, null while being rebuilt) and the
+## seconds left on each rebuild.
 var _drones: Array = []
+## Seconds until the next drone is built; when each door last opened.
+var _drone_timer := 0.0
+var _door_open: Array[float] = []
+var _door_layer: Node2D = null
 var _t_scan := 0.0
 ## Carrier side: one slot per bay, holding the ship in it (or null).
 var bay_craft: Array = []
@@ -1261,16 +1351,6 @@ func _draw() -> void:
 		var side := (z - a).orthogonal().normalized() * 7.0 / scale.x
 		draw_colored_polygon(PackedVector2Array([a, z + side, z - side]), Color(0.6, 1.0, 0.7, 0.10 + 0.15 * float(bm[2])))
 		draw_line(a, z, Color(0.6, 1.0, 0.7, 0.55), 1.0 / scale.x)
-	# Interceptor drones and their shots.
-	var now := Game.now()
-	for dr in _drones:
-		var p := to_local(dr["pos"])
-		draw_set_transform(p, ((dr["tgt"].global_position if is_instance_valid(dr["tgt"]) else global_position) - (dr["pos"] as Vector2)).angle() - global_rotation, Vector2.ONE / scale)
-		draw_colored_polygon(PackedVector2Array([Vector2(5, 0), Vector2(-4, -4), Vector2(-2, 0), Vector2(-4, 4)]), Color("c8d2ea"))
-		draw_colored_polygon(PackedVector2Array([Vector2(-2, -2), Vector2(-2, 2), Vector2(-4, 0)]), Defs.team_color(owner_id))
-		draw_set_transform(Vector2.ZERO)
-		if dr.has("shot") and now - float(dr["shot"][2]) < 0.08:
-			draw_line(to_local(dr["shot"][0]), to_local(dr["shot"][1]), Color("ffd84a"), 1.5 / scale.x)
 	super._draw()
 
 var _harvest_fx: HarvestFx

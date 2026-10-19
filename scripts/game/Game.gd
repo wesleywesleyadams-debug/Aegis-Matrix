@@ -886,6 +886,12 @@ func _physics_process(delta: float) -> void:
 		if not _grid_big.has(big):
 			_grid_big[big] = []
 		_grid_big[big].append(s)
+	# Interceptor drones can be targeted, but don't jostle ships.
+	for d in get_tree().get_nodes_in_group("drones"):
+		var big := Vector2i((d.global_position / BIG_CELL).floor())
+		if not _grid_big.has(big):
+			_grid_big[big] = []
+		_grid_big[big].append(d)
 	# Per-frame snapshots of small groups that ships query constantly (a group
 	# lookup allocates a fresh array every call).
 	stars_list = get_tree().get_nodes_in_group("stars")
@@ -2802,7 +2808,11 @@ func _enter_dev_capture() -> void:
 		for k in ours.size():
 			ours[k].order_attack(theirs[k % theirs.size()])
 		for k in theirs.size():
-			theirs[k].order_attack(ours[k % ours.size()])
+			# SL_FOE_AMOVE: foes attack-move instead, picking their own targets.
+			if OS.get_environment("SL_FOE_AMOVE") != "":
+				theirs[k].order_attack_move(c0 + Vector2(-240, 0))
+			else:
+				theirs[k].order_attack(ours[k % ours.size()])
 		center_on(c0)
 		# SL_DUEL_SPEED: faster duels for number-only runs (physics stays 60/s).
 		if OS.get_environment("SL_DUEL_SPEED") != "":
