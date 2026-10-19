@@ -697,6 +697,13 @@ func upkeep_multiplier(pid: int, extra: float = 1.0) -> float:
 	# itself: -10% each.
 	return m * mod(pid, "upkeep")
 
+func warship_count(pid: int) -> int:
+	var n := 0
+	for s in get_tree().get_nodes_in_group("ships"):
+		if s.owner_id == pid and s.def.get("role", "") == "warship":
+			n += 1
+	return n
+
 func harvester_count(pid: int) -> int:
 	var n := 0
 	for s in get_tree().get_nodes_in_group("ships"):

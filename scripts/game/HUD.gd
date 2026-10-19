@@ -1563,8 +1563,8 @@ func _update_top_bar() -> void:
 OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starved(pid) else ""]
 	_pop_label.text = "Pop %s" % _fmt(game.total_pop(pid))
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats %.2f food per minute." % Defs.FOOD_PER_POP_PER_MIN
-	_fleet_label.text = str(game.ship_count(pid))
-	_fleet_label.tooltip_text = "Ships of every kind: warships, support ships and harvesters."
+	_fleet_label.text = str(game.warship_count(pid))
+	_fleet_label.tooltip_text = "Warships: corvettes, destroyers, cruisers and carriers."
 	_harv_label.text = str(game.harvester_count(pid))
 	_harv_label.tooltip_text = "Harvesters: Mining Barges and Gas Skimmers."
 	var um: float = game.upkeep_multiplier(pid)
