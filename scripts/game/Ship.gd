@@ -251,48 +251,37 @@ func _fly_drones(delta: float) -> void:
 			var d := Drone.new()
 			d.owner_id = owner_id
 			d.carrier = self
+			d.slot = empty
 			d.cd = randf()
 			g.fx_root.add_child(d)
 			d.global_position = _turret_sprites[door].global_position if not _turret_sprites.is_empty() else global_position
+			d.heading = (d.global_position - global_position).angle()
+			d.rotation = d.heading
 			_drones[empty] = d
 			_door_open[door] = Game.now()
 	for k in _door_open.size():
 		if Game.now() - _door_open[k] < DOOR_OPEN:
 			_door_layer.queue_redraw()
 			break
-	_t_scan -= delta
-	if _t_scan <= 0.0:
-		_t_scan = SCAN_INTERVAL
-		_t_near = g.enemies_near(self, reach, count)
-	var ordered: Node2D = target if state == State.ATTACK and target_ordered and is_instance_valid(target) and target.is_alive() \
-		and global_position.distance_to(target.global_position) <= reach + float(target.get("radius")) else null
+	# Each drone flies and fights on its own (Drone._physics_process).
+
+## How far from the carrier its drones may range.
+func drone_reach() -> float:
+	return float(weapon_mod.get("drones", [0, 0.0])[1])
+
+## One drone's laser hit on `tg`: the carrier's gun damage split across its
+## drones (weaker against heavy hulls, see MOD_WEAPONS vs_class).
+func drone_hit(tg: Node2D) -> void:
+	var g := Game.instance
+	var count: int = int(weapon_mod.get("drones", [4])[0])
 	var dmg: float = def["damage"] * Defs.mark_mult(ship_type, g.mark_level(owner_id, ship_type)) * float(weapon_mod.get("dmg", 1.0))
-	var per: float = float(def.get("guns", 4)) / float(count)
-	var t := Game.now()
-	for i in count:
-		var dr: Drone = _drones[i]
-		if dr == null:
-			continue
-		var tg = ordered
-		if tg == null:
-			tg = dr.tgt
-			if not (is_instance_valid(tg) and tg.is_alive() and global_position.distance_to(tg.global_position) <= reach + tg.radius):
-				tg = _t_near[i % _t_near.size()] if not _t_near.is_empty() else null
-				if not (is_instance_valid(tg) and tg.is_alive()):
-					tg = null
-		dr.tgt = tg
-		var goal: Vector2
-		if tg != null:
-			goal = tg.global_position + (dr.global_position - tg.global_position).normalized() * (tg.radius + 40.0)
-		else:
-			goal = global_position + Vector2.from_angle(t * 1.2 + TAU * i / count) * (radius + 30.0)
-		dr.global_position = dr.global_position.move_toward(goal, 240.0 * delta * sf)
-		dr.cd -= delta * sf
-		if tg != null and dr.cd <= 0.0 and dr.global_position.distance_to(tg.global_position) <= tg.radius + 70.0:
-			dr.cd = def["cooldown"] / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
-			var k: float = float(weapon_mod.get("vs_class", {}).get(tg.def.get("base", tg.get("ship_type")), 1.0)) if tg is Ship else 1.0
-			tg.take_damage(dmg * per * k * g.mod(owner_id, "damage"), self, Defs.damage_profile(def))
-			dr.shot(tg.global_position)
+	var per: float = float(def.get("guns", count)) / float(count)
+	var k: float = float(weapon_mod.get("vs_class", {}).get(tg.def.get("base", tg.get("ship_type")), 1.0)) if tg is Ship else 1.0
+	tg.take_damage(dmg * per * k * g.mod(owner_id, "damage"), self, Defs.damage_profile(def))
+
+## Seconds between one drone's shots.
+func drone_cooldown() -> float:
+	return def["cooldown"] / Game.instance.mod(owner_id, "fire_rate")
 
 ## The launch doors, drawn on a layer above the hull (see _fly_drones).
 func _draw_doors(L: Node2D) -> void:
