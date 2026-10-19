@@ -231,9 +231,14 @@ static func call_scene(id: String, img: Image) -> void:
 			_barrel(img, Vector2(26, 36), Vector2(52, 18), 4.0)
 			_barrel(img, Vector2(26, 44), Vector2(52, 26), 4.0)
 		"targeting_arrays":
-			_dish(img, Vector2(16, 44))
-			_sprite(img, "ship_corvette", Vector2(46, 20), 16.0)
-			_ring(img, Vector2(46, 20), 10.0, 1.5, Color("ff6a4a"))
+			# Quantum Lenses: a stack of glowing lenses stretching a beam far.
+			_beam(img, Vector2(4, 32), Vector2(60, 32), Color("b48aff", 0.5), 5.0)
+			for k in 3:
+				var x := 14.0 + k * 14.0
+				_ellipse(img, Vector2(x, 32), Vector2(3.5, 15.0 - k * 3.0), Color("8fd8ff"))
+				_ellipse(img, Vector2(x - 1, 30), Vector2(1.2, 8.0 - k * 1.5), Color("eaf8ff"))
+			_beam(img, Vector2(46, 32), Vector2(62, 32), Color("ffd84a"), 1.5)
+			_disc(img, Vector2(60, 32), 2.5, Color("fff6cc"))
 		"beam_focusing":
 			_beam(img, Vector2(6, 22), Vector2(28, 32), Color("ff6a4a", 0.6), 4.0)
 			_beam(img, Vector2(6, 42), Vector2(28, 32), Color("ff6a4a", 0.6), 4.0)
