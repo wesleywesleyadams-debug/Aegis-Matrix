@@ -17,7 +17,7 @@ A research tab called **Mods**. Each Mod changes the weapon of one ship class.
 
 | Class | Mod | Behaviour | Trade |
 |---|---|---|---|
-| Corvette | **Proton Torpedoes** | Flies in, launches a torpedo, circles away and repeats. Fires ⅓ as often for 3× damage per shot. | Big burst per pass, but the slow torpedo can miss fast targets. |
+| Corvette | **Proton Torpedoes** | Attack runs: fly in, launch, peel away while reloading. 1/3 the shots at x1.16 damage each; the torpedoes steer gently and lose lock past 50 degrees, so evasive targets can shake them. Damage x2.92 vs destroyers, x3.73 vs cruisers, x4.5 vs carriers. | Slightly weaker than lasers vs corvettes (tuned in duels); a big-ship hunter. |
 | Corvette | **Kinetic Repeaters** | Rapid slugs: 3× fire rate, ⅓ damage per shot, −25% range. | No wasted overkill, but it has to get close. |
 | Corvette | **Arc Emitters** | Chain lightning: the target takes 60%, then 2 nearby enemies take 20% each. | Strong against swarms, weaker against one big ship. |
 | Destroyer | **Flak Cannons** | Shells burst and hit everything within 50 for 60%. | Shreds corvette packs; −40% against a single target. |

@@ -18,24 +18,47 @@ var vs_class := {}
 var life: float = 3.0
 var _vel: Vector2
 
-func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
+## Flak: burst share and radius; bomblet: unguided, bursts on the first ship
+## it touches (friend or foe - only enemies are hurt).
+var splash := 0.0
+var splash_r := 0.0
+var free_flight := false
+var owner_pid := 0
+## Missiles and torpedoes leave a fading exhaust trail (world points).
+var trail_on := false
+## Torpedo wakes are short, wide and blue-white; missile trails long, thin, orange.
+var torp_wake := false
+var _trail: PackedVector2Array = []
+
+func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float = 0.0) -> void:
 	shooter = from
 	target = to
 	damage = dmg
-	homing = weapon == "torpedo" or weapon == "proton"
+	homing = weapon == "torpedo" or weapon == "proton" or weapon == "missile"
+	owner_pid = int(from.get("owner_id"))
+	free_flight = weapon == "bomblet"
+	trail_on = weapon in ["missile", "proton", "torpedo"] and not Game.instance.sim_mode
+	torp_wake = weapon in ["proton", "torpedo"]
+	if from is Ship and weapon == "flak":
+		splash = float(from.weapon_mod.get("splash", 0.6))
+		splash_r = float(from.weapon_mod.get("splash_r", 50.0))
 	# Proton Torpedoes steer only gently and give up once the target is well
 	# off their nose: a target that turns hard can shake them off.
 	weak_lock = weapon == "proton"
 	if from is Ship:
 		vs_class = from.weapon_mod.get("vs_class", {})
 	# Kinetic Repeater slugs: fast and small.
-	speed = (110.0 if weak_lock else 85.0) if homing else (320.0 if weapon == "kinetic" else 210.0)
+	speed = (110.0 if weak_lock else (150.0 if weapon == "missile" else 85.0)) if homing else {"kinetic": 320.0, "bomblet": 150.0, "flak": 240.0}.get(weapon, 210.0)
 	# Misses expire just past weapon range instead of crossing the map.
 	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
-	texture = Defs.tex("bolt_" + ("laser" if weapon == "kinetic" else ("torpedo" if weapon == "proton" else weapon)))
+	texture = Defs.tex("bolt_" + {"kinetic": "laser", "flak": "laser", "proton": "torpedo", "missile": "torpedo", "bomblet": "torpedo"}.get(weapon, weapon))
 	# Bolt art is drawn at Defs.ART_SCALE like the rest of the sprites.
-	scale = Vector2.ONE / Defs.ART_SCALE * (0.55 if weapon == "kinetic" else 1.0)
+	scale = Vector2.ONE / Defs.ART_SCALE * {"kinetic": 0.55, "bomblet": 0.5, "missile": 0.6}.get(weapon, 1.0)
+	if weapon == "missile":
+		scale = Vector2(0.9, 0.35) / Defs.ART_SCALE   # long and slim: a missile body
+	elif weapon == "proton":
+		scale = Vector2.ONE * 1.25 / Defs.ART_SCALE   # a fat, glowing ball
 	# Shot colors: generalists (and starbases) fire yellow; specialists fire
 	# their variant's color (the layer they hit hardest: light blue shields,
 	# red armor, green hull).
@@ -58,13 +81,36 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
 	var lead := to.global_position
 	if to is Ship:
 		lead += (to as Ship).velocity * (from.global_position.distance_to(to.global_position) / speed)
-	_vel = (lead - global_position).normalized() * speed
+	_vel = (lead - global_position).normalized().rotated(spread) * speed
 	rotation = _vel.angle()
+	if free_flight:
+		life = from.global_position.distance_to(to.global_position) * 1.3 / speed
 
 func _physics_process(delta: float) -> void:
+	if trail_on:
+		_trail.append(global_position)
+		if _trail.size() > (7 if torp_wake else 14):
+			_trail.remove_at(0)
+		queue_redraw()
 	life -= delta
 	if life <= 0.0:
 		queue_free()
+		return
+	if free_flight:
+		# Unguided bomblet: bursts on the first ship in its path.
+		var nxt := global_position + _vel * delta
+		for x in Game.instance.hulls_near(global_position.lerp(nxt, 0.5), _vel.length() * delta + 6.0):
+			if x == shooter:
+				continue   # clears its own hull on the way out
+			if Geometry2D.get_closest_point_to_segment(x.global_position, global_position, nxt).distance_to(x.global_position) <= x.radius:
+				if x.owner_id != owner_pid and x.is_enemy_of(owner_pid):
+					x.take_damage(damage, shooter if is_instance_valid(shooter) else null, profile)
+				Game.instance.spawn_explosion(x.global_position, 0.3)
+				queue_free()
+				return
+		global_position = nxt
+		# Bomblets blink as they fall, so a spread reads as bombs, not shots.
+		visible = int(life * 12.0) % 2 == 0
 		return
 	if is_instance_valid(target) and target.is_alive():
 		if homing:
@@ -84,9 +130,27 @@ func _physics_process(delta: float) -> void:
 			var hit := damage
 			if not vs_class.is_empty() and target is Ship:
 				hit *= float(vs_class.get(str(target.def.get("base", target.ship_type)), 1.0))
+			if splash > 0.0:
+				Game.instance.splash(near, splash_r, hit * splash, owner_pid, shooter, profile)
+				queue_free()
+				return
 			target.take_damage(hit, shooter if is_instance_valid(shooter) else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)
 			queue_free()
 			return
 	global_position += _vel * delta
+
+## The exhaust trail, drawn in the projectile's own (rotated, scaled) space.
+func _draw() -> void:
+	if not trail_on or _trail.size() < 2:
+		return
+	var inv := global_transform.affine_inverse()
+	for k in range(1, _trail.size()):
+		var a: float = float(k) / _trail.size()
+		if torp_wake:
+			# A short, wide, glowing wake.
+			draw_line(inv * _trail[k - 1], inv * _trail[k], Color(0.55, 0.85, 1.0, a * 0.35), 9.0 * a / scale.x)
+			draw_line(inv * _trail[k - 1], inv * _trail[k], Color(0.9, 0.97, 1.0, a * 0.7), 3.0 * a / scale.x)
+		else:
+			draw_line(inv * _trail[k - 1], inv * _trail[k], Color(1.0, 0.75, 0.4, a * 0.55), 3.0 * a / scale.x)

@@ -103,10 +103,18 @@ func _fire_turrets(delta: float) -> void:
 		_turret_sprites[i].rotation = _t_rot[i] - rotation
 		if _t_cd[i] > 0.0 or absf(angle_difference(_t_rot[i], want)) > deg_to_rad(8.0):
 			continue
+		var wpn: String = weapon_mod.get("weapon", def["weapon"])
+		var n_proj: int = int(weapon_mod.get("count", 1))
+		var spread: float = float(weapon_mod.get("spread", 0.0))
+		var shot: float = dmg * float(weapon_mod.get("dmg", 1.0))
 		for k in per:
-			if randf() < acc:
-				g.fire(self, tgt, def["weapon"], dmg)
-		_t_cd[i] = def["cooldown"] / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+			if randf() < acc or wpn == "missile":   # missiles never miss
+				for j in n_proj:
+					var off := 0.0 if n_proj == 1 else lerpf(-spread, spread, float(j) / (n_proj - 1)) + randf_range(-0.06, 0.06)
+					g.fire(self, tgt, wpn, shot, off)
+		_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+		if weapon_mod.get("run", false):
+			_run_out = _t_cd[i] * 0.5
 
 ## True when `point` lies inside the forward firing arc.
 func bears_on(point: Vector2, arc: float = FIRE_ARC) -> bool:
@@ -573,6 +581,10 @@ func order_attack(e: SpaceEntity) -> void:
 	held = false
 	if is_miner():
 		return
+	# Not already attack-moving somewhere: once this target is dead, hold
+	# here (the old default goal was the map centre - into the star).
+	if state != State.ATTACK_MOVE:
+		attack_move_goal = global_position
 	state = State.ATTACK
 	target = e
 	target_ordered = true

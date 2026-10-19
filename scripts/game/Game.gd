@@ -1151,12 +1151,12 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 		notify("Starbase construction started.", "note_starbase", pos)
 	return sb
 
-func fire(from: Node2D, to: Node2D, weapon: String, damage: float) -> void:
+func fire(from: Node2D, to: Node2D, weapon: String, damage: float, spread: float = 0.0) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
-	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"))
+	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"), spread)
 	if not sim_mode:
-		sfx.play_at("laser" if weapon in ["laser", "kinetic"] else "torpedo", from.global_position, -8.0)   # proton: torpedo sound
+		sfx.play_at("laser" if weapon in ["laser", "kinetic", "flak"] else "torpedo", from.global_position, -8.0)   # proton / missile / bomblet: torpedo sound
 
 ## Arc Emitters: the target takes chain[0] of the damage at once, then the
 ## arc jumps to the nearest other enemies within `jump` of it for the rest.
@@ -1177,6 +1177,49 @@ func arc_strike(from: Ship, to: Node2D, damage: float, chain: Array, jump: float
 		arc.setup(pts, from.def.has("variant"), Defs.VARIANTS[from.def["variant"]]["color"] if from.def.has("variant") else Color("bfe6ff"))
 		fx_root.add_child(arc)
 		sfx.play_at("laser", from.global_position, -8.0)
+
+## Flak / bomb bursts: `damage` to every enemy of `pid` within `r` of `pos`.
+func splash(pos: Vector2, r: float, damage: float, pid: int, from: Node2D, profile: Dictionary) -> void:
+	var src: SpaceEntity = from if is_instance_valid(from) and from is SpaceEntity else null
+	for x in hulls_near(pos, r + 30.0):
+		if x.owner_id != pid and x.is_enemy_of(pid) and x.global_position.distance_to(pos) <= r + x.radius:
+			x.take_damage(damage, src, profile)
+	spawn_blast(pos, r)
+
+## Every live ship and construct with any part near `pos` (the coarse grid,
+## plus starbases).
+func hulls_near(pos: Vector2, r: float) -> Array:
+	var out: Array = []
+	var lo := Vector2i(((pos - Vector2(r, r)) / BIG_CELL).floor())
+	var hi := Vector2i(((pos + Vector2(r, r)) / BIG_CELL).floor())
+	for y in range(lo.y, hi.y + 1):
+		for x in range(lo.x, hi.x + 1):
+			var cell = _grid_big.get(Vector2i(x, y))
+			if cell == null:
+				continue
+			for s in cell:
+				if is_instance_valid(s) and s.is_alive() and s.global_position.distance_to(pos) <= r + s.radius:
+					out.append(s)
+	for sb in starbase_list:
+		if is_instance_valid(sb) and sb.is_alive() and sb.global_position.distance_to(pos) <= r + sb.radius:
+			out.append(sb)
+	return out
+
+## An area-of-effect burst drawn exactly `radius` across its middle: the
+## explosion sprite sized to the blast, so what you see is what it hit.
+func spawn_blast(pos: Vector2, radius: float) -> void:
+	if sim_mode:
+		return
+	var e := Effect.new()
+	e.texture = Defs.tex("explosion")
+	e.hframes = 8
+	e.fps = 14.0
+	e.global_position = pos
+	e.rotation = randi_range(0, 3) * PI / 2.0
+	var frame_w: float = e.texture.get_width() / 8.0
+	e.scale = Vector2.ONE * (radius * 2.0 / frame_w)
+	fx_root.add_child(e)
+	sfx.play_at("boom", pos, -8.0)
 
 func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	if sim_mode:
@@ -2714,20 +2757,31 @@ func _enter_dev_capture() -> void:
 		if mid != "":
 			researched[player_id][mid] = true
 			_on_tech_done(player_id, mid)
+		# Let the system finish building (stars, worlds) before choosing a spot.
+		await get_tree().create_timer(0.3).timeout
 		var c0 := _clear_spot(400.0)
+		if OS.get_environment("SL_DUEL_DEBUG") != "":
+			for st in get_tree().get_nodes_in_group("stars"):
+				print("DUELSTAR ", st.global_position, " zone ", st.radiation_radius)
 		print("MODDUEL spot ", c0)
 		var ours: Array = []
 		var theirs: Array = []
-		for k in 6:
-			ours.append(spawn_ship("corvette", player_id, c0 + Vector2(-220, -60 + k * 24)))
-			# SL_FOE: the enemy hull (default corvette); bigger ones come fewer.
-			var foe_type := OS.get_environment("SL_FOE") if OS.get_environment("SL_FOE") != "" else "corvette"
-			if foe_type == "corvette" or k < 2:
-				theirs.append(spawn_ship(foe_type, foe_d, c0 + Vector2(260, -60 + k * 60)))
-		for k in 6:
+		# SL_OURS / SL_FOE: each side's hull (default corvette): 6 corvettes,
+		# or 3 of anything bigger (2 when only the foe is bigger).
+		var our_type := OS.get_environment("SL_OURS") if OS.get_environment("SL_OURS") != "" else "corvette"
+		var foe_type := OS.get_environment("SL_FOE") if OS.get_environment("SL_FOE") != "" else "corvette"
+		var n_ours := 6 if our_type == "corvette" else 3
+		var n_foe := 6 if foe_type == "corvette" else (3 if our_type != "corvette" else 2)
+		if OS.get_environment("SL_FOE_N") != "":
+			n_foe = int(OS.get_environment("SL_FOE_N"))
+		for k in n_ours:
+			ours.append(spawn_ship(our_type, player_id, c0 + Vector2(-240, -80 + k * (160.0 / n_ours))))
+		for k in n_foe:
+			theirs.append(spawn_ship(foe_type, foe_d, c0 + Vector2(260, -80 + k * (160.0 / n_foe))))
+		for k in ours.size():
 			ours[k].order_attack(theirs[k % theirs.size()])
 		for k in theirs.size():
-			theirs[k].order_attack(ours[k])
+			theirs[k].order_attack(ours[k % ours.size()])
 		center_on(c0)
 		# SL_DUEL_SPEED: faster duels for number-only runs (physics stays 60/s).
 		if OS.get_environment("SL_DUEL_SPEED") != "":
@@ -2735,6 +2789,16 @@ func _enter_dev_capture() -> void:
 			Engine.max_physics_steps_per_frame = ceili(Engine.time_scale) + 1
 		var tough := func(list: Array) -> float:
 			return list.reduce(func(a, s): return a + (s.hp + s.armor + s.shield if is_instance_valid(s) and s.is_alive() else 0.0), 0.0)
+		# The capture camera follows the fight (something resets it at start).
+		var follow := func():
+			for f in 200:
+				await get_tree().create_timer(0.1).timeout
+				var alive: Array = (ours + theirs).filter(func(x): return is_instance_valid(x) and x.is_alive())
+				if not alive.is_empty():
+					center_on(_centroid(alive))
+					if f % 10 == 0 and OS.get_environment("SL_DUEL_DEBUG") != "":
+						print("DUELCAM ", _centroid(alive), " cam ", camera.global_position, " active ", get_viewport().get_camera_2d().global_position if get_viewport().get_camera_2d() else Vector2.INF, " same ", get_viewport().get_camera_2d() == camera, " zoom ", camera.zoom)
+		follow.call()
 		var full: float = tough.call(ours)
 		var full_t: float = tough.call(theirs)
 		await get_tree().create_timer(float(OS.get_environment("SL_DUEL_T")) if OS.get_environment("SL_DUEL_T") != "" else 8.0).timeout
