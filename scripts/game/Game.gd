@@ -2774,6 +2774,11 @@ func _enter_dev_capture() -> void:
 		if mid != "":
 			researched[player_id][mid] = true
 			_on_tech_done(player_id, mid)
+		# SL_DUEL_TECHS: comma-separated techs both sides start with.
+		for tid in OS.get_environment("SL_DUEL_TECHS").split(",", false):
+			for side in [player_id, foe_d]:
+				researched[side][tid] = true
+				_on_tech_done(side, tid)
 		# SL_FOE_MOD: the enemy's Mod (e.g. torpedoes, to test Point-Defense).
 		var fmod := OS.get_environment("SL_FOE_MOD")
 		if fmod != "":

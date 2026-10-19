@@ -122,7 +122,7 @@ jobs:
           AM=""; [ "${{ inputs.tag }}" = "amove" ] && AM=1
           mkdir -p out
           for r in $(seq 1 ${{ inputs.runs }}); do
-            SL_SHOT_OPEN=modduel SL_MOD=$MOD SL_MOD_DMG=$([ -n "$MOD" ] && echo ${{ matrix.dmg }}) SL_OURS=$2 SL_FOE=$3 SL_FOE_N=$4 SL_FOE_AMOVE=$AM               SL_DUEL_T=$([ "${{ inputs.minutes }}" -lt 45 ] && echo ${{ inputs.minutes }} || echo 9) SL_DUEL_QUIT=1 SL_DUEL_SPEED=${{ inputs.speed }} SL_NOFOG=1 SL_SHOT="120,1,3"               timeout 300 ./godot --headless --path . scenes/Main.tscn 2>&1 | grep -E "^MODDUEL [a-z_]+:" | sed "s/^/dmg=${{ matrix.dmg }} /" >> out/mod_${{ matrix.dmg }}_${{ matrix.part }}.txt || true
+            SL_SHOT_OPEN=modduel SL_MOD=$MOD SL_MOD_DMG=$([ -n "$MOD" ] && echo ${{ matrix.dmg }}) SL_OURS=$2 SL_FOE=$3 SL_FOE_N=$4 SL_FOE_AMOVE=$AM SL_DUEL_TECHS=${{ inputs.marks != '1 2 3 4' && inputs.marks || '' }}               SL_DUEL_T=$([ "${{ inputs.minutes }}" -lt 45 ] && echo ${{ inputs.minutes }} || echo 9) SL_DUEL_QUIT=1 SL_DUEL_SPEED=${{ inputs.speed }} SL_NOFOG=1 SL_SHOT="120,1,3"               timeout 300 ./godot --headless --path . scenes/Main.tscn 2>&1 | grep -E "^MODDUEL [a-z_]+:" | sed "s/^/dmg=${{ matrix.dmg }} /" >> out/mod_${{ matrix.dmg }}_${{ matrix.part }}.txt || true
           done
       - name: Mark grid
         if: inputs.mode == 'mark_grid'
