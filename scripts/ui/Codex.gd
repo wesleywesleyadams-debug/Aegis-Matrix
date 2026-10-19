@@ -482,7 +482,7 @@ func _page_combat() -> void:
 	_heading("Weapon Mods")
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
-	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x2.5).")
+	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x3.0).")
 	_pic("hit_run", "Bombs, torpedoes and missiles attack hit-and-run.", Vector2(460, 150))
 	# The Mods tab as it appears on the research screen.
 	_tech_tree("mods", _research_rows("mods"))

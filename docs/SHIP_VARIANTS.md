@@ -37,7 +37,7 @@ its generalist.**
 | Variant | Effect | Base damage | Shots | Markings |
 |---|---|---|---|---|
 | Generalist | full damage to all layers | 100% | yellow lasers | none |
-| **Plasma** | x2.5 vs **shields** | 80% | light blue | one solid line down the spine |
+| **Plasma** | x3.0 vs **shields** | 80% | light blue | one solid line down the spine |
 | **Breacher** | x2.5 vs **armor** | 80% | red | two ribs across the hull |
 | **Reaver** | x2.2 vs **hull** | 80% | green | saw teeth along both edges |
 | **Slip** | **ignores shields** (armor + hull) | 70% | orange V-shots | two stripes either side of the spine |

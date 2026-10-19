@@ -662,7 +662,7 @@ const SAIL_SHIELD_FRAC_PER_ENERGY := 0.10
 const GENERALIST_COLOR := Color("fff06a")
 
 const VARIANTS := {
-	"plasma": {"label": "Plasma", "vs": {"shield": 2.5}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
+	"plasma": {"label": "Plasma", "vs": {"shield": 3.0}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
 		"desc": "80% base damage, x2.2 against shields."},
 	"breacher": {"label": "Breacher", "vs": {"armor": 2.5}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff4a4a"),
 		"desc": "80% base damage, x2.2 against armor."},
