@@ -475,7 +475,7 @@ func _page_combat() -> void:
 	for vu in [["generalist", "Generalist", "No weak matchup: the safe pick when you don't know the enemy, and as good as any vs starbases."],
 			["plasma", "Plasma", "Cruiser- and carrier-heavy fleets of uncertain mix: the safest specialist."],
 			["breacher", "Breacher", "Destroyers: the clear best pick against them."],
-			["reaver", "Reaver", "Corvette swarms, and bombarding worlds (it hits population hardest)."],
+			["reaver", "Ravager", "Corvette swarms, and bombarding worlds (it hits population hardest)."],
 			["slip", "Slip", "Cruisers. Badly outclassed by corvettes and destroyers."],
 			["disruptor", "Disruptor", "Carriers and cruisers. Crushed by corvettes and destroyers."]]:
 		var cell := VBoxContainer.new()
@@ -568,7 +568,7 @@ func _page_ships() -> void:
 	# conflating them, so they are laid out side by side here before the
 	# stat cards: what it IS, how GOOD it is, and what it is FOR.
 	_heading("Class, Mark and Variant")
-	_para("Every warship has three separate traits. Its CLASS is the hull it was built as and never changes. Its MARK is how refined that hull is, bought on the Warships research tab. Its VARIANT is its specialty, from a Weapons Depot refit. A Mk IV Reaver Corvette is all three: a corvette, at the top mark, fitted to hunt hull.")
+	_para("Every warship has three separate traits. Its CLASS is the hull it was built as and never changes. Its MARK is how refined that hull is, bought on the Warships research tab. Its VARIANT is its specialty, from a Weapons Depot refit. A Mk IV Ravager Corvette is all three: a corvette, at the top mark, fitted to hunt hull.")
 	_table(["System", "Comes from", "Changes", "You can tell by"], [
 		[["Class", TEXT], "What you build it as", "Never", "The hull's silhouette"],
 		[["Mark", EDGE_LIT], "Warships research", "Every ship of that class, at once", "How many chevrons beside it"],
@@ -978,7 +978,7 @@ func _page_terms() -> void:
 		["Class", "The hull a warship was built as, and keeps for life: Corvette, Destroyer, Cruiser or Carrier. You read it off the silhouette."],
 		["Mark", "How refined a class is, Mk I to Mk IV, bought on the Warships research tab. It applies to every ship of that class at once."],
 		["Generalist", "Any warship as built, before a refit: full damage to every defense layer."],
-		["Specialist / variant", "A refitted warship: Plasma, Breacher, Reaver, Slip or Disruptor. One refit only, and it is permanent."],
+		["Specialist / variant", "A refitted warship: Plasma, Breacher, Ravager, Slip or Disruptor. One refit only, and it is permanent."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
 		["Radiation", "Environmental damage inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and stops shield regeneration."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],

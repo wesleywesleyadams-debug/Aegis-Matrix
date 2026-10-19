@@ -319,7 +319,7 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 		g.stats.count(owner_id, "world_damage_taken", int(amount))
 	last_hit_time = g.now()
 	# The planetary shield soaks damage first (shield-piercing shots slip past;
-	# Ion shots hit it harder; Reavers hit the population harder).
+	# Ion shots hit it harder; Ravagers hit the population harder).
 	var absorbed := 0.0
 	if profile.get("pierce", 0) < 1:
 		var m: float = profile.get("vs", {}).get("shield", 1.0)

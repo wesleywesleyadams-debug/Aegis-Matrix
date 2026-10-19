@@ -10,7 +10,7 @@ A research tab called **Mods**. Each Mod changes the weapon of one ship class.
 - **Disable / enable.** Clicking an active Mod's card disables it, and that class goes back to its standard laser. The card turns yellow. A "Disabled Mods" line under the timer (top left) lists disabled Mods, and clicking it re-enables them. Toggling is free and instant.
 - **Requirements.** The corvette row needs nothing. The destroyer, cruiser and carrier rows each need their class unlocked first.
 - **Cost.** All three Mods in a row cost the same, so the choice is about play style: 120 energy / 20 spice / 60 s for corvettes, rising to 280 / 50 / 105 s for carriers (placeholders).
-- **Variants stack.** A Mod sets the weapon's shape and behaviour, and the Weapons Depot variant (Plasma, Breacher, Reaver, Slip, Disruptor) still sets its damage profile. For example, a Plasma corvette with Proton Torpedoes fires torpedoes that do ×3.0 damage to shields.
+- **Variants stack.** A Mod sets the weapon's shape and behaviour, and the Weapons Depot variant (Plasma, Breacher, Ravager, Slip, Disruptor) still sets its damage profile. For example, a Plasma corvette with Proton Torpedoes fires torpedoes that do ×3.0 damage to shields.
 - **Tuned in duels, not by formula.** Each Mod's damage is tuned so it trades about as well as the laser it replaces in its best matchup, then shaped by its strengths (see Trade). Exact numbers live in `Defs.MOD_WEAPONS`; this page describes behaviour.
 
 ## The 12 Mods

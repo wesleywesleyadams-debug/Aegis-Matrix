@@ -39,7 +39,7 @@ its generalist.**
 | Generalist | full damage to all layers | 100% | yellow lasers | none |
 | **Plasma** | x3.0 vs **shields** | 80% | light blue | one solid line down the spine |
 | **Breacher** | x2.5 vs **armor** | 80% | red | two ribs across the hull |
-| **Reaver** | x2.2 vs **hull** | 80% | green | saw teeth along both edges |
+| **Ravager** | x2.2 vs **hull** | 80% | green | saw teeth along both edges |
 | **Slip** | **ignores shields** (armor + hull) | 70% | orange V-shots | two stripes either side of the spine |
 | **Disruptor** | **ignores shields and armor** (hull only) | 35% | purple V-shots | a row of V chevrons |
 
@@ -47,7 +47,7 @@ Hull markings are always drawn in the owner's player color, so the pattern alone
 names the variant (one line, two ribs, saw teeth, two stripes, chevrons); the
 shot color names the layer it hits. Cruisers fire
 torpedoes in the same colors (only lasers get the V shape). Against planets,
-piercing shots skip the planetary shield, Plasma hits it harder, and Reaver kills
+piercing shots skip the planetary shield, Plasma hits it harder, and Ravager kills
 population faster.
 
 ## Which variant against what
@@ -55,14 +55,14 @@ population faster.
 Base damage needed to destroy a target, relative to a generalist
 (1.00 = the same, lower = kills faster):
 
-| Target | Plasma | Breacher | Reaver | Slip | Disruptor |
+| Target | Plasma | Breacher | Ravager | Slip | Disruptor |
 |---|---|---|---|---|---|
 | Corvette (hull-heavy) | 1.08 | 1.14 | **0.91** | 1.16 | 1.47 |
 | Destroyer (shield-heavy) | **0.93** | 1.16 | 1.01 | **0.82** | 1.00 |
 | Cruiser (armor-heavy) | 1.12 | **0.93** | 1.06 | 1.24 | **0.82** |
 | Starbase | 1.06 | 1.10 | **0.95** | 1.12 | 1.27 |
 
-- Reaver: corvette swarms, starbases.
+- Ravager: corvette swarms, starbases.
 - Plasma / Slip: shield-heavy fleets. Slip also ignores shield regeneration.
 - Breacher / Disruptor: armor-heavy fleets (Cruisers).
 - Wrong target: 5-46% worse than a plain generalist, so scouting decides.

@@ -2436,7 +2436,7 @@ func _enter_dev_capture() -> void:
 			print("STRESS ships %d  frames %d  avg %.2f ms  p95 %.2f ms  max %.2f ms  projectiles %d" % [get_tree().get_nodes_in_group("ships").size(), frames.size(), sum / maxf(frames.size(), 1), frames[int(frames.size() * 0.95)] if frames.size() > 0 else 0.0, frames[-1] if frames.size() > 0 else 0.0, fx_root.get_child_count()])
 			get_tree().quit())
 	if OS.get_environment("SL_SHOT_OPEN") == "shots":
-		# Dev: shot colors. Rows of generalist, Ion, Breacher and Reaver corvettes
+		# Dev: shot colors. Rows of generalist, Ion, Breacher and Ravager corvettes
 		# fire at enemy destroyers.
 		var foe := 3 - player_id
 		var kinds := ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette", "slip_corvette", "disruptor_corvette"] if OS.get_environment("SL_SHOTS_ALL") != "" else ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette"]

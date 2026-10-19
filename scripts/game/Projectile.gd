@@ -78,7 +78,7 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 				if weapon == "laser":
 					texture = Defs.tex("bolt_v")
 				if profile["pierce"] >= 2:
-					# Purple, so it is never mistaken for a Reaver's green.
+					# Purple, so it is never mistaken for a Ravager's green.
 					modulate = Defs.VARIANTS["disruptor"]["color"].lightened(0.1)
 				else:
 					modulate = SLIP_SHOT
