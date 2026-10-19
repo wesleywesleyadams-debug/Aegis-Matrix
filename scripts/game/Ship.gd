@@ -1211,6 +1211,9 @@ func _physics_process(delta: float) -> void:
 	if state == State.IDLE and crowd != Vector2.ZERO:
 		move_goal = global_position + crowd.limit_length(radius)
 	_steer(desired + crowd, delta, face_target if face_target != null else face_at)
+	# Duel arena: nobody leaves.
+	if Game.instance.arena_radius > 0.0 and global_position.length() > Game.instance.arena_radius:
+		global_position = global_position.limit_length(Game.instance.arena_radius)
 
 ## Desired velocity toward `goal`, slowing inside the braking radius.
 ## `stop_at` leaves a gap (e.g. to hover beside an asteroid).

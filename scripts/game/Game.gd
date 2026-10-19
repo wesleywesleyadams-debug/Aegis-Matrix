@@ -1364,7 +1364,7 @@ func _report_music_mood() -> void:
 		Music.report_mood("tension")
 
 func _check_defeat() -> void:
-	if is_over:
+	if is_over or arena_radius > 0.0:
 		return
 	if drill == "expand" and rl_side > 0 and _drill_worlds() >= _drill_goal:
 		winner_pid = rl_side
@@ -3526,6 +3526,31 @@ func cycle_starbase() -> void:
 
 ## Dev duel switch: no moving-turret miss.
 var duel_nomovepen := false
+## Duel arena: ships are held inside this radius of the centre (0 = off).
+var arena_radius := 0.0
+const ARENA_RADIUS := 900.0
+
+## The duel arena: an empty patch of space - no star, worlds, rocks, bases,
+## nebulae, storms or rings - just the two fleets, held inside ARENA_RADIUS
+## so neither can run away.
+func _make_arena() -> void:
+	for root in [$World/Planets, $World/Asteroids, starbases_root, ships_root]:
+		for n in root.get_children():
+			n.queue_free()
+	for grp in ["nebulae", "spice_nebulae", "storms", "rings", "beacons", "mining_stations", "depots"]:
+		for n in get_tree().get_nodes_in_group(grp):
+			n.queue_free()
+	for n in world.get_children():
+		if n is IonStorm or n is DebrisRing or n is SpiceNebula:
+			n.queue_free()
+	for st in get_tree().get_nodes_in_group("stars"):
+		st.remove_from_group("stars")
+		st.visible = false
+		st.radiation_radius = 0.0
+		st.process_mode = Node.PROCESS_MODE_DISABLED
+	stars_list = []
+	nav = null
+	arena_radius = ARENA_RADIUS
 
 ## Dev duel (SL_DUEL): two fleets of the same mineral cost, side 1 left and
 ## side 2 right, ordered at each other. Prints the result and quits.
@@ -3544,6 +3569,11 @@ func _duel() -> void:
 	var budget := float(OS.get_environment("SL_DUEL_BUDGET")) if OS.get_environment("SL_DUEL_BUDGET") != "" else 2550.0
 	var specs := OS.get_environment("SL_DUEL").split(",")
 	var c := Vector2(float(OS.get_environment("SL_DUEL_X")) if OS.get_environment("SL_DUEL_X") != "" else -900.0, -700.0)
+	# Default: the empty arena (SL_DUEL_MAP=1 fights on the map instead).
+	if OS.get_environment("SL_DUEL_MAP") == "":
+		_make_arena()
+		await get_tree().process_frame
+		c = Vector2.ZERO
 	var fleets := [[], []]
 	for i in 2:
 		var sp := specs[i].split(":")
@@ -3594,9 +3624,31 @@ func _duel() -> void:
 				s.order_attack_move(c - Vector2(dir * 400.0, 0))
 			fleets[i].append(s)
 	var t0 := now()
+	# SL_DUEL_SHOT=<seconds>: save user://shot.png of the fight, zoomed to fit the arena.
+	if OS.get_environment("SL_DUEL_SHOT") != "":
+		get_tree().create_timer(float(OS.get_environment("SL_DUEL_SHOT"))).timeout.connect(func():
+			camera.zoom = Vector2.ONE * (get_viewport().get_visible_rect().size.y / (ARENA_RADIUS * 2.2))
+			center_on(Vector2.ZERO)
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("user://shot.png"))
+	var next_report := 30.0
+	var side_max := [0.0, 0.0]
+	for si in 2:
+		for s in fleets[si]:
+			side_max[si] += s.max_hp + s.max_armor + s.max_shield
 	while true:
 		await get_tree().create_timer(0.5).timeout
 		var alive := [fleets[0].filter(func(x): return is_instance_valid(x) and x.is_alive()), fleets[1].filter(func(x): return is_instance_valid(x) and x.is_alive())]
+		# Part-way result every 30 s, so a duel cut off early still says who was ahead.
+		if now() - t0 >= next_report:
+			next_report += 30.0
+			var pl := "DUELP %s vs %s t=%d" % [specs[0], specs[1], int(now() - t0)]
+			for si in 2:
+				var hh := 0.0
+				for s in alive[si]:
+					hh += s.hp + s.armor + s.shield
+				pl += " | %s %d/%d ships %d%%" % [specs[si], alive[si].size(), fleets[si].size(), int(100.0 * hh / maxf(side_max[si], 1.0))]
+			print(pl)
 		if alive[0].is_empty() or alive[1].is_empty() or now() - t0 > float(OS.get_environment("SL_DUEL_LIMIT") if OS.get_environment("SL_DUEL_LIMIT") != "" else "240"):
 			var line := "DUEL %s (%d) vs %s (%d): " % [specs[0], fleets[0].size(), specs[1], fleets[1].size()]
 			var w := 0 if alive[1].is_empty() and not alive[0].is_empty() else (1 if alive[0].is_empty() and not alive[1].is_empty() else -1)
