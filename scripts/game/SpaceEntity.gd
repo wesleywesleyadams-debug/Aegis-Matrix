@@ -83,7 +83,7 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		Game.instance.stats.count(owner_id, "starbase_hurt" if self is Starbase else "damage_hurt", int(_siege_frac))
 		_siege_frac -= floorf(_siege_frac)
 	# Convoy Protocols: harvesters are armored on top of that.
-	if Game.instance and self is Ship and self.def.get("role", "") in ["miner", "skimmer"]:
+	if Game.instance and self is Ship and (self as Node).call("is_harvester"):
 		amount /= Game.instance.mod(owner_id, "harvester_damage_taken")
 	var vs: Dictionary = profile.get("vs", {})
 	var pierce: int = profile.get("pierce", 0)

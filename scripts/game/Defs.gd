@@ -76,14 +76,14 @@ static func team_color(owner_id: int) -> Color:
 ## requires: tech id that must be researched before it can be queued.
 const BASE_SHIPS := {
 	"miner": {
-		"name": "Mining Barge", "role": "miner",
+		"name": "Mining Barge", "role": "miner", "subclass": "harvester",
 		"hp": 70.0, "shield": 0.0, "speed": 70.0, "radius": 8.0,
 		"cost": {"minerals": 50}, "build_time": 15.0, "upkeep": 0.35,
 		"cargo": 10, "harvest": 36.0,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"skimmer": {
-		"name": "Gas Skimmer", "role": "skimmer", "requires": "gas_skimming",
+		"name": "Gas Skimmer", "role": "skimmer", "subclass": "harvester", "requires": "gas_skimming",
 		"hp": 90.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
 		"cost": {"minerals": 90, "spice": 10}, "build_time": 22.0, "upkeep": 0.7,
 		"cargo": 20, "harvest": 18.0,

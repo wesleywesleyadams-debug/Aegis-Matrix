@@ -707,8 +707,14 @@ func _rebuild_turrets() -> void:
 func is_carrier() -> bool:
 	return def.get("base", ship_type) == "carrier"
 
+## Harvesters (economy subclass): the Mining Barge and the Gas Skimmer. Every
+## tech that says "harvesters" (Logistics gather rate and cargo, Convoy
+## Protocols) applies to exactly these.
+func is_harvester() -> bool:
+	return def.get("subclass", "") == "harvester"
+
 func is_miner() -> bool:
-	return def.get("role", "") in ["miner", "skimmer"]
+	return is_harvester()
 
 ## Barges mine asteroids; skimmers mine gas giants and spice nebulae.
 func can_mine(target: Node2D) -> bool:
@@ -777,7 +783,7 @@ func max_speed() -> float:
 ## How fast this ship fills its hold on `node`, per minute (Defs.PER_MIN).
 ## (Spice and nebula gas: Defs.HARVEST_SPICE_MULT / HARVEST_NEBULA_MULT, now 1.)
 func harvest_rate(node: Node2D) -> float:
-	var base: float = float(def.get("harvest", 0.5)) * Game.instance.mod(owner_id, "harvest")
+	var base: float = float(def.get("harvest", 0.5)) * (Game.instance.mod(owner_id, "harvest") if is_harvester() else 1.0)
 	if node is NebulaPocket:
 		return base * Defs.HARVEST_NEBULA_MULT
 	if node.resource == "spice":
@@ -785,7 +791,7 @@ func harvest_rate(node: Node2D) -> float:
 	return base
 
 func cargo_cap() -> int:
-	return int(def.get("cargo", 0) * Game.instance.mod(owner_id, "cargo"))
+	return int(def.get("cargo", 0) * (Game.instance.mod(owner_id, "cargo") if is_harvester() else 1.0))
 
 # ---------------------------------------------------------------- orders
 

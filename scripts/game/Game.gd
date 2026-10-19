@@ -3526,6 +3526,7 @@ var duel_nomovepen := false
 ## side 2 right, ordered at each other. Prints the result and quits.
 func _duel() -> void:
 	hud.visible = false
+	ai.process_mode = Node.PROCESS_MODE_DISABLED   # the duel's orders are the test
 	Engine.time_scale = float(OS.get_environment("SL_DUEL_SPEED")) if OS.get_environment("SL_DUEL_SPEED") != "" else 4.0
 	duel_nomovepen = OS.get_environment("SL_DUEL_NOMOVEPEN") != ""
 	var tough := float(OS.get_environment("SL_DUEL_TOUGH")) if OS.get_environment("SL_DUEL_TOUGH") != "" else 1.0
@@ -3564,6 +3565,13 @@ func _duel() -> void:
 			var mt: String = "%s_mk%d" % [Defs.SHIPS[t].get("base", t), m9]
 			for r9 in Defs.TECHS[mt]["cost"]:
 				tech += float(Defs.TECHS[mt]["cost"][r9])
+		# "class:mark:mod_id" fields that Mod, and pays for its research.
+		var dmod: String = sp[2] if sp.size() > 2 else ""
+		if dmod != "":
+			researched[pid][dmod] = true
+			_on_tech_done(pid, dmod)
+			for r9 in Defs.TECHS[dmod]["cost"]:
+				tech += float(Defs.TECHS[dmod]["cost"][r9])
 		var n := maxi(1, int(round((budget - tech) / unit)))
 		print("DUEL_SIDE %s: %d ships at %d each + %d research" % [t, n, int(unit), int(tech)])
 		var dir := -1.0 if i == 0 else 1.0
@@ -3572,6 +3580,7 @@ func _duel() -> void:
 			var gap := maxf(22.0, float(Defs.SHIPS[t]["radius"]) * 2.4)
 			var pos := c + Vector2(dir * (260.0 + gap + (k / 6) * gap), (k % 6 - 2.5) * gap + randf_range(-4, 4))
 			var s := spawn_ship(t, pid, pos)
+			s.drones_ready = true   # drone carriers start with their drones out
 			if t == "destroyer" and tough != 1.0:
 				s.max_hp *= tough; s.hp = s.max_hp; s.max_armor *= tough; s.armor = s.max_armor; s.max_shield *= tough; s.shield = s.max_shield
 			if t == "destroyer" and OS.get_environment("SL_DUEL_HOLD") != "":
