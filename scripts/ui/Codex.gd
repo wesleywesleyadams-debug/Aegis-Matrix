@@ -478,7 +478,7 @@ func _page_combat() -> void:
 		_para("Still being built: " + ", ".join(coming) + ".")
 	_heading("When to use each Mod")
 	var sgrid := GridContainer.new()
-	sgrid.columns = 4
+	sgrid.columns = 3   # one row per class: corvette, destroyer, cruiser, carrier
 	sgrid.add_theme_constant_override("h_separation", 16)
 	sgrid.add_theme_constant_override("v_separation", 14)
 	for id in Defs.TECHS:
