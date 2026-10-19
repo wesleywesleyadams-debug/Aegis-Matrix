@@ -212,9 +212,9 @@ func _tractor_keep() -> float:
 ## Interceptor Drones: they circle the carrier; any enemy within reach of
 ## the carrier draws a drone out, which closes to 40 and fires lasers.
 ## The turrets become launch doors. The carrier builds one drone every
-## DRONE_BUILD seconds while short of its full set (a full set takes a
-## minute), each flying out of a door; a lost drone is rebuilt the same way.
-const DRONE_BUILD := 15.0
+## DRONE_BUILD seconds while short of its full set (a full set takes 20 s),
+## each flying out of a door; a lost drone is rebuilt the same way.
+const DRONE_BUILD := 5.0
 const DOOR_OPEN := 0.8
 func _fly_drones(delta: float) -> void:
 	var g := Game.instance
