@@ -232,7 +232,7 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 			for k in roundi(rng.randi_range(4, 6) * bs["density"]):
 				var p := _free_spot(rng, placed, c, 70.0 * bs["spread"], 26.0)
 				if p != Vector2.INF and _in_wedge(p) and _inside(p):
-					half_rocks.append({"variant": "spice_%d" % rng.randi_range(0, 1), "pos": p, "rich": rich})
+					half_rocks.append(_rock(rng, "spice", p, rich))
 		else:
 			var rich := rng.randf_range(0.6, 1.5)
 			var span: float = rng.randf_range(0.35, 0.7) * bs["span"] * minf(1.0, wedge / (PI / 2.0))
@@ -242,7 +242,7 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 				var p: Vector2 = _on_ellipse(a, t + rng.randf_range(-bs["thick"], bs["thick"]))
 				if not _in_wedge(p) or not _fits(placed, p, 26.0) or not _inside(p):
 					continue
-				half_rocks.append({"variant": "asteroid_%d" % rng.randi_range(0, 3) if rng.randf() < 0.85 else "asteroid_big_%d" % rng.randi_range(0, 1), "pos": p, "rich": rich})
+				half_rocks.append(_rock(rng, "minerals", p, rich))
 				_claim(placed, p, 12.0)
 
 	# Signature feature: a spice nebula ring around the star, seeded with
@@ -295,7 +295,7 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 				"owner": (1 + side if pl["owner"] == 1 else 0)})
 			n += 1
 		for r in half_rocks:
-			out["asteroids"].append({"name": "Rock%d" % out["asteroids"].size(), "variant": r["variant"], "pos": r["pos"].rotated(turn), "rich": r.get("rich", 1.0)})
+			out["asteroids"].append({"name": "Rock%d" % out["asteroids"].size(), "variant": r["variant"], "pos": r["pos"].rotated(turn), "scale": r.get("scale", 1.0)})
 		var pid := 1 + side
 		var sb: Vector2 = sb_pos.rotated(turn)
 		out["starbases"].append({"owner": pid, "pos": sb})
@@ -403,6 +403,18 @@ static func _fits(placed: Array, p: Vector2, clearance: float) -> bool:
 static func _claim(placed: Array, p: Vector2, clearance: float) -> void:
 	placed.append([p, clearance])
 
+## One rock for a belt of richness `rich` (about 0.6-1.5). Rocks come in
+## fixed sizes, each always holding the same amount (Asteroid: by size);
+## a rich belt simply has more of the big ones, a poor belt fewer.
+## Minerals: small or big art. Spice: small, or the same art drawn at
+## BIG_SPICE scale.
+const BIG_SPICE := 1.4
+static func _rock(rng: RandomNumberGenerator, kind: String, p: Vector2, rich: float) -> Dictionary:
+	var big := rng.randf() < clampf((rich - 0.6) * 0.5, 0.0, 0.45)
+	if kind == "spice":
+		return {"variant": "spice_%d" % rng.randi_range(0, 1), "pos": p, "scale": BIG_SPICE if big else 1.0}
+	return {"variant": ("asteroid_big_%d" % rng.randi_range(0, 1)) if big else ("asteroid_%d" % rng.randi_range(0, 3)), "pos": p}
+
 ## One home belt: `rocks` asteroids and `spice` spice rocks scattered
 ## within `spread` of `center`, kept on the map.
 static func _home_belt(rng: RandomNumberGenerator, placed: Array, rocks_out: Array, center: Vector2, rocks: int, spice: int, spread: float) -> void:
@@ -411,8 +423,7 @@ static func _home_belt(rng: RandomNumberGenerator, placed: Array, rocks_out: Arr
 		var p := _free_spot(rng, placed, center, spread if (i < rocks or rocks == 0) else spread * 1.25, 24.0)
 		if p == Vector2.INF or not _inside(p):
 			continue
-		var variant := "spice_0" if i >= rocks else ("asteroid_%d" % rng.randi_range(0, 3) if rng.randf() < 0.8 else "asteroid_big_%d" % rng.randi_range(0, 1))
-		rocks_out.append({"variant": variant, "pos": p, "rich": rich})
+		rocks_out.append(_rock(rng, "spice" if i >= rocks else "minerals", p, rich))
 
 static func _free_spot(rng: RandomNumberGenerator, placed: Array, center: Vector2, spread: float, clearance: float) -> Vector2:
 	for attempt in 40:

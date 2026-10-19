@@ -421,7 +421,7 @@ func _build_system() -> void:
 		var r: Asteroid = ASTEROID_SCENE.instantiate()
 		r.name = a["name"]
 		r.variant = a["variant"]
-		r.richness = float(a.get("rich", 1.0))
+		r.size_scale = float(a.get("scale", 1.0))
 		r.position = a["pos"]
 		$World/Asteroids.add_child(r)
 	for s in layout["starbases"]:

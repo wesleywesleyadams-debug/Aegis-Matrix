@@ -16,8 +16,9 @@ var resource: String = "minerals"
 var radius: float = 8.0
 ## Reserve left, and the full reserve for this rock's size.
 var amount: int = 0
-## How rich this rock is for its size (set by its belt, see SystemGen).
-var richness: float = 1.0
+## Drawn this much bigger or smaller than its art (set by its belt, see
+## SystemGen): a bigger rock holds more, so rich belts are visibly bigger.
+var size_scale: float = 1.0
 var max_amount: int = 0
 var focused: bool = false:
 	set(v):
@@ -29,12 +30,12 @@ func _ready() -> void:
 	$Sprite.texture = Defs.tex(variant)
 	# Rock art is drawn at Defs.ART_SCALE, so its world size (and the reserve
 	# that size implies) comes from the texture divided by that.
-	$Sprite.scale = Vector2.ONE / Defs.ART_SCALE
-	radius = $Sprite.texture.get_width() / Defs.ART_SCALE / 2.0
+	$Sprite.scale = Vector2.ONE * size_scale / Defs.ART_SCALE
+	radius = $Sprite.texture.get_width() * size_scale / Defs.ART_SCALE / 2.0
 	resource = "spice" if variant.begins_with("spice") else "minerals"
-	var w: float = $Sprite.texture.get_width() / Defs.ART_SCALE
+	var w: float = $Sprite.texture.get_width() * size_scale / Defs.ART_SCALE
 	var per_px2: float = Defs.ASTEROID_SPICE_PER_PX2 if resource == "spice" else Defs.ASTEROID_MINERALS_PER_PX2
-	max_amount = int(round(w * w * per_px2 * richness / 10.0)) * 10
+	max_amount = int(round(w * w * per_px2 / 10.0)) * 10
 	amount = max_amount
 	if Engine.is_editor_hint():
 		return
