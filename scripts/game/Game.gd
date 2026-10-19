@@ -3566,6 +3566,14 @@ func _duel() -> void:
 			var kv := part.split(":")
 			for k9 in ["hp", "armor", "shield"]:
 				Defs.SHIPS[kv[0]][k9] = Defs.SHIPS[kv[0]][k9] * float(kv[1])
+	# SL_DUEL_SHIFT="destroyer:30" moves 30 points of that class's shields
+	# (and its variants') into hull, for tuning sweeps.
+	if OS.get_environment("SL_DUEL_SHIFT") != "":
+		var kv2 := OS.get_environment("SL_DUEL_SHIFT").split(":")
+		for sid in Defs.SHIPS:
+			if sid == kv2[0] or Defs.SHIPS[sid].get("base", "") == kv2[0]:
+				Defs.SHIPS[sid]["shield"] = float(Defs.SHIPS[sid]["shield"]) - float(kv2[1])
+				Defs.SHIPS[sid]["hp"] = float(Defs.SHIPS[sid]["hp"]) + float(kv2[1])
 	var budget := float(OS.get_environment("SL_DUEL_BUDGET")) if OS.get_environment("SL_DUEL_BUDGET") != "" else 2550.0
 	var specs := OS.get_environment("SL_DUEL").split(",")
 	var c := Vector2(float(OS.get_environment("SL_DUEL_X")) if OS.get_environment("SL_DUEL_X") != "" else -900.0, -700.0)

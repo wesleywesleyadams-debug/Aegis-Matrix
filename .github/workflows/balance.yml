@@ -136,9 +136,10 @@ jobs:
         run: |
           mkdir -p out
           N=${{ inputs.runs }}; P=${{ matrix.part }}
-          PAIRS=tools/rr_pairs.txt; [ "${{ inputs.tag }}" = "variants" ] && PAIRS=tools/variant_pairs.txt
+          PAIRS=tools/rr_pairs.txt; [ "${{ inputs.tag }}" = "variants" ] && PAIRS=tools/variant_pairs.txt; case "${{ inputs.tag }}" in file=*) PAIRS="${{ inputs.tag }}"; PAIRS="${PAIRS#file=}";; esac
+          EXTRA=""; case "${{ inputs.system }}" in *=*) EXTRA="${{ inputs.system }}";; esac
           awk -v n=$N -v p=$P 'NF && (NR-1) % n == p' $PAIRS | while read -r pair; do echo "$pair"; echo "$pair"; done |
-            xargs -P 2 -I{} bash -c 'SL_DUEL={} SL_DUEL_BUDGET=${{ inputs.budget }} SL_DUEL_LIMIT=${{ inputs.minutes }} SL_DUEL_SPEED=${{ inputs.speed }} SL_NOFOG=1               timeout 900 ./godot --headless --path . scenes/Main.tscn 2>&1 | grep -E "^DUELP? |SCRIPT ERROR" | sed "s|^|[{}] |"' >> out/rr_$P.txt || true
+            xargs -P 2 -I{} env $EXTRA bash -c 'SL_DUEL={} SL_DUEL_BUDGET=${{ inputs.budget }} SL_DUEL_LIMIT=${{ inputs.minutes }} SL_DUEL_SPEED=${{ inputs.speed }} SL_NOFOG=1               timeout 900 ./godot --headless --path . scenes/Main.tscn 2>&1 | grep -E "^DUELP? |SCRIPT ERROR" | sed "s|^|[{}] |"' >> out/rr_$P.txt || true
       - name: Mark grid
         if: inputs.mode == 'mark_grid'
         run: |
