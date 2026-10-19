@@ -715,8 +715,11 @@ func _rock_sizes() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	card.add_child(row)
 	const K := 3.0   # screen px per world px
-	for it in [["asteroid_0", 1.0, "Small mineral", "minerals"], ["asteroid_big_0", 1.0, "Big mineral", "minerals"],
-			["spice_0", 1.0, "Spice", "spice"], ["spice_0", SystemGen.BIG_SPICE, "Large spice", "spice"]]:
+	# Rarity: share of all rocks, measured over 24 generated maps (1,404 rocks).
+	for it in [["asteroid_0", 1.0, "Small mineral", "minerals", "Common", "~60% of rocks"],
+			["asteroid_big_0", 1.0, "Large mineral", "minerals", "Uncommon", "~25% of rocks"],
+			["spice_0", 1.0, "Small spice", "spice", "Rare", "~13% of rocks"],
+			["spice_0", SystemGen.BIG_SPICE, "Large spice", "spice", "Very rare", "~2% of rocks"]]:
 		var tex := Defs.tex(it[0])
 		var w: float = tex.get_width() * float(it[1]) / Defs.ART_SCALE
 		var holds: int = Defs.ROCK_LARGE if Defs.rock_is_large(it[0], float(it[1])) else Defs.ROCK_SMALL
@@ -736,6 +739,10 @@ func _rock_sizes() -> void:
 		var amt := _label("%d %s" % [holds, it[3]], Defs.RESOURCE_COLORS[it[3]], 15)
 		amt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		cell.add_child(amt)
+		for line in [it[4], it[5]]:
+			var rar := _label(line, DIM, 13)
+			rar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			cell.add_child(rar)
 		row.add_child(cell)
 	_body.add_child(card)
 
@@ -803,6 +810,27 @@ func _page_economy() -> void:
 func _page_systems() -> void:
 	_heading("Systems")
 	_para("A match is fought in one star system, chosen in the lobby. Every system is symmetric: each player starts with the same worlds, rocks and distances, arranged evenly around the star. Every system but the Silent Void has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside. Systems differ in star, signature feature and gas placement, and these decide how the match is fought.")
+	_heading("Belts")
+	_para("Every player starts with three belts of their own:")
+	_table(["Belt", "Where", "Holds"], [
+		[["Safe", TEXT], "Beside your home world, a short haul from the starbase", "Minerals only"],
+		[["Forward", TEXT], "Past your starbase, toward the star - where enemies come through", "Mostly minerals, a little spice"],
+		[["Back", TEXT], "Behind your home world, by the map edge", "A few spice rocks"],
+	])
+	_para("Neutral belts lie anywhere from just outside the star's Radiation to near the map edge. Each is either a large mineral belt (a long arc) or a small spice belt (a tight cluster). Spice is about one rock in seven, but a spice rock holds as much as a mineral rock of its size. Richer belts have more big rocks.")
+	_heading("Every match is different")
+	_para("A system keeps its star, signature feature and character, but its seed reshuffles the details. Pick the same system and seed to replay a map exactly; both players always get the same layout.")
+	_table(["What varies", "How much"], [
+		["Worlds and belts", "One more or fewer than the system's usual count"],
+		["Distance between bases", "Bases sit 80-95% of the way to the edge"],
+		["Belt shape", "Spread, density, arc length and thickness; where the home belts sit"],
+		["Belt richness", "How many big rocks each belt has"],
+		["Planet positions and moons", "Where every world sits; 0-2 moons per gas giant"],
+		["Spice nebulae", "Size, distance, angle, and sometimes how many clouds"],
+		["Debris ring", "Size, thickness, and 1-3 gaps on each side"],
+		["Twin suns", "Orbit size and speed (the safe lane moves differently)"],
+		["Ion storms", "Size, drift speed and path"],
+	])
 	for s in SystemGen.SYSTEMS:
 		_system_card(s)
 	_star_section()
@@ -831,7 +859,7 @@ func _system_card(s: Dictionary) -> void:
 	col.add_child(_label(s["desc"], DIM, 16))
 	if random:
 		col.add_child(_card_text("Everything is drawn fresh each match from the match's seed, and the same seed always gives the same system:", TEXT))
-		col.add_child(_card_text("- Star: any type, from a Red Dwarf (smallest, gentlest radiation) to a Blue Giant (widest, deadliest).\n- Worlds: 3 to 5 per side, of mixed types.\n- Belts: 1 to 3 per side; 6% to 25% of rocks carry spice.\n- Spice nebulae: one of the four layouts - flank clouds, bands, pockets or drifts.\n- No signature feature (no twin suns, debris ring or ion storms), and its own backdrop and world names.", DIM))
+		col.add_child(_card_text("- Star: any type, from a Red Dwarf (smallest, gentlest radiation) to a Blue Giant (widest, deadliest).\n- Worlds: 3 to 6 per side, of mixed types.\n- Belts: safe, forward and back home belts, plus 1 to 4 neutral belts per side; about one rock in seven is spice.\n- Spice nebulae: one of the four layouts - flank clouds, bands, pockets or drifts.\n- No signature feature (no twin suns, debris ring or ion storms), and its own backdrop and world names.", DIM))
 		col.add_child(_card_text("How it plays: scout first. Nothing about the map is known in advance, so an early Scout and a look at where the gas lies matter more here than anywhere.", EDGE_LIT))
 		card.set_meta("block", true)
 		_body.add_child(card)
@@ -864,7 +892,7 @@ func _system_card(s: Dictionary) -> void:
 		col.add_child(_card_text({
 			"binary": "Twin suns: two radiation zones circle the center, and the safe lane between them keeps moving.",
 			"spice_nebula": "Spice nebula: a full ring of gas around the star, seeded with extra spice rocks.",
-			"rings": "Debris ring: an impassable wall of rubble with four narrow gaps, which makes those gaps chokepoints.",
+			"rings": "Debris ring: an impassable wall of rubble with a few narrow gaps (how many varies by seed), which makes those gaps chokepoints.",
 			"storms": "Ion storms: ragged clouds of charged gas drift around the system, crackling with lightning. Ships inside move at 40% speed and see half as far.",
 		}.get(feature, feature), EDGE_LIT))
 	var ntext: String = {

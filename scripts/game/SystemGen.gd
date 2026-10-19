@@ -13,7 +13,7 @@ class_name SystemGen
 ## Picked systems. "orion_reach" is the hand-made classic in Main.tscn; the
 ## rest are generated from a fixed seed and their own flavor of params.
 const SYSTEMS := [
-	{"id": "orion_reach", "name": "Orion Reach", "desc": "The classic hand-built system.", "star": "yellow", "star_name": "Orion",
+	{"id": "orion_reach", "name": "Orion Reach", "desc": "The even, open classic.", "star": "yellow", "star_name": "Orion",
 		"bg": "violet", "nebula": "flanks", "arrival": "You arrive in Orion Reach. Twin deserts flank a quiet yellow sun."},
 	{"id": "vega_drift", "name": "Vega Drift", "seed": 1101, "desc": "Balanced worlds around twin suns.", "star": "white", "star_name": "Vega",
 		"bg": "teal", "names": "cold", "feature": "binary", "nebula": "bands", "arrival": "You arrive in Vega Drift. Twin white suns wheel around a shifting safe lane.",

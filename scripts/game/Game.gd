@@ -397,7 +397,7 @@ func _build_system() -> void:
 	var layout := SystemGen.generate(GameState.system_seed if GameState.system_seed != 0 else 1, system_settings, players.size())
 	# Dev: SL_DUMP_LAYOUT=1 prints the generated layout as JSON and quits.
 	if OS.get_environment("SL_DUMP_LAYOUT") != "":
-		var dump := {"asteroids": layout["asteroids"].map(func(r): return [r["variant"], r["pos"].x, r["pos"].y]),
+		var dump := {"asteroids": layout["asteroids"].map(func(r): return [r["variant"], r["pos"].x, r["pos"].y, r.get("scale", 1.0)]),
 			"planets": layout["planets"].map(func(q): return [q["kind"], q["pos"].x, q["pos"].y, q["owner"]]),
 			"starbases": layout["starbases"].map(func(q): return [q["pos"].x, q["pos"].y]), "star_clear": SystemGen.star_clear,
 			"neb": layout["features"].filter(func(f): return f["type"] == "spice_nebula").map(func(f): return [f.get("shape", "ring"), f.get("pos", Vector2.ZERO).x, f.get("pos", Vector2.ZERO).y, f.get("radius", 0.0), f.get("inner", 0.0), f.get("outer", 0.0), f.get("arc_mid", 0.0), f.get("arc_half", PI)])}
