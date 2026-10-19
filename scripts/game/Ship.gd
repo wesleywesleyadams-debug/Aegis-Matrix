@@ -51,6 +51,63 @@ func _traverse(point: Vector2, delta: float) -> bool:
 			t.rotation = _turret_rot - rotation
 	return absf(angle_difference(_turret_rot, want)) <= deg_to_rad(8.0)
 
+## Independent turrets. With an attack order (or a bombard), every turret
+## takes the ordered target while it is within reach - focus fire as before.
+## Otherwise (attack-move, idle, ordered target out of reach) each turret
+## keeps or picks its own enemy in reach, preferring ones no other turret of
+## this ship is on, so a carrier can engage up to four ships at once.
+func _fire_turrets(delta: float) -> void:
+	var g := Game.instance
+	var rng := weapon_range()
+	var ordered: Node2D = null
+	if state == State.BOMBARD and is_instance_valid(bombard_target):
+		ordered = bombard_target
+	elif state == State.ATTACK and target_ordered and is_instance_valid(target) and target.is_alive():
+		ordered = target
+	var focus: bool = ordered != null and global_position.distance_to(ordered.global_position) <= rng + float(ordered.get("radius"))
+	_t_scan -= delta
+	if not focus and _t_scan <= 0.0:
+		_t_scan = SCAN_INTERVAL
+		_t_near = g.enemies_near(self, rng, _turret_sprites.size() + 2)
+	var n := _turret_sprites.size()
+	var dmg: float = def["damage"] * Defs.mark_mult(ship_type, g.mark_level(owner_id, ship_type))
+	var per: int = maxi(1, int(round(float(def.get("guns", n)) / float(n))))
+	var acc := lerpf(1.0, MOVING_ACCURACY, clampf(velocity.length() / maxf(max_speed(), 1.0), 0.0, 1.0))
+	if g.duel_nomovepen:
+		acc = 1.0
+	var taken := {}
+	var rate: float = float(def.get("turret_rate", 1.0))
+	for i in n:
+		var tgt: Node2D = null
+		if focus:
+			tgt = ordered
+		else:
+			var cur = _t_target[i]
+			if is_instance_valid(cur) and cur.is_alive() and not taken.has(cur) \
+					and global_position.distance_to(cur.global_position) <= rng + cur.radius:
+				tgt = cur
+			else:
+				for e in _t_near:
+					if is_instance_valid(e) and e.is_alive() and not taken.has(e):
+						tgt = e
+						break
+				if tgt == null and not _t_near.is_empty() and is_instance_valid(_t_near[0]) and _t_near[0].is_alive():
+					tgt = _t_near[0]   # more turrets than enemies: double up
+		_t_target[i] = tgt
+		if tgt == null:
+			continue
+		taken[tgt] = true
+		# Traverse this turret toward its own target.
+		var want: float = (tgt.global_position - global_position).angle()
+		_t_rot[i] = rotate_toward(_t_rot[i], want, rate * delta)
+		_turret_sprites[i].rotation = _t_rot[i] - rotation
+		if _t_cd[i] > 0.0 or absf(angle_difference(_t_rot[i], want)) > deg_to_rad(8.0):
+			continue
+		for k in per:
+			if randf() < acc:
+				g.fire(self, tgt, def["weapon"], dmg)
+		_t_cd[i] = def["cooldown"] / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+
 ## True when `point` lies inside the forward firing arc.
 func bears_on(point: Vector2, arc: float = FIRE_ARC) -> bool:
 	return absf(angle_difference(rotation, (point - global_position).angle())) <= arc
@@ -73,6 +130,9 @@ var _direct := false
 ## inside it (an enemy parked there) and they have at least this much hull.
 const SUN_RISK_HP := 0.6
 var target: SpaceEntity
+## True when `target` came from an attack order (player or AI), not from the
+## ship picking a fight on its own: turrets focus only an ordered target.
+var target_ordered := false
 ## An Asteroid (barges) or a gas giant Planet (skimmers); both expose
 ## resource, amount, radius and extract().
 var mine_target: Node2D
@@ -115,6 +175,14 @@ var _flame_timer: float = 0.0
 ## Kept as a global angle; the sprites are drawn relative to the hull.
 var _turret_rot: float = 0.0
 var _turret_sprites: Array[Sprite2D] = []
+## Independent turrets: each has its own aim (global angle), target and
+## cooldown. With an attack order they all focus the ordered target while it
+## is in reach; otherwise each picks its own, spreading over nearby enemies.
+var _t_rot: Array[float] = []
+var _t_target: Array = []
+var _t_cd: Array[float] = []
+var _t_near: Array = []      # enemies in reach, nearest first (rescanned)
+var _t_scan := 0.0
 ## Carrier side: one slot per bay, holding the ship in it (or null).
 var bay_craft: Array = []
 ## Docking side: the carrier being flown to, and which bay was reserved.
@@ -291,6 +359,14 @@ func _rebuild_turrets() -> void:
 		t.position = Vector2((float(m[0]) - 0.5) * size.x, float(m[1]) * size.y)
 		add_child(t)
 		_turret_sprites.append(t)
+	var n := _turret_sprites.size()
+	_t_rot.resize(n)
+	_t_rot.fill(rotation)
+	_t_target.resize(n)
+	_t_target.fill(null)
+	_t_cd.resize(n)
+	for i in n:
+		_t_cd[i] = randf() * float(def.get("cooldown", 1.0))
 
 ## Where bay `i` sits in the carrier's own frame (see Defs.carrier_bays):
 ## the odd slots are the mirrored, lower-side bays.
@@ -491,6 +567,7 @@ func order_attack(e: SpaceEntity) -> void:
 		return
 	state = State.ATTACK
 	target = e
+	target_ordered = true
 
 func order_mine(a: Node2D) -> void:
 	held = false
@@ -566,6 +643,8 @@ func _physics_process(delta: float) -> void:
 	# Out of energy: weapons recharge (and engines run) at a quarter speed.
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
+	for i in _t_cd.size():
+		_t_cd[i] -= delta * power
 	_acquire_timer -= delta
 	_scan_cd -= delta
 
@@ -599,6 +678,7 @@ func _physics_process(delta: float) -> void:
 				if e:
 					attack_move_goal = global_position
 					target = e
+					target_ordered = false
 					state = State.ATTACK
 				else:
 					# Nothing flying nearby: an enemy colony already in range is
@@ -619,6 +699,7 @@ func _physics_process(delta: float) -> void:
 				var e := Game.instance.nearest_enemy(self, weapon_range() + 120.0)
 				if e:
 					target = e
+					target_ordered = false
 					state = State.ATTACK
 				else:
 					# An enemy colony on the way counts as something to attack.
@@ -796,8 +877,11 @@ func _physics_process(delta: float) -> void:
 	if _acquire_timer <= 0.0:
 		_acquire_timer = 0.25
 
+	# Turreted hulls: every turret aims and fires on its own (_fire_turrets).
+	if def["weapon"] != "" and def.has("turrets") and not _turret_sprites.is_empty():
+		_fire_turrets(delta)
 	# Fire at whatever is in range, even while moving.
-	if def["weapon"] != "" and _cooldown <= 0.0:
+	elif def["weapon"] != "" and _cooldown <= 0.0:
 		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
 		if state == State.BOMBARD and is_instance_valid(bombard_target):
 			shoot = bombard_target

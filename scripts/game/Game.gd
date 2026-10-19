@@ -959,6 +959,35 @@ func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
 				best = sb
 	return best
 
+## Up to `count` enemies of `from` within `max_dist`, nearest first, scored
+## like nearest_enemy (warships before civilian hulls at similar range).
+func enemies_near(from: SpaceEntity, max_dist: float, count: int) -> Array:
+	var found: Array = []   # [score, entity]
+	var fp := from.global_position
+	var pid := from.owner_id
+	var reach := max_dist + 40.0
+	var lo := Vector2i(((fp - Vector2(reach, reach)) / BIG_CELL).floor())
+	var hi := Vector2i(((fp + Vector2(reach, reach)) / BIG_CELL).floor())
+	for y in range(lo.y, hi.y + 1):
+		for x in range(lo.x, hi.x + 1):
+			var cell = _grid_big.get(Vector2i(x, y))
+			if cell == null:
+				continue
+			for s in cell:
+				if not is_instance_valid(s) or s.owner_id == pid or not s.is_enemy_of(pid) or not s.is_alive():
+					continue
+				var d: float = fp.distance_to(s.global_position) - s.radius
+				if d > max_dist:
+					continue
+				found.append([d + (40.0 if s.def["role"] != "warship" else 0.0), s])
+	for sb in starbase_list:
+		if is_instance_valid(sb) and sb.is_enemy_of(pid) and sb.is_alive():
+			var d2: float = fp.distance_to(sb.global_position) - sb.radius
+			if d2 <= max_dist:
+				found.append([d2, sb])
+	found.sort_custom(func(a, b): return a[0] < b[0])
+	return found.slice(0, count).map(func(f): return f[1])
+
 ## `known`: only rocks that player's sensors have explored (the AI passes
 ## its own Vision so it can't pick rocks it has never seen).
 func nearest_asteroid(pos: Vector2, max_dist: float, resource: String = "minerals", known: Vision = null) -> Asteroid:
@@ -2620,6 +2649,25 @@ func _enter_dev_capture() -> void:
 		await get_tree().process_frame
 		print("DELTEST starbase alive while asked: ", is_instance_valid(hb3) and hb3.is_alive())
 		center_on(hb3.global_position)
+	if OS.get_environment("SL_SHOT_OPEN") == "turrets":
+		# Dev: a carrier among 4 enemy corvettes - idle (turrets spread),
+		# then ordered onto one (turrets focus).
+		var foe_t: int = 2 if player_id == 1 else 1
+		var at_t := Vector2(0, 600)
+		var car := spawn_ship("carrier", player_id, at_t)
+		var foes_t: Array = []
+		for k in 4:
+			var fs := spawn_ship("corvette", foe_t, at_t + Vector2.from_angle(TAU * k / 4.0) * 160.0)
+			fs.hp = 1e6
+			fs.max_hp = 1e6
+			fs.order_stop()
+			foes_t.append(fs)
+		center_on(at_t)
+		await get_tree().create_timer(4.0).timeout
+		print("TURRETS idle: ", car._t_target.map(func(t): return foes_t.find(t)))
+		car.order_attack(foes_t[2])
+		await get_tree().create_timer(3.0).timeout
+		print("TURRETS ordered on #2: ", car._t_target.map(func(t): return foes_t.find(t)))
 	if OS.get_environment("SL_SHOT_OPEN") == "rswitch":
 		# Dev: research A, switch to B, back to A - A must resume.
 		request_research("ion_cannons")
