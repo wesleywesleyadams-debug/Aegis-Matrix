@@ -849,7 +849,7 @@ func _page_systems() -> void:
 		[["Forward", TEXT], "Past your starbase, toward the star - where enemies come through", "Mostly minerals, a little spice"],
 		[["Back", TEXT], "Behind your home world, by the map edge", "A few spice rocks"],
 	])
-	_para("Neutral belts lie anywhere from just outside the star's Radiation to near the map edge. Each is either a large mineral belt (a long arc) or a small spice belt (a tight cluster). Spice is about one rock in seven, but a spice rock holds as much as a mineral rock of its size. Richer belts have more big rocks.")
+	_para("Neutral belts lie anywhere from just outside the star's Radiation to near the map edge. Each is either a large mineral belt (a long arc) or a small spice belt (a tight cluster). Spice is about one rock in seven (one in three in the Kharon Expanse), but a spice rock holds as much as a mineral rock of its size. Richer belts have more big rocks.")
 	_heading("Every match is different")
 	_para("A system keeps its star, signature feature and character, but its seed reshuffles the details. Pick the same system and seed to replay a map exactly; both players always get the same layout.")
 	_table(["What varies", "How much"], [
@@ -923,8 +923,8 @@ func _system_card(s: Dictionary) -> void:
 	if feature != "":
 		col.add_child(_card_text({
 			"binary": "Twin suns: two radiation zones circle the center, and the safe lane between them keeps moving.",
-			"spice_nebula": "Spice nebula: a full ring of gas around the star, seeded with extra spice rocks.",
-			"rings": "Debris ring: an impassable wall of rubble with a few narrow gaps (how many varies by seed), which makes those gaps chokepoints.",
+			"spice_nebula": "Spice nebula: a full ring of gas around the star, seeded with extra spice rocks - on top of a third of all rocks being spice.",
+			"rings": "Debris ring: an impassable wall of rubble with a few narrow gaps (how many varies by seed), which makes those gaps chokepoints. Two large, fertile worlds per player lie inside it.",
 			"storms": "Ion storms: ragged clouds of charged gas drift around the system, crackling with lightning. Ships inside move at 40% speed and see half as far.",
 		}.get(feature, feature), EDGE_LIT))
 	var ntext: String = {
