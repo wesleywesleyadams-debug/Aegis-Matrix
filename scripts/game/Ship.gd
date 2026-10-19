@@ -123,7 +123,7 @@ func _fire_turrets(delta: float) -> void:
 			if on_target:
 				var b: Array = weapon_mod["beam"]
 				_t_beam_time[i] += delta
-				var ramp: float = lerpf(b[0], b[1], clampf(_t_beam_time[i] / b[2], 0.0, 1.0))
+				var ramp: float = lerpf(b[0], b[1], clampf(_t_beam_time[i] / b[2], 0.0, 1.0)) * float(weapon_mod.get("dmg", 1.0))
 				var dps: float = dmg / def["cooldown"] * g.mod(owner_id, "fire_rate") * g.mod(owner_id, "damage")
 				tgt.take_damage(dps * ramp * delta * Game.instance.ship_speed_factor(owner_id), self, Defs.damage_profile(def))
 				_beams.append([_turret_sprites[i].global_position, tgt.global_position, ramp])

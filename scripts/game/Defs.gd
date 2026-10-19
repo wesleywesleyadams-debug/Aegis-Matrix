@@ -528,9 +528,9 @@ const TECHS := {
 	"mod_homing_missiles": {"name": "Homing Missiles", "group": "mods", "mod": "destroyer", "tier": 3, "requires": ["destroyers"], "cost": {"energy": 160, "spice": 30}, "time": 75.0,
 		"effects": {"mod_destroyer": 1.0}, "desc": "4-missile volleys that never miss, +20% range."},
 	"mod_ion_lance": {"name": "Ion Lance", "group": "mods", "mod": "cruiser", "tier": 1, "requires": ["cruisers"], "cost": {"energy": 220, "spice": 40}, "time": 90.0,
-		"effects": {"mod_cruiser": 1.0}, "desc": "Beam ramps 60% to 140% over 4 s on one target."},
+		"effects": {"mod_cruiser": 1.0}, "desc": "Beam ramps up on one target; weak vs swarms."},
 	"mod_rail_cannons": {"name": "Rail Cannons", "group": "mods", "mod": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 220, "spice": 40}, "time": 90.0,
-		"effects": {"mod_cruiser": 1.0}, "desc": "+40% range, half the shots at 2x damage."},
+		"effects": {"mod_cruiser": 1.0}, "desc": "+40% range, big slow shots: best vs big hulls."},
 	"mod_point_defense_lattice": {"name": "Point-Defense Lattice", "group": "mods", "mod": "cruiser", "tier": 3, "requires": ["cruisers"], "cost": {"energy": 220, "spice": 40}, "time": 90.0,
 		"effects": {"mod_cruiser": 1.0}, "desc": "Shoots down torpedoes and missiles; -30% vs ships."},
 	"mod_interceptor_drones": {"name": "Interceptor Drones", "group": "mods", "mod": "carrier", "tier": 1, "requires": ["carriers"], "cost": {"energy": 280, "spice": 50}, "time": 105.0,
@@ -745,8 +745,8 @@ const MOD_WEAPONS := {
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
 	"mod_cluster_bombs": {"dmg": 1.0, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0], "run": true},
-	"mod_ion_lance": {"weapon": "beam", "beam": [0.6, 1.4, 4.0]},
-	"mod_rail_cannons": {"weapon": "rail", "dmg": 2.0, "cd": 2.0, "range": 1.4},
+	"mod_ion_lance": {"weapon": "beam", "dmg": 0.75, "beam": [0.15, 1.85, 4.0]},
+	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.4, "cd": 4.0, "range": 1.4},
 	"mod_point_defense_lattice": {"dmg": 0.7, "pd": 160.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
 }
