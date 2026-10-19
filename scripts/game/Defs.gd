@@ -699,7 +699,7 @@ static func _with_variants() -> Dictionary:
 ## A ship def's damage profile: {"vs": layer multipliers, "pierce": 0-2}.
 ## Blast radius of every exploding shot: each deals AOE_SHARE (all) of its damage
 ## to every enemy within the radius, the target included.
-const AOE_RADIUS := {"flak": 20.0, "missile": 25.0, "proton": 30.0, "torpedo": 30.0, "bomblet": 40.0}
+const AOE_RADIUS := {"flak": 20.0, "missile": 25.0, "proton": 30.0, "torpedo": 30.0, "bomblet": 25.0}
 const AOE_SHARE := 1.0
 
 ## How a Mod (Game.active_mod) changes its class's weapon. dmg / cd / range
@@ -712,8 +712,8 @@ const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
 	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.4731, "vs_class": {"destroyer": 6.2, "cruiser": 6.6, "carrier": 7.4}, "cd": 3.0, "run": true},
-	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 1.0 / 3.0, "cd": 1.0 / 3.0, "range": 0.75},
-	"mod_arc_emitters": {"weapon": "arc", "chain": [0.6, 0.2, 0.2], "jump": 120.0},
+	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.45, "cd": 1.0 / 3.0, "range": 0.75},
+	"mod_arc_emitters": {"weapon": "arc", "chain": [0.8, 0.3, 0.3], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
 	#   fan    - [min, max] total fan width in degrees, rolled fresh each launch
 	#   beam   - Ion Lance: [start, end, seconds] - a continuous beam whose damage
@@ -724,7 +724,7 @@ const MOD_WEAPONS := {
 	#   tractor- Tractor Beams: [slow far, slow close, reach x weapon range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
-	"mod_flak_cannons": {"dmg": 0.5581, "weapon": "flak"},
+	"mod_flak_cannons": {"dmg": 0.75, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
 	"mod_cluster_bombs": {"dmg": 1.0, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0], "run": true},
@@ -732,7 +732,7 @@ const MOD_WEAPONS := {
 	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.4, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
-	"mod_point_defense_lattice": {"dmg": 0.7, "pd": 160.0},
+	"mod_point_defense_lattice": {"dmg": 0.7, "pd": 220.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
