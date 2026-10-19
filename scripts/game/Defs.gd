@@ -737,7 +737,9 @@ const MOD_WEAPONS := {
 	#   splash - Flak: on impact, this share of the damage to every enemy
 	#            within splash_r (the target included)
 	"mod_flak_cannons": {"dmg": 0.5581, "weapon": "flak"},
-	"mod_cluster_bombs": {"dmg": 0.2729, "weapon": "bomblet", "cd": 3.0, "count": 3, "spread": 0.5, "run": true},
+	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
+	# total on a lone ship; the 40 blasts make it far more against a group.
+	"mod_cluster_bombs": {"dmg": 1.0, "weapon": "bomblet", "cd": 3.0, "count": 3, "spread": 0.1, "run": true},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
 }
 
