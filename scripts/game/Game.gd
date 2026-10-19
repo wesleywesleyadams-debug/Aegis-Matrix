@@ -1227,6 +1227,16 @@ func spawn_blast(pos: Vector2, radius: float) -> void:
 	fx_root.add_child(e)
 	sfx.play_at("boom", pos, -8.0)
 
+## Point-Defense: `from` zaps an enemy projectile out of the sky.
+func intercept(from: Ship, p: Node2D) -> void:
+	if not sim_mode:
+		var arc := ArcFx.new()
+		arc.setup(PackedVector2Array([from.global_position, p.global_position]), false, Color("ffd84a"))
+		fx_root.add_child(arc)
+		spawn_explosion(p.global_position, 0.3)
+		sfx.play_at("laser", from.global_position, -12.0)
+	p.queue_free()
+
 func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	if sim_mode:
 		return
@@ -2763,6 +2773,11 @@ func _enter_dev_capture() -> void:
 		if mid != "":
 			researched[player_id][mid] = true
 			_on_tech_done(player_id, mid)
+		# SL_FOE_MOD: the enemy's Mod (e.g. torpedoes, to test Point-Defense).
+		var fmod := OS.get_environment("SL_FOE_MOD")
+		if fmod != "":
+			researched[foe_d][fmod] = true
+			_on_tech_done(foe_d, fmod)
 		# Let the system finish building (stars, worlds) before choosing a spot.
 		await get_tree().create_timer(0.3).timeout
 		var c0 := _clear_spot(400.0)

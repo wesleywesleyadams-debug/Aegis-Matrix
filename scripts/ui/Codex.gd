@@ -468,12 +468,14 @@ func _page_combat() -> void:
 	_para("The Mods research tab changes what a ship class fires. Each class has three Mods and can use one at a time. Researching another Mod for that class replaces the old one, which is lost and must be researched again to come back; the old one keeps working until the new one finishes.")
 	_para("Click an active Mod's card to switch it off: the class goes back to its standard laser and the card turns yellow. Switched-off Mods are listed under the clock; click one there (or its card) to switch it back on. Switching is free and instant.")
 	_para("A Mod sets the weapon's shape; a Weapons Depot variant still sets its damage profile, so a Plasma corvette with Proton Torpedoes fires torpedoes that hit shields x2.2. Bombs, torpedoes and missiles attack hit-and-run: the ship closes, fires, then peels away while it reloads.")
-	var modrows: Array = []
-	for cls in ["corvette", "destroyer", "cruiser", "carrier"]:
-		for id in Defs.TECHS:
-			if Defs.TECHS[id].get("mod", "") == cls:
-				modrows.append([cls.capitalize(), Defs.TECHS[id]["name"], Defs.TECHS[id]["desc"], "yes" if Defs.MOD_WEAPONS.has(id) else "coming"])
-	_table(["Class", "Mod", "Effect", "In game"], modrows)
+	# The Mods tab as it appears on the research screen.
+	_tech_tree("mods", _research_rows("mods"))
+	var coming: Array = []
+	for id in Defs.TECHS:
+		if Defs.TECHS[id].has("mod") and not Defs.MOD_WEAPONS.has(id):
+			coming.append(Defs.TECHS[id]["name"])
+	if not coming.is_empty():
+		_para("Still being built: " + ", ".join(coming) + ".")
 	_para("Exploding shots deal %d%% of their damage to every enemy inside the blast, the target included, so bunched-up ships take more. Spread out against them." % int(Defs.AOE_SHARE * 100.0))
 	var arows: Array = []
 	for w in [["flak", "Flak Cannons shell"], ["missile", "Homing Missile"], ["proton", "Proton Torpedo"], ["bomblet", "Cluster Bomb bomblet"]]:

@@ -735,12 +735,19 @@ const MOD_WEAPONS := {
 	"mod_arc_emitters": {"weapon": "arc", "chain": [0.6, 0.2, 0.2], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
 	#   fan    - [min, max] total fan width in degrees, rolled fresh each launch
+	#   beam   - Ion Lance: [start, end, seconds] - a continuous beam whose damage
+	#            ramps from start to end x the laser's over that long on one target
+	#   pd     - Point-Defense: radius in which each turret shoots down enemy
+	#            missiles, torpedoes and bomblets before firing at ships
 	#   splash - Flak: on impact, this share of the damage to every enemy
 	#            within splash_r (the target included)
 	"mod_flak_cannons": {"dmg": 0.5581, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
 	"mod_cluster_bombs": {"dmg": 1.0, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0], "run": true},
+	"mod_ion_lance": {"weapon": "beam", "beam": [0.6, 1.4, 4.0]},
+	"mod_rail_cannons": {"weapon": "rail", "dmg": 2.0, "cd": 2.0, "range": 1.4},
+	"mod_point_defense_lattice": {"dmg": 0.7, "pd": 160.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
 }
 

@@ -37,6 +37,9 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	homing = weapon == "torpedo" or weapon == "proton" or weapon == "missile"
 	owner_pid = int(from.get("owner_id"))
 	free_flight = weapon == "bomblet"
+	# Ordnance Point-Defense can shoot down.
+	if weapon in ["missile", "proton", "torpedo", "bomblet"]:
+		add_to_group("ordnance")
 	trail_on = weapon in ["missile", "proton", "torpedo"] and not Game.instance.sim_mode
 	torp_wake = weapon in ["proton", "torpedo"]
 	if Defs.AOE_RADIUS.has(weapon):
@@ -48,15 +51,17 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	if from is Ship:
 		vs_class = from.weapon_mod.get("vs_class", {})
 	# Kinetic Repeater slugs: fast and small.
-	speed = (110.0 if weak_lock else (150.0 if weapon == "missile" else 85.0)) if homing else {"kinetic": 320.0, "bomblet": 150.0, "flak": 240.0}.get(weapon, 210.0)
+	speed = (110.0 if weak_lock else (150.0 if weapon == "missile" else 85.0)) if homing else {"kinetic": 320.0, "bomblet": 150.0, "flak": 240.0, "rail": 900.0}.get(weapon, 210.0)
 	# Misses expire just past weapon range instead of crossing the map.
 	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
-	texture = Defs.tex("bolt_" + {"kinetic": "laser", "flak": "laser", "proton": "torpedo", "missile": "torpedo", "bomblet": "torpedo"}.get(weapon, weapon))
+	texture = Defs.tex("bolt_" + {"kinetic": "laser", "flak": "laser", "rail": "laser", "proton": "torpedo", "missile": "torpedo", "bomblet": "torpedo"}.get(weapon, weapon))
 	# Bolt art is drawn at Defs.ART_SCALE like the rest of the sprites.
 	scale = Vector2.ONE / Defs.ART_SCALE * {"kinetic": 0.55, "bomblet": 0.5, "missile": 0.6}.get(weapon, 1.0)
 	if weapon == "missile":
 		scale = Vector2(0.9, 0.35) / Defs.ART_SCALE   # long and slim: a missile body
+	elif weapon == "rail":
+		scale = Vector2(2.4, 0.3) / Defs.ART_SCALE   # a long thin streak
 	elif weapon == "proton":
 		scale = Vector2.ONE * 1.25 / Defs.ART_SCALE   # a fat, glowing ball
 	# Shot colors: generalists (and starbases) fire yellow; specialists fire

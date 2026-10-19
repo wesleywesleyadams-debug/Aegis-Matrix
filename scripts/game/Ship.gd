@@ -77,7 +77,21 @@ func _fire_turrets(delta: float) -> void:
 		acc = 1.0
 	var taken := {}
 	var rate: float = float(def.get("turret_rate", 1.0))
+	var had_beams := not _beams.is_empty()
+	_beams.clear()
+	var pd: float = float(weapon_mod.get("pd", 0.0))
+	var claimed := {}
 	for i in n:
+		# Point-Defense: a ready turret first swats incoming ordnance.
+		if pd > 0.0 and _t_cd[i] <= 0.0:
+			var shot_down := _pd_target(pd, claimed)
+			if shot_down:
+				claimed[shot_down] = true
+				_t_rot[i] = (shot_down.global_position - global_position).angle()
+				_turret_sprites[i].rotation = _t_rot[i] - rotation
+				g.intercept(self, shot_down)
+				_t_cd[i] = def["cooldown"] * 0.4 / g.mod(owner_id, "fire_rate")
+				continue
 		var tgt: Node2D = null
 		if focus:
 			tgt = ordered
@@ -93,6 +107,8 @@ func _fire_turrets(delta: float) -> void:
 						break
 				if tgt == null and not _t_near.is_empty() and is_instance_valid(_t_near[0]) and _t_near[0].is_alive():
 					tgt = _t_near[0]   # more turrets than enemies: double up
+		if _t_target[i] != tgt:
+			_t_beam_time[i] = 0.0   # the lance's ramp starts over on a new target
 		_t_target[i] = tgt
 		if tgt == null:
 			continue
@@ -101,7 +117,18 @@ func _fire_turrets(delta: float) -> void:
 		var want: float = (tgt.global_position - global_position).angle()
 		_t_rot[i] = rotate_toward(_t_rot[i], want, rate * delta)
 		_turret_sprites[i].rotation = _t_rot[i] - rotation
-		if _t_cd[i] > 0.0 or absf(angle_difference(_t_rot[i], want)) > deg_to_rad(8.0):
+		var on_target: bool = absf(angle_difference(_t_rot[i], want)) <= deg_to_rad(8.0)
+		# Ion Lance: a continuous beam, damage every tick, ramping on one target.
+		if weapon_mod.has("beam"):
+			if on_target:
+				var b: Array = weapon_mod["beam"]
+				_t_beam_time[i] += delta
+				var ramp: float = lerpf(b[0], b[1], clampf(_t_beam_time[i] / b[2], 0.0, 1.0))
+				var dps: float = dmg / def["cooldown"] * g.mod(owner_id, "fire_rate") * g.mod(owner_id, "damage")
+				tgt.take_damage(dps * ramp * delta * Game.instance.ship_speed_factor(owner_id), self, Defs.damage_profile(def))
+				_beams.append([_turret_sprites[i].global_position, tgt.global_position, ramp])
+			continue
+		if _t_cd[i] > 0.0 or not on_target:
 			continue
 		var wpn: String = weapon_mod.get("weapon", def["weapon"])
 		var n_proj: int = int(weapon_mod.get("count", 1))
@@ -118,6 +145,23 @@ func _fire_turrets(delta: float) -> void:
 		_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 		if weapon_mod.get("run", false):
 			_run_out = _t_cd[i] * 0.5
+
+	if had_beams or not _beams.is_empty():
+		queue_redraw()
+
+## Point-Defense: the nearest enemy missile, torpedo or bomblet within `r`
+## not already being shot by another of this ship's turrets.
+func _pd_target(r: float, claimed: Dictionary) -> Node2D:
+	var best: Node2D = null
+	var best_d := r
+	for p in get_tree().get_nodes_in_group("ordnance"):
+		if not is_instance_valid(p) or claimed.has(p) or p.owner_pid == owner_id or not Game.instance.is_hostile(owner_id, p.owner_pid):
+			continue
+		var d := global_position.distance_to(p.global_position)
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
 
 ## True when `point` lies inside the forward firing arc.
 func bears_on(point: Vector2, arc: float = FIRE_ARC) -> bool:
@@ -197,6 +241,10 @@ var _t_rot: Array[float] = []
 var _t_target: Array = []
 var _t_cd: Array[float] = []
 var _t_near: Array = []      # enemies in reach, nearest first (rescanned)
+## Ion Lance: per turret, seconds on its current target, and the beams to draw
+## this frame ([from, to] in world space).
+var _t_beam_time: Array[float] = []
+var _beams: Array = []
 var _t_scan := 0.0
 ## Carrier side: one slot per bay, holding the ship in it (or null).
 var bay_craft: Array = []
@@ -380,6 +428,8 @@ func _rebuild_turrets() -> void:
 	_t_target.resize(n)
 	_t_target.fill(null)
 	_t_cd.resize(n)
+	_t_beam_time.resize(n)
+	_t_beam_time.fill(0.0)
 	for i in n:
 		_t_cd[i] = randf() * float(def.get("cooldown", 1.0))
 
@@ -1082,6 +1132,14 @@ func _draw() -> void:
 	if Engine.is_editor_hint():
 		return
 	_draw_job()
+	# Ion Lance beams, brighter and wider as they ramp up.
+	for bm in _beams:
+		var a := to_local(bm[0])
+		var z := to_local(bm[1])
+		var k: float = clampf((float(bm[2]) - 0.6) / 0.8, 0.0, 1.0)
+		var col: Color = Defs.VARIANTS[def["variant"]]["color"] if def.has("variant") else Color("7fd8ff")
+		draw_line(a, z, Color(col, 0.35 + 0.25 * k), (3.0 + 4.0 * k) / scale.x)
+		draw_line(a, z, Color(Color.WHITE, 0.8), (1.0 + 1.0 * k) / scale.x)
 	super._draw()
 
 var _harvest_fx: HarvestFx
