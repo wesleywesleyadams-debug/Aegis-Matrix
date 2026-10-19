@@ -4,7 +4,7 @@ extends SpaceEntity
 ## A single ship. Stats come from Defs.SHIPS[ship_type]; sprites are
 ## assets/pixel/ship_<type>.png plus a team-tinted overlay layer.
 
-enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD, REFIT, DOCK_GO, DOCKED }
+enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD, REFIT }
 
 @export_enum("miner", "colony", "constructor", "corvette", "destroyer", "cruiser") var ship_type: String = "corvette":
 	set(v):
@@ -520,13 +520,6 @@ func drone_count() -> int:
 var _door_open: Array[float] = []
 var _door_layer: Node2D = null
 var _t_scan := 0.0
-## Carrier side: one slot per bay, holding the ship in it (or null).
-var bay_craft: Array = []
-## Docking side: the carrier being flown to, and which bay was reserved.
-var dock_carrier: Ship = null
-var dock_slot: int = -1
-## How fast a bay mends what is in it, as a fraction of the maximum per second.
-const BAY_REPAIR_PER_SEC := 0.10
 ## One Sprite2D per thruster, built from the hull by _rebuild_flames().
 var _flames: Array[Sprite2D] = []
 
@@ -669,13 +662,11 @@ func weapon_range() -> float:
 ## sprite (x along the hull from the stern, y off the keel), so they sit
 ## right whatever the mark's shape.
 ## Fittings that come from the def rather than the sprite: turret mounts and
-## hangar bays. Called once `def` is known, since _ready builds the visuals
+## drone doors. Called once `def` is known, since _ready builds the visuals
 ## before it assigns one.
 func _apply_def_visuals() -> void:
 	_rebuild_turrets()
 	_apply_mark()
-	if def.has("bays") and bay_craft.size() != int(def["bays"]):
-		bay_craft.resize(int(def["bays"]))
 
 func _rebuild_turrets() -> void:
 	for t in _turret_sprites:
@@ -707,59 +698,8 @@ func _rebuild_turrets() -> void:
 	for i in n:
 		_t_cd[i] = randf() * float(def.get("cooldown", 1.0))
 
-## Where bay `i` sits in the carrier's own frame (see Defs.carrier_bays):
-## the odd slots are the mirrored, lower-side bays.
-func bay_offset(i: int) -> Vector2:
-	var art: Dictionary = Defs.WARSHIP_ART_SIZE.get(def.get("base", ship_type), {})
-	if art.is_empty():
-		return Vector2.ZERO
-	var bays: Array = Defs.carrier_bays(int(art["w"]), int(art["h"]))
-	if bays.is_empty():
-		return Vector2.ZERO
-	var b: Vector2 = bays[(i / 2) % bays.size()]
-	# Design units run from the stern; the sprite is centred on the hull.
-	var x: float = b.x - art["w"] / 2.0
-	var y: float = b.y * (1.0 if i % 2 == 0 else -1.0)
-	return Vector2(x, y) * float(def.get("size", 1.0))
-
-## A free bay for `craft`, or -1.
-func free_bay() -> int:
-	for i in bay_craft.size():
-		if bay_craft[i] == null or not is_instance_valid(bay_craft[i]):
-			return i
-	return -1
-
 func is_carrier() -> bool:
 	return def.get("base", ship_type) == "carrier"
-
-## Whether this ship is small enough to sit in a carrier's bay.
-## Carriers no longer have hangar bays, so nothing docks.
-func fits_bay() -> bool:
-	return false
-
-## Sends this ship to a carrier's bay to be mended.
-func order_dock(c: Ship) -> void:
-	held = false
-	if c == null or not c.is_carrier() or c.owner_id != owner_id or not fits_bay():
-		return
-	dock_carrier = c
-	state = State.DOCK_GO
-
-## This ship's own berth on its carrier.
-func bay_offset_for_slot() -> Vector2:
-	return dock_carrier.bay_offset(dock_slot) if is_instance_valid(dock_carrier) and dock_slot >= 0 else Vector2.ZERO
-
-## Mended and pushed back out, facing away from the carrier.
-func _launch_from_bay() -> void:
-	if is_instance_valid(dock_carrier) and dock_slot >= 0 and dock_slot < dock_carrier.bay_craft.size():
-		dock_carrier.bay_craft[dock_slot] = null
-	Game.instance.sfx.play_at("launch", global_position, -6.0)
-	var away := Vector2.RIGHT.rotated(rotation)
-	global_position += away * (radius + 6.0)
-	move_goal = global_position
-	dock_carrier = null
-	dock_slot = -1
-	state = State.IDLE
 
 func is_miner() -> bool:
 	return def.get("role", "") in ["miner", "skimmer"]
@@ -1082,43 +1022,6 @@ func _physics_process(delta: float) -> void:
 					# keeps its own heading; only fixed guns need the nose on target.
 					if not def.has("turrets"):
 						face_target = target
-		State.DOCK_GO:
-			# Fly to the carrier and take the bay reserved on arrival.
-			if not is_instance_valid(dock_carrier) or not dock_carrier.is_alive():
-				dock_carrier = null
-				state = State.IDLE
-			else:
-				var slot := dock_carrier.free_bay()
-				var berth: Vector2 = dock_carrier.global_position
-				if slot >= 0:
-					berth += dock_carrier.bay_offset(slot).rotated(dock_carrier.rotation)
-				# Generous: the cradle is a point, and a ship nosing into it is
-				# being pushed off by the crowd-separation force.
-				if global_position.distance_to(berth) <= radius + 10.0 and slot >= 0:
-					dock_slot = slot
-					dock_carrier.bay_craft[slot] = self
-					state = State.DOCKED
-					velocity = Vector2.ZERO
-					Game.instance.sfx.play_at("dock", global_position, -6.0)
-				else:
-					desired = _arrive(berth, 1.0)
-		State.DOCKED:
-			# Held in the cradle: hull first, then armor, then launched.
-			if not is_instance_valid(dock_carrier) or not dock_carrier.is_alive():
-				dock_carrier = null
-				dock_slot = -1
-				state = State.IDLE
-			else:
-				global_position = dock_carrier.global_position + bay_offset_for_slot().rotated(dock_carrier.rotation)
-				rotation = dock_carrier.rotation + (PI * 0.5 if dock_slot % 2 == 0 else -PI * 0.5)
-				velocity = Vector2.ZERO
-				var step: float = BAY_REPAIR_PER_SEC * delta
-				if hp < max_hp:
-					hp = minf(max_hp, hp + max_hp * step)
-				elif armor < max_armor:
-					armor = minf(max_armor, armor + max_armor * step)
-				else:
-					_launch_from_bay()
 		State.MINE_GO:
 			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
 				var want: String = mine_target.resource if is_instance_valid(mine_target) else cargo_type
@@ -1288,9 +1191,7 @@ func _physics_process(delta: float) -> void:
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)
-	# A ship on its final approach to a bay ignores the crowding force, or it
-	# would be shouldered off the cradle it is trying to sit in.
-	var crowd := Vector2.ZERO if state == State.DOCK_GO or state == State.DOCKED else _separation()
+	var crowd := _separation()
 	# A parked ship takes the spot crowding gives it rather than fighting its
 	# way back: otherwise two hulls that overlap at rest shove each other out
 	# and fly straight back in, forever. Big hulls show it worst, since they
@@ -1351,11 +1252,6 @@ func _separation() -> Vector2:
 				continue
 			for other in cell:
 				if other == self or not is_instance_valid(other):
-					continue
-				# A craft on (or lining up for) one of our bays sits inside the
-				# hull by design: shoving it away would have the carrier jitter
-				# in place, each bay pushing from a different side.
-				if other is Ship and other.dock_carrier == self:
 					continue
 				# A ship on the move is passed through, not pushed against.
 				if other is Ship and not (other as Ship)._parked():

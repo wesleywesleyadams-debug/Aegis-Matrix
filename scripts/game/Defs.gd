@@ -598,21 +598,6 @@ const HARVEST_NEBULA_MULT := 1.0
 ## Which classes have a mark line (see HULL_MARKS).
 const MARK_LINES := ["corvette", "destroyer", "cruiser", "carrier"]
 
-## The design size of each warship class's art, mirroring WARSHIP_ART in
-## tools/gen_art.gd. The game needs it to place bays and turrets on the hull.
-const WARSHIP_ART_SIZE := {
-	"corvette": {"w": 18, "h": 15},
-	"destroyer": {"w": 28, "h": 19},
-	"cruiser": {"w": 38, "h": 25},
-	"carrier": {"w": 76, "h": 50},
-}
-
-## The biggest hull a hangar bay will take. The cradles are drawn for a
-## corvette (radius 8) and everything that describes the carrier - the tech
-## card, the codex, the ship panel - says corvettes, so a destroyer or a
-## cruiser is turned away rather than parked on a cradle it dwarfs.
-const BAY_MAX_RADIUS := 9.0
-
 ## The glass hold cut into each harvester's hull (see _cargo_tank in
 ## tools/gen_art.gd), as a rect in the ship's own space: x from the stern
 ## end to the bow end, then half-height. The game paints the load inside it,
@@ -621,19 +606,6 @@ const CARGO_TANK := {
 	"miner": [-4.0, 1.5, 2.2],
 	"skimmer": [-6.0, 0.0, 2.2],
 }
-
-## Where a carrier's hangar bays sit, in design units along its hull (see
-## tools/gen_art.gd): x from the stern, y off the keel, one entry per bay,
-## mirrored top and bottom. A carrier is an H for life, so there is one
-## layout: the bays hang off the two nacelles. Art and gameplay both read
-## this, so a docked corvette sits exactly on the drawn cradle.
-static func carrier_bays(w: int, h: int) -> Array:
-	var a: float = h * 0.30
-	var out: Array = []
-	# Evenly down both nacelles, which run the full length of an H.
-	for t in [0.24, 0.44, 0.64]:
-		out.append(Vector2(w * t, a))
-	return out
 
 ## A mark is rank, not shape. Each class is built in one letterform for life
 ## (see CLASS_SHAPE in tools/gen_art.gd): a corvette is an A, a destroyer a

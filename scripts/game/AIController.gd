@@ -225,27 +225,6 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				s.order_attack_move(threat.global_position)
 		return
 
-	# A carrier in the fleet changes what a hurt ship does: rather than keep
-	# fighting at a third of its hull, it puts in to a bay, is mended and
-	# comes back out. Only worth the trip when there is a bay free and the
-	# carrier is not far away.
-	var carriers := war.filter(func(s): return s.is_carrier() and s.free_bay() >= 0)
-	if not carriers.is_empty():
-		for s in war:
-			if not s.fits_bay() or s.state == Ship.State.DOCK_GO or s.state == Ship.State.DOCKED:
-				continue
-			if s.hp > s.max_hp * 0.45:
-				continue
-			var best: Ship = null
-			var best_d := 900.0
-			for c in carriers:
-				var d: float = s.global_position.distance_to(c.global_position)
-				if d < best_d:
-					best_d = d
-					best = c
-			if best != null:
-				s.order_dock(best)
-
 	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
 	# Idle warships next to an enemy planet start bombarding it (not a turtle).
 	for s in (idle.duplicate() if not (game.rl_side > 0 and pid != game.rl_side and game.opp_level == 2) else []):

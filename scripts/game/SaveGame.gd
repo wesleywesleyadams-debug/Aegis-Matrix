@@ -163,11 +163,6 @@ static func _order_of(s: Ship) -> Dictionary:
 		Ship.State.BOMBARD:
 			if is_instance_valid(s.bombard_target):
 				return {"kind": "bombard", "target": String(s.bombard_target.name)}
-		Ship.State.DOCK_GO, Ship.State.DOCKED:
-			# Carriers have no stable name across a reload either, so the bay is
-			# found again by where the carrier was, the same way a depot is.
-			if is_instance_valid(s.dock_carrier):
-				return {"kind": "dock", "at": _v(s.dock_carrier.global_position)}
 	return {"kind": "idle"}
 
 static func write(game: Game, save_name: String) -> String:
@@ -318,7 +313,6 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		st.armor = float(d.get("armor", 0.0))
 		st.shield = float(d.get("shield", 0.0))
 		st.set_meta("seen", bool(d.get("seen", false)))
-	var dock_later: Array = []
 	for d in data.get("ships", []):
 		if not Defs.SHIPS.has(d["type"]):
 			continue
@@ -357,30 +351,12 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			"bombard":
 				if planets.has(o["target"]):
 					s.order_bombard(planets[o["target"]])
-			"dock":
-				# Deferred: the carrier may not have been spawned yet.
-				dock_later.append([s, _p(o["at"])])
 		s.held = was_held
 		# Shift-queued legs behind the current order.
 		for q in d.get("queue", []):
 			var entry := _queued_entry(q, rocks, planets)
 			if not entry.is_empty():
 				s.order_queue.append(entry)
-	# Craft that were in (or flying to) a carrier's bay are sent back to it.
-	for pair in dock_later:
-		var craft: Ship = pair[0]
-		var at: Vector2 = pair[1]
-		var best: Ship = null
-		var best_d := 80.0
-		for other in tree.get_nodes_in_group("ships"):
-			if other == craft or other.owner_id != craft.owner_id or int(other.def.get("bays", 0)) <= 0:
-				continue
-			var dd: float = at.distance_to(other.global_position)
-			if dd < best_d:
-				best_d = dd
-				best = other
-		if best != null:
-			craft.order_dock(best)
 	# Ships that were inside a Weapons Depot go back in where they were.
 	for d in data.get("ships", []):
 		if not bool(d.get("docked", false)):

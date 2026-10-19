@@ -210,8 +210,7 @@ func _ready() -> void:
 		# and says what came back, so a restore can be checked without eyes.
 		get_tree().create_timer(1.0).timeout.connect(func():
 			var ships := get_tree().get_nodes_in_group("ships")
-			print("LOADED %d ships, %d heading for or sitting in a bay" % [ships.size(),
-				ships.filter(func(x): return x.state == Ship.State.DOCKED or x.state == Ship.State.DOCK_GO).size()]))
+			print("LOADED %d ships" % ships.size()))
 	# Resuming a saved match? Its system comes from the save.
 	var save_data := {}
 	if GameState.load_on_start:
@@ -3202,31 +3201,18 @@ func _enter_dev_capture() -> void:
 			e9.set_meta("sbtest", true)
 		center_on(sb9.global_position)
 	if OS.get_environment("SL_SHOT_OPEN") == "carrier":
-		# Dev: a carrier of the requested mark with damaged corvettes docking.
+		# Dev: a carrier of the requested mark, with a foe for its turrets.
 		var lvl9: int = int(OS.get_environment("SL_CARRIER_MARK"))
 		researched[player_id]["carriers"] = true
 		for mk9 in range(2, 2 + lvl9):
 			researched[player_id]["carrier_mk%d" % mk9] = true
 		var c9 := spawn_ship("carrier", player_id, Vector2(-200, 0))
 		c9.order_stop()
-		for i9 in 6:
-			var cv := spawn_ship("corvette", player_id, Vector2(-40 + i9 * 40, -160 + i9 * 60))
-			cv.hp = cv.max_hp * 0.3
-			cv.armor = 0.0
-			cv.order_dock(c9)
 		# An enemy off the bow so the turrets have something to swing onto.
 		var foe9 := spawn_ship("corvette", 2 if player_id == 1 else 1, Vector2(-200, -220))
 		foe9.order_stop()
 		center_on(Vector2(-200, 0))
-		# Selected, so the capture shows the hangar panel too.
 		_set_selection([c9], false)
-		# Dev: prove the bays survive a save. Prints what is docked now and
-		# writes a save; reload it with SL_LOAD=<path> to see them come back.
-		get_tree().create_timer(float(OS.get_environment("SL_SHOT").split(",")[0]) - 0.3).timeout.connect(func():
-			var in_bays := get_tree().get_nodes_in_group("ships").filter(func(x): return x.state == Ship.State.DOCKED or x.state == Ship.State.DOCK_GO)
-			print("CARRIER docked/inbound %d, bays filled %d" % [in_bays.size(), c9.bay_craft.filter(func(x): return x != null and is_instance_valid(x)).size()])
-			if OS.get_environment("SL_SAVE_TEST") != "":
-				print("CARRIER saved ", SaveGame.write(self, "carrier dock test")))
 	if OS.get_environment("SL_SHOT_OPEN") == "resbtn":
 		# Dev: the research button while a project is running (green glow).
 		queue_research(player_id, "ion_cannons")

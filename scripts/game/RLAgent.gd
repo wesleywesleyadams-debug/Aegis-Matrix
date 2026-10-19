@@ -252,7 +252,7 @@ func _actor_rows(game: Game, home: Vector2) -> Array:
 			m = {"stop": true, "move": true, "attack_move": armed, "attack": armed, "bombard": armed,
 				"mine": s.is_miner(), "return": s.is_miner() and s.cargo > 0,
 				"colonize": s.def["role"] == "colony", "found": s.def["role"] == "constructor",
-				"dock": s.fits_bay(), "refit": not s.def.has("variant") and Defs.VARIANTS_OF.has(s.ship_type),
+				"dock": false,   # carriers have no bays now; slot kept for the trained model "refit": not s.def.has("variant") and Defs.VARIANTS_OF.has(s.ship_type),
 				"ability": not Abilities.job_def(s).is_empty() and Abilities.job_def(s).get("active", false) and Abilities.ready_in(s) <= 0.0}
 		elif e is Starbase:
 			var sb: Starbase = e
@@ -427,8 +427,7 @@ func _order(game: Game, ai: int, vi: int, oi: int, ti: int) -> void:
 			if tgt is Planet and tgt.owner_id == 0 and tgt.is_habitable():
 				actor.order_colonize(tgt)
 		"dock":
-			if tgt is Ship and tgt.owner_id == pid and tgt.is_carrier():
-				actor.order_dock(tgt)
+			pass   # carriers have no bays now
 		"refit":
 			if tgt is WeaponsDepot and tgt.owner_id == pid and actor.can_refit(tgt.variant):
 				actor.order_refit(tgt.variant, tgt)

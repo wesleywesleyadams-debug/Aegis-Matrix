@@ -591,8 +591,6 @@ func _page_ships() -> void:
 		var fittings: Array = []
 		if d.has("turrets"):
 			fittings.append("%d turrets, traversing %d°/s" % [d["turrets"].size(), int(rad_to_deg(float(d.get("turret_rate", 1.0))))])
-		if int(d.get("bays", 0)) > 0:
-			fittings.append("%d hangar bays" % int(d["bays"]))
 		if not fittings.is_empty():
 			stats += "
 " + "  ·  ".join(fittings)
