@@ -2079,21 +2079,6 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 				s.do_or_queue(queued, "order_move", [world_pos])
 			return
 
-	# A friendly carrier: send what it can take into its bays to be mended.
-	if target is Ship and target.owner_id == player_id and (target as Ship).is_carrier():
-		var carrier := target as Ship
-		var berthed := 0
-		for s in ships.duplicate():
-			if s is Ship and s != carrier and (s as Ship).fits_bay():
-				s.do_or_queue(queued, "order_dock", [carrier])
-				ships.erase(s)
-				berthed += 1
-			else:
-				s.do_or_queue(queued, "order_move", [world_pos])
-		hud.flash_target(carrier, "")
-		if berthed == 0:
-			message.emit("Carrier bays are corvette-sized: bigger hulls will not fit.", Color("ff8a5a"))
-		return
 	if target is WeaponsDepot and target.owner_id == player_id and not target.under_construction:
 		var sent := 0
 		for s in ships.duplicate():

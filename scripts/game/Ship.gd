@@ -684,8 +684,9 @@ func is_carrier() -> bool:
 	return def.get("bays", 0) > 0
 
 ## Whether this ship is small enough to sit in a carrier's bay.
+## Carriers no longer have hangar bays, so nothing docks.
 func fits_bay() -> bool:
-	return def.get("role", "") == "warship" and not is_carrier() and float(def["radius"]) <= Defs.BAY_MAX_RADIUS
+	return false
 
 ## Sends this ship to a carrier's bay to be mended.
 func order_dock(c: Ship) -> void:

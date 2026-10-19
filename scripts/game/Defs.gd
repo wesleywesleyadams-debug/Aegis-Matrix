@@ -129,12 +129,11 @@ const BASE_SHIPS := {
 		"name": "Carrier", "role": "warship", "requires": "carriers", "base": "carrier",
 		# About twice a cruiser in every dimension: slower across the map and
 		# far slower to come about, since turn rate falls with radius. It
-		# makes up for it with several mounts instead of one, and the hangar
-		# bays are the real reason to build one.
+		# makes up for it with several mounts instead of one.
 		"hp": 1433.0, "armor": 1433.0, "shield": 1434.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": 12.0, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
-		"guns": 4, "bays": 6, "job": "hangar",
+		"guns": 4,
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
 		# stay off the bearing and flank it.
@@ -773,10 +772,8 @@ const JOBS := {
 		"desc": "Sees far, into spice nebulae and through ion storms. [Q] Drop a sensor beacon that watches the spot for 90 s."},
 	"radiation_sail": {"name": "Radiation Sail", "active": false, "color": Color("c9a0ff"),
 		"desc": "In Radiation (a star's zone or a spice nebula), harvests 15 energy a minute: first into a solar shield (100; 1 energy charges 10% of it; starts full, charges even under fire), the rest to your energy pool. The shield is a bubble nearly two carriers wide. It soaks enemy fire on every friendly ship, construct and world inside, and blocks Radiation for everything inside, friend or foe. Touching bubbles merge into one pooled mega shield."},
-	"hangar": {"name": "Hangar Bays", "active": false, "color": Color("ffc24a"),
-		"desc": "Six bays for corvette-sized hulls: right-click the carrier with them selected (or let them dock on their own). Each is mended hull first, then armor, then launched."},
 	"field_repair": {"name": "Field Repair", "active": true, "cooldown": 60.0, "color": Color("6fe07a"),
-		"desc": "Repairs up to 4 ships within 180 px (5 points/s each: hull first, then armor; only tenders and carrier bays restore armor) once out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
+		"desc": "Repairs up to 4 ships within 180 px (5 points/s each: hull first, then armor; only tenders restore armor) once out of combat. [Q] Emergency repair: +35% of hull and armor to ships within 200 px."},
 }
 
 ## Visual language for the defense layers: bars, research lines, and the

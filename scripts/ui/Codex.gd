@@ -396,7 +396,7 @@ func _page_combat() -> void:
 	_para("Damage drains shields, then armor, then hull. A ship dies when its hull reaches 0.")
 	_table(["Layer", "Regenerates", "Notes"], [
 		[["Shields", Defs.LAYER_COLORS["shield"]], "Yes, for a little energy", "Paused while taking damage, Radiation included"],
-		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender or a carrier's hangar bays restore it"],
+		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender restores it"],
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
 	_para("Shields on ships, constructs and worlds only recharge after %d s without damage, then refill %s%% of their maximum each second. Focused fire keeps them down. Spread fire lets unhit ships recover." % [int(Defs.SHIELD_REGEN_DELAY), String.num(Defs.SHIELD_REGEN_PER_SEC * 100.0, 1)])
@@ -544,7 +544,7 @@ func _page_ships() -> void:
 	for cls in Defs.MARK_LINES:
 		cls_plate.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
 	_plate(cls_plate, 104.0, true, "One shape per class, for life: corvette A, destroyer Y, cruiser X, carrier H.")
-	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow. A destroyer is a tail boom forking into two prongs. A cruiser is four wings crossed at a hub. A carrier is two nacelles either side of a hangar spine. Silhouettes show a fleet's makeup.")
+	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow. A destroyer is a tail boom forking into two prongs. A cruiser is four wings crossed at a hub. A carrier is two nacelles either side of a central spine. Silhouettes show a fleet's makeup.")
 	_heading("Mark — the rank")
 	_para("Each mark adds to damage, hull, armor and shields alike. Later marks are worth more, and bigger classes gain more from each. Bonus over Mk I:")
 	var mrows0: Array = []
@@ -885,7 +885,7 @@ func _page_terms() -> void:
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
 		["Radiation", "Environmental damage inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and stops shield regeneration."],
 		["Pierce", "Skipping a layer entirely: Slip skips shields, Disruptor skips shields and armor."],
-		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair, Hangar Bays."],
+		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair."],
 		["Mod", "A research option that changes one ship class's weapon (Mods tab). One per class; another replaces it; click an active one to switch it off."],
 		["Blast", "The area an exploding shot hits: every enemy inside takes part of its damage, the target included."],
 		["Hit-and-run", "How bomb, torpedo and missile ships attack: close in, fire, peel away while reloading, come round again."],
@@ -990,5 +990,5 @@ const SHIP_NOTES := {
 	"corvette": "The cheap body of a fleet, and the only hull a carrier can dock. Fast and short-ranged, it is bought in numbers.",
 	"destroyer": "An armored boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Heavy shields and three laser turrets that outrange everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
-	"carrier": "A mobile repair yard that shoots back. Its bays dock damaged corvettes, mend hull then armor and launch them again, and its four turrets traverse on their own, so the hull never has to come about to fire — but slowly enough that a corvette which keeps moving can stay off the bearing and flank it. Turrets fire on the move at reduced accuracy.",
+	"carrier": "The heaviest hull, with four turrets that traverse on their own, so the hull never has to come about to fire — but slowly enough that a corvette which keeps moving can stay off the bearing and flank it. Turrets fire on the move at reduced accuracy.",
 }
