@@ -39,9 +39,9 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	free_flight = weapon == "bomblet"
 	trail_on = weapon in ["missile", "proton", "torpedo"] and not Game.instance.sim_mode
 	torp_wake = weapon in ["proton", "torpedo"]
-	if from is Ship and weapon == "flak":
-		splash = float(from.weapon_mod.get("splash", 0.6))
-		splash_r = float(from.weapon_mod.get("splash_r", 50.0))
+	if Defs.AOE_RADIUS.has(weapon):
+		splash = Defs.AOE_SHARE
+		splash_r = Defs.AOE_RADIUS[weapon]
 	# Proton Torpedoes steer only gently and give up once the target is well
 	# off their nose: a target that turns hard can shake them off.
 	weak_lock = weapon == "proton"
@@ -103,9 +103,8 @@ func _physics_process(delta: float) -> void:
 			if x == shooter:
 				continue   # clears its own hull on the way out
 			if Geometry2D.get_closest_point_to_segment(x.global_position, global_position, nxt).distance_to(x.global_position) <= x.radius:
-				if x.owner_id != owner_pid and x.is_enemy_of(owner_pid):
-					x.take_damage(damage, shooter if is_instance_valid(shooter) else null, profile)
-				Game.instance.spawn_explosion(x.global_position, 0.3)
+				# Bursts on whatever it touches; the blast hurts enemies only.
+				Game.instance.splash(x.global_position, splash_r, damage * splash, owner_pid, shooter, profile, vs_class)
 				queue_free()
 				return
 		global_position = nxt
@@ -127,13 +126,16 @@ func _physics_process(delta: float) -> void:
 		var next_pos := global_position + _vel * delta
 		var near := Geometry2D.get_closest_point_to_segment(target.global_position, global_position, next_pos)
 		if near.distance_to(target.global_position) <= target.radius:
+			if splash > 0.0:
+				# A world is not a hull the blast finds: it takes its share directly.
+				if target is Planet:
+					target.take_damage(damage * splash, shooter if is_instance_valid(shooter) else null, profile)
+				Game.instance.splash(near, splash_r, damage * splash, owner_pid, shooter, profile, vs_class)
+				queue_free()
+				return
 			var hit := damage
 			if not vs_class.is_empty() and target is Ship:
 				hit *= float(vs_class.get(str(target.def.get("base", target.ship_type)), 1.0))
-			if splash > 0.0:
-				Game.instance.splash(near, splash_r, hit * splash, owner_pid, shooter, profile)
-				queue_free()
-				return
 			target.take_damage(hit, shooter if is_instance_valid(shooter) else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)

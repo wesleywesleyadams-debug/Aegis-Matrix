@@ -716,6 +716,11 @@ static func _with_variants() -> Dictionary:
 	return out
 
 ## A ship def's damage profile: {"vs": layer multipliers, "pierce": 0-2}.
+## Blast radius of every exploding shot: each deals AOE_SHARE of its damage
+## to every enemy within the radius, the target included.
+const AOE_RADIUS := {"flak": 20.0, "missile": 25.0, "proton": 30.0, "torpedo": 30.0, "bomblet": 40.0}
+const AOE_SHARE := 0.6
+
 ## How a Mod (Game.active_mod) changes its class's weapon. dmg / cd / range
 ## multiply damage per shot, cooldown and range; same damage per second as the
 ## laser unless noted (docs/MODS.md).
@@ -731,7 +736,7 @@ const MOD_WEAPONS := {
 	#   count  - projectiles per turret shot; spread - their fan, radians
 	#   splash - Flak: on impact, this share of the damage to every enemy
 	#            within splash_r (the target included)
-	"mod_flak_cannons": {"weapon": "flak", "splash": 0.6, "splash_r": 50.0},
+	"mod_flak_cannons": {"weapon": "flak"},
 	"mod_cluster_bombs": {"weapon": "bomblet", "cd": 3.0, "count": 3, "spread": 0.5, "run": true},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 1.25, "count": 2, "range": 1.2, "run": true},
 }
