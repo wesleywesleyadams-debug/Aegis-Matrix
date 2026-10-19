@@ -2720,9 +2720,13 @@ func _enter_dev_capture() -> void:
 		var theirs: Array = []
 		for k in 6:
 			ours.append(spawn_ship("corvette", player_id, c0 + Vector2(-220, -60 + k * 24)))
-			theirs.append(spawn_ship("corvette", foe_d, c0 + Vector2(220, -60 + k * 24)))
+			# SL_FOE: the enemy hull (default corvette); bigger ones come fewer.
+			var foe_type := OS.get_environment("SL_FOE") if OS.get_environment("SL_FOE") != "" else "corvette"
+			if foe_type == "corvette" or k < 2:
+				theirs.append(spawn_ship(foe_type, foe_d, c0 + Vector2(260, -60 + k * 60)))
 		for k in 6:
-			ours[k].order_attack(theirs[k])
+			ours[k].order_attack(theirs[k % theirs.size()])
+		for k in theirs.size():
 			theirs[k].order_attack(ours[k])
 		center_on(c0)
 		# SL_DUEL_SPEED: faster duels for number-only runs (physics stays 60/s).
@@ -2732,9 +2736,10 @@ func _enter_dev_capture() -> void:
 		var tough := func(list: Array) -> float:
 			return list.reduce(func(a, s): return a + (s.hp + s.armor + s.shield if is_instance_valid(s) and s.is_alive() else 0.0), 0.0)
 		var full: float = tough.call(ours)
+		var full_t: float = tough.call(theirs)
 		await get_tree().create_timer(float(OS.get_environment("SL_DUEL_T")) if OS.get_environment("SL_DUEL_T") != "" else 8.0).timeout
 		print("MODDUEL %s: we dealt %.0f, they dealt %.0f, ours alive %d, theirs alive %d" % [mid if mid != "" else "laser",
-			full - tough.call(theirs), full - tough.call(ours),
+			full_t - tough.call(theirs), full - tough.call(ours),
 			ours.filter(func(s): return is_instance_valid(s) and s.is_alive()).size(), theirs.filter(func(s): return is_instance_valid(s) and s.is_alive()).size()])
 		# SL_DUEL_QUIT: number-only runs (headless, no capture) end here.
 		if OS.get_environment("SL_DUEL_QUIT") != "":

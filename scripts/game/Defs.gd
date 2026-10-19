@@ -723,7 +723,9 @@ static func _with_variants() -> Dictionary:
 ##   run    - attack runs: after each shot the ship peels away while it reloads
 ##   chain  - Arc: shares of the damage for the target, then each extra jump
 const MOD_WEAPONS := {
-	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 3.0, "cd": 3.0, "run": true},
+	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
+	# hulls harder: vs_class multiplies damage against those classes.
+	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 1.1624, "vs_class": {"destroyer": 1.33, "cruiser": 1.66, "carrier": 2.0}, "cd": 3.0, "run": true},
 	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 1.0 / 3.0, "cd": 1.0 / 3.0, "range": 0.75},
 	"mod_arc_emitters": {"weapon": "arc", "chain": [0.6, 0.2, 0.2], "jump": 120.0},
 }

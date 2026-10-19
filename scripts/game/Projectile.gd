@@ -13,6 +13,8 @@ const SLIP_SHOT := Color("ff7a14")
 var speed: float
 var homing: bool
 var weak_lock := false
+## Damage multipliers by target class (Defs.MOD_WEAPONS "vs_class").
+var vs_class := {}
 var life: float = 3.0
 var _vel: Vector2
 
@@ -24,6 +26,8 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
 	# Proton Torpedoes steer only gently and give up once the target is well
 	# off their nose: a target that turns hard can shake them off.
 	weak_lock = weapon == "proton"
+	if from is Ship:
+		vs_class = from.weapon_mod.get("vs_class", {})
 	# Kinetic Repeater slugs: fast and small.
 	speed = (110.0 if weak_lock else 85.0) if homing else (320.0 if weapon == "kinetic" else 210.0)
 	# Misses expire just past weapon range instead of crossing the map.
@@ -77,7 +81,10 @@ func _physics_process(delta: float) -> void:
 		var next_pos := global_position + _vel * delta
 		var near := Geometry2D.get_closest_point_to_segment(target.global_position, global_position, next_pos)
 		if near.distance_to(target.global_position) <= target.radius:
-			target.take_damage(damage, shooter if is_instance_valid(shooter) else null, profile)
+			var hit := damage
+			if not vs_class.is_empty() and target is Ship:
+				hit *= float(vs_class.get(str(target.def.get("base", target.ship_type)), 1.0))
+			target.take_damage(hit, shooter if is_instance_valid(shooter) else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)
 			queue_free()
