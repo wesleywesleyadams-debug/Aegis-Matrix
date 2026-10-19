@@ -98,7 +98,14 @@ func _fire_turrets(delta: float) -> void:
 				_t_cd[i] = def["cooldown"] * 0.4 / g.mod(owner_id, "fire_rate")
 				continue
 		var tgt: Node2D = null
-		if focus:
+		# Point-Defense: after ordnance, enemy drones come before any ship.
+		if pd > 0.0:
+			tgt = _pd_drone(rng, claimed)
+			if tgt:
+				claimed[tgt] = true
+		if tgt != null:
+			pass
+		elif focus:
 			tgt = ordered
 		else:
 			var cur = _t_target[i]
@@ -142,6 +149,8 @@ func _fire_turrets(delta: float) -> void:
 			# A fresh fan width every launch, so no two runs land alike.
 			spread = deg_to_rad(randf_range(weapon_mod["fan"][0], weapon_mod["fan"][1])) * 0.5
 		var shot: float = dmg * float(weapon_mod.get("dmg", 1.0))
+		if pd > 0.0 and tgt is Drone:
+			shot *= PD_DRONE_MULT
 		for k in per:
 			if randf() < acc or wpn == "missile":   # missiles never miss
 				for j in n_proj:
@@ -360,6 +369,22 @@ func _clear_drones() -> void:
 
 func _exit_tree() -> void:
 	_clear_drones()
+
+## Point-Defense: x damage against Interceptor Drones.
+const PD_DRONE_MULT := 2.0
+## Point-Defense: the nearest enemy drone within weapon range `r` not
+## already taken by another of this ship's turrets.
+func _pd_drone(r: float, claimed: Dictionary) -> Node2D:
+	var best: Node2D = null
+	var best_d := r
+	for d in get_tree().get_nodes_in_group("drones"):
+		if not is_instance_valid(d) or not d.is_alive() or claimed.has(d) or not d.is_enemy_of(owner_id):
+			continue
+		var dist := global_position.distance_to(d.global_position)
+		if dist < best_d:
+			best_d = dist
+			best = d
+	return best
 
 ## Point-Defense: the nearest enemy missile, torpedo or bomblet within `r`
 ## not already being shot by another of this ship's turrets.

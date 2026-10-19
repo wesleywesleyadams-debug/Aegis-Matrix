@@ -531,7 +531,7 @@ const TECHS := {
 	"mod_rail_cannons": {"name": "Rail Cannons", "group": "mods", "mod": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 220, "spice": 40}, "time": 90.0,
 		"effects": {"mod_cruiser": 1.0}, "desc": "+40% range, big slow shots: best vs big hulls."},
 	"mod_point_defense_lattice": {"name": "Point-Defense Lattice", "group": "mods", "mod": "cruiser", "tier": 3, "requires": ["cruisers"], "cost": {"energy": 220, "spice": 40}, "time": 90.0,
-		"effects": {"mod_cruiser": 1.0}, "desc": "Shoots down torpedoes and missiles; -30% vs ships."},
+		"effects": {"mod_cruiser": 1.0}, "desc": "Shoots down torpedoes, missiles and bombs, then drones (x2); -30% vs ships."},
 	"mod_interceptor_drones": {"name": "Interceptor Drones", "group": "mods", "mod": "carrier", "tier": 1, "requires": ["carriers"], "cost": {"energy": 280, "spice": 50}, "time": 105.0,
 		"effects": {"mod_carrier": 1.0}, "desc": "4 drones attack enemies within 300."},
 	"mod_tractor_beams": {"name": "Tractor Beams", "group": "mods", "mod": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 280, "spice": 50}, "time": 105.0,
@@ -746,11 +746,13 @@ const MOD_WEAPONS := {
 	"mod_cluster_bombs": {"dmg": 1.0, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0], "run": true},
 	"mod_ion_lance": {"weapon": "beam", "dmg": 0.75, "beam": [0.15, 1.85, 4.0]},
 	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.4, "cd": 4.0, "range": 1.4},
+	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
+	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
 	"mod_point_defense_lattice": {"dmg": 0.7, "pd": 160.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
-	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 0.8377, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
+	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.5, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
 	"mod_tractor_beams": {"tractor": [0.1, 0.9, 2.0]},
