@@ -354,7 +354,7 @@ const TECHS := {
 	"arcologies": {"name": "Arcologies", "group": "worlds", "tier": 2, "requires": ["habitat_modules"], "cost": {"energy": 110, "spice": 20}, "time": 80.0,
 		"effects": {"max_pop": 0.30}, "desc": "+30% population cap."},
 	# --- Weapons: reach and rate of fire, alongside the damage line.
-	"targeting_arrays": {"name": "Rangefinders", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 60}, "time": 50.0,
+	"targeting_arrays": {"name": "Quantum Lenses", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 60}, "time": 50.0,
 		"effects": {"range": 0.15}, "desc": "+15% weapon range: ships and starbases."},
 	"autoloaders": {"name": "Autoloaders", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 70}, "time": 55.0,
 		"effects": {"fire_rate": 0.15}, "desc": "+15% rate of fire: ships and starbases."},
