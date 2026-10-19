@@ -33,9 +33,7 @@ func _ready() -> void:
 	$Sprite.scale = Vector2.ONE * size_scale / Defs.ART_SCALE
 	radius = $Sprite.texture.get_width() * size_scale / Defs.ART_SCALE / 2.0
 	resource = "spice" if variant.begins_with("spice") else "minerals"
-	var w: float = $Sprite.texture.get_width() * size_scale / Defs.ART_SCALE
-	var per_px2: float = Defs.ASTEROID_SPICE_PER_PX2 if resource == "spice" else Defs.ASTEROID_MINERALS_PER_PX2
-	max_amount = int(round(w * w * per_px2 / 10.0)) * 10
+	max_amount = Defs.ROCK_LARGE if Defs.rock_is_large(variant, size_scale) else Defs.ROCK_SMALL
 	amount = max_amount
 	if Engine.is_editor_hint():
 		return

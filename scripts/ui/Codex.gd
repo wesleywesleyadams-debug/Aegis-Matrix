@@ -719,8 +719,7 @@ func _rock_sizes() -> void:
 			["spice_0", 1.0, "Spice", "spice"], ["spice_0", SystemGen.BIG_SPICE, "Large spice", "spice"]]:
 		var tex := Defs.tex(it[0])
 		var w: float = tex.get_width() * float(it[1]) / Defs.ART_SCALE
-		var per: float = Defs.ASTEROID_SPICE_PER_PX2 if it[3] == "spice" else Defs.ASTEROID_MINERALS_PER_PX2
-		var holds := int(round(w * w * per / 10.0)) * 10
+		var holds: int = Defs.ROCK_LARGE if Defs.rock_is_large(it[0], float(it[1])) else Defs.ROCK_SMALL
 		var cell := VBoxContainer.new()
 		cell.alignment = BoxContainer.ALIGNMENT_END
 		cell.add_theme_constant_override("separation", 4)
@@ -774,7 +773,7 @@ func _page_economy() -> void:
 		_pct("cutting_lasers", "harvest"), _pct("resonance_drills", "harvest"), _pct("mass_drivers", "harvest"),
 		_pct("deep_drills", "cargo"), _pct("bulk_holds", "cargo"), _pct("logistics_command", "harvest"), int(Defs.SHIPS["heatshield"]["solar_sail"])])
 	_heading("Asteroid sizes")
-	_para("Every rock of a size holds the same amount, on every map. Belts differ in their mix: a rich belt has more big rocks, a poor one mostly small. Rocks run dry and vanish; gas giants refill after a pause, and a spice nebula never runs out.")
+	_para("A small rock holds the same amount whether it is minerals or spice, and so does a large one, on every map. Belts differ in their mix: a rich belt has more big rocks, a poor one mostly small. Rocks run dry and vanish; gas giants refill after a pause, and a spice nebula never runs out.")
 	_rock_sizes()
 	_heading("Buildings")
 	var bplate: Array = []

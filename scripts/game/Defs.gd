@@ -213,10 +213,14 @@ const MINING_STATION := {
 	"upkeep": 1.0,
 }
 
-## Asteroid reserves scale with rock size: amount = width_px^2 * this.
-## Small 16px rock ~410 minerals, large 26px ~1080; spice rocks are scarcer.
-const ASTEROID_MINERALS_PER_PX2 := 1.6
-const ASTEROID_SPICE_PER_PX2 := 0.5
+## What a rock holds goes by its size class, not what it is: a small rock
+## holds the same minerals or spice, and so does a large one.
+const ROCK_SMALL := 410
+const ROCK_LARGE := 1080
+
+## Whether a rock of this art and draw scale is a large one.
+static func rock_is_large(variant: String, scale: float) -> bool:
+	return variant.begins_with("asteroid_big") or (variant.begins_with("spice") and scale > 1.01)
 
 ## No hard fleet cap: each ship's energy upkeep is multiplied by
 ## 1 + (ship_count / UPKEEP_SCALE_SHIPS)^2, so total upkeep climbs steeply and
