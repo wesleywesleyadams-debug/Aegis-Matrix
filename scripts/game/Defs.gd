@@ -115,7 +115,7 @@ const BASE_SHIPS := {
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
-		"guns": 2, "turret_rate": 2.0, "turret_scale": 0.5, "turrets": [[0.62, -0.22], [0.62, 0.22]],
+		"guns": 2, "turret_rate": 6.0, "turret_scale": 0.5, "turrets": [[0.62, -0.22], [0.62, 0.22]],
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
@@ -123,7 +123,7 @@ const BASE_SHIPS := {
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 80.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 11.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 		# Three laser turrets: the hub and both forward wings.
-		"guns": 3, "turret_rate": 2.0, "turret_scale": 0.6, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
+		"guns": 3, "turret_rate": 6.0, "turret_scale": 0.6, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
 	},
 	"carrier": {
 		"name": "Carrier", "role": "warship", "requires": "carriers", "base": "carrier",
@@ -137,7 +137,7 @@ const BASE_SHIPS := {
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
 		# stay off the bearing and flank it.
-		"turret_rate": 2.0, "turrets": [[0.7, -0.22], [0.7, 0.22], [0.3, -0.22], [0.3, 0.22]],
+		"turret_rate": 6.0, "turrets": [[0.7, -0.22], [0.7, 0.22], [0.3, -0.22], [0.3, 0.22]],
 		# Refitting a hull this size is proportionally dearer and slower than
 		# a cruiser's (15 / 35 s) — twice the hull, twice the yard time.
 		"refit": {"minerals": 30, "time": 70.0},
