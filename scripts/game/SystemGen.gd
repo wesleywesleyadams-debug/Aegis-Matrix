@@ -284,10 +284,10 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 			if half_rocks.filter(func(r): return r["pos"].length() > inner and r["pos"].length() < outer and str(r["variant"]).begins_with("spice")).size() >= 7:
 				break
 
-	# Spice is rare but worth the same per rock: about a third of all rocks
-	# (give or take a little by seed) are spice. Short of that, the spice
-	# belts grow; a spice-rich system (Kharon's ring) may run over.
-	var share := rng.randf_range(0.30, 0.36)
+	# Spice is rare but worth the same per rock: about 15% of all rocks
+	# (13-17% by seed). Short of that, the spice belts grow; over it, spice
+	# rocks are thinned out (never the back belt's).
+	var share := rng.randf_range(0.13, 0.17)
 	var have := half_rocks.filter(func(r): return str(r["variant"]).begins_with("spice")).size()
 	var tries := 0
 	while have < share * half_rocks.size() and tries < 300:
@@ -297,6 +297,25 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 		if p != Vector2.INF and _in_wedge(p) and _inside(p):
 			half_rocks.append(_rock(rng, "spice", p, float(sb_[2])))
 			have += 1
+	var spare: Array = []
+	for i in half_rocks.size():
+		if str(half_rocks[i]["variant"]).begins_with("spice") and half_rocks[i]["pos"].distance_to(back_c) > 110.0:
+			spare.append(i)
+	for i in range(spare.size() - 1, 0, -1):   # seeded shuffle: the same map for everyone
+		var j := rng.randi_range(0, i)
+		var tmp = spare[i]
+		spare[i] = spare[j]
+		spare[j] = tmp
+	var drop := {}
+	while have > share * (half_rocks.size() - drop.size()) + 0.5 and not spare.is_empty():
+		drop[spare.pop_back()] = true
+		have -= 1
+	if not drop.is_empty():
+		var kept: Array = []
+		for i in half_rocks.size():
+			if not drop.has(i):
+				kept.append(half_rocks[i])
+		half_rocks = kept
 
 	if params.has("nebula"):
 		features.append_array(nebulae(str(params["nebula"]), sb_pos, seed))

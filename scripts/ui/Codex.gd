@@ -773,7 +773,7 @@ func _page_economy() -> void:
 		_pct("cutting_lasers", "harvest"), _pct("resonance_drills", "harvest"), _pct("mass_drivers", "harvest"),
 		_pct("deep_drills", "cargo"), _pct("bulk_holds", "cargo"), _pct("logistics_command", "harvest"), int(Defs.SHIPS["heatshield"]["solar_sail"])])
 	_heading("Asteroid sizes")
-	_para("A small rock holds the same amount whether it is minerals or spice, and so does a large one, on every map. Spice is rare instead: about a third of all rocks. Belts differ in their mix: a rich belt has more big rocks, a poor one mostly small. Rocks run dry and vanish; gas giants refill after a pause, and a spice nebula never runs out.")
+	_para("A small rock holds the same amount whether it is minerals or spice, and so does a large one, on every map. Spice is rare instead: about one rock in seven. Belts differ in their mix: a rich belt has more big rocks, a poor one mostly small. Rocks run dry and vanish; gas giants refill after a pause, and a spice nebula never runs out.")
 	_rock_sizes()
 	_heading("Buildings")
 	var bplate: Array = []
