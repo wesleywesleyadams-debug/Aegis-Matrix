@@ -3586,6 +3586,16 @@ func _duel() -> void:
 	for i in 2:
 		var sp := specs[i].split(":")
 		var t := sp[0]
+		# "starbase" fields one fresh starbase (no budget) for the other side
+		# to break.
+		if t == "starbase":
+			var sbn: Starbase = STARBASE_SCENE.instantiate()
+			sbn.owner_id = i + 1
+			sbn.position = c + Vector2((-1.0 if i == 0 else 1.0) * 320.0, 0)
+			starbases_root.add_child(sbn)
+			print("DUEL_SIDE starbase: 1")
+			fleets[i].append(sbn)
+			continue
 		var mk := int(sp[1]) if sp.size() > 1 else 1
 		var pid := i + 1
 		for m in range(2, mk + 1):
