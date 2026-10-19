@@ -1064,5 +1064,5 @@ const SHIP_NOTES := {
 	"corvette": "The cheap body of a fleet. Fast and short-ranged, it is bought in numbers.",
 	"destroyer": "An armored boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Heavy shields and three laser turrets that outrange everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
-	"carrier": "The heaviest hull, with four turrets that traverse on their own, so the hull never has to come about to fire. Turrets fire on the move at reduced accuracy (Gyro-Stabilizers remove that). Its Mods trade the turrets for drones, add tractor beams, or fire long-range missile salvos.",
+	"carrier": "The heaviest hull, armored and shielded far more than its hull, with four turrets that traverse on their own, so the hull never has to come about to fire. Turrets fire on the move at reduced accuracy (Gyro-Stabilizers remove that). Its Mods trade the turrets for drones, add tractor beams, or fire long-range missile salvos.",
 }

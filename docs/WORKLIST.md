@@ -60,7 +60,6 @@ All of this is dead code now (the carrier has no `bays`, and `fits_bay()` return
   - Drones: build rate, hull, killable, PD ×2.
   - The "damage per second stays the same" rule no longer holds.
 - **[stale] Flak Cannons desc** (Defs.gd:531) says "within 50 for 60%". The comment at Defs.gd:748 documents a `splash` key that's gone.
-- **[stale] Codex corvette blurb** (Codex.gd:990) still says the corvette is "the only hull a carrier can dock".
 - **[stale] Codex carrier blurb** (Codex.gd:993) doesn't mention carrier Mods.
 - **[stale] The Weapon Mods section** has no numbers for Drones, Tractor Beams or Missile Barrage.
 - **[cleanup] Small leftovers:**
