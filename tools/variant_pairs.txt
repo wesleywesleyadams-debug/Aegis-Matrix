@@ -1,7 +1,3 @@
-corvette:1,corvette:1
-corvette:1,corvette:1
-corvette:1,corvette:1
-corvette:1,corvette:1
 plasma_corvette:1,corvette:1
 corvette:1,plasma_corvette:1
 plasma_corvette:1,corvette:1
@@ -22,10 +18,6 @@ disruptor_corvette:1,corvette:1
 corvette:1,disruptor_corvette:1
 disruptor_corvette:1,corvette:1
 corvette:1,disruptor_corvette:1
-destroyer:1,destroyer:1
-destroyer:1,destroyer:1
-destroyer:1,destroyer:1
-destroyer:1,destroyer:1
 plasma_destroyer:1,destroyer:1
 destroyer:1,plasma_destroyer:1
 plasma_destroyer:1,destroyer:1
@@ -46,10 +38,6 @@ disruptor_destroyer:1,destroyer:1
 destroyer:1,disruptor_destroyer:1
 disruptor_destroyer:1,destroyer:1
 destroyer:1,disruptor_destroyer:1
-cruiser:1,cruiser:1
-cruiser:1,cruiser:1
-cruiser:1,cruiser:1
-cruiser:1,cruiser:1
 plasma_cruiser:1,cruiser:1
 cruiser:1,plasma_cruiser:1
 plasma_cruiser:1,cruiser:1
@@ -70,10 +58,6 @@ disruptor_cruiser:1,cruiser:1
 cruiser:1,disruptor_cruiser:1
 disruptor_cruiser:1,cruiser:1
 cruiser:1,disruptor_cruiser:1
-carrier:1,carrier:1
-carrier:1,carrier:1
-carrier:1,carrier:1
-carrier:1,carrier:1
 plasma_carrier:1,carrier:1
 carrier:1,plasma_carrier:1
 plasma_carrier:1,carrier:1
