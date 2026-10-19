@@ -57,6 +57,12 @@ func _traverse(point: Vector2, delta: float) -> bool:
 ## keeps or picks its own enemy in reach, preferring ones no other turret of
 ## this ship is on, so a carrier can engage up to four ships at once.
 func _fire_turrets(delta: float) -> void:
+	if weapon_mod.has("drones"):
+		_fly_drones(delta)
+		return
+	elif not _drones.is_empty():
+		_drones.clear()
+		queue_redraw()
 	var g := Game.instance
 	var rng := weapon_range()
 	var ordered: Node2D = null
@@ -146,8 +152,105 @@ func _fire_turrets(delta: float) -> void:
 		if weapon_mod.get("run", false):
 			_run_out = _t_cd[i] * 0.5
 
-	if had_beams or not _beams.is_empty():
+	if weapon_mod.has("tractor"):
+		_tractor(delta, rng, n)
+	elif not _tbeams.is_empty():
+		_tbeams.clear()
+		had_beams = true
+	if had_beams or not _beams.is_empty() or not _tbeams.is_empty():
 		queue_redraw()
+
+## Tractor Beams: each turret holds a beam on its own target (or, past laser
+## range, the nearest enemy out to `reach` x attack range). The beam slows
+## from tr[0] at the far edge to tr[1] up close and slowly reels the target in.
+func _tractor(delta: float, rng: float, n: int) -> void:
+	var g := Game.instance
+	var tr: Array = weapon_mod["tractor"]
+	var reach: float = rng * float(tr[2])
+	_t_far_scan -= delta
+	if _t_far_scan <= 0.0:
+		_t_far_scan = SCAN_INTERVAL
+		_t_far = g.enemies_near(self, reach, n + 2)
+	_tbeams.clear()
+	var held := {}
+	for i in n:
+		var t = _t_target[i]
+		if not (is_instance_valid(t) and t.is_alive()) or held.has(t):
+			t = null
+			for e in _t_far:
+				if is_instance_valid(e) and e.is_alive() and not held.has(e):
+					t = e
+					break
+		if t == null or not (t is Ship):
+			continue
+		var d: float = global_position.distance_to(t.global_position)
+		if d > reach + t.radius:
+			continue
+		held[t] = true
+		var slow: float = lerpf(float(tr[1]), float(tr[0]), clampf(d / reach, 0.0, 1.0))
+		t.tractor_hit(slow)
+		if d > rng * 0.6:   # reel in only to the guns' sweet spot
+			t.global_position += (global_position - t.global_position).normalized() * 12.0 * slow * delta
+		_tbeams.append([_turret_sprites[i].global_position, t.global_position, slow])
+
+## Another ship's tractor beam slows this one by `slow` (0..1).
+func tractor_hit(slow: float) -> void:
+	_tr_roll()
+	_tr_acc *= 1.0 - slow
+
+func _tr_roll() -> void:
+	var f := Engine.get_physics_frames()
+	if f != _tr_frame:
+		_tr_prev = _tr_acc if f == _tr_frame + 1 else 1.0
+		_tr_acc = 1.0
+		_tr_frame = f
+
+## How much of its speed tractor beams leave this ship (1 = free).
+func _tractor_keep() -> float:
+	_tr_roll()
+	return _tr_prev
+
+## Interceptor Drones: they circle the carrier; any enemy within reach of
+## the carrier draws a drone out, which closes to 40 and fires lasers.
+func _fly_drones(delta: float) -> void:
+	var g := Game.instance
+	var cfg: Array = weapon_mod["drones"]
+	var count: int = int(cfg[0])
+	var reach: float = float(cfg[1])
+	while _drones.size() < count:
+		_drones.append({"pos": global_position, "cd": randf(), "tgt": null})
+	_t_scan -= delta
+	if _t_scan <= 0.0:
+		_t_scan = SCAN_INTERVAL
+		_t_near = g.enemies_near(self, reach, count)
+	var ordered: Node2D = target if state == State.ATTACK and target_ordered and is_instance_valid(target) and target.is_alive() \
+		and global_position.distance_to(target.global_position) <= reach + float(target.get("radius")) else null
+	var dmg: float = def["damage"] * Defs.mark_mult(ship_type, g.mark_level(owner_id, ship_type)) * float(weapon_mod.get("dmg", 1.0))
+	var per: float = float(def.get("guns", 4)) / float(count)
+	var t := Game.now()
+	for i in count:
+		var dr: Dictionary = _drones[i]
+		var tg = ordered
+		if tg == null:
+			tg = dr["tgt"]
+			if not (is_instance_valid(tg) and tg.is_alive() and global_position.distance_to(tg.global_position) <= reach + tg.radius):
+				tg = _t_near[i % _t_near.size()] if not _t_near.is_empty() else null
+				if tg != null and not (is_instance_valid(tg) and tg.is_alive()):
+					tg = null
+		dr["tgt"] = tg
+		var goal: Vector2
+		if tg != null:
+			goal = tg.global_position + (dr["pos"] - tg.global_position).normalized() * (tg.radius + 40.0)
+		else:
+			goal = global_position + Vector2.from_angle(t * 1.2 + TAU * i / count) * (radius + 30.0)
+		dr["pos"] = (dr["pos"] as Vector2).move_toward(goal, 240.0 * delta * g.ship_speed_factor(owner_id))
+		dr["cd"] = float(dr["cd"]) - delta * g.ship_speed_factor(owner_id)
+		if tg != null and dr["cd"] <= 0.0 and (dr["pos"] as Vector2).distance_to(tg.global_position) <= tg.radius + 70.0:
+			dr["cd"] = def["cooldown"] / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
+			var k: float = float(weapon_mod.get("vs_class", {}).get(tg.def.get("base", tg.get("ship_type")), 1.0)) if tg is Ship else 1.0
+			tg.take_damage(dmg * per * k * g.mod(owner_id, "damage"), self, Defs.damage_profile(def))
+			dr["shot"] = [dr["pos"], tg.global_position, t]
+	queue_redraw()
 
 ## Point-Defense: the nearest enemy missile, torpedo or bomblet within `r`
 ## not already being shot by another of this ship's turrets.
@@ -245,6 +348,17 @@ var _t_near: Array = []      # enemies in reach, nearest first (rescanned)
 ## this frame ([from, to] in world space).
 var _t_beam_time: Array[float] = []
 var _beams: Array = []
+## Tractor Beams: [from, to] to draw this frame, and per-turret far targets.
+var _tbeams: Array = []
+var _t_far: Array = []
+var _t_far_scan := 0.0
+## Being tractored: the product of (1 - slow) of every beam on this ship,
+## gathered over one physics frame and used for the next (_tractor_keep).
+var _tr_frame := -1
+var _tr_acc := 1.0
+var _tr_prev := 1.0
+## Interceptor Drones: each {pos (world), cd, tgt}.
+var _drones: Array = []
 var _t_scan := 0.0
 ## Carrier side: one slot per bay, holding the ship in it (or null).
 var bay_craft: Array = []
@@ -546,7 +660,7 @@ func max_speed() -> float:
 		return _speed_cache
 	_speed_frame = f
 	var storm := IonStorm.SLOW if Game.instance.in_storm(global_position) else 1.0
-	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
+	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm * _tractor_keep()
 	return _speed_cache
 
 ## How fast this ship fills its hold on `node`, per minute (Defs.PER_MIN).
@@ -1140,6 +1254,23 @@ func _draw() -> void:
 		var col: Color = Defs.VARIANTS[def["variant"]]["color"] if def.has("variant") else Color("7fd8ff")
 		draw_line(a, z, Color(col, 0.35 + 0.25 * k), (3.0 + 4.0 * k) / scale.x)
 		draw_line(a, z, Color(Color.WHITE, 0.8), (1.0 + 1.0 * k) / scale.x)
+	# Tractor beams: a pale green cone, stronger the harder it holds.
+	for bm in _tbeams:
+		var a := to_local(bm[0])
+		var z := to_local(bm[1])
+		var side := (z - a).orthogonal().normalized() * 7.0 / scale.x
+		draw_colored_polygon(PackedVector2Array([a, z + side, z - side]), Color(0.6, 1.0, 0.7, 0.10 + 0.15 * float(bm[2])))
+		draw_line(a, z, Color(0.6, 1.0, 0.7, 0.55), 1.0 / scale.x)
+	# Interceptor drones and their shots.
+	var now := Game.now()
+	for dr in _drones:
+		var p := to_local(dr["pos"])
+		draw_set_transform(p, ((dr["tgt"].global_position if is_instance_valid(dr["tgt"]) else global_position) - (dr["pos"] as Vector2)).angle() - global_rotation, Vector2.ONE / scale)
+		draw_colored_polygon(PackedVector2Array([Vector2(5, 0), Vector2(-4, -4), Vector2(-2, 0), Vector2(-4, 4)]), Color("c8d2ea"))
+		draw_colored_polygon(PackedVector2Array([Vector2(-2, -2), Vector2(-2, 2), Vector2(-4, 0)]), Defs.team_color(owner_id))
+		draw_set_transform(Vector2.ZERO)
+		if dr.has("shot") and now - float(dr["shot"][2]) < 0.08:
+			draw_line(to_local(dr["shot"][0]), to_local(dr["shot"][1]), Color("ffd84a"), 1.5 / scale.x)
 	super._draw()
 
 var _harvest_fx: HarvestFx

@@ -749,6 +749,13 @@ const MOD_WEAPONS := {
 	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.4, "cd": 4.0, "range": 1.4},
 	"mod_point_defense_lattice": {"dmg": 0.7, "pd": 160.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
+	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
+	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
+	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 0.8377, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
+	# tractor: [slow at the far edge, slow up close, reach x attack range].
+	# The lasers are untouched; each turret adds a beam that slows its target.
+	"mod_tractor_beams": {"tractor": [0.1, 0.9, 2.0]},
+	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.8000, "count": 3, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
 static func damage_profile(d: Dictionary) -> Dictionary:
