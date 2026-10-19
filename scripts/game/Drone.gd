@@ -22,6 +22,8 @@ const FIRE_REACH := 90.0
 const TURN := 4.0
 const FIRE_CONE := 0.25
 var heading := 0.0
+## For Target Prediction (Projectile reads it to lead its shot).
+var velocity := Vector2.ZERO
 ## How far past the target's hull a drone runs out before turning back in.
 const PASS_ROOM := 140.0
 var _extending := false
@@ -101,7 +103,8 @@ func _physics_process(delta: float) -> void:
 	if global_position.distance_to(home) > reach:
 		goal = home
 	heading = rotate_toward(heading, (goal - global_position).angle(), TURN * delta * sf)
-	global_position += Vector2.from_angle(heading) * SPEED * delta * sf
+	velocity = Vector2.from_angle(heading) * SPEED * sf
+	global_position += velocity * delta
 	rotation = heading
 	cd -= delta * sf
 	if tgt != null and cd <= 0.0:

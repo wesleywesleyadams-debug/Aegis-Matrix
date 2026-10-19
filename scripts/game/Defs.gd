@@ -354,7 +354,7 @@ const TECHS := {
 	"arcologies": {"name": "Arcologies", "group": "worlds", "tier": 2, "requires": ["habitat_modules"], "cost": {"energy": 110, "spice": 20}, "time": 80.0,
 		"effects": {"max_pop": 0.30}, "desc": "+30% population cap."},
 	# --- Weapons: reach and rate of fire, alongside the damage line.
-	"targeting_arrays": {"name": "Targeting Arrays", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 60}, "time": 50.0,
+	"targeting_arrays": {"name": "Rangefinders", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 60}, "time": 50.0,
 		"effects": {"range": 0.15}, "desc": "+15% weapon range: ships and starbases."},
 	"autoloaders": {"name": "Autoloaders", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 70}, "time": 55.0,
 		"effects": {"fire_rate": 0.15}, "desc": "+15% rate of fire: ships and starbases."},
@@ -401,6 +401,13 @@ const TECHS := {
 		"effects": {"damage": 0.30}, "desc": "+30% weapon damage: ships, constructs, worlds."},
 	"scatter_arrays": {"name": "Scatter Arrays", "group": "weapons", "tier": 3, "requires": ["heavy_mounts"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"fire_rate": 0.30}, "desc": "+30% rate of fire: ships and starbases."},
+	# TARGETING row (Ship/Projectile read these with Game.has_tech).
+	"target_prediction": {"name": "Target Prediction", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 65}, "time": 55.0,
+		"effects": {}, "desc": "Shots aim where a moving target is going."},
+	"gyro_stabilizers": {"name": "Gyro-Stabilizers", "group": "weapons", "tier": 2, "requires": ["target_prediction"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
+		"effects": {}, "desc": "No accuracy loss when firing on the move."},
+	"defensive_fire": {"name": "Defensive Fire", "group": "weapons", "tier": 3, "requires": ["gyro_stabilizers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
+		"effects": {}, "desc": "Idle turrets shoot down missiles and bombs."},
 	"hullbreaker_rounds": {"name": "Rupture Charges", "group": "weapons", "tier": 3, "requires": ["burst_cyclers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls."},
 

@@ -78,13 +78,15 @@ func _fire_turrets(delta: float) -> void:
 	var dmg: float = def["damage"] * Defs.mark_mult(ship_type, g.mark_level(owner_id, ship_type))
 	var per: int = maxi(1, int(round(float(def.get("guns", n)) / float(n))))
 	var acc := lerpf(1.0, MOVING_ACCURACY, clampf(velocity.length() / maxf(max_speed(), 1.0), 0.0, 1.0))
-	if g.duel_nomovepen:
+	if g.duel_nomovepen or g.has_tech(owner_id, "gyro_stabilizers"):
 		acc = 1.0
 	var taken := {}
 	var rate: float = float(def.get("turret_rate", 1.0))
 	var had_beams := not _beams.is_empty()
 	_beams.clear()
 	var pd: float = float(weapon_mod.get("pd", 0.0))
+	# Defensive Fire: a turret with nothing to shoot shoots down ordnance.
+	var screen: bool = pd <= 0.0 and g.has_tech(owner_id, "defensive_fire")
 	var claimed := {}
 	for i in n:
 		# Point-Defense: a ready turret first swats incoming ordnance.
@@ -123,6 +125,14 @@ func _fire_turrets(delta: float) -> void:
 			_t_beam_time[i] = 0.0   # the lance's ramp starts over on a new target
 		_t_target[i] = tgt
 		if tgt == null:
+			if screen and _t_cd[i] <= 0.0:
+				var sd := _pd_target(DEFENSIVE_FIRE_R, claimed)
+				if sd:
+					claimed[sd] = true
+					_t_rot[i] = (sd.global_position - global_position).angle()
+					_turret_sprites[i].rotation = _t_rot[i] - rotation
+					g.intercept(self, sd)
+					_t_cd[i] = def["cooldown"] / g.mod(owner_id, "fire_rate")
 			continue
 		taken[tgt] = true
 		# Traverse this turret toward its own target.
@@ -370,6 +380,8 @@ func _clear_drones() -> void:
 func _exit_tree() -> void:
 	_clear_drones()
 
+## Defensive Fire (Targeting tier 3): how near ordnance must be for an idle turret to shoot it down.
+const DEFENSIVE_FIRE_R := 120.0
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
 ## Point-Defense: the nearest enemy drone within weapon range `r` not
@@ -1251,7 +1263,7 @@ func _physics_process(delta: float) -> void:
 				# Every gun aims the same: a shooter on the move is a worse one,
 				# and at full speed roughly a third of its shots go wide.
 				var acc := lerpf(1.0, MOVING_ACCURACY, clampf(velocity.length() / maxf(max_speed(), 1.0), 0.0, 1.0))
-				if Game.instance.duel_nomovepen:
+				if Game.instance.duel_nomovepen or Game.instance.has_tech(owner_id, "gyro_stabilizers"):
 					acc = 1.0
 				var wpn: String = weapon_mod.get("weapon", def["weapon"])
 				dmg *= float(weapon_mod.get("dmg", 1.0))

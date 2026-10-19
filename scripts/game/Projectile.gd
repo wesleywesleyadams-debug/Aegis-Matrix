@@ -83,9 +83,13 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 				else:
 					modulate = SLIP_SHOT
 	global_position = from.global_position
+	# Target Prediction: aim where a moving target will be when the shot gets
+	# there; without it, at where it is now. Guided shots steer for
+	# themselves and launch straight at the target: led far ahead, a slow
+	# torpedo would start beyond its lock cone and fly off the wrong way.
 	var lead := to.global_position
-	if to is Ship:
-		lead += (to as Ship).velocity * (from.global_position.distance_to(to.global_position) / speed)
+	if not homing and Game.instance.has_tech(owner_pid, "target_prediction") and to.get("velocity") is Vector2:
+		lead += to.get("velocity") * (from.global_position.distance_to(to.global_position) / speed)
 	_vel = (lead - global_position).normalized().rotated(spread) * speed
 	rotation = _vel.angle()
 	if free_flight:

@@ -32,6 +32,7 @@ const SCENES := [
 	"ion_cannons", "particle_lances", "capital_batteries", "targeting_arrays", "beam_focusing", "lance_batteries",
 	"autoloaders", "heavy_mounts", "scatter_arrays", "overcharged_coils", "burst_cyclers", "dark_matter",
 	"solar_collectors", "plasma_reactors", "hullbreaker_rounds",
+	"target_prediction", "gyro_stabilizers", "defensive_fire",
 	"hydroponics", "colony_pods", "rationing", "habitat_modules", "gene_clinics", "arcologies",
 	"orbital_farms", "planetary_shields", "terraforming", "deep_vaults", "gene_forges", "planetary_citadels",
 	"deep_drills", "bulk_holds", "cutting_lasers", "resonance_drills", "gas_skimming", "ion_thrusters",
@@ -241,6 +242,27 @@ static func call_scene(id: String, img: Image) -> void:
 		"lance_batteries":
 			for k in 3:
 				_beam(img, Vector2(8, 18 + k * 14), Vector2(58, 12 + k * 14), Color("ff6a4a"), 2.5)
+		"target_prediction":
+			# A shot aimed at the reticle ahead of the ship, not at the ship.
+			_sprite(img, "ship_corvette", Vector2(22, 44), 16.0)
+			for k in 4:
+				_line(img, Vector2(28 + k * 6, 38 - k * 5), Vector2(31 + k * 6, 35 - k * 5), 1.0, Color("b0f0ff"))
+			_ring(img, Vector2(50, 16), 8.0, 1.5, Color("ff6a4a"))
+			_line(img, Vector2(50, 6), Vector2(50, 26), 1.0, Color("ff6a4a"))
+			_line(img, Vector2(40, 16), Vector2(60, 16), 1.0, Color("ff6a4a"))
+			_beam(img, Vector2(6, 58), Vector2(48, 18), Color("ffd84a"), 1.5)
+		"gyro_stabilizers":
+			_ring(img, Vector2(32, 32), 20.0, 2.5, Color("8a95b8"))
+			_ellipse(img, Vector2(32, 32), Vector2(20, 7), Color("6a7596"))
+			_ellipse(img, Vector2(32, 32), Vector2(7, 20), Color("6a7596"))
+			_disc(img, Vector2(32, 32), 5.0, Color("ffd84a"))
+		"defensive_fire":
+			_disc(img, Vector2(14, 48), 9.0, Color("6a7596"))
+			_barrel(img, Vector2(14, 46), Vector2(30, 32), 4.0)
+			_beam(img, Vector2(32, 30), Vector2(48, 18), Color("ffd84a"), 1.5)
+			_disc(img, Vector2(50, 16), 5.0, Color("ff8a2a"))
+			_line(img, Vector2(44, 10), Vector2(56, 22), 2.0, Color("ff4a4a"))
+			_line(img, Vector2(44, 22), Vector2(56, 10), 2.0, Color("ff4a4a"))
 		"autoloaders":
 			for k in 5:
 				_shell(img, Vector2(10 + k * 10, 32))
