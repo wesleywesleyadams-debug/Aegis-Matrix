@@ -32,6 +32,8 @@ var _res_labels := {}
 var _res_boxes := {}
 var _pop_label: Label
 var _fleet_label: Label
+var _harv_label: Label
+var _upkeep_label: Label
 var _research_button: Button
 var _research_pages := {}
 var _research_box: Control   # the research panel's content, for its left edge
@@ -248,13 +250,26 @@ func _build_top_bar(root: Control) -> void:
 	_pop_label.clip_text = true
 	_pop_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	h.add_child(_pop_label)
+	# Ships (all kinds), harvesters, and the empire-wide upkeep multiplier.
 	var fleet := HBoxContainer.new()
 	fleet.add_theme_constant_override("separation", 6)
 	fleet.add_child(_icon("icon_fleet"))
-	_fleet_label = _label("0/0")
-	_fleet_label.custom_minimum_size = Vector2(260, 0)   # "999 ships · upkeep x9.99"
-	_fleet_label.clip_text = true
+	_fleet_label = _label("0")
+	_fleet_label.custom_minimum_size = Vector2(44, 0)
+	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	fleet.add_child(_fleet_label)
+	var hv := _icon("ship_miner", 1)
+	hv.custom_minimum_size = Vector2(22, 18)
+	fleet.add_child(hv)
+	_harv_label = _label("0")
+	_harv_label.custom_minimum_size = Vector2(36, 0)
+	_harv_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	fleet.add_child(_harv_label)
+	fleet.add_child(_icon("icon_upkeep"))
+	_upkeep_label = _label("x1.00")
+	_upkeep_label.custom_minimum_size = Vector2(64, 0)
+	_upkeep_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	fleet.add_child(_upkeep_label)
 	h.add_child(fleet)
 
 ## Research button and match clock, in their own panel between the resource
@@ -1420,7 +1435,7 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 	elif e is Starbase:
 		var sb := e as Starbase
 		txt += "
-Starbases %d · upkeep %.2f/min each (x%.1f)" % [game.starbase_count(sb.owner_id), Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(sb.owner_id), game.starbase_upkeep_multiplier(sb.owner_id)]
+Starbases %d · upkeep %.2f/min each (empire x%.2f)" % [game.starbase_count(sb.owner_id), Defs.STARBASE["upkeep"] * game.upkeep_multiplier(sb.owner_id), game.upkeep_multiplier(sb.owner_id)]
 		if sb.under_construction:
 			txt += "\nConstruction %d%%%s" % [int(100.0 * sb.construct_progress / Defs.STARBASE["build_time"]), "  STALLED: insufficient funds" if sb.build_stalled else ""]
 		elif not sb.queue.is_empty():
@@ -1548,10 +1563,15 @@ func _update_top_bar() -> void:
 OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starved(pid) else ""]
 	_pop_label.text = "Pop %s" % _fmt(game.total_pop(pid))
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats %.2f food per minute." % Defs.FOOD_PER_POP_PER_MIN
-	_fleet_label.text = "%d ships · upkeep x%.2f" % [game.ship_count(pid), game.upkeep_multiplier(pid)]
-	_fleet_label.tooltip_text = "Each ship's energy upkeep is multiplied by 1 + (ships / %d)^2. Starbases scale separately: x%.1f with %d starbases.
-Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), game.starbase_upkeep_multiplier(pid), game.starbase_count(pid), game.upkeep(pid)]
-	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	_fleet_label.text = str(game.ship_count(pid))
+	_fleet_label.tooltip_text = "Ships of every kind: warships, support ships and harvesters."
+	_harv_label.text = str(game.harvester_count(pid))
+	_harv_label.tooltip_text = "Harvesters: Mining Barges and Gas Skimmers."
+	var um: float = game.upkeep_multiplier(pid)
+	_upkeep_label.text = "x%.2f" % um
+	_upkeep_label.tooltip_text = "Empire upkeep multiplier. Every ship and construct you own multiplies ALL energy upkeep: starbase x%.2f, carrier x%.2f, cruiser x%.2f, destroyer x%.2f, anything else x%.2f.\nUpkeep now: %.1f energy/min (%.1f base x%.2f)." % [
+		Defs.UPKEEP_WEIGHT["starbase"], Defs.UPKEEP_WEIGHT["carrier"], Defs.UPKEEP_WEIGHT["cruiser"], Defs.UPKEEP_WEIGHT["destroyer"], Defs.UPKEEP_WEIGHT_SMALL,
+		game.upkeep(pid), game.base_upkeep(pid), um]
 	var cur: Dictionary = game.research[pid]
 	# The button blinks in real time, so it looks the same at any game speed:
 	# yellow when nothing is queued, green while researching, red when stalled.
@@ -2085,9 +2105,9 @@ func _add_constructor_buttons() -> void:
 	var pid := game.player_id
 	var grid := _button_grid()
 	var n := game.starbase_count(pid)
-	var now_u: float = n * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n)
-	var next_u: float = (n + 1) * Defs.STARBASE["upkeep"] * game.starbase_upkeep_multiplier(pid, n + 1)
-	var sb := _panel_build_button("starbase", "Starbase", Defs.STARBASE["cost"], Defs.STARBASE["build_time"], "Found Starbase — %s over %ds.\nBuilds ships and takes deliveries. You have %d; the next raises total starbase upkeep from %.1f to %.1f energy/min." % [
+	var now_u: float = game.upkeep(pid)
+	var next_u: float = (game.base_upkeep(pid) + Defs.STARBASE["upkeep"]) * game.upkeep_multiplier(pid, Defs.UPKEEP_WEIGHT["starbase"]) * game.mod(pid, "upkeep")
+	var sb := _panel_build_button("starbase", "Starbase", Defs.STARBASE["cost"], Defs.STARBASE["build_time"], "Found Starbase — %s over %ds.\nBuilds ships and takes deliveries. You have %d; the next raises your total upkeep from %.1f to %.1f energy/min." % [
 		Defs.cost_text(Defs.STARBASE["cost"]), int(Defs.STARBASE["build_time"]), n, now_u, next_u])
 	sb.pressed.connect(game.start_starbase_placement)
 	_register_action(sb)

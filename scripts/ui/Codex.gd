@@ -837,7 +837,8 @@ func _page_economy() -> void:
 	_heading("Defense Battery")
 	_para("A world with a Defense Battery is no free kill. Each battery adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries force a raiding party to commit." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
 	_heading("Upkeep")
-	_para("Every ship costs energy per minute, and the total is multiplied as the fleet grows (1 + (ships/%d)^2), so fleets plateau. Starbases have their own steeper curve, so more than a handful is expensive. With no energy in stock, starbases stop producing and your ships move and fire at %d%% speed." % [int(Defs.UPKEEP_SCALE_SHIPS), int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
+	_para("Every ship and construct costs energy per minute, and ALL of it is multiplied by one empire-wide factor (shown on the resource bar): each unit you own multiplies it - starbase x%.2f, carrier x%.2f, cruiser x%.2f, destroyer x%.2f, anything else x%.2f - so the more you own, the dearer every unit gets. Orbital Elevators and Jump Drives each cut the total by 10%%. With no energy in stock, starbases stop producing and your ships move and fire at %d%% speed." % [
+		Defs.UPKEEP_WEIGHT["starbase"], Defs.UPKEEP_WEIGHT["carrier"], Defs.UPKEEP_WEIGHT["cruiser"], Defs.UPKEEP_WEIGHT["destroyer"], Defs.UPKEEP_WEIGHT_SMALL, int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
 
 func _page_systems() -> void:
 	_heading("Systems")

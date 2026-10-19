@@ -222,14 +222,13 @@ const ROCK_LARGE := 1080
 static func rock_is_large(variant: String, scale: float) -> bool:
 	return variant.begins_with("asteroid_big") or (variant.begins_with("spice") and scale > 1.01)
 
-## No hard fleet cap: each ship's energy upkeep is multiplied by
-## 1 + (ship_count / UPKEEP_SCALE_SHIPS)^2, so total upkeep climbs steeply and
-## fleets plateau (around 200 ships on a strong late-game economy).
-const UPKEEP_SCALE_SHIPS := 100.0
-## Starbases scale separately and more steeply: each one's upkeep is
-## multiplied by 1 + (starbases / STARBASE_UPKEEP_SCALE)^3, so ~10 is
-## sustainable and going past it gets very expensive fast (x9 at 10, x28 at 15).
-const STARBASE_UPKEEP_SCALE := 5.0
+## No hard caps: ALL energy upkeep (ships of every kind and constructs) is
+## multiplied by one empire-wide factor, the product of every unit's weight
+## below - so each unit you own makes every unit dearer to run, big ones
+## most. E.g. 20 corvettes alone: 1.02^20 = x1.49.
+const UPKEEP_WEIGHT := {"starbase": 1.06, "carrier": 1.05, "cruiser": 1.04, "destroyer": 1.03}
+## Everything else: corvettes, harvesters, support ships, depots, Mining Stations.
+const UPKEEP_WEIGHT_SMALL := 1.02
 ## With no energy in the stockpile, ships move and fire at this fraction of
 ## normal speed, and starbases can't produce ships.
 const ENERGY_STARVED_FACTOR := 0.25

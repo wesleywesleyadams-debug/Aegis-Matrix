@@ -678,15 +678,29 @@ func starbase_count(pid: int) -> int:
 			n += 1
 	return n
 
-## Multiplier on every starbase's upkeep (sites under construction count).
-func starbase_upkeep_multiplier(pid: int, count: int = -1) -> float:
-	var k := (starbase_count(pid) if count < 0 else count) / Defs.STARBASE_UPKEEP_SCALE
-	return 1.0 + k * k * k
+## The empire-wide upkeep multiplier: the product of every owned unit's
+## weight (Defs.UPKEEP_WEIGHT) - ships of all kinds and constructs, sites
+## under construction included. `extra` = weights of units about to be added.
+func upkeep_multiplier(pid: int, extra: float = 1.0) -> float:
+	var m := extra
+	for s in get_tree().get_nodes_in_group("ships"):
+		if s.owner_id == pid:
+			m *= Defs.UPKEEP_WEIGHT.get(s.def.get("base", s.ship_type), Defs.UPKEEP_WEIGHT_SMALL)
+	for sb in get_tree().get_nodes_in_group("starbases"):
+		if sb.owner_id == pid:
+			m *= Defs.UPKEEP_WEIGHT["starbase"]
+	for grp in ["depots", "mining_stations"]:
+		for n in get_tree().get_nodes_in_group(grp):
+			if n.owner_id == pid:
+				m *= Defs.UPKEEP_WEIGHT_SMALL
+	return m
 
-## Multiplier on every ship's upkeep, growing with fleet size.
-func upkeep_multiplier(pid: int) -> float:
-	var k := ship_count(pid) / Defs.UPKEEP_SCALE_SHIPS
-	return 1.0 + k * k
+func harvester_count(pid: int) -> int:
+	var n := 0
+	for s in get_tree().get_nodes_in_group("ships"):
+		if s.owner_id == pid and s.is_harvester():
+			n += 1
+	return n
 
 ## The share of its hull a construct is founded with: a tenth, unless Rapid
 ## Assembly (Constructs) has it standing further along before the first shot.
@@ -739,18 +753,25 @@ func energy_starved(pid: int) -> bool:
 func ship_speed_factor(pid: int) -> float:
 	return Defs.ENERGY_STARVED_FACTOR if energy_starved(pid) else 1.0
 
+## Energy upkeep per minute: every ship's and construct's own upkeep, times
+## the empire-wide multiplier, times upkeep research (Orbital Elevators,
+## Jump Drives: -10% each, on the whole pool).
 func upkeep(pid: int) -> float:
+	return base_upkeep(pid) * upkeep_multiplier(pid) * mod(pid, "upkeep")
+
+## The summed upkeep of everything a player owns, before the multiplier.
+func base_upkeep(pid: int) -> float:
 	var u := 0.0
 	for s in get_tree().get_nodes_in_group("ships"):
 		if s.owner_id == pid:
 			u += s.def["upkeep"]
-	# Research can make a fleet thirstier (overcharged weapons) or cheaper to
-	# run, which is what gives those techs a real cost.
-	u *= upkeep_multiplier(pid) * mod(pid, "upkeep")
-	u += starbase_count(pid) * Defs.STARBASE["upkeep"] * starbase_upkeep_multiplier(pid)
+	u += starbase_count(pid) * Defs.STARBASE["upkeep"]
 	for dp in get_tree().get_nodes_in_group("depots"):
 		if dp.owner_id == pid:
 			u += Defs.WEAPONS_DEPOT["upkeep"]
+	for ms in get_tree().get_nodes_in_group("mining_stations"):
+		if ms.owner_id == pid:
+			u += Defs.MINING_STATION["upkeep"]
 	return u
 
 # ---------------------------------------------------------------- research
@@ -1724,7 +1745,7 @@ func request_research(tech_id: String) -> void:
 func start_starbase_placement() -> void:
 	placing_starbase = true
 	var n := starbase_count(player_id)
-	message.emit("Left-click open space to found starbase #%d (%s over %ds; each starbase's upkeep becomes x%.1f). Right-click to cancel." % [n + 1, Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"], starbase_upkeep_multiplier(player_id, n + 1)], Color("c3cde4"))
+	message.emit("Left-click open space to found starbase #%d (%s over %ds; your empire upkeep multiplier becomes x%.2f). Right-click to cancel." % [n + 1, Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"], upkeep_multiplier(player_id, Defs.UPKEEP_WEIGHT["starbase"])], Color("c3cde4"))
 
 func start_station_placement() -> void:
 	placing_station = true
