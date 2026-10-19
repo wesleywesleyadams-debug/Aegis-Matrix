@@ -14,7 +14,7 @@ const DIM := Color("6a7596")
 const MUTED := Color("a8b4d4")
 const GOOD := Color("6fe07a")
 const BAD := Color("ff6a5a")
-const STATE_COLORS := {"done": Color("3f8a4a"), "active": Color("4fb4ff"), "queued": Color("3a6fa8"), "available": Color("2b3a6b"), "locked": Color("1a1f33")}
+const STATE_COLORS := {"disabled": Color("8a7a2a"), "done": Color("3f8a4a"), "active": Color("4fb4ff"), "queued": Color("3a6fa8"), "available": Color("2b3a6b"), "locked": Color("1a1f33")}
 const STATE_LABELS := {"done": "RESEARCHED", "active": "RESEARCHING", "queued": "QUEUED", "available": "AVAILABLE", "locked": "LOCKED"}
 
 var game: Game
@@ -44,6 +44,8 @@ var _side_ids: Array = []
 var _research_fill: ColorRect
 var _research_icon: TextureRect
 var _clock: Label
+var _mod_status: VBoxContainer
+var _mod_status_ids: Array = []
 var _sel_body: VBoxContainer
 ## The per-ship condition tiles of a multi-ship selection (see _add_fleet_tiles).
 var _fleet_tiles: Array = []
@@ -321,6 +323,12 @@ func _build_research_panel(root: Control) -> void:
 	_clock = _label("00:00", DIM)
 	_clock.custom_minimum_size = Vector2(50, 0)
 	h.add_child(_clock)
+	# Under it: one yellow line per Mod you have switched off; click one to
+	# switch it back on.
+	_mod_status = VBoxContainer.new()
+	_mod_status.position = Vector2(HUD_SIDE, TOP_Y + TOP_H + 6 + CLOCK_H + 6)
+	_mod_status.add_theme_constant_override("separation", 4)
+	root.add_child(_mod_status)
 
 ## Top-right Menu button: opens the same menu as Esc (Resume, Save Game,
 ## Options, Quit to Title).
@@ -695,7 +703,7 @@ func _build_research(root: Control) -> void:
 		var named: Array = []
 		for r in TECH_ROWS[group]:
 			named.append([_row_head(r[0], TechIcons.GROUP_COLORS[group], ""), r[1]])
-		pages[group] = _tech_page(v, named)
+		pages[group] = _tech_page(v, named, group == "mods")
 	for group in ["general"]:
 		var rows: Array = []
 		var by_tier := {1: [], 2: [], 3: []}
@@ -732,7 +740,7 @@ func _build_research(root: Control) -> void:
 		def_rows.append([_row_head(line[1], line[2], LINE_ICONS[line[0]]), ids])
 	pages["defense"] = _tech_page(v, def_rows)
 
-	var order := [["warships", "Warships"], ["weapons", "Weapons"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"], ["general", "General"]]
+	var order := [["warships", "Warships"], ["weapons", "Weapons"], ["mods", "Mods"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"], ["general", "General"]]
 	var buttons := {}
 	for pair in order:
 		if not pages.has(pair[0]):
@@ -798,6 +806,27 @@ func show_planet(p: Planet) -> void:
 
 ## The top-bar Research button: opens / closes the panel, or - while the
 ## panel is open on another tab - jumps to the active project's tab.
+func _update_mod_status() -> void:
+	var off: Array = game.mods_disabled.get(game.player_id, {}).keys()
+	off.sort()
+	if off == _mod_status_ids:
+		return
+	_mod_status_ids = off
+	for c in _mod_status.get_children():
+		c.queue_free()
+	for id in off:
+		var b := Button.new()
+		b.text = "%s: OFF" % Defs.TECHS[id]["name"]
+		b.tooltip_text = "Mod switched off - the class fires its standard weapon. Click to switch it back on."
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_color_override("font_color", Color("ffd46b"))
+		var sb: StyleBoxFlat = _panel_style(4, STATE_COLORS["disabled"].lightened(0.3))
+		sb.bg_color = STATE_COLORS["disabled"].darkened(0.5)
+		b.add_theme_stylebox_override("normal", sb)
+		b.pressed.connect(func(): game.toggle_mod(game.player_id, id); _refresh_research())
+		_mod_status.add_child(b)
+
 func _update_side_techs() -> void:
 	if _side_techs == null:
 		_side_techs = VBoxContainer.new()
@@ -820,7 +849,8 @@ func _update_side_techs() -> void:
 	_side_techs.move_to_front()
 	var panel_left: float = _research_box.get_parent().get_global_rect().position.x
 	var w: float = maxf(140.0, panel_left - 24.0)
-	_side_techs.position = Vector2(12, TOP_Y + TOP_H + 60)
+	var below := _mod_status.position.y + _mod_status.size.y + 10.0 if not _mod_status_ids.is_empty() else float(TOP_Y + TOP_H + 60)
+	_side_techs.position = Vector2(12, below)
 	_side_techs.size = Vector2(w, 0)
 	if ids != _side_ids:
 		_side_ids = ids
@@ -930,6 +960,9 @@ func _refresh_research() -> void:
 	for id in _tech_buttons:
 		var t: Dictionary = Defs.TECHS[id]
 		var st := game.tech_state(pid, id)
+		# A Mod switched off shows yellow until it is switched back on.
+		if st == "done" and game.mods_disabled.get(pid, {}).has(id):
+			st = "disabled"
 		var w: Dictionary = _tech_buttons[id]
 		# The card's colour shows its state (see the legend); the title only
 		# adds what the colour can't: a stall or a queue place.
@@ -1578,6 +1611,7 @@ Total ship+starbase upkeep: %.1f energy/min." % [int(Defs.UPKEEP_SCALE_SHIPS), g
 		_research_fill.color = Color(BAD.r, BAD.g, BAD.b, 0.3) if cur["stalled"] else Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
 	var s := int(Game.now())
 	_clock.text = "%02d:%02d" % [s / 60, s % 60]
+	_update_mod_status()
 
 ## Shrink-wraps the bottom-left panel to its contents (it grows upward) and
 ## parks the build queue row just above it.
@@ -1944,9 +1978,15 @@ const TECH_ROWS := {
 		["SPEED", ["ion_thrusters", "fusion_drives", "jump_drives"]],
 		["SUPPLY", ["gas_skimming", "convoy_protocols", "spice_navigation"]],
 	],
+	"mods": [
+		["CORVETTE", ["mod_proton_torpedoes", "mod_kinetic_repeaters", "mod_arc_emitters"]],
+		["DESTROYER", ["mod_flak_cannons", "mod_cluster_bombs", "mod_homing_missiles"]],
+		["CRUISER", ["mod_ion_lance", "mod_rail_cannons", "mod_point_defense_lattice"]],
+		["CARRIER", ["mod_interceptor_drones", "mod_tractor_beams", "mod_missile_barrage"]],
+	],
 }
 
-func _tech_page(into: Control, rows: Array) -> GridContainer:
+func _tech_page(into: Control, rows: Array, mods := false) -> GridContainer:
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.custom_minimum_size = PAGE_SIZE
@@ -1958,7 +1998,7 @@ func _tech_page(into: Control, rows: Array) -> GridContainer:
 	spacer.custom_minimum_size = Vector2(TECH_ROW_HEAD_W, 0)
 	grid.add_child(spacer)
 	for tier in [1, 2, 3]:
-		grid.add_child(_label("TIER %d" % tier, DIM, 14))
+		grid.add_child(_label("" if mods else "TIER %d" % tier, DIM, 14))
 	for row in rows:
 		if row[0] == null:
 			var pad := Control.new()

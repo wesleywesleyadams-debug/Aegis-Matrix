@@ -510,6 +510,35 @@ const TECHS := {
 		"effects": {"energy": 0.50}, "desc": "+50% energy: worlds, starbases, Sail Arrays."},
 	"spice_navigation": {"name": "Spice Navigation", "group": "logistics", "tier": 3, "requires": ["convoy_protocols"], "cost": {"spice": 200}, "time": 180.0,
 		"effects": {"speed": 0.15, "growth": 0.25}, "desc": "+15% ship speed, +25% population growth."},
+	# Mods (research screen's Mods tab): one per ship class at a time - a
+	# row's three are exclusive (see Game._on_tech_done), and an active one
+	# can be switched off and on for free (Game.mods_disabled). "mod" names
+	# the class; "tier" is only the column on the tab. Costs are placeholders.
+	# The weapons themselves come next (docs/MODS.md).
+	"mod_proton_torpedoes": {"name": "Proton Torpedoes", "group": "mods", "mod": "corvette", "tier": 1, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
+		"effects": {"mod_corvette": 1.0}, "desc": "Torpedo runs: 1/3 the shots, 3x damage."},
+	"mod_kinetic_repeaters": {"name": "Kinetic Repeaters", "group": "mods", "mod": "corvette", "tier": 2, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
+		"effects": {"mod_corvette": 1.0}, "desc": "3x fire rate, 1/3 damage, -25% range."},
+	"mod_arc_emitters": {"name": "Arc Emitters", "group": "mods", "mod": "corvette", "tier": 3, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
+		"effects": {"mod_corvette": 1.0}, "desc": "Chains to 2 more enemies (60/20/20%)."},
+	"mod_flak_cannons": {"name": "Flak Cannons", "group": "mods", "mod": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 160, "spice": 30}, "time": 75.0,
+		"effects": {"mod_destroyer": 1.0}, "desc": "Bursts hit all within 50 for 60%."},
+	"mod_cluster_bombs": {"name": "Cluster Bombs", "group": "mods", "mod": "destroyer", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 160, "spice": 30}, "time": 75.0,
+		"effects": {"mod_destroyer": 1.0}, "desc": "Bombing runs: a spread of unguided bomblets."},
+	"mod_homing_missiles": {"name": "Homing Missiles", "group": "mods", "mod": "destroyer", "tier": 3, "requires": ["destroyers"], "cost": {"energy": 160, "spice": 30}, "time": 75.0,
+		"effects": {"mod_destroyer": 1.0}, "desc": "4-missile volleys that never miss, +20% range."},
+	"mod_ion_lance": {"name": "Ion Lance", "group": "mods", "mod": "cruiser", "tier": 1, "requires": ["cruisers"], "cost": {"energy": 220, "spice": 40}, "time": 90.0,
+		"effects": {"mod_cruiser": 1.0}, "desc": "Beam ramps 60% to 140% over 4 s on one target."},
+	"mod_rail_cannons": {"name": "Rail Cannons", "group": "mods", "mod": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 220, "spice": 40}, "time": 90.0,
+		"effects": {"mod_cruiser": 1.0}, "desc": "+40% range, half the shots at 2x damage."},
+	"mod_point_defense_lattice": {"name": "Point-Defense Lattice", "group": "mods", "mod": "cruiser", "tier": 3, "requires": ["cruisers"], "cost": {"energy": 220, "spice": 40}, "time": 90.0,
+		"effects": {"mod_cruiser": 1.0}, "desc": "Shoots down torpedoes and missiles; -30% vs ships."},
+	"mod_interceptor_drones": {"name": "Interceptor Drones", "group": "mods", "mod": "carrier", "tier": 1, "requires": ["carriers"], "cost": {"energy": 280, "spice": 50}, "time": 105.0,
+		"effects": {"mod_carrier": 1.0}, "desc": "4 drones attack enemies within 300."},
+	"mod_tractor_beams": {"name": "Tractor Beams", "group": "mods", "mod": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 280, "spice": 50}, "time": 105.0,
+		"effects": {"mod_carrier": 1.0}, "desc": "Each turret's beam pulls and slows its target."},
+	"mod_missile_barrage": {"name": "Missile Barrage", "group": "mods", "mod": "carrier", "tier": 3, "requires": ["carriers"], "cost": {"energy": 280, "spice": 50}, "time": 105.0,
+		"effects": {"mod_carrier": 1.0}, "desc": "12-missile salvo every 8 s, longest range."},
 }
 
 static func tex(name: String) -> Texture2D:
@@ -530,6 +559,7 @@ const TECH_GROUP_DESC := {
 	"constructs": "Starbases, depots and the other things you build rather than fly.",
 	"worlds": "Feeding and growing your colonies: food, population and the cap on both.",
 	"logistics": "Hauling, skimming and fleet movement: how fast cargo and ships get there.",
+	"mods": "Change what a ship class fires. One Mod per class: researching another replaces it. Click an active Mod to switch it off.",
 	"general": "Everything else.",
 }
 

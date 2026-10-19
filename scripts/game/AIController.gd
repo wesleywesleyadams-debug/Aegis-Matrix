@@ -110,7 +110,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# (the AI thinks every second; one project runs at a time).
 	# (The learning agent picks its own research.)
 	if not (st.get("nn") is RLAgent) and game.research[pid].is_empty() and game.research_queue[pid].is_empty():
-		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available")
+		# (Mods are skipped until their weapons are built - docs/MODS.md.)
+		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available" and not Defs.TECHS[t].has("mod"))
 		# Prefer techs it can pay for now; fall back to anything available.
 		var payable := options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
 		if not payable.is_empty():

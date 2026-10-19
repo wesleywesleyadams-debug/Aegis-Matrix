@@ -17,6 +17,7 @@ const K := SIZE / 64.0
 const GROUP_COLORS := {
 	"warships": Color("4fa8ff"), "weapons": Color("ff6a4a"), "defense": Color("7fd8ff"),
 	"constructs": Color("ffb347"), "worlds": Color("6fe07a"), "logistics": Color("3fd6b0"),
+	"mods": Color("c77dff"),
 }
 
 static var _cache := {}
@@ -35,7 +36,7 @@ static func _paint(id: String) -> Image:
 	var fx: Dictionary = t.get("effects", {})
 	var main_fx: String = str(fx.keys()[0]) if not fx.is_empty() else ""
 	var drawn := TechScenes.paint(id, art)
-	if not drawn and (main_fx.begins_with("unlock_") or main_fx.begins_with("mark_")):
+	if not drawn and (main_fx.begins_with("unlock_") or main_fx.begins_with("mark_") or main_fx.begins_with("mod_")):
 		_sprite(art, _sprite_for(main_fx))
 		drawn = true
 	if drawn:
@@ -45,7 +46,7 @@ static func _paint(id: String) -> Image:
 			for k in mk - 1:
 				_line(img, Vector2(7 + k * 7, 13) * K, Vector2(10 + k * 7, 9) * K, 2.0 * K, GOLD)
 				_line(img, Vector2(10 + k * 7, 9) * K, Vector2(13 + k * 7, 13) * K, 2.0 * K, GOLD)
-		for k in int(t.get("tier", 1)):
+		for k in (0 if t.has("mod") else int(t.get("tier", 1))):
 			_disc(img, Vector2(55 - k * 7, 55) * K, 2.4 * K, GOLD)
 		return img
 	var col: Color = GROUP_COLORS.get(t.get("group", ""), Color("a8b4d4"))
@@ -90,7 +91,7 @@ static func _paint(id: String) -> Image:
 		for k in mk - 1:
 			_line(img, Vector2(6 + k * 7, 12), Vector2(9 + k * 7, 8), 2.0, Color("ffd84a"))
 			_line(img, Vector2(9 + k * 7, 8), Vector2(12 + k * 7, 12), 2.0, Color("ffd84a"))
-	for k in int(t.get("tier", 1)):
+	for k in (0 if t.has("mod") else int(t.get("tier", 1))):
 		_disc(img, Vector2(56 - k * 7, 56), 2.4, Color("ffd84a"))
 	return img
 

@@ -71,6 +71,9 @@ var research_queue := {}  # pid -> Array of tech ids
 ## Progress kept on techs that were switched away from (or cancelled), so
 ## they resume where they left off: pid -> {tech id: seconds of progress}.
 var research_paused := {}
+## Mods switched off by their owner (click the card): pid -> {tech id: true}.
+## The class fires its standard laser until switched back on.
+var mods_disabled := {}
 
 var selection: Array[SpaceEntity] = []
 var focused_planet: Planet
@@ -186,6 +189,7 @@ func _init_player_data() -> void:
 		research[pid] = {}
 		research_queue[pid] = []
 		research_paused[pid] = {}
+		mods_disabled[pid] = {}
 
 func _ready() -> void:
 	process_physics_priority = -10
@@ -802,6 +806,25 @@ func switch_research(pid: int, tech_id: String) -> void:
 	research[pid] = {"id": tech_id, "progress": float(research_paused[pid].get(tech_id, 0.0)), "stalled": false}
 	research_paused[pid].erase(tech_id)
 
+## The Mod a class fires with (researched and switched on), or "".
+func active_mod(pid: int, ship_class: String) -> String:
+	for id in researched.get(pid, {}):
+		if Defs.TECHS.has(id) and Defs.TECHS[id].get("mod", "") == ship_class and not mods_disabled.get(pid, {}).has(id):
+			return id
+	return ""
+
+## Switches a researched Mod off (back to the standard weapon) or on again.
+func toggle_mod(pid: int, tech_id: String) -> void:
+	if not has_tech(pid, tech_id) or not Defs.TECHS[tech_id].has("mod"):
+		return
+	if mods_disabled[pid].has(tech_id):
+		mods_disabled[pid].erase(tech_id)
+	else:
+		mods_disabled[pid][tech_id] = true
+	for s in get_tree().get_nodes_in_group("entities"):
+		if s.owner_id == pid and s.has_method("refresh_stats"):
+			s.refresh_stats()
+
 ## Progress a paused tech will resume from (0 if none).
 func paused_progress(pid: int, tech_id: String) -> float:
 	return float(research_paused.get(pid, {}).get(tech_id, 0.0))
@@ -827,6 +850,15 @@ func _tick_research(pid: int, dt: float) -> void:
 		_on_tech_done(pid, cur["id"])
 
 func _on_tech_done(pid: int, tech_id: String) -> void:
+	# A Mod replaces the one its class had: the old one is gone and must be
+	# researched again to come back.
+	var cls: String = Defs.TECHS[tech_id].get("mod", "")
+	if cls != "":
+		for other in Defs.TECHS:
+			if other != tech_id and Defs.TECHS[other].get("mod", "") == cls:
+				researched[pid].erase(other)
+				mods_disabled[pid].erase(other)
+		mods_disabled[pid].erase(tech_id)
 	for s in get_tree().get_nodes_in_group("entities"):
 		if s.owner_id == pid and s.has_method("refresh_stats"):
 			s.refresh_stats()
@@ -1566,6 +1598,11 @@ func request_build(sb: Starbase, ship_type: String) -> void:
 		sfx.play_ui("click")
 
 func request_research(tech_id: String) -> void:
+	# A researched Mod: clicking it switches it off / on.
+	if tech_state(player_id, tech_id) == "done" and Defs.TECHS[tech_id].has("mod"):
+		toggle_mod(player_id, tech_id)
+		sfx.play_ui("click")
+		return
 	if tech_state(player_id, tech_id) in ["active", "queued"]:
 		cancel_research(player_id, tech_id)
 		sfx.play_ui("click")
@@ -2649,6 +2686,21 @@ func _enter_dev_capture() -> void:
 		await get_tree().process_frame
 		print("DELTEST starbase alive while asked: ", is_instance_valid(hb3) and hb3.is_alive())
 		center_on(hb3.global_position)
+	if OS.get_environment("SL_SHOT_OPEN") == "modtest":
+		# Dev: Proton Torpedoes, then Kinetic Repeaters replaces it, then switch
+		# it off; the Mods tab and the status line are left up for the capture.
+		for m in ["mod_proton_torpedoes", "mod_kinetic_repeaters", "mod_flak_cannons"]:
+			if m == "mod_flak_cannons":
+				researched[player_id]["destroyers"] = true
+			researched[player_id][m] = true
+			_on_tech_done(player_id, m)
+			print("MODTEST after ", m, ": corvette=", active_mod(player_id, "corvette"), " destroyer=", active_mod(player_id, "destroyer"), " torpedoes kept=", has_tech(player_id, "mod_proton_torpedoes"))
+		request_research("mod_kinetic_repeaters")
+		print("MODTEST switched off: corvette=", active_mod(player_id, "corvette"), " disabled=", mods_disabled[player_id].keys())
+		request_research("mod_arc_emitters")
+		hud.toggle_research()
+		await get_tree().process_frame
+		hud._research_tabs["mods"].pressed.emit()
 	if OS.get_environment("SL_SHOT_OPEN") == "turrets":
 		# Dev: a carrier among 4 enemy corvettes - idle (turrets spread),
 		# then ordered onto one (turrets focus).
