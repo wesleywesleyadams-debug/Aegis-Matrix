@@ -447,7 +447,7 @@ func _page_combat() -> void:
 		vrows.append([[vd["label"], vd["color"]], effect, "%d%%" % int(vd["damage"] * 100.0), [shots[v], vd["color"]], ["^ ^ ^", vd["color"]]])
 	_table(["Variant", "Effect", "Base damage", "Shots", "Chevrons"], vrows)
 	_heading("Which variant against what")
-	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is equal, lower kills faster.")
+	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is equal, lower kills faster. Worked out from each hull's layers - and confirmed by equal-cost fleet duels, which picked the same best and worst variant for every class.")
 	var head: Array = ["Target"]
 	for v in Defs.VARIANTS:
 		head.append(Defs.VARIANTS[v]["label"])
