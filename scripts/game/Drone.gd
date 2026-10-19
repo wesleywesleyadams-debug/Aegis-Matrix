@@ -5,10 +5,10 @@ extends SpaceEntity
 ## ship, but is not a ship: no selection, orders, score or upkeep. The
 ## carrier builds a replacement for each one lost (Defs.DRONE_REBUILD).
 
-const HULL := 60.0   # all hull: no shields or armor, and no marks or tech change it
+const HULL := 50.0   # all hull: no shields or armor, and no marks or tech change it
 
 ## Flight speed; SL_DRONE_SPEED / SL_DRONE_R override it and the hit radius for tuning runs.
-var SPEED := 240.0
+var SPEED := 140.0
 ## Patrol: drones circle the carrier at the edge of their reach this fast
 ## (radians a second), spread evenly by slot.
 const ORBIT_SPEED := 0.25
@@ -20,7 +20,7 @@ const FIRE_REACH := 90.0
 ## Drones fly nose-first: they turn at most this fast (radians a second) and
 ## fire only straight ahead, at a target within FIRE_CONE of the nose, so
 ## they make attack passes rather than hovering.
-const TURN := 4.0
+const TURN := 6.0
 const FIRE_CONE := 0.25
 var heading := 0.0
 ## For Target Prediction (Projectile reads it to lead its shot).
@@ -44,7 +44,7 @@ var def := {"role": "drone"}
 func _init() -> void:
 	max_hp = HULL
 	hp = HULL
-	radius = 5.0
+	radius = 10.0
 	if OS.get_environment("SL_DRONE_SPEED") != "":
 		SPEED = float(OS.get_environment("SL_DRONE_SPEED"))
 	if OS.get_environment("SL_DRONE_R") != "":
@@ -70,7 +70,11 @@ func _die() -> void:
 ## round the edge of that reach, looking.
 ## A drone never strays past its reach from the carrier.
 func _physics_process(delta: float) -> void:
-	if _dead or not is_instance_valid(carrier) or not carrier.is_alive():
+	if _dead:
+		return
+	# A drone dies with its carrier.
+	if not is_instance_valid(carrier) or not carrier.is_alive():
+		_die()
 		return
 	var g := Game.instance
 	var sf: float = g.ship_speed_factor(owner_id)

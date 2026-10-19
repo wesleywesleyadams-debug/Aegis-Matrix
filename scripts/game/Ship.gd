@@ -379,6 +379,12 @@ func _clear_drones() -> void:
 	queue_redraw()
 
 func _exit_tree() -> void:
+	# Destroyed: the drones go down with the carrier. Otherwise (Mod switched
+	# off, ship handed over) they are just recalled.
+	if _dead:
+		for d in _drones:
+			if is_instance_valid(d) and d.is_alive():
+				d._die()
 	_clear_drones()
 
 ## Defensive Fire (Targeting tier 3): how near ordnance must be for an idle turret to shoot it down.
