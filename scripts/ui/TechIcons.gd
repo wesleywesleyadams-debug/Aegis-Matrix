@@ -40,7 +40,7 @@ static func _paint(id: String) -> Image:
 		_sprite(art, _sprite_for(main_fx))
 		drawn = true
 	if drawn:
-		_plaque(img, art, BORDER_COLORS.get(t.get("group", ""), GOLD))
+		_plaque(img, art, BORDER_COLORS.get(t.get("group", ""), GOLD), t.has("mod"))
 		if main_fx.begins_with("mark_"):
 			var mk := int(id.get_slice("_mk", 1)) if "_mk" in id else 2
 			for k in mk - 1:
@@ -102,13 +102,16 @@ const GOLD := Color("ffd23a")
 const BORDER_COLORS := {
 	"weapons": Color("ff3a2e"), "defense": Color("8fd8ff"), "worlds": Color("4fd860"),
 	"logistics": Color("ffd23a"), "constructs": Color("f2f2f2"), "warships": Color("ff8a1e"),
+	"mods": Color("c77dff"),
 }
 
 ## The house style: a black plaque with a yellow border, and the art on it
 ## rendered as polished metal - its colours kept faintly, its shape carried
 ## by hard highlights on top-left edges, deep shadow on bottom-right edges,
 ## and a chrome sheen band across the surface.
-static func _plaque(img: Image, art: Image, edge: Color = GOLD) -> void:
+## `full_color`: keep the art's own colours (Mods, whose weapon effects are
+## the point) instead of the usual mostly-grey metal plaque.
+static func _plaque(img: Image, art: Image, edge: Color = GOLD, full_color := false) -> void:
 	img.fill(Color(0, 0, 0, 1))
 	for y in range(6, SIZE - 6):
 		for x in range(6, SIZE - 6):
@@ -127,6 +130,8 @@ static func _plaque(img: Image, art: Image, edge: Color = GOLD) -> void:
 				v *= 0.25
 			var grey := Color(v, v, v)
 			var m := grey.lerp(c * (0.4 + v), 0.3)
+			if full_color:
+				m = c * (0.75 + 0.35 * v)
 			img.set_pixel(x, y, Color(0, 0, 0).lerp(Color(m.r, m.g, m.b), minf(c.a * 1.4, 1.0)))
 	for y in SIZE:
 		for x in SIZE:
