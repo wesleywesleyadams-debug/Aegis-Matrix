@@ -1080,10 +1080,17 @@ func nearest_starbase(pid: int, pos: Vector2, include_sites: bool = false) -> St
 				best = sb
 	return best
 
-func entity_at(world_pos: Vector2) -> SpaceEntity:
+## `foe_drones`: also match enemy Interceptor Drones, for attack orders.
+## Drones are never selectable, even by their owner.
+func entity_at(world_pos: Vector2, foe_drones: bool = false) -> SpaceEntity:
 	var best: SpaceEntity = null
 	var best_d := INF
-	for e in get_tree().get_nodes_in_group("entities"):
+	var pool: Array = get_tree().get_nodes_in_group("entities")
+	if foe_drones:
+		for d in get_tree().get_nodes_in_group("drones"):
+			if d.is_enemy_of(player_id) and (vision == null or vision.can_see(d)):
+				pool.append(d)
+	for e in pool:
 		if not e.is_alive():
 			continue
 		var d := world_pos.distance_to(e.global_position)
@@ -1972,7 +1979,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 			# attack enemy ships/starbases or bombard enemy planets).
 			var obj: Node2D = null
 			var kind := ""
-			var foe := entity_at(world_pos)
+			var foe := entity_at(world_pos, true)
 			if foe and foe.is_enemy_of(player_id):
 				obj = foe
 				kind = "attack"
@@ -1992,7 +1999,7 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 			else:
 				hud.ping(world_pos, Color.WHITE)
 		return
-	var target := entity_at(world_pos)
+	var target := entity_at(world_pos, true)
 	var rock := asteroid_at(world_pos)
 	var planet := planet_at(world_pos)
 	if target and target.is_enemy_of(player_id):
