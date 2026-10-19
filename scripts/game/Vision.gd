@@ -336,7 +336,10 @@ func _update_intel() -> void:
 	var tree := get_tree()
 	for s in tree.get_nodes_in_group("ships"):
 		if game.is_hostile(pid, s.owner_id) and s.is_alive() and s.def["role"] == "warship" and can_see(s):
-			sightings[s.get_instance_id()] = [now, s.max_hp + s.max_armor + s.max_shield, s.global_position, Vector3(s.max_shield, s.max_armor, s.max_hp)]
+			# [time, toughness, where, layers, class, what it fires] - the last
+			# two are what anyone watching can see (AI picks its Mods from them).
+			sightings[s.get_instance_id()] = [now, s.max_hp + s.max_armor + s.max_shield, s.global_position, Vector3(s.max_shield, s.max_armor, s.max_hp),
+				str(s.def.get("base", s.ship_type)), str(s.weapon_mod.get("weapon", "drones" if s.weapon_mod.has("drones") else ""))]
 	for id in sightings.keys():
 		var sg: Array = sightings[id]
 		# Forget old sightings, and ships seen to be gone from where they were.

@@ -110,8 +110,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# (the AI thinks every second; one project runs at a time).
 	# (The learning agent picks its own research.)
 	if not (st.get("nn") is RLAgent) and game.research[pid].is_empty() and game.research_queue[pid].is_empty():
-		# (Mods are skipped until their weapons are built - docs/MODS.md.)
-		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available" and not Defs.TECHS[t].has("mod"))
+		# Mods: one per class, only for a class it fields, and only the one its
+		# intel says fits (see _pick_mod). It never swaps a Mod once chosen.
+		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available" 			and (not Defs.TECHS[t].has("mod") or _mod_wanted(pid, game, t, war)))
 		# Prefer techs it can pay for now; fall back to anything available.
 		var payable := options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
 		if not payable.is_empty():
@@ -281,6 +282,8 @@ func _pick_tech(options: Array, fleet: int) -> String:
 				score = 55.0 - d["tier"] * 5.0
 			"defense":
 				score = 35.0 + minf(fleet, 12) * 1.5 - d["tier"] * 6.0
+			"mods":
+				score = 46.0 + minf(fleet, 12) * 1.5
 			_:
 				score = 45.0 - d["tier"] * 5.0
 		# Cheap things first when scores are close, and a little noise so two
@@ -637,6 +640,53 @@ func _nebula_spot(from: Vector2, game: Game, v: Vision) -> Vector2:
 
 ## The corvette variant that best fits the enemy defenses seen so far (see
 ## Defs.VARIANTS), or "" when we haven't seen enough of their fleet.
+## Whether to research Mod `t` now: the class is fielded (2+ hulls), has no
+## Mod yet (none researched or in progress), and `t` is the one that fits.
+func _mod_wanted(pid: int, game: Game, t: String, war: Array) -> bool:
+	var cls: String = Defs.TECHS[t]["mod"]
+	if war.filter(func(s): return s.def.get("base", s.ship_type) == cls).size() < 2:
+		return false
+	for id in Defs.TECHS:
+		if Defs.TECHS[id].get("mod", "") == cls and game.tech_state(pid, id) in ["done", "active", "queued"]:
+			return false
+	return _pick_mod(pid, game, cls) == t
+
+## The Mod for `cls` that suits the enemy warships this player has seen
+## lately (its own sightings only - no cheating): big hulls, swarms of
+## corvettes, or missile/torpedo/drone users each call for a different one.
+func _pick_mod(pid: int, game: Game, cls: String) -> String:
+	var v: Vision = game.visions.get(pid)
+	var n := 0
+	var small := 0
+	var big := 0
+	var ordnance := 0
+	if v:
+		for id in v.sightings:
+			var sg: Array = v.sightings[id]
+			if sg.size() < 6:
+				continue
+			n += 1
+			if sg[4] == "corvette":
+				small += 1
+			elif sg[4] in ["cruiser", "carrier"]:
+				big += 1
+			if sg[5] in ["proton", "missile", "bomblet", "drones"]:
+				ordnance += 1
+	var fs := float(small) / maxf(n, 1)
+	var fb := float(big) / maxf(n, 1)
+	var fo := float(ordnance) / maxf(n, 1)
+	var seen := n >= 3
+	match cls:
+		"corvette":
+			return "mod_proton_torpedoes" if seen and fb >= 0.35 else ("mod_arc_emitters" if seen and fs >= 0.5 else "mod_kinetic_repeaters")
+		"destroyer":
+			return "mod_flak_cannons" if seen and fs >= 0.5 else ("mod_cluster_bombs" if seen and fb >= 0.35 else "mod_homing_missiles")
+		"cruiser":
+			return "mod_point_defense_lattice" if seen and fo >= 0.3 else ("mod_ion_lance" if seen and fb >= 0.35 else "mod_rail_cannons")
+		"carrier":
+			return "mod_interceptor_drones" if seen and fs >= 0.5 else ("mod_missile_barrage" if seen and fb >= 0.35 else "mod_tractor_beams")
+	return ""
+
 func _pick_variant(pid: int, game: Game) -> String:
 	var v: Vision = game.visions.get(pid)
 	if v == null:

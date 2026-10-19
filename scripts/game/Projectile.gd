@@ -114,7 +114,7 @@ func _physics_process(delta: float) -> void:
 				continue
 			if Geometry2D.get_closest_point_to_segment(x.global_position, global_position, nxt).distance_to(x.global_position) <= x.radius:
 				# Bursts on the first enemy it touches; the blast hurts enemies only.
-				Game.instance.splash(x.global_position, splash_r, damage * splash, owner_pid, shooter, profile, vs_class)
+				Game.instance.splash(x.global_position, splash_r, damage * splash, owner_pid, shooter if is_instance_valid(shooter) else null, profile, vs_class)
 				queue_free()
 				return
 		global_position = nxt
@@ -137,7 +137,7 @@ func _physics_process(delta: float) -> void:
 		var near := Geometry2D.get_closest_point_to_segment(target.global_position, global_position, next_pos)
 		if near.distance_to(target.global_position) <= target.radius:
 			if splash > 0.0:
-				Game.instance.splash(near, splash_r, damage * splash, owner_pid, shooter, profile, vs_class)
+				Game.instance.splash(near, splash_r, damage * splash, owner_pid, shooter if is_instance_valid(shooter) else null, profile, vs_class)
 				queue_free()
 				return
 			var hit := damage
