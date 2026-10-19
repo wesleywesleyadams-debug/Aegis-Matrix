@@ -307,18 +307,50 @@ func _draw_doors(L: Node2D) -> void:
 		var open: float = clampf(1.0 - absf(age / DOOR_OPEN * 2.0 - 1.0), 0.0, 1.0) if age < DOOR_OPEN else 0.0
 		L.draw_circle(c, r, Color("0b0f1e"))
 		if open > 0.0:
-			L.draw_circle(c, r * 0.8, Color(1.0, 0.85, 0.4, 0.8 * open))
-		# Two half-disc leaves that slide apart to open.
-		var gap: float = r * open
-		for side in [-1.0, 1.0]:
-			var pts := PackedVector2Array()
-			for q in 13:
-				var a: float = PI * 0.5 + PI * q / 12.0
-				var v := Vector2.from_angle(a) * r * 0.92
-				pts.append(c + Vector2(v.x * -side if side > 0.0 else v.x, v.y) + Vector2(side * gap, 0))
-			L.draw_colored_polygon(pts, Color("7d88a8") if side < 0.0 else Color("6b7594"))
+			L.draw_circle(c, r * 0.85 * open, Color(1.0, 0.85, 0.4, 0.9 * open))
+		_draw_iris(L, c, r * 0.95, open)
 		L.draw_arc(c, r, 0.0, TAU, 20, Color("4a5370"), maxf(r * 0.18, 0.5))
 		L.draw_arc(c, r * 1.05, 0.0, TAU, 20, Color(tc, 0.8), maxf(r * 0.1, 0.4))
+
+## A spiral iris hatch (like a vent door): IRIS_BLADES curved blades that
+## turn and draw back to open a round hole of `open` (0..1) of the radius.
+const IRIS_BLADES := 6
+func _draw_iris(L: Node2D, c: Vector2, r: float, open: float) -> void:
+	var ri: float = r * 0.85 * open
+	var turn: float = open * 1.2
+	var twist := 1.7
+	var w := TAU / IRIS_BLADES
+	for i in IRIS_BLADES:
+		var b0: float = w * i + turn
+		var pts := PackedVector2Array()
+		for q in 7:   # leading edge, rim to hole
+			var t := q / 6.0
+			pts.append(c + Vector2.from_angle(b0 + t * twist) * lerpf(r, ri, t))
+		for q in range(1, 4):   # along the hole
+			pts.append(c + Vector2.from_angle(b0 + twist + w * q / 3.0) * ri)
+		for q in range(5, -1, -1):   # next blade's edge, hole to rim
+			var t := q / 6.0
+			pts.append(c + Vector2.from_angle(b0 + w + t * twist) * lerpf(r, ri, t))
+		for q in range(2, 0, -1):   # back along the rim
+			pts.append(c + Vector2.from_angle(b0 + w * q / 3.0) * r)
+		if ri < 0.05:
+			pts = _dedupe(pts)
+		if pts.size() >= 3:
+			L.draw_colored_polygon(pts, Color("7d88a8") if i % 2 == 0 else Color("6b7594"))
+		var seam := PackedVector2Array()
+		for q in 7:
+			var t := q / 6.0
+			seam.append(c + Vector2.from_angle(b0 + t * twist) * lerpf(r, ri, t))
+		L.draw_polyline(seam, Color("2a3048"), maxf(r * 0.07, 0.4))
+
+func _dedupe(pts: PackedVector2Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for p in pts:
+		if out.is_empty() or out[out.size() - 1].distance_to(p) > 0.001:
+			out.append(p)
+	if out.size() > 1 and out[0].distance_to(out[out.size() - 1]) < 0.001:
+		out.remove_at(out.size() - 1)
+	return out
 
 ## Recalls (frees) every drone: the Mod was switched off or the carrier is gone.
 func _clear_drones() -> void:
