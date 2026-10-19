@@ -516,7 +516,7 @@ const TECHS := {
 	# the class; "tier" is only the column on the tab. Costs are placeholders.
 	# The weapons themselves come next (docs/MODS.md).
 	"mod_proton_torpedoes": {"name": "Proton Torpedoes", "group": "mods", "mod": "corvette", "tier": 1, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
-		"effects": {"mod_corvette": 1.0}, "desc": "Torpedo runs; x2.9-4.5 vs bigger hulls."},
+		"effects": {"mod_corvette": 1.0}, "desc": "Torpedo runs; x6-7 vs bigger hulls."},
 	"mod_kinetic_repeaters": {"name": "Kinetic Repeaters", "group": "mods", "mod": "corvette", "tier": 2, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
 		"effects": {"mod_corvette": 1.0}, "desc": "3x fire rate, 1/3 damage, -25% range."},
 	"mod_arc_emitters": {"name": "Arc Emitters", "group": "mods", "mod": "corvette", "tier": 3, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
@@ -716,10 +716,10 @@ static func _with_variants() -> Dictionary:
 	return out
 
 ## A ship def's damage profile: {"vs": layer multipliers, "pierce": 0-2}.
-## Blast radius of every exploding shot: each deals AOE_SHARE of its damage
+## Blast radius of every exploding shot: each deals AOE_SHARE (all) of its damage
 ## to every enemy within the radius, the target included.
 const AOE_RADIUS := {"flak": 20.0, "missile": 25.0, "proton": 30.0, "torpedo": 30.0, "bomblet": 40.0}
-const AOE_SHARE := 0.6
+const AOE_SHARE := 1.0
 
 ## How a Mod (Game.active_mod) changes its class's weapon. dmg / cd / range
 ## multiply damage per shot, cooldown and range; same damage per second as the
@@ -730,15 +730,15 @@ const AOE_SHARE := 0.6
 const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
-	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 1.1624, "vs_class": {"destroyer": 2.92, "cruiser": 3.73, "carrier": 4.5}, "cd": 3.0, "run": true},
+	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.4731, "vs_class": {"destroyer": 6.2, "cruiser": 6.6, "carrier": 7.4}, "cd": 3.0, "run": true},
 	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 1.0 / 3.0, "cd": 1.0 / 3.0, "range": 0.75},
 	"mod_arc_emitters": {"weapon": "arc", "chain": [0.6, 0.2, 0.2], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians
 	#   splash - Flak: on impact, this share of the damage to every enemy
 	#            within splash_r (the target included)
-	"mod_flak_cannons": {"weapon": "flak"},
-	"mod_cluster_bombs": {"weapon": "bomblet", "cd": 3.0, "count": 3, "spread": 0.5, "run": true},
-	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 1.25, "count": 2, "range": 1.2, "run": true},
+	"mod_flak_cannons": {"dmg": 0.5581, "weapon": "flak"},
+	"mod_cluster_bombs": {"dmg": 0.2729, "weapon": "bomblet", "cd": 3.0, "count": 3, "spread": 0.5, "run": true},
+	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
 }
 
 static func damage_profile(d: Dictionary) -> Dictionary:
