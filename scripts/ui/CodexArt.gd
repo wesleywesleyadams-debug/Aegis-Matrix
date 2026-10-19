@@ -286,3 +286,45 @@ func _k_radiation() -> void:
 	_sprite("ship_heatshield", c2, 30, YOU)
 	_sprite("ship_corvette", c2 + Vector2(28, 18), 20, YOU)
 	_text("A charged Rad Sail bubble blocks it", Vector2(350, 147), Color("c9a0ff"), 11)
+
+
+# --- Variants: what each is for ---------------------------------------------
+
+## use_<variant>: a ship in the variant's colors firing at its best targets
+## (ticked), with the targets to avoid crossed out underneath.
+const VARIANT_USE := {
+	"generalist": [["ship_corvette", "ship_destroyer", "ship_cruiser", "starbase"], []],
+	"plasma": [["ship_cruiser", "ship_carrier"], ["ship_corvette", "ship_destroyer"]],
+	"breacher": [["ship_destroyer"], ["ship_cruiser"]],
+	"reaver": [["ship_corvette", "planet_terran_s"], ["ship_carrier"]],
+	"slip": [["ship_cruiser"], ["ship_destroyer", "ship_corvette"]],
+	"disruptor": [["ship_carrier", "ship_cruiser"], ["ship_corvette", "ship_destroyer"]],
+}
+
+func _draw_use(v: String) -> void:
+	var col: Color = Defs.GENERALIST_SHOT if v == "generalist" else Defs.VARIANTS[v]["color"]
+	_sprite("ship_destroyer", Vector2(34, 75), 44, col)
+	draw_line(Vector2(58, 75), Vector2(84, 75), col, 2.5)
+	var good: Array = VARIANT_USE[v][0]
+	var bad: Array = VARIANT_USE[v][1]
+	var gap := 50.0 if good.size() > 2 else 62.0
+	_text("best vs", Vector2(98, 22), Color("4ade80"), 11, false)
+	for i in good.size():
+		var p := Vector2(118 + i * gap, 52)
+		_sprite(good[i], p, 44, FOE, PI)
+		draw_circle(p + Vector2(17, -17), 7, Color("4ade80"))
+		draw_line(p + Vector2(13, -17), p + Vector2(16, -14), Color.BLACK, 2.0)
+		draw_line(p + Vector2(16, -14), p + Vector2(21, -21), Color.BLACK, 2.0)
+	if not bad.is_empty():
+		_text("avoid", Vector2(98, 96), FOE, 11, false)
+		for i in bad.size():
+			var p := Vector2(118 + i * 62, 120)
+			_sprite(bad[i], p, 34, FOE, PI)
+			_cross(p, 14)
+
+func _k_use_generalist() -> void: _draw_use("generalist")
+func _k_use_plasma() -> void: _draw_use("plasma")
+func _k_use_breacher() -> void: _draw_use("breacher")
+func _k_use_reaver() -> void: _draw_use("reaver")
+func _k_use_slip() -> void: _draw_use("slip")
+func _k_use_disruptor() -> void: _draw_use("disruptor")

@@ -467,6 +467,26 @@ func _page_combat() -> void:
 		sbrow.append(["%.2f" % r2, Defs.LAYER_COLORS["hull"] if r2 < 0.98 else (Defs.LAYER_COLORS["armor"] if r2 > 1.05 else TEXT)])
 	mrows.append(sbrow)
 	_table(head, mrows)
+	_heading("When to use each variant")
+	var vgrid := GridContainer.new()
+	vgrid.columns = 3
+	vgrid.add_theme_constant_override("h_separation", 16)
+	vgrid.add_theme_constant_override("v_separation", 12)
+	for vu in [["generalist", "Generalist", "No weak matchup: the safe pick when you don't know the enemy, and as good as any vs starbases."],
+			["plasma", "Plasma", "Cruiser- and carrier-heavy fleets of uncertain mix: the safest specialist."],
+			["breacher", "Breacher", "Destroyers: the clear best pick against them."],
+			["reaver", "Reaver", "Corvette swarms, and bombarding worlds (it hits population hardest)."],
+			["slip", "Slip", "Cruisers. Badly outclassed by corvettes and destroyers."],
+			["disruptor", "Disruptor", "Carriers and cruisers. Crushed by corvettes and destroyers."]]:
+		var cell := VBoxContainer.new()
+		var vn := _label(vu[1], Defs.GENERALIST_SHOT if vu[0] == "generalist" else Defs.VARIANTS[vu[0]]["color"], 16)
+		cell.add_child(vn)
+		cell.add_child(CodexArt.new("use_" + vu[0], Vector2(300, 150)))
+		var vc := _wrap(vu[2], DIM, 14)
+		vc.custom_minimum_size.x = 300
+		cell.add_child(vc)
+		vgrid.add_child(cell)
+	_body.add_child(vgrid)
 	_heading("Hull marks", EDGE_LIT)
 	_para("A mark is rank. It comes from the Warships research tab and raises damage and every defense layer. A variant comes from a Weapons Depot and sets what the ship is good against. They stack. The Ships page compares class, mark and variant.")
 	_heading("Weapons Depots")
