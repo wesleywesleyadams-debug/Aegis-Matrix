@@ -143,7 +143,7 @@ func _physics_process(delta: float) -> void:
 			var hit := damage
 			if not vs_class.is_empty() and target is Ship:
 				hit *= float(vs_class.get(str(target.def.get("base", target.ship_type)), 1.0))
-			target.take_damage(hit, shooter if is_instance_valid(shooter) else null, profile)
+			target.take_damage(hit, shooter if is_instance_valid(shooter) and shooter is SpaceEntity else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)
 			queue_free()

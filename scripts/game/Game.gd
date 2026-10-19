@@ -3530,6 +3530,13 @@ var duel_nomovepen := false
 var arena_radius := 0.0
 const ARENA_RADIUS := 900.0
 
+## A duel side's toughness: hull, armor and shields - or for a world, its
+## population and planetary shield. `full` = at maximum.
+func _duel_tough(s: Node, full: bool) -> float:
+	if s is Planet:
+		return s.max_pop() + s.max_shield() if full else s.pop + s.shield
+	return s.max_hp + s.max_armor + s.max_shield if full else s.hp + s.armor + s.shield
+
 ## The duel arena: an empty patch of space - no star, worlds, rocks, bases,
 ## nebulae, storms or rings - just the two fleets, held inside ARENA_RADIUS
 ## so neither can run away.
@@ -3588,6 +3595,25 @@ func _duel() -> void:
 		var t := sp[0]
 		# "starbase" fields one fresh starbase (no budget) for the other side
 		# to break.
+		# "world:N" fields an owned, full-grown world with N Defense Batteries
+		# for the other side to bombard until it is depopulated.
+		if t == "world":
+			var wn: Planet = PLANET_SCENE.instantiate()
+			wn.kind = "planet_terran"
+			wn.size_variant = "_l"
+			wn.owner_id = i + 1
+			wn.start_buildings = PackedStringArray()
+			for b9 in (int(sp[1]) if sp.size() > 1 else 0):
+				wn.start_buildings.append("battery")
+			wn.position = c + Vector2((-1.0 if i == 0 else 1.0) * 320.0, 0)
+			$World/Planets.add_child(wn)
+			await get_tree().process_frame
+			wn.pop = wn.max_pop()
+			wn.operating.fill(true)
+			wn.shield = wn.max_shield()
+			print("DUEL_SIDE world: shield %d, pop %d, batteries %d" % [int(wn.shield), int(wn.pop), wn.count_building("battery")])
+			fleets[i].append(wn)
+			continue
 		if t == "starbase":
 			var sbn: Starbase = STARBASE_SCENE.instantiate()
 			sbn.owner_id = i + 1
@@ -3649,11 +3675,17 @@ func _duel() -> void:
 			center_on(Vector2.ZERO)
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png("user://shot.png"))
+	# Against a world, the fleet bombards it instead of attack-moving.
+	for si in 2:
+		var other: Array = fleets[1 - si]
+		if not other.is_empty() and other[0] is Planet:
+			for s in fleets[si]:
+				s.order_bombard(other[0])
 	var next_report := 30.0
 	var side_max := [0.0, 0.0]
 	for si in 2:
 		for s in fleets[si]:
-			side_max[si] += s.max_hp + s.max_armor + s.max_shield
+			side_max[si] += _duel_tough(s, true)
 	while true:
 		await get_tree().create_timer(0.5).timeout
 		var alive := [fleets[0].filter(func(x): return is_instance_valid(x) and x.is_alive()), fleets[1].filter(func(x): return is_instance_valid(x) and x.is_alive())]
@@ -3664,7 +3696,7 @@ func _duel() -> void:
 			for si in 2:
 				var hh := 0.0
 				for s in alive[si]:
-					hh += s.hp + s.armor + s.shield
+					hh += _duel_tough(s, false)
 				pl += " | %s %d/%d ships %d%%" % [specs[si], alive[si].size(), fleets[si].size(), int(100.0 * hh / maxf(side_max[si], 1.0))]
 			print(pl)
 		if alive[0].is_empty() or alive[1].is_empty() or now() - t0 > float(OS.get_environment("SL_DUEL_LIMIT") if OS.get_environment("SL_DUEL_LIMIT") != "" else "240"):
@@ -3676,15 +3708,15 @@ func _duel() -> void:
 					var hh := 0.0
 					var mm := 0.0
 					for s in alive[si]:
-						hh += s.hp + s.armor + s.shield
-						mm += s.max_hp + s.max_armor + s.max_shield
+						hh += _duel_tough(s, false)
+						mm += _duel_tough(s, true)
 					line += " | %s %d ships, %d%% toughness" % [specs[si], alive[si].size(), int(100.0 * hh / maxf(mm, 1.0))]
 			else:
 				var hp := 0.0
 				var mx := 0.0
 				for s in alive[w]:
-					hp += s.hp + s.armor + s.shield
-					mx += s.max_hp + s.max_armor + s.max_shield
+					hp += _duel_tough(s, false)
+					mx += _duel_tough(s, true)
 				line += "%s wins with %d/%d ships, %d%% of their toughness left, in %ds" % [specs[w], alive[w].size(), fleets[w].size(), int(100.0 * hp / maxf(mx, 1.0)), int(now() - t0)]
 			print(line)
 			get_tree().quit()
