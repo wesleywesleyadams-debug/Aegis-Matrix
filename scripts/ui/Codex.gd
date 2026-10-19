@@ -944,8 +944,8 @@ func _system_card(s: Dictionary) -> void:
 const SYSTEM_TIPS := {
 	"orion_reach": "The even, open map. Both flank clouds are as close to the enemy as to you, so spice goes to whoever holds the middle - send skimmers with an escort.",
 	"vega_drift": "The suns' radiation sweeps the center, so the lane between bases opens and closes. Time attacks for when it is clear, and harvest the bands when the enemy fleet is elsewhere.",
-	"kharon_expanse": "Few worlds, but a wide spice ring around the star with extra spice rocks in it. The gas carries low Radiation: shields stay down while you are inside, so expect drawn-out fights there.",
-	"tethys_cluster": "The debris ring splits the system: inner worlds are reachable only through its gaps. Hold a gap and you hold the inner system; the outer pockets are easy, safe spice.",
+	"kharon_expanse": "Few worlds, but the most spice anywhere: about a third of its rocks are spice, plus a wide spice ring around the star. The gas carries low Radiation: shields stay down while you are inside, so expect drawn-out fights there.",
+	"tethys_cluster": "The richest worlds - large and mostly fertile - sit behind the debris ring, reachable only through its gaps. Hold a gap and you hold the inner system; the outer pockets are easy, safe spice.",
 	"silent_void": "Nothing in the way and nothing to hide in: no nebulae, storms or rings, only the star's own zone. With no nebulae, spice comes only from rocks and Spice Extractors. Fleets meet in the open.",
 	"sable_verge": "Heavy belts and sparse worlds: a mining race. Ion storms slow and blind anything they cross, and each side's spice drift is an inviting raid target.",
 }

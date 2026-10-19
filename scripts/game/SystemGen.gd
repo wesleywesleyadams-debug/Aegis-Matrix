@@ -20,7 +20,7 @@ const SYSTEMS := [
 		"params": {"planets": 4, "belts": 2, "spice": 0.12}},
 	{"id": "kharon_expanse", "name": "Kharon Expanse", "seed": 2207, "desc": "Sparse and spice-rich.", "star": "red_dwarf", "star_name": "Kharon",
 		"bg": "rust", "names": "dust", "feature": "spice_nebula", "arrival": "You arrive in the Kharon Expanse. Spice lies thick in the dim red dust.",
-		"params": {"planets": 3, "belts": 1, "spice": 0.28}},
+		"params": {"planets": 3, "belts": 1, "spice": 0.28, "spice_share": [0.30, 0.36]}},
 	{"id": "tethys_cluster", "name": "Tethys Cluster", "seed": 3313, "desc": "Crowded worlds behind a debris ring.", "star": "orange", "star_name": "Tethys",
 		"bg": "verdant", "names": "myth", "feature": "rings", "nebula": "pockets", "arrival": "You arrive in the Tethys Cluster. A wall of rubble rings the inner worlds; find the gaps.",
 		"params": {"planets": 5, "belts": 3, "spice": 0.1}},
@@ -191,8 +191,13 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 	var n_planets: int = params.get("planets", 4)
 	for i in n_planets:
 		var ok := false
+		# Debris-ring systems (Tethys): the first two worlds go inside the ring
+		# - large, mostly fertile: the prize the gaps guard.
+		var inner: bool = ring_radius > 0.0 and i < 2
 		for attempt in 200:
 			var t := rng.randf_range(0.34, 0.95)
+			if inner:
+				t = rng.randf_range((star_clear + 50.0) / LAYOUT_R, (ring_radius - ring_w * 0.5 - 90.0) / LAYOUT_R)
 			var a := PI + rng.randf_range(-wedge + 0.12, wedge - 0.12)
 			var pos := _on_ellipse(a, t)
 			# Planets keep extra room from the edge (big sprites, orbit space).
@@ -201,8 +206,10 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 			if not _fits(placed, pos, 260.0) or pos.distance_to(home) < 480.0:
 				continue
 			var kind := _kind_for(rng, t)
+			if inner:
+				kind = "planet_terran" if rng.randf() < 0.6 else "planet_desert"
 			var r := rng.randf()
-			var size := "_s" if r < 0.3 else ("_l" if r > 0.75 else "")
+			var size := "_l" if inner else ("_s" if r < 0.3 else ("_l" if r > 0.75 else ""))
 			half_planets.append({"kind": kind, "size": size, "pos": pos, "owner": 0})
 			_claim(placed, pos, 110.0)
 			# Gas giants often have barren moons: none, one or two.
@@ -287,7 +294,8 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 	# Spice is rare but worth the same per rock: about 15% of all rocks
 	# (13-17% by seed). Short of that, the spice belts grow; over it, spice
 	# rocks are thinned out (never the back belt's).
-	var share := rng.randf_range(0.13, 0.17)
+	var sh_range: Array = params.get("spice_share", [0.13, 0.17])   # Kharon: the most spice
+	var share := rng.randf_range(float(sh_range[0]), float(sh_range[1]))
 	var have := half_rocks.filter(func(r): return str(r["variant"]).begins_with("spice")).size()
 	var tries := 0
 	while have < share * half_rocks.size() and tries < 300:
