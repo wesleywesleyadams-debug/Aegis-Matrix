@@ -527,7 +527,7 @@ const TECHS := {
 	"mod_proton_torpedoes": {"name": "Proton Torpedoes", "group": "mods", "mod": "corvette", "tier": 1, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
 		"effects": {"mod_corvette": 1.0}, "desc": "Torpedo runs; x6-7 vs bigger hulls."},
 	"mod_kinetic_repeaters": {"name": "Kinetic Repeaters", "group": "mods", "mod": "corvette", "tier": 2, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
-		"effects": {"mod_corvette": 1.0}, "desc": "3x fire rate, 60% damage per slug, -25% range."},
+		"effects": {"mod_corvette": 1.0}, "desc": "3x fire rate, 70% damage per slug, -25% range."},
 	"mod_arc_emitters": {"name": "Arc Emitters", "group": "mods", "mod": "corvette", "tier": 3, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
 		"effects": {"mod_corvette": 1.0}, "desc": "Chains to 2 more enemies (90/35/35%)."},
 	"mod_flak_cannons": {"name": "Flak Cannons", "group": "mods", "mod": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 160, "spice": 30}, "time": 75.0,
@@ -712,7 +712,7 @@ const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
 	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.4731, "vs_class": {"destroyer": 6.2, "cruiser": 6.6, "carrier": 7.4}, "cd": 3.0, "run": true},
-	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.6, "cd": 1.0 / 3.0, "range": 0.75},
+	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.7, "cd": 1.0 / 3.0, "range": 0.75},
 	"mod_arc_emitters": {"weapon": "arc", "chain": [0.9, 0.35, 0.35], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
 	#   fan    - [min, max] total fan width in degrees, rolled fresh each launch
