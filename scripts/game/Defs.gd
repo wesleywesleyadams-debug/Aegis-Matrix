@@ -187,7 +187,7 @@ const WEAPONS_DEPOT := {
 }
 
 const STARBASE := {
-	"name": "Starbase", "hp": 4000.0, "armor": 2000.0, "shield": 2000.0, "radius": 26.0,
+	"name": "Starbase", "hp": 8000.0 / 3.0, "armor": 8000.0 / 3.0, "shield": 8000.0 / 3.0, "radius": 26.0,
 	"weapon": "laser", "damage": 34.0, "cooldown": 0.6, "range": 260.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 400, "spice": 20}, "build_time": 40.0,

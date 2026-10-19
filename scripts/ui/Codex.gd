@@ -402,6 +402,19 @@ func _page_overview() -> void:
 		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1"],
 	])
 
+## The layer(s) a hull leans on: the biggest, two tied, or "even".
+func _lean_cell(d: Dictionary) -> Variant:
+	var top: float = maxf(d["shield"], maxf(d.get("armor", 0.0), d["hp"]))
+	var leans: Array = []
+	for l in [["shields", "shield", d["shield"]], ["armor", "armor", d.get("armor", 0.0)], ["hull", "hull", d["hp"]]]:
+		if float(l[2]) >= top * 0.97:
+			leans.append(l)
+	if leans.size() == 3:
+		return "even"
+	if leans.size() == 1:
+		return [leans[0][0], Defs.LAYER_COLORS[leans[0][1]]]
+	return " + ".join(leans.map(func(l): return l[0]))
+
 func _page_combat() -> void:
 	_heading("Defense layers")
 	_pic("layers", "Damage drains shields, then armor, then hull.", Vector2(460, 150))
@@ -414,20 +427,10 @@ func _page_combat() -> void:
 	_heading("Generalists")
 	_para("Each class leans on a different layer: corvettes on hull, destroyers on armor, cruisers on shields, carriers on shields and armor. That gives specialists a target.")
 	var rows: Array = []
-	for t in Defs.MARK_LINES:
-		var d: Dictionary = Defs.SHIPS[t]
-		# The layer(s) it leans on: the biggest, or two tied for biggest.
-		var top: float = maxf(d["shield"], maxf(d.get("armor", 0.0), d["hp"]))
-		var leans: Array = []
-		for l in [["shields", "shield", d["shield"]], ["armor", "armor", d.get("armor", 0.0)], ["hull", "hull", d["hp"]]]:
-			if float(l[2]) >= top * 0.97:
-				leans.append(l)
-		var lean_cell: Variant = [leans[0][0], Defs.LAYER_COLORS[leans[0][1]]] if leans.size() == 1 else " + ".join(leans.map(func(l): return l[0]))
+	for t in Defs.MARK_LINES + ["starbase"]:
+		var d: Dictionary = Defs.STARBASE if t == "starbase" else Defs.SHIPS[t]
 		rows.append([d["name"], [str(int(d["shield"])), Defs.LAYER_COLORS["shield"]], [str(int(d.get("armor", 0))), Defs.LAYER_COLORS["armor"]],
-			[str(int(d["hp"])), Defs.LAYER_COLORS["hull"]], lean_cell])
-	var sb: Dictionary = Defs.STARBASE
-	rows.append(["Starbase", [str(int(sb["shield"])), Defs.LAYER_COLORS["shield"]], [str(int(sb.get("armor", 0))), Defs.LAYER_COLORS["armor"]],
-		[str(int(sb["hp"])), Defs.LAYER_COLORS["hull"]], "hull"])
+			[str(int(d["hp"])), Defs.LAYER_COLORS["hull"]], _lean_cell(d)])
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
 	_heading("Specialist variants")
 	_pic("variants", "Every variant costs the same as its generalist; its chevrons and shots share its color.", Vector2(460, 160))
