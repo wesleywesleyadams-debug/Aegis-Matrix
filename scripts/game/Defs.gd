@@ -712,7 +712,7 @@ const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
 	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.4731, "vs_class": {"destroyer": 6.2, "cruiser": 6.6, "carrier": 7.4}, "cd": 3.0, "run": true},
-	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.45, "cd": 1.0 / 3.0, "range": 0.75},
+	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.6, "cd": 1.0 / 3.0, "range": 0.75},
 	"mod_arc_emitters": {"weapon": "arc", "chain": [0.8, 0.3, 0.3], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
 	#   fan    - [min, max] total fan width in degrees, rolled fresh each launch
@@ -727,9 +727,9 @@ const MOD_WEAPONS := {
 	"mod_flak_cannons": {"dmg": 0.75, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
-	"mod_cluster_bombs": {"dmg": 1.0, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0], "run": true},
+	"mod_cluster_bombs": {"dmg": 0.7, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0], "run": true},
 	"mod_ion_lance": {"weapon": "beam", "dmg": 0.75, "beam": [0.15, 1.85, 4.0]},
-	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.4, "cd": 4.0, "range": 1.4},
+	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.8, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
 	"mod_point_defense_lattice": {"dmg": 0.7, "pd": 220.0},
