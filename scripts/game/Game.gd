@@ -2798,6 +2798,7 @@ func _enter_dev_capture() -> void:
 		for k in n_foe:
 			theirs.append(spawn_ship(foe_type, foe_d, c0 + Vector2(260, -80 + k * (160.0 / n_foe))))
 		for k in ours.size():
+			ours[k].drones_ready = true   # drone carriers start with all their drones out
 			ours[k].order_attack(theirs[k % theirs.size()])
 		for k in theirs.size():
 			# SL_FOE_AMOVE: foes attack-move instead, picking their own targets.

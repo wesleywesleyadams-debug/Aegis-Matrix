@@ -242,8 +242,11 @@ func _fly_drones(delta: float) -> void:
 				empty = i
 	if empty < 0:
 		_drone_timer = DRONE_BUILD
+		drones_ready = false
 	else:
 		_drone_timer -= delta * sf
+		if drones_ready:
+			_drone_timer = 0.0
 		if _drone_timer <= 0.0:
 			_drone_timer = DRONE_BUILD
 			# Launch from a door (one per mount, round the hull).
@@ -468,6 +471,8 @@ var _tr_prev := 1.0
 var _drones: Array = []
 ## Seconds until the next drone is built; when each door last opened.
 var _drone_timer := 0.0
+## Dev (duels): launch the whole set at once instead of one every DRONE_BUILD.
+var drones_ready := false
 var _door_open: Array[float] = []
 var _door_layer: Node2D = null
 var _t_scan := 0.0
@@ -754,6 +759,10 @@ func refresh_stats() -> void:
 	var cls: String = str(Defs.SHIPS[ship_type].get("base", ship_type))
 	var m := g.active_mod(owner_id, cls) if def.get("role", "") == "warship" else ""
 	weapon_mod = Defs.MOD_WEAPONS.get(m, {})
+	# Dev (tuning grids): SL_MOD_DMG overrides the tested Mod's damage.
+	if OS.get_environment("SL_MOD_DMG") != "" and m == OS.get_environment("SL_MOD"):
+		weapon_mod = weapon_mod.duplicate()
+		weapon_mod["dmg"] = float(OS.get_environment("SL_MOD_DMG"))
 	display_name = g.ship_name(owner_id, ship_type)
 	_apply_mark()
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
