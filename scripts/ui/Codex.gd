@@ -586,7 +586,7 @@ func _page_ships() -> void:
 			name_row.add_child(_label("needs %s" % Defs.TECHS[d["requires"]]["name"], Color("ffd84a"), 14))
 		col.add_child(name_row)
 		var stats := "%s  ·  %s shield / %s armor / %s hull\n%d speed  ·  %d sensors" % [
-			d["role"].capitalize(), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), int(d["speed"]), int(d.get("sensor", 260))]
+			{"miner": "Harvester", "skimmer": "Harvester"}.get(d["role"], d["role"].capitalize()), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), int(d["speed"]), int(d.get("sensor", 260))]
 		if d["weapon"] != "":
 			stats += "  ·  %s %d dmg / %.1fs, range %d" % [d["weapon"], int(d["damage"]), d["cooldown"], int(d["range"])]
 			if int(d.get("guns", 1)) > 1:
