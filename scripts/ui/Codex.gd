@@ -373,16 +373,27 @@ func _show(id: String) -> void:
 		"terms": _page_terms()
 	_flow()
 
+## A CodexArt picture with a one-line caption under it.
+func _pic(kind: String, caption: String, size: Vector2) -> void:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	col.add_child(CodexArt.new(kind, size))
+	var cap := _wrap(caption, DIM, 14)
+	cap.custom_minimum_size.x = size.x
+	col.add_child(cap)
+	_body.add_child(col)
+
 func _page_overview() -> void:
 	_heading("Stardust Dominion")
-	_para("You lose when you hold no worlds, or when you have no starbase and no Constructor to build one. You win when the enemy does. Starbases build your ships and take in what harvesters haul. Worlds feed and power everything. Protect both, and go after the enemy's.")
+	_pic("lose", "Starbases build your ships and take in what harvesters haul; worlds feed and power everything.", Vector2(460, 150))
 	_plate([["starbase", "Starbase", EDGE_LIT], ["planet_terran_s", "Worlds"], ["ship_miner", "Harvesters"],
-		["ship_corvette", "Warships"], ["asteroid_0", "Belts"]], 68.0, true,
-		"Lose every world, or every starbase with no Constructor to build another, and you lose.")
+		["ship_corvette", "Warships"], ["asteroid_0", "Belts"]], 68.0, true)
+
 	_heading("The loop", EDGE_LIT)
-	_para("Mine belts and gas giants, settle free worlds, and build farms and power plants so your population and fleet can grow. Research what your strategy needs. Attack before the enemy's economy outgrows yours.")
+	_pic("loop", "Research what your strategy needs, and strike before the enemy outgrows you.", Vector2(460, 150))
 	_heading("What you can see", EDGE_LIT)
-	_para("Sensors give fog of war. Unexplored space is black. Explored space you can't see now is dimmed and shows only terrain and each planet's last known owner. Enemy ships and shots show only inside your sensor range. An enemy starbase stays on your map once seen. Ships in a spice nebula are hidden unless something of yours or a Scout is close, or a Scout beacon watches. Ion storms halve sensor range. The AI follows the same rules.")
+	_pic("fog", "Ships inside a spice nebula stay hidden unless an enemy is close; a seen enemy starbase stays on your map.", Vector2(460, 150))
 	_heading("Resources", EDGE_LIT)
 	_table(["Resource", "Comes from", "Pays for"], [
 		[["Food", Color("8fe060")], "Farms only", "%.2f per pop per minute (spice covers a shortfall); an unfed world shrinks as fast as it would grow" % Defs.FOOD_PER_POP_PER_MIN],
@@ -393,13 +404,13 @@ func _page_overview() -> void:
 
 func _page_combat() -> void:
 	_heading("Defense layers")
-	_para("Damage drains shields, then armor, then hull. A ship dies when its hull reaches 0.")
+	_pic("layers", "Damage drains shields, then armor, then hull.", Vector2(460, 150))
 	_table(["Layer", "Regenerates", "Notes"], [
 		[["Shields", Defs.LAYER_COLORS["shield"]], "Yes, for a little energy", "Paused while taking damage, Radiation included"],
 		[["Armor", Defs.LAYER_COLORS["armor"]], "No", "Only a Repair Tender restores it"],
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
-	_para("Shields on ships, constructs and worlds only recharge after %d s without damage, then refill %s%% of their maximum each second. Focused fire keeps them down. Spread fire lets unhit ships recover." % [int(Defs.SHIELD_REGEN_DELAY), String.num(Defs.SHIELD_REGEN_PER_SEC * 100.0, 1)])
+	_pic("shield_regen", "Spread fire lets unhit ships recover; focused fire keeps their shields down.", Vector2(460, 150))
 	_heading("Generalists")
 	_para("Each class leans on a different layer: corvettes on hull, destroyers on armor, cruisers on shields, carriers evenly. That gives specialists a target.")
 	var rows: Array = []
@@ -417,7 +428,7 @@ func _page_combat() -> void:
 		[str(int(sb["hp"])), Defs.LAYER_COLORS["hull"]], "hull"])
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
 	_heading("Specialist variants")
-	_para("Generalists deal full damage to every layer. A specialist either hits one layer harder for less base damage, or skips layers for much less. Every variant costs the same as its generalist. Its chevrons and shots share one color.")
+	_pic("variants", "Every variant costs the same as its generalist; its chevrons and shots share its color.", Vector2(460, 160))
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
 		"slip": "orange V-shot", "disruptor": "purple V-shot"}
@@ -455,19 +466,19 @@ func _page_combat() -> void:
 	_para("A mark is rank. It comes from the Warships research tab and raises damage and every defense layer. A variant comes from a Weapons Depot and sets what the ship is good against. They stack. The Ships page compares class, mark and variant.")
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
-	_para("Starbases build generalists only. After researching Depots, a Constructor can build a depot (one button per variant) for %s over %ds. Each depot makes ONE variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships, and so on. It wears your color and its variant's marking." % [
-		Defs.cost_text(wd["cost"]), int(wd["build_time"])])
-	_para("Right-click the depot (or use the refit buttons in the ship panel) to send generalists in. They dock, %d at a time, hidden and safe, and are refitted automatically as minerals allow. Each hull has its own cost and time:" % int(wd["capacity"]))
+	_pic("depot", "Starbases build generalists only; a depot refits them into one variant.", Vector2(460, 150))
+	_para("Build depots with a Constructor (%s, %ds each). %d ships fit at a time; each refit costs:" % [Defs.cost_text(wd["cost"]), int(wd["build_time"]), int(wd["capacity"])])
 	var rrows: Array = []
 	for t in Defs.VARIANTS_OF:
 		var r: Dictionary = Defs.SHIPS[t]["refit"]
 		rrows.append([Defs.SHIPS[t]["name"], "%d minerals" % int(r["minerals"]), "%ds" % int(r["time"])])
 	_table(["Hull", "Refit cost", "Refit time"], rrows)
-	_para("A refit with no minerals waits, and the ship stays inside until you cancel. Cancelling ejects it unchanged, still a generalist. A specialist can't be refitted again. If a depot is destroyed with ships inside, they are thrown clear and lose 60% of their shields, armor and hull.")
+	_para("No minerals: the refit waits. Cancel to eject it unchanged. A specialist can't refit again. A destroyed depot throws its ships clear at -60%.")
 	_heading("Weapon Mods")
-	_para("The Mods research tab changes what a ship class fires. Each class has three Mods and can use one at a time. Researching another Mod for that class replaces the old one, which is lost and must be researched again to come back; the old one keeps working until the new one finishes.")
-	_para("Click an active Mod's card to switch it off: the class goes back to its standard laser and the card turns yellow. Switched-off Mods are listed under the clock; click one there (or its card) to switch it back on. Switching is free and instant.")
-	_para("A Mod sets the weapon's shape; a Weapons Depot variant still sets its damage profile, so a Plasma corvette with Proton Torpedoes fires torpedoes that hit shields x2.2. Bombs, torpedoes and missiles attack hit-and-run: the ship closes, fires, then peels away while it reloads.")
+	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
+	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
+	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x2.2).")
+	_pic("hit_run", "Bombs, torpedoes and missiles attack hit-and-run.", Vector2(460, 150))
 	# The Mods tab as it appears on the research screen.
 	_tech_tree("mods", _research_rows("mods"))
 	var coming: Array = []
@@ -495,11 +506,7 @@ func _page_combat() -> void:
 		cell.add_child(cap)
 		sgrid.add_child(cell)
 	_body.add_child(sgrid)
-	_para("Exploding shots deal %d%% of their damage to every enemy inside the blast, the target included, so bunched-up ships take more. Spread out against them." % int(Defs.AOE_SHARE * 100.0))
-	var arows: Array = []
-	for w in [["flak", "Flak Cannons shell"], ["missile", "Homing Missile"], ["proton", "Proton Torpedo"], ["bomblet", "Cluster Bomb bomblet"]]:
-		arows.append([w[1], "%d" % int(Defs.AOE_RADIUS[w[0]]), "%d%%" % int(Defs.AOE_SHARE * 100.0)])
-	_table(["Shot", "Blast radius", "Damage to each enemy"], arows)
+	_pic("blasts", "Each blast hits every enemy inside it for full damage: spread out against them. Drawn to scale.", Vector2(460, 150))
 	var vs: Dictionary = Defs.MOD_WEAPONS["mod_proton_torpedoes"]["vs_class"]
 	_para("Interceptor Drones: the carrier launches one drone every %d s from its turret doors, up to %d. Drones have %d hull, fight on their own within %d of the carrier, and die with it. Point-Defense Lattice shoots them for x%d damage." % [int(Ship.DRONE_BUILD), int(Defs.MOD_WEAPONS["mod_interceptor_drones"]["drones"][0]), int(Drone.HULL), int(Defs.MOD_WEAPONS["mod_interceptor_drones"]["drones"][1]), int(Ship.PD_DRONE_MULT)])
 	var trb: Array = Defs.MOD_WEAPONS["mod_tractor_beams"]["tractor"]
@@ -763,7 +770,7 @@ func _page_economy() -> void:
 	_plate([["ship_miner", "Mining Barge"], ["asteroid_big_0", "Mineral asteroid"], ["spice_0", "Spice asteroid"],
 		["ship_skimmer", "Gas Skimmer"], ["planet_gas_s", "Gas giant"], ["starbase", "Starbase"]], 76.0, true,
 		"Barges work rock; skimmers work gas giants and spice nebulae. Both haul to a starbase or Mining Station.")
-	_para("A harvester parks on a node, fills its hold at a steady rate, hauls the load to the nearest starbase and returns. Distance never changes the gather rate, only flying time, so build a forward starbase for a far belt.")
+	_pic("harvest", "Every harvester runs this loop on its own once given a target.", Vector2(460, 150))
 	var hrows: Array = []
 	for row in [
 		["Mining Barge", "miner", "Mineral asteroid", "minerals", 1.0],
@@ -930,12 +937,12 @@ func _star_section() -> void:
 		srows.append([[sd["label"], sd["tint"]], "%d px" % int(sd["zone"]), "%d dps" % int(sd["dps"])])
 	_table(["Star", "Radiation zone", "Damage at the surface"], srows)
 	_heading("Radiation", Color("ffae4a"))
-	_para("Radiation is environmental damage. It hurts all ships and constructs, yours and the enemy's, while they stay inside, taking shields first, then armor, then hull. It counts as being hit, so shields don't regenerate inside it.")
+	_pic("radiation", "It takes shields, then armor, then hull - and counts as a hit, so shields stay down inside it.", Vector2(460, 150))
 	_table(["Source", "Where", "Damage"], [
 		[["A star", Color("ffb347")], "Its radiation zone (sizes above)", "Strongest at the surface, falling steeply toward the edge"],
 		[["A spice nebula", Color("ff9a2e")], "Anywhere inside the gas", "%d per second, about a star's outer zone: low, but constant" % int(SpiceNebula.RADIATION_DPS)],
 	])
-	_para("The exception is a Radiation Sail Array's bubble: while its solar shield is charged, nothing inside it, friend or foe, takes Radiation, and the array harvests energy from it (see Ships).")
+
 
 func _page_terms() -> void:
 	_heading("Terminology")
