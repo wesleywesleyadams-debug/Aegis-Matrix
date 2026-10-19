@@ -21,6 +21,10 @@ var radius: float = 280.0
 var seed_value: int = 1
 ## Where on its looping path the storm starts.
 var phase: float = 0.0
+## This storm's drift speed and the two frequencies of its looping path
+## (set per system seed; see SystemGen).
+var drift_speed: float = DRIFT_SPEED
+var loop: Array = []
 ## The storm's drift is a slow looping figure (two sine waves) that stays
 ## inside the round system.
 var _reach: float = 900.0
@@ -111,6 +115,9 @@ func setup() -> void:
 	rng.seed = seed_value
 	_f1 = rng.randf_range(0.8, 1.2)
 	_f2 = rng.randf_range(1.3, 1.9)
+	if loop.size() == 2:
+		_f1 = float(loop[0])
+		_f2 = float(loop[1])
 	_reach = Game.MAP_RADIUS - radius * (1.0 + WOBBLE) - 60.0
 	_noise = FastNoiseLite.new()
 	_noise.seed = seed_value * 13 + 1
@@ -138,7 +145,7 @@ func start_clear_of(bases: Array) -> void:
 
 ## Where the storm's centre is at match time t.
 func center_at(t: float) -> Vector2:
-	var u := phase + t * DRIFT_SPEED
+	var u := phase + t * drift_speed
 	return Vector2(sin(u * _f1), sin(u * _f2 + phase * 0.7)).limit_length(1.0) * _reach
 
 ## The edge's distance from the centre at angle a and time t: a ragged,

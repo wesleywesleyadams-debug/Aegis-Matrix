@@ -66,6 +66,10 @@ static var players: int = 2
 static var star_clear: float = 330.0
 const EDGE_MARGIN := 90.0
 const HOME_T := 0.9
+## This seed's values (see generate): base distance, debris ring size.
+static var home_t := HOME_T
+static var ring_r := 0.0
+static var ring_w := 0.0
 ## Binary systems: each star's distance from the center, and one orbit's
 ## length in game seconds.
 const BINARY_ORBIT := 260.0
@@ -126,10 +130,24 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 	var wedge := PI / players   # half the wedge's angle
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
+	# Each seed shifts the system's numbers around its design: a world or a
+	# belt more or fewer, a little more or less spice, bases nearer or
+	# further apart, and its signature feature sized differently.
+	params = params.duplicate()
+	params["planets"] = clampi(int(params.get("planets", 4)) + rng.randi_range(-1, 1), 3, 6)
+	params["belts"] = clampi(int(params.get("belts", 2)) + rng.randi_range(-1, 1), 1, 4)
+	params["spice"] = float(params.get("spice", 0.12)) * rng.randf_range(0.8, 1.25)
+	home_t = rng.randf_range(0.8, 0.95)
+	ring_r = RING_RADIUS * rng.randf_range(0.85, 1.15)
+	ring_w = RING_WIDTH * rng.randf_range(0.75, 1.3)
+	var ring_gap := RING_GAP_HALF * rng.randf_range(0.75, 1.3)
+	var ring_gaps := rng.randi_range(1, 3)
+	var bin_orbit := BINARY_ORBIT * rng.randf_range(0.8, 1.2)
+	var bin_period := BINARY_PERIOD * rng.randf_range(0.75, 1.3)
 	star_clear = float(Defs.STAR_TYPES.get(params.get("star", "yellow"), Defs.STAR_TYPES["yellow"])["zone"]) + 150.0
 	if params.get("feature", "") == "binary":
-		star_clear += BINARY_ORBIT
-	ring_radius = RING_RADIUS if params.get("feature", "") == "rings" else 0.0
+		star_clear += bin_orbit
+	ring_radius = ring_r if params.get("feature", "") == "rings" else 0.0
 	var names: Array = NAME_SETS.get(params.get("names", ""), NAMES).duplicate()
 	for i in range(names.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
@@ -142,22 +160,31 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 
 	# Home world in the middle of the wedge, give or take a little.
 	var home_a := PI + rng.randf_range(-1.0, 1.0) * minf(0.35, wedge * 0.22)
-	var home := _on_ellipse(home_a, HOME_T)
+	var home := _on_ellipse(home_a, home_t)
 	half_planets.append({"kind": "planet_terran", "pos": home, "owner": 1, "home": true})
 	_claim(placed, home, 90.0)
 	# Starbase between home and the star; starting ships beside it.
 	var to_star := (-home).normalized()
 	var sb_pos := home + to_star * 170.0
 	_claim(placed, sb_pos, 70.0)
-	# Starter belt behind the home world (away from the star), plus one spice rock.
-	var belt_center := home - to_star * 40.0 + to_star.orthogonal() * (240.0 if rng.randf() < 0.5 else -240.0)
-	for i in rng.randi_range(8, 10):
-		var p := _free_spot(rng, placed, belt_center, 110.0, 24.0)
-		if p != Vector2.INF:
-			half_rocks.append({"variant": "asteroid_%d" % rng.randi_range(0, 3) if rng.randf() < 0.8 else "asteroid_big_%d" % rng.randi_range(0, 1), "pos": p})
-	var sp := _free_spot(rng, placed, belt_center, 140.0, 24.0)
-	if sp != Vector2.INF:
-		half_rocks.append({"variant": "spice_0", "pos": sp})
+	# Three home belts per player:
+	#   SAFE    - beside the home world, a short haul from the starbase:
+	#             minerals only;
+	#   FORWARD - out toward the star past the starbase: mostly minerals with
+	#             a little spice, but it is where enemies come through;
+	#   BACK    - a few rocks behind the home world by the map edge: all spice.
+	var belt_side := 1.0 if rng.randf() < 0.5 else -1.0
+	# Each system has its own belt style: how spread out, how dense, how thick
+	# its arcs are and how far round they curl, and where the home belts sit.
+	var bs := {"spread": rng.randf_range(0.7, 1.35), "density": rng.randf_range(0.75, 1.3),
+		"thick": rng.randf_range(0.015, 0.06), "span": rng.randf_range(0.6, 1.4),
+		"safe_a": rng.randf_range(-0.35, 0.35), "fwd_d": rng.randf_range(260.0, 380.0)}
+	var safe_c: Vector2 = home + (to_star * -40.0 + to_star.orthogonal() * 240.0 * belt_side).rotated(bs["safe_a"])
+	_home_belt(rng, placed, half_rocks, safe_c, roundi(rng.randi_range(8, 10) * bs["density"]), 0, 110.0 * bs["spread"])
+	var fwd_c: Vector2 = sb_pos + to_star * bs["fwd_d"] - to_star.orthogonal() * 120.0 * belt_side
+	_home_belt(rng, placed, half_rocks, fwd_c, roundi(rng.randi_range(7, 9) * bs["density"]), rng.randi_range(1, 2), 110.0 * bs["spread"])
+	var back_c := home - to_star * 130.0 - to_star.orthogonal() * 60.0 * belt_side
+	_home_belt(rng, placed, half_rocks, back_c, 0, rng.randi_range(3, 4), 50.0)
 
 	# Other worlds: type by distance from the star (hot inside, cold outside).
 	var n_planets: int = params.get("planets", 4)
@@ -177,32 +204,46 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 			var size := "_s" if r < 0.3 else ("_l" if r > 0.75 else "")
 			half_planets.append({"kind": kind, "size": size, "pos": pos, "owner": 0})
 			_claim(placed, pos, 110.0)
-			# Gas giants often have a barren moon.
-			if kind == "planet_gas" and rng.randf() < 0.6:
-				var mp := pos + Vector2.from_angle(rng.randf() * TAU) * 150.0
-				if _fits(placed, mp, 70.0) and _inside(mp):
-					half_planets.append({"kind": "planet_moon", "pos": mp, "owner": 0})
-					_claim(placed, mp, 60.0)
+			# Gas giants often have barren moons: none, one or two.
+			if kind == "planet_gas":
+				var ma := rng.randf() * TAU
+				for m in rng.randi_range(0, 2):
+					var mp := pos + Vector2.from_angle(ma + m * rng.randf_range(2.0, 3.6)) * rng.randf_range(135.0, 175.0)
+					if _fits(placed, mp, 70.0) and _inside(mp):
+						half_planets.append({"kind": "planet_moon", "pos": mp, "owner": 0})
+						_claim(placed, mp, 60.0)
 			ok = true
 			break
 		if not ok:
 			break
 
-	# Asteroid belts: arcs along an orbit; spice more likely nearer the center.
+	# Neutral belts, anywhere from just outside the star's zone to near the
+	# map edge: each is either a LARGE MINERAL belt (a long arc, no spice) or
+	# a SMALL SPICE belt (a tight cluster of spice rocks).
 	var spice_chance: float = params.get("spice", 0.12)
+	var t_min := (star_clear + 60.0) / LAYOUT_R
 	for b in int(params.get("belts", 2)):
-		var t := rng.randf_range(0.4, 0.85)
-		var a0 := PI + rng.randf_range(-1.2, 1.2) * wedge / (PI / 2.0)
-		var span := rng.randf_range(0.35, 0.7) * minf(1.0, wedge / (PI / 2.0))
-		for k in rng.randi_range(10, 16):
-			var a := a0 + span * (float(k) / 15.0 - 0.5) + rng.randf_range(-0.03, 0.03)
-			var p := _on_ellipse(a, t + rng.randf_range(-0.03, 0.03))
-			if not _in_wedge(p) or not _fits(placed, p, 26.0) or not _inside(p):
-				continue
-			var spice := rng.randf() < spice_chance * (1.4 - t)
-			var variant := "spice_%d" % rng.randi_range(0, 1) if spice else ("asteroid_%d" % rng.randi_range(0, 3) if rng.randf() < 0.85 else "asteroid_big_%d" % rng.randi_range(0, 1))
-			half_rocks.append({"variant": variant, "pos": p})
-			_claim(placed, p, 12.0)
+		var t := rng.randf_range(t_min, 0.97)
+		var a0 := PI + rng.randf_range(-0.8, 0.8) * wedge
+		# Spicier systems lean to spice belts.
+		if rng.randf() < 0.25 + spice_chance * 1.5:
+			var c := _on_ellipse(a0, t)
+			var rich := rng.randf_range(0.6, 1.5)
+			for k in roundi(rng.randi_range(4, 6) * bs["density"]):
+				var p := _free_spot(rng, placed, c, 70.0 * bs["spread"], 26.0)
+				if p != Vector2.INF and _in_wedge(p) and _inside(p):
+					half_rocks.append({"variant": "spice_%d" % rng.randi_range(0, 1), "pos": p, "rich": rich})
+		else:
+			var rich := rng.randf_range(0.6, 1.5)
+			var span: float = rng.randf_range(0.35, 0.7) * bs["span"] * minf(1.0, wedge / (PI / 2.0))
+			var n := roundi(rng.randi_range(14, 20) * bs["density"])
+			for k in n:
+				var a: float = a0 + span * (float(k) / maxf(n - 1, 1) - 0.5) + rng.randf_range(-0.03, 0.03)
+				var p: Vector2 = _on_ellipse(a, t + rng.randf_range(-bs["thick"], bs["thick"]))
+				if not _in_wedge(p) or not _fits(placed, p, 26.0) or not _inside(p):
+					continue
+				half_rocks.append({"variant": "asteroid_%d" % rng.randi_range(0, 3) if rng.randf() < 0.85 else "asteroid_big_%d" % rng.randi_range(0, 1), "pos": p, "rich": rich})
+				_claim(placed, p, 12.0)
 
 	# Signature feature: a spice nebula ring around the star, seeded with
 	# extra spice rocks (the ring itself is symmetric; the rocks are mirrored).
@@ -213,21 +254,23 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 		var n_storms := maxi(3, players + 1)
 		var ph0 := rng.randf() * TAU
 		for k in n_storms:
-			features.append({"type": "storms", "seed": seed + 101 * k, "radius": rng.randf_range(240.0, 330.0), "phase": ph0 + TAU * k / n_storms})
+			features.append({"type": "storms", "seed": seed + 101 * k, "radius": rng.randf_range(200.0, 360.0), "phase": ph0 + TAU * k / n_storms,
+				"speed": rng.randf_range(0.7, 1.4), "loop": [rng.randf_range(0.8, 1.2), rng.randf_range(1.1, 1.6)]})
 	if ring_radius > 0.0:
 		# Two gaps per wedge, turned with it.
+		# 1-3 gaps per wedge, spread across it, turned with it.
 		var g1 := rng.randf_range(0.3, 1.1) * wedge / (PI / 2.0)
-		var g2 := g1 + wedge + rng.randf_range(-0.35, 0.35) * wedge / (PI / 2.0)
 		var gaps: Array = []
-		for k in players:
-			gaps.append(g1 + TAU * k / players)
-			gaps.append(g2 + TAU * k / players)
-		features.append({"type": "rings", "radius": RING_RADIUS, "width": RING_WIDTH, "gap_half": RING_GAP_HALF, "gaps": gaps})
+		for gi in ring_gaps:
+			var g := g1 + gi * 2.0 * wedge / ring_gaps + rng.randf_range(-0.2, 0.2) * wedge / (PI / 2.0)
+			for k in players:
+				gaps.append(g + TAU * k / players)
+		features.append({"type": "rings", "radius": ring_r, "width": ring_w, "gap_half": ring_gap, "gaps": gaps})
 	if params.get("feature", "") == "binary":
-		features.append({"type": "binary", "orbit": BINARY_ORBIT, "period": BINARY_PERIOD})
+		features.append({"type": "binary", "orbit": bin_orbit, "period": bin_period})
 	if params.get("feature", "") == "spice_nebula":
-		var inner := star_clear + 20.0
-		var outer := inner + 400.0
+		var inner := star_clear + rng.randf_range(10.0, 90.0)
+		var outer := inner + rng.randf_range(300.0, 480.0)
 		features.append({"type": "spice_nebula", "inner": inner, "outer": outer})
 		for k in 24:
 			var a := PI + rng.randf_range(-wedge + 0.1, wedge - 0.1)
@@ -252,7 +295,7 @@ static func generate(seed: int, params: Dictionary, n_players: int = 2) -> Dicti
 				"owner": (1 + side if pl["owner"] == 1 else 0)})
 			n += 1
 		for r in half_rocks:
-			out["asteroids"].append({"name": "Rock%d" % out["asteroids"].size(), "variant": r["variant"], "pos": r["pos"].rotated(turn)})
+			out["asteroids"].append({"name": "Rock%d" % out["asteroids"].size(), "variant": r["variant"], "pos": r["pos"].rotated(turn), "rich": r.get("rich", 1.0)})
 		var pid := 1 + side
 		var sb: Vector2 = sb_pos.rotated(turn)
 		out["starbases"].append({"owner": pid, "pos": sb})
@@ -283,18 +326,29 @@ static func nebulae(style: String, base: Vector2, seed: int) -> Array:
 	var half: Array = []
 	var axis := base.normalized()
 	var ang := axis.angle()
+	# The seed varies each layout's size, distance and angle (and for some,
+	# how many clouds), so the same style never lays out twice the same.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed * 7919 + 17
+	var sz := rng.randf_range(0.7, 1.35)
+	var dist := rng.randf_range(0.85, 1.15)
+	var turn0 := rng.randf_range(-0.22, 0.22)
 	match style:
 		"flanks":
-			half.append({"shape": "cloud", "pos": axis.orthogonal() * 720.0, "radius": 250.0})
+			half.append({"shape": "cloud", "pos": axis.orthogonal().rotated(turn0) * 720.0 * dist, "radius": 250.0 * sz})
+			if rng.randf() < 0.4:   # sometimes a smaller second cloud nearer home
+				half.append({"shape": "cloud", "pos": axis.orthogonal().rotated(turn0 + 0.5) * 1050.0 * dist, "radius": 140.0 * sz})
 		"bands":
-			var r0 := star_clear + 110.0
-			half.append({"shape": "ring", "pos": Vector2.ZERO, "inner": r0, "outer": r0 + 150.0, "arc_mid": ang + PI / 2.0, "arc_half": 0.55})
+			var r0 := star_clear + 110.0 * dist
+			var w := rng.randf_range(110.0, 200.0)
+			half.append({"shape": "ring", "pos": Vector2.ZERO, "inner": r0, "outer": r0 + w, "arc_mid": ang + PI / 2.0 + turn0, "arc_half": rng.randf_range(0.4, 0.75)})
 		"pockets":
-			var r := (ring_radius if ring_radius > 0.0 else RING_RADIUS) + 250.0
-			for da in [-0.8, 0.75, 1.75]:
-				half.append({"shape": "cloud", "pos": Vector2.from_angle(ang + da) * r, "radius": 130.0})
+			var r := (ring_radius if ring_radius > 0.0 else ring_r) + 250.0 * dist
+			for k in rng.randi_range(2, 4):
+				var da := -0.9 + k * rng.randf_range(0.75, 1.0) + turn0
+				half.append({"shape": "cloud", "pos": Vector2.from_angle(ang + da) * r * rng.randf_range(0.9, 1.1), "radius": rng.randf_range(100.0, 160.0) * sz})
 		"drifts":
-			half.append({"shape": "cloud", "pos": Vector2.from_angle(ang + 0.7) * 1200.0, "radius": 300.0})
+			half.append({"shape": "cloud", "pos": Vector2.from_angle(ang + 0.7 + turn0) * 1200.0 * dist, "radius": 300.0 * sz})
 	var out: Array = []
 	var k := 0
 	var bases: Array = []
@@ -334,7 +388,7 @@ static func _in_wedge(p: Vector2) -> bool:
 static func _fits(placed: Array, p: Vector2, clearance: float) -> bool:
 	if p.length() < star_clear or not _inside(p):
 		return false
-	if ring_radius > 0.0 and absf(p.length() - ring_radius) < RING_WIDTH / 2.0 + minf(clearance, 60.0) + 30.0:
+	if ring_radius > 0.0 and absf(p.length() - ring_radius) < ring_w / 2.0 + minf(clearance, 60.0) + 30.0:
 		return false
 	for k in range(1, players):
 		if p.distance_to(p.rotated(TAU * k / players)) < clearance:
@@ -348,6 +402,17 @@ static func _fits(placed: Array, p: Vector2, clearance: float) -> bool:
 
 static func _claim(placed: Array, p: Vector2, clearance: float) -> void:
 	placed.append([p, clearance])
+
+## One home belt: `rocks` asteroids and `spice` spice rocks scattered
+## within `spread` of `center`, kept on the map.
+static func _home_belt(rng: RandomNumberGenerator, placed: Array, rocks_out: Array, center: Vector2, rocks: int, spice: int, spread: float) -> void:
+	var rich := rng.randf_range(0.75, 1.3)   # how much each rock holds, this belt
+	for i in rocks + spice:
+		var p := _free_spot(rng, placed, center, spread if (i < rocks or rocks == 0) else spread * 1.25, 24.0)
+		if p == Vector2.INF or not _inside(p):
+			continue
+		var variant := "spice_0" if i >= rocks else ("asteroid_%d" % rng.randi_range(0, 3) if rng.randf() < 0.8 else "asteroid_big_%d" % rng.randi_range(0, 1))
+		rocks_out.append({"variant": variant, "pos": p, "rich": rich})
 
 static func _free_spot(rng: RandomNumberGenerator, placed: Array, center: Vector2, spread: float, clearance: float) -> Vector2:
 	for attempt in 40:

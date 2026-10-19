@@ -392,17 +392,18 @@ func _build_system() -> void:
 	world.add_child(RouteOverlay.new())
 	system_settings = SystemGen.settings(GameState.system_id, GameState.system_seed)
 	_apply_system_look(system_settings)
-	if GameState.system_id == "orion_reach" and players.size() == 2:
-		SystemGen.players = 2
-		# Hand-built in Main.tscn, so its nebulae are laid out here against
-		# the starbases that are already in the scene.
-		var p1 := starbases_root.get_children().filter(func(b): return b.owner_id == 1)
-		if not p1.is_empty() and system_settings.has("nebula"):
-			for ft in SystemGen.nebulae(str(system_settings["nebula"]), p1[0].position, GameState.system_seed):
-				_add_nebula(ft)
-		return
-	# Beyond two players even Orion Reach is generated (its scene is a 1v1).
+	# Every system is generated, Orion Reach included (Main.tscn's own
+	# objects are cleared and replaced).
 	var layout := SystemGen.generate(GameState.system_seed if GameState.system_seed != 0 else 1, system_settings, players.size())
+	# Dev: SL_DUMP_LAYOUT=1 prints the generated layout as JSON and quits.
+	if OS.get_environment("SL_DUMP_LAYOUT") != "":
+		var dump := {"asteroids": layout["asteroids"].map(func(r): return [r["variant"], r["pos"].x, r["pos"].y]),
+			"planets": layout["planets"].map(func(q): return [q["kind"], q["pos"].x, q["pos"].y, q["owner"]]),
+			"starbases": layout["starbases"].map(func(q): return [q["pos"].x, q["pos"].y]), "star_clear": SystemGen.star_clear,
+			"neb": layout["features"].filter(func(f): return f["type"] == "spice_nebula").map(func(f): return [f.get("shape", "ring"), f.get("pos", Vector2.ZERO).x, f.get("pos", Vector2.ZERO).y, f.get("radius", 0.0), f.get("inner", 0.0), f.get("outer", 0.0), f.get("arc_mid", 0.0), f.get("arc_half", PI)])}
+		print("LAYOUT ", JSON.stringify(dump))
+		get_tree().quit()
+		return
 	for root in [$World/Planets, $World/Asteroids, starbases_root, ships_root]:
 		for n in root.get_children():
 			root.remove_child(n)
@@ -420,6 +421,7 @@ func _build_system() -> void:
 		var r: Asteroid = ASTEROID_SCENE.instantiate()
 		r.name = a["name"]
 		r.variant = a["variant"]
+		r.richness = float(a.get("rich", 1.0))
 		r.position = a["pos"]
 		$World/Asteroids.add_child(r)
 	for s in layout["starbases"]:
@@ -437,6 +439,9 @@ func _build_system() -> void:
 			storm.seed_value = int(ft.get("seed", 1))
 			storm.radius = float(ft.get("radius", 280.0))
 			storm.phase = ft["phase"]
+			storm.drift_speed = IonStorm.DRIFT_SPEED * float(ft.get("speed", 1.0))
+			if ft.has("loop"):
+				storm.loop = ft["loop"]
 			storm.setup()
 			# Far from every starting base and from the storms already placed.
 			storm.start_clear_of(layout["starbases"].map(func(s): return s["pos"]) + storm_starts)
