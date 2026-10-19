@@ -3,7 +3,7 @@ extends SpaceEntity
 ## An Interceptor Drone (carrier Mod): a tiny craft the carrier flies and
 ## fires for (Ship._fly_drones). It can be targeted and shot down like a
 ## ship, but is not a ship: no selection, orders, score or upkeep. The
-## carrier builds a replacement for each one lost (Defs.DRONE_REBUILD).
+## carrier builds a replacement for each one lost (Ship.DRONE_BUILD).
 
 const HULL := 50.0   # all hull: no shields or armor, and no marks or tech change it
 

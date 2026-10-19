@@ -528,7 +528,7 @@ const TECHS := {
 	"mod_arc_emitters": {"name": "Arc Emitters", "group": "mods", "mod": "corvette", "tier": 3, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
 		"effects": {"mod_corvette": 1.0}, "desc": "Chains to 2 more enemies (60/20/20%)."},
 	"mod_flak_cannons": {"name": "Flak Cannons", "group": "mods", "mod": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 160, "spice": 30}, "time": 75.0,
-		"effects": {"mod_destroyer": 1.0}, "desc": "Bursts hit all within 50 for 60%."},
+		"effects": {"mod_destroyer": 1.0}, "desc": "Shells burst, hitting all enemies within 20."},
 	"mod_cluster_bombs": {"name": "Cluster Bombs", "group": "mods", "mod": "destroyer", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 160, "spice": 30}, "time": 75.0,
 		"effects": {"mod_destroyer": 1.0}, "desc": "Bombing runs: a spread of unguided bomblets."},
 	"mod_homing_missiles": {"name": "Homing Missiles", "group": "mods", "mod": "destroyer", "tier": 3, "requires": ["destroyers"], "cost": {"energy": 160, "spice": 30}, "time": 75.0,
@@ -717,8 +717,10 @@ const MOD_WEAPONS := {
 	#            ramps from start to end x the laser's over that long on one target
 	#   pd     - Point-Defense: radius in which each turret shoots down enemy
 	#            missiles, torpedoes and bomblets before firing at ships
-	#   splash - Flak: on impact, this share of the damage to every enemy
-	#            within splash_r (the target included)
+	#   drones - Interceptor Drones: [count, reach from the carrier]
+	#   tractor- Tractor Beams: [slow far, slow close, reach x weapon range]
+	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
+	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
 	"mod_flak_cannons": {"dmg": 0.5581, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
