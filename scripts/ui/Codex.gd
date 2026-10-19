@@ -476,6 +476,25 @@ func _page_combat() -> void:
 			coming.append(Defs.TECHS[id]["name"])
 	if not coming.is_empty():
 		_para("Still being built: " + ", ".join(coming) + ".")
+	_heading("When to use each Mod")
+	var sgrid := GridContainer.new()
+	sgrid.columns = 4
+	sgrid.add_theme_constant_override("h_separation", 16)
+	sgrid.add_theme_constant_override("v_separation", 14)
+	for id in Defs.TECHS:
+		if not Defs.TECHS[id].has("mod"):
+			continue
+		var cell := VBoxContainer.new()
+		var nm := Label.new()
+		nm.text = Defs.TECHS[id]["name"] + ("" if Defs.MOD_WEAPONS.has(id) else "  (coming)")
+		nm.add_theme_color_override("font_color", TEXT)
+		cell.add_child(nm)
+		cell.add_child(ModScene.new(id))
+		var cap := _wrap(ModScene.caption(id), DIM, 14)
+		cap.custom_minimum_size.x = ModScene.W
+		cell.add_child(cap)
+		sgrid.add_child(cell)
+	_body.add_child(sgrid)
 	_para("Exploding shots deal %d%% of their damage to every enemy inside the blast, the target included, so bunched-up ships take more. Spread out against them." % int(Defs.AOE_SHARE * 100.0))
 	var arows: Array = []
 	for w in [["flak", "Flak Cannons shell"], ["missile", "Homing Missile"], ["proton", "Proton Torpedo"], ["bomblet", "Cluster Bomb bomblet"]]:
@@ -893,6 +912,16 @@ func _notification(what: int) -> void:
 		await get_tree().create_timer(0.6).timeout
 		_show(OS.get_environment("SL_CODEX_SHOT"))
 		await get_tree().process_frame
+		if OS.get_environment("SL_CODEX_SCROLL") != "":
+			for f in 5:
+				await get_tree().process_frame
+			# A heading's text: scroll so that heading sits at the top.
+			for l in _rows.find_children("*", "Label", true, false):
+				if l.text == OS.get_environment("SL_CODEX_SCROLL"):
+					for n in find_children("*", "ScrollContainer", true, false):
+						(n as ScrollContainer).scroll_vertical = int(l.global_position.y - _rows.global_position.y)
+					break
+			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("user://codex.png")
 		get_tree().quit()
