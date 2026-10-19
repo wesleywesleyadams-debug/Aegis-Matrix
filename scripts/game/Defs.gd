@@ -752,7 +752,7 @@ const MOD_WEAPONS := {
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
-	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.5, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
+	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 2.9, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
 	"mod_tractor_beams": {"tractor": [0.1, 0.9, 2.0]},
