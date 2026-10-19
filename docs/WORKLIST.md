@@ -8,10 +8,7 @@ tuning or a design call, **[stale]** text that no longer matches the game,
 
 ## Bugs
 
-- **[bug] Enemy drones show through fog.** `Vision._hide_unseen` (Vision.gd ~210) hides enemy ships, bases and shots but never the `drones` group. Fix: add drones to the ship loop.
-- **[bug] Drones stay with an eliminated player.** `Game._hand_over` (Game.gd ~1423) passes ships to the heir but skips `drones`, so a captured carrier keeps drones owned by the dead player, hostile to their new owner. Fix: free or re-own them.
-- **[bug] Ships overlap carriers.** Separation only looks `radius + MAX_HULL_RADIUS` (Ship.gd:37, 34) for neighbours, but a carrier's radius is 64, so ships sit well inside a carrier hull before being pushed out. Fix: raise MAX_HULL_RADIUS to the biggest radius.
-- **[bug] Drones aren't saved.** A loaded game rebuilds them from nothing at one per 5 s. Fix: save/load them, or accept the rebuild.
+None open. (Fixed 2026-10-19: drones showing through fog, drones left with an eliminated player, ships overlapping carriers, drones not saved.)
 
 ## Balance and design calls
 

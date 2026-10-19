@@ -94,6 +94,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			"held": s.held,
 			"docked": s.docked, "docked_variant": s.refit_depot.variant if s.docked and is_instance_valid(s.refit_depot) else "",
 			"refit_left": s.refit_left,
+			"drones": s.drone_count(),
 			"order": _order_of(s),
 			"queue": s.order_queue.map(func(o): return _queued_dict(o)).filter(func(d): return not d.is_empty()),
 		})
@@ -328,6 +329,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		s.shield = float(d["shield"])
 		s.cargo = int(d.get("cargo", 0))
 		s.cargo_type = str(d.get("cargo_type", "minerals"))
+		s.drones_saved = int(d.get("drones", 0))
 		# After the order below, which would otherwise release the hold.
 		var was_held: bool = bool(d.get("held", false))
 		var o: Dictionary = d.get("order", {})

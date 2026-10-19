@@ -209,7 +209,7 @@ func _stamp(img: Image, p: Vector2, r: float) -> void:
 ## Shows / hides enemy units by what the player can currently see.
 func _hide_unseen() -> void:
 	var tree := get_tree()
-	for s in tree.get_nodes_in_group("ships"):
+	for s in tree.get_nodes_in_group("ships") + tree.get_nodes_in_group("drones"):
 		if not game.are_allies(pid, s.owner_id):
 			s.visible = can_see(s)
 			if not s.visible and s.selected:

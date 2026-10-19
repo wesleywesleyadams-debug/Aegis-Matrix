@@ -1436,6 +1436,11 @@ func _hand_over(from: int, to: int) -> void:
 		if e.has_method("refresh_stats"):
 			e.refresh_stats()
 		e.queue_redraw()
+	# Interceptor drones follow their carrier to its new owner.
+	for d in tree.get_nodes_in_group("drones"):
+		if d.owner_id == from:
+			d.owner_id = to
+			d.queue_redraw()
 	selection_changed.emit()
 ## Who won (the first survivor of the winning side; 0 while undecided).
 var winner_pid := 0

@@ -34,7 +34,7 @@ const IDLE_RETASK := 5.0
 
 ## Radius of the biggest hull in the game (the carrier), used to size the
 ## separation search. Keep in step with Defs if a larger hull is ever added.
-const MAX_HULL_RADIUS := 34.0
+const MAX_HULL_RADIUS := 64.0   # the carrier
 
 ## How well a turreted hull shoots at full speed, against standing still.
 const MOVING_ACCURACY := 0.65
@@ -264,7 +264,7 @@ func _fly_drones(delta: float) -> void:
 		drones_ready = false
 	else:
 		_drone_timer -= delta * sf
-		if drones_ready:
+		if drones_ready or drones_saved > 0:
 			_drone_timer = 0.0
 		if _drone_timer <= 0.0:
 			_drone_timer = DRONE_BUILD
@@ -281,6 +281,7 @@ func _fly_drones(delta: float) -> void:
 			d.rotation = d.heading
 			_drones[empty] = d
 			_door_open[door] = Game.now()
+			drones_saved = maxi(drones_saved - 1, 0)
 	for k in _door_open.size():
 		if Game.now() - _door_open[k] < DOOR_OPEN:
 			_door_layer.queue_redraw()
@@ -510,6 +511,12 @@ var _drones: Array = []
 var _drone_timer := 0.0
 ## Dev (duels): launch the whole set at once instead of one every DRONE_BUILD.
 var drones_ready := false
+## Loading a save: this many drones were out, so launch them at once.
+var drones_saved := 0
+
+## Live Interceptor Drones out from this carrier (for saves).
+func drone_count() -> int:
+	return _drones.filter(func(d): return is_instance_valid(d) and d.is_alive()).size()
 var _door_open: Array[float] = []
 var _door_layer: Node2D = null
 var _t_scan := 0.0
