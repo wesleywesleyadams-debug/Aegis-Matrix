@@ -36,10 +36,86 @@ const SCENES := [
 	"orbital_farms", "planetary_shields", "terraforming", "deep_vaults", "gene_forges", "planetary_citadels",
 	"deep_drills", "bulk_holds", "cutting_lasers", "resonance_drills", "gas_skimming", "ion_thrusters",
 	"fusion_drives", "jump_drives", "convoy_protocols", "mass_drivers", "logistics_command", "spice_navigation",
+	"mod_proton_torpedoes", "mod_kinetic_repeaters", "mod_arc_emitters", "mod_flak_cannons", "mod_cluster_bombs",
+	"mod_homing_missiles", "mod_ion_lance", "mod_rail_cannons", "mod_point_defense_lattice",
+	"mod_interceptor_drones", "mod_tractor_beams", "mod_missile_barrage",
 ]
 
 static func call_scene(id: String, img: Image) -> void:
 	match id:
+		# ---------------------------------------------------------- mods
+		# The class's hull small in a corner, its new weapon doing its thing.
+		"mod_proton_torpedoes":
+			_sprite(img, "ship_corvette", Vector2(14, 48), 18.0)
+			_dashes(img, Vector2(20, 42), Vector2(40, 22), Color("ffb347", 0.7))
+			_disc(img, Vector2(44, 18), 5.0, Color("ff8a2a"))
+			_disc(img, Vector2(44, 18), 2.5, Color("fff0c0"))
+		"mod_kinetic_repeaters":
+			_sprite(img, "ship_corvette", Vector2(12, 46), 18.0)
+			for k in 5:
+				var p := Vector2(22 + k * 8, 40 - k * 6)
+				_line(img, p, p + Vector2(4, -3), 2.0, Color("ffd84a"))
+		"mod_arc_emitters":
+			_sprite(img, "ship_corvette", Vector2(12, 48), 18.0)
+			var pts := [Vector2(18, 42), Vector2(26, 30), Vector2(22, 26), Vector2(34, 18), Vector2(44, 24), Vector2(52, 12)]
+			for k in pts.size() - 1:
+				_line(img, pts[k], pts[k + 1], 3.0, Color("bfe6ff", 0.5))
+				_line(img, pts[k], pts[k + 1], 1.2, Color.WHITE)
+			for q in [Vector2(34, 18), Vector2(52, 12), Vector2(44, 34)]:
+				_disc(img, q, 2.5, Color("e85a5a"))
+			_line(img, Vector2(34, 18), Vector2(44, 34), 1.2, Color("dff3ff"))
+		"mod_flak_cannons":
+			_sprite(img, "ship_destroyer", Vector2(14, 48), 22.0)
+			for b in [Vector2(36, 18), Vector2(50, 30), Vector2(30, 34)]:
+				_burst(img, b, 7.0, Color("ffb347"))
+				_disc(img, b, 2.0, Color("fff0c0"))
+		"mod_cluster_bombs":
+			_sprite(img, "ship_destroyer", Vector2(14, 48), 22.0)
+			for k in 6:
+				var a := -1.2 + k * 0.28
+				var q := Vector2(22, 40) + Vector2.from_angle(a) * (16.0 + (k % 2) * 8.0)
+				_disc(img, q, 2.2, Color("c8a04a"))
+				_disc(img, q, 0.9, Color("fff0c0"))
+		"mod_homing_missiles":
+			_sprite(img, "ship_destroyer", Vector2(12, 50), 20.0)
+			for k in 3:
+				var c := Vector2(30 + k * 6, 44 - k * 4)
+				_arc(img, c, 16.0, -2.2, -1.0, 1.4, Color("ff6a4a", 0.8))
+			_ring(img, Vector2(48, 16), 6.0, 1.5, Color("ff6a4a"))
+			_disc(img, Vector2(48, 16), 1.5, Color("ff6a4a"))
+		"mod_ion_lance":
+			_sprite(img, "ship_cruiser", Vector2(14, 48), 22.0)
+			_beam(img, Vector2(22, 40), Vector2(56, 10), Color("7fd8ff"), 3.5)
+			_disc(img, Vector2(56, 10), 4.0, Color("dff6ff"))
+		"mod_rail_cannons":
+			_sprite(img, "ship_cruiser", Vector2(12, 50), 20.0)
+			_line(img, Vector2(20, 44), Vector2(60, 6), 1.2, Color("e8eefc"))
+			for k in 4:
+				_ring(img, Vector2(20, 44).lerp(Vector2(60, 6), 0.2 + k * 0.2), 2.5, 1.0, Color("7fa8ff", 0.7))
+		"mod_point_defense_lattice":
+			_sprite(img, "ship_cruiser", Vector2(32, 40), 26.0)
+			for q in [Vector2(14, 14), Vector2(32, 10), Vector2(50, 14)]:
+				_hex(img, q, 5.0, 1.0, Color("7fd8ff", 0.8))
+				_line(img, q + Vector2(-3, -3), q + Vector2(3, 3), 1.2, Color("ff6a4a"))
+				_line(img, q + Vector2(-3, 3), q + Vector2(3, -3), 1.2, Color("ff6a4a"))
+		"mod_interceptor_drones":
+			_sprite(img, "ship_carrier", C, 26.0)
+			_ring(img, C, 22.0, 1.0, Color("7fd8ff", 0.35))
+			for k in 4:
+				var q := C + Vector2.from_angle(TAU * k / 4.0 + 0.4) * 22.0
+				_poly(img, [q + Vector2(-3, 3), q + Vector2(0, -4), q + Vector2(3, 3)], Color("c8d2ea"))
+		"mod_tractor_beams":
+			_sprite(img, "ship_carrier", Vector2(16, 44), 24.0)
+			_poly(img, [Vector2(24, 38), Vector2(52, 10), Vector2(58, 18)], Color("9fffb0", 0.25))
+			_line(img, Vector2(24, 38), Vector2(52, 10), 1.0, Color("9fffb0"))
+			_line(img, Vector2(24, 38), Vector2(58, 18), 1.0, Color("9fffb0"))
+			_sprite(img, "ship_corvette", Vector2(54, 14), 12.0)
+		"mod_missile_barrage":
+			_sprite(img, "ship_carrier", Vector2(14, 48), 22.0)
+			for k in 7:
+				var q := Vector2(26 + k * 4, 36 - k * 4)
+				_line(img, q, q + Vector2(5, -2), 1.5, Color("ff6a4a"))
+				_disc(img, q, 1.0, Color("ffd84a"))
 		# ---------------------------------------------------------- constructs
 		"garrison_guns":
 			_sprite(img, "starbase", C + Vector2(-4, 4), 34.0)

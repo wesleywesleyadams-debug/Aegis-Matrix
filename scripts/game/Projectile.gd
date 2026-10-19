@@ -12,6 +12,7 @@ var profile: Dictionary = {}
 const SLIP_SHOT := Color("ff7a14")
 var speed: float
 var homing: bool
+var weak_lock := false
 var life: float = 3.0
 var _vel: Vector2
 
@@ -19,13 +20,16 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float) -> void:
 	shooter = from
 	target = to
 	damage = dmg
-	homing = weapon == "torpedo"
+	homing = weapon == "torpedo" or weapon == "proton"
+	# Proton Torpedoes steer only gently and give up once the target is well
+	# off their nose: a target that turns hard can shake them off.
+	weak_lock = weapon == "proton"
 	# Kinetic Repeater slugs: fast and small.
-	speed = 85.0 if homing else (320.0 if weapon == "kinetic" else 210.0)
+	speed = (110.0 if weak_lock else 85.0) if homing else (320.0 if weapon == "kinetic" else 210.0)
 	# Misses expire just past weapon range instead of crossing the map.
 	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
-	texture = Defs.tex("bolt_" + ("laser" if weapon == "kinetic" else weapon))
+	texture = Defs.tex("bolt_" + ("laser" if weapon == "kinetic" else ("torpedo" if weapon == "proton" else weapon)))
 	# Bolt art is drawn at Defs.ART_SCALE like the rest of the sprites.
 	scale = Vector2.ONE / Defs.ART_SCALE * (0.55 if weapon == "kinetic" else 1.0)
 	# Shot colors: generalists (and starbases) fire yellow; specialists fire
@@ -60,9 +64,13 @@ func _physics_process(delta: float) -> void:
 		return
 	if is_instance_valid(target) and target.is_alive():
 		if homing:
-			var want := (target.global_position - global_position).normalized() * speed
-			_vel = _vel.move_toward(want, speed * 3.0 * delta)
-			rotation = _vel.angle()
+			var to_t := target.global_position - global_position
+			if weak_lock and absf(_vel.angle_to(to_t)) > deg_to_rad(50.0):
+				homing = false   # lost the lock: flies on straight and may miss
+			else:
+				var want := to_t.normalized() * speed
+				_vel = _vel.move_toward(want, speed * (0.9 if weak_lock else 3.0) * delta)
+				rotation = _vel.angle()
 		# Sweep the whole step against the target, not just the end point: at
 		# high game speeds a bolt covers more ground per tick than the target
 		# is wide, and a point test would fly straight through it.

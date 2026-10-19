@@ -1156,7 +1156,7 @@ func fire(from: Node2D, to: Node2D, weapon: String, damage: float) -> void:
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"))
 	if not sim_mode:
-		sfx.play_at("laser" if weapon in ["laser", "kinetic"] else "torpedo", from.global_position, -8.0)
+		sfx.play_at("laser" if weapon in ["laser", "kinetic"] else "torpedo", from.global_position, -8.0)   # proton: torpedo sound
 
 ## Arc Emitters: the target takes chain[0] of the damage at once, then the
 ## arc jumps to the nearest other enemies within `jump` of it for the rest.
