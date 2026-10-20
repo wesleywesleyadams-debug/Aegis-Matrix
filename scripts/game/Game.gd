@@ -1330,21 +1330,6 @@ func df_target(from: Node2D, pid: int, r: float, claimed: Dictionary = {}) -> No
 				best = p
 	return best
 
-## Maneuvers II (15%) / III with strafing (30%): the chance a ship slips
-## incoming ordnance `p` (missiles, torpedoes, bombs; laser-fast shots
-## can't be dodged). Rolled once per projectile and ship; a dodge jinks it.
-const DODGE_CHANCE := [0.0, 0.15, 0.30]
-func dodges(s: Node2D, p: Node2D) -> bool:
-	if not (s is Ship) or not p.is_in_group("ordnance") or not has_tech(s.owner_id, "maneuvers_2"):
-		return false
-	if p.dodge_rolled.has(s):
-		return false
-	p.dodge_rolled[s] = true
-	if randf() >= DODGE_CHANCE[2 if has_tech(s.owner_id, "maneuvers_3") else 1]:
-		return false
-	s.jink(p)
-	return true
-
 func intercept(from: Node2D, p: Node2D) -> void:
 	if not sim_mode:
 		var arc := ArcFx.new()

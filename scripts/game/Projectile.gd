@@ -23,8 +23,6 @@ var _vel: Vector2
 var splash := 0.0
 var splash_r := 0.0
 var free_flight := false
-## Ships that have already rolled to dodge this projectile (Game.dodges).
-var dodge_rolled := {}
 var owner_pid := 0
 ## Missiles and torpedoes leave a fading exhaust trail (world points).
 var trail_on := false
@@ -42,6 +40,8 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	# Ordnance Point-Defense can shoot down.
 	if weapon in ["missile", "proton", "torpedo", "bomblet"]:
 		add_to_group("ordnance")
+	# Every shot in flight, so Evasive Maneuvers can see what is coming.
+	add_to_group("projectiles")
 	trail_on = weapon in ["missile", "proton", "torpedo"] and not Game.instance.sim_mode
 	torp_wake = weapon in ["proton", "torpedo"]
 	if Defs.AOE_RADIUS.has(weapon):
@@ -115,8 +115,6 @@ func _physics_process(delta: float) -> void:
 			if x == shooter or x.owner_id == owner_pid or not x.is_enemy_of(owner_pid):
 				continue
 			if Geometry2D.get_closest_point_to_segment(x.global_position, global_position, nxt).distance_to(x.global_position) <= x.radius:
-				if Game.instance.dodges(x, self):
-					continue
 				# Bursts on the first enemy it touches; the blast hurts enemies only.
 				Game.instance.splash(x.global_position, splash_r, damage * splash, owner_pid, shooter if is_instance_valid(shooter) else null, profile, vs_class)
 				queue_free()
@@ -145,10 +143,7 @@ func _physics_process(delta: float) -> void:
 		# is wide, and a point test would fly straight through it.
 		var next_pos := global_position + _vel * delta
 		var near := Geometry2D.get_closest_point_to_segment(target.global_position, global_position, next_pos)
-		if near.distance_to(target.global_position) <= target.radius and Game.instance.dodges(target, self):
-			target = null   # slipped: flies on past and spends itself
-			homing = false
-		elif near.distance_to(target.global_position) <= target.radius:
+		if near.distance_to(target.global_position) <= target.radius:
 			if splash > 0.0:
 				Game.instance.splash(near, splash_r, damage * splash, owner_pid, shooter if is_instance_valid(shooter) else null, profile, vs_class)
 				queue_free()

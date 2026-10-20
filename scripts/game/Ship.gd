@@ -412,13 +412,50 @@ func _runs() -> bool:
 func _chases() -> bool:
 	return not weapon_mod.get("run", false) and Game.instance.has_tech(owner_id, "maneuvers_1")
 
-## Maneuvers II/III: a dodge away from incoming ordnance `p` - a hard swerve,
-## or with strafing (III) a sideways slide that keeps the nose on target.
-func jink(p: Node2D) -> void:
-	var side := (p.global_position - global_position).orthogonal().normalized()
-	if randf() < 0.5:
-		side = -side
-	velocity += side * max_speed() * (1.2 if Game.instance.has_tech(owner_id, "maneuvers_3") else 0.8)
+## Maneuvers II/III: the incoming shot this ship is getting out of the way
+## of, and the sideways direction it is moving to do it (rechecked often).
+var _dodge_dir := Vector2.ZERO
+var _dodge_scan := 0.0
+const DODGE_LOOK := 1.2   # seconds ahead a shot is seen coming
+
+## A sideways velocity away from the nearest enemy shot on course to hit
+## this ship within DODGE_LOOK seconds, or zero. Any shot can be dodged, but
+## only as far as the ship's own speed takes it in the time it has.
+func _find_dodge() -> Vector2:
+	var best_t := DODGE_LOOK
+	var dir := Vector2.ZERO
+	for p in get_tree().get_nodes_in_group("projectiles"):
+		if not is_instance_valid(p) or p.owner_pid == owner_id or not Game.instance.is_hostile(owner_id, p.owner_pid):
+			continue
+		var v: Vector2 = p._vel - velocity
+		var vv := v.length_squared()
+		if vv < 1.0:
+			continue
+		var rel: Vector2 = global_position - p.global_position
+		var t := rel.dot(v) / vv   # time of closest approach
+		if t <= 0.0 or t >= best_t:
+			continue
+		var miss := (rel - v * t).length()
+		if miss > radius + 4.0:
+			continue
+		best_t = t
+		# Step off the shot's line, on whichever side we already lean.
+		var side := v.orthogonal().normalized()
+		if side.dot(rel) < 0.0:
+			side = -side
+		dir = side
+	return dir
+
+## Whether dodging now would not get in the way of an attack. Strafing
+## (III) keeps the nose on target, so it always may; a plain swerve (II)
+## turns the hull, so fixed guns only swerve while reloading or with
+## nothing in range. Turreted hulls aim with their mounts and always may.
+func _may_dodge() -> bool:
+	if Game.instance.has_tech(owner_id, "maneuvers_3") or def.has("turrets"):
+		return true
+	if _runs() and _run_out > 0.0:
+		return true
+	return _cooldown > 0.35 or not (is_instance_valid(target) and target.is_alive() and global_position.distance_to(target.global_position) <= weapon_range() + float(target.get("radius")))
 
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
@@ -1264,7 +1301,20 @@ func _physics_process(delta: float) -> void:
 	# overlap from further away.
 	if state == State.IDLE and crowd != Vector2.ZERO:
 		move_goal = global_position + crowd.limit_length(radius)
-	_steer(desired + crowd, delta, face_target if face_target != null else face_at)
+	# Maneuvers II/III: get out of the way of an incoming shot when that
+	# costs no attack - a swerve (the hull turns with it) or a strafe (III:
+	# a sideways slide that keeps the nose where it was).
+	var face: Node2D = face_target if face_target != null else face_at
+	if Game.instance.has_tech(owner_id, "maneuvers_2") and max_speed() > 0.0:
+		_dodge_scan -= delta
+		if _dodge_scan <= 0.0:
+			_dodge_scan = 0.1
+			_dodge_dir = _find_dodge() if _may_dodge() else Vector2.ZERO
+		if _dodge_dir != Vector2.ZERO:
+			desired = _dodge_dir * max_speed()
+			if not Game.instance.has_tech(owner_id, "maneuvers_3"):
+				face = null
+	_steer(desired + crowd, delta, face)
 	# Duel arena: nobody leaves.
 	if Game.instance.arena_radius > 0.0 and global_position.length() > Game.instance.arena_radius:
 		global_position = global_position.limit_length(Game.instance.arena_radius)
