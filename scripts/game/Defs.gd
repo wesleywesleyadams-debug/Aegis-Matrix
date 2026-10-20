@@ -545,7 +545,7 @@ const TECHS := {
 	"mod_interceptor_drones": {"name": "Interceptor Drones", "group": "mods", "mod": "carrier", "tier": 1, "requires": ["carriers"], "cost": {"energy": 240, "spice": 40}, "time": 105.0,
 		"effects": {"mod_carrier": 1.0}, "desc": "4 drones attack enemies within 300."},
 	"mod_tractor_beams": {"name": "Tractor Beams", "group": "mods", "mod": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 240, "spice": 40}, "time": 105.0,
-		"effects": {"mod_carrier": 1.0}, "desc": "Each turret's beam pulls and slows its target."},
+		"effects": {"mod_carrier": 1.0}, "desc": "Each turret's beam pulls its target in."},
 	"mod_missile_barrage": {"name": "Missile Barrage", "group": "mods", "mod": "carrier", "tier": 3, "requires": ["carriers"], "cost": {"energy": 240, "spice": 40}, "time": 105.0,
 		"effects": {"mod_carrier": 1.0}, "desc": "20-missile salvo every 8 s, longest range."},
 }
@@ -738,7 +738,7 @@ const MOD_WEAPONS := {
 	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 2.9, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
-	"mod_tractor_beams": {"tractor": [0.1, 0.9, 2.0]},
+	"mod_tractor_beams": {"tractor": [40.0, 2.0]},
 	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.48, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 

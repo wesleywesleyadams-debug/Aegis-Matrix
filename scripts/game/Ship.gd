@@ -186,7 +186,7 @@ func _fire_turrets(delta: float) -> void:
 func _tractor(delta: float, rng: float, n: int) -> void:
 	var g := Game.instance
 	var tr: Array = weapon_mod["tractor"]
-	var reach: float = rng * float(tr[2])
+	var reach: float = rng * float(tr[1])
 	_t_far_scan -= delta
 	if _t_far_scan <= 0.0:
 		_t_far_scan = SCAN_INTERVAL
@@ -207,11 +207,11 @@ func _tractor(delta: float, rng: float, n: int) -> void:
 		if d > reach + t.radius:
 			continue
 		held[t] = true
-		var slow: float = lerpf(float(tr[1]), float(tr[0]), clampf(d / reach, 0.0, 1.0))
-		t.tractor_hit(slow)
-		if d > rng * 0.6:   # reel in only to the guns' sweet spot
-			t.global_position += (global_position - t.global_position).normalized() * 12.0 * slow * delta
-		_tbeams.append([_turret_sprites[i].global_position, t.global_position, slow])
+		# No slow: the beam only drags its target toward the carrier, at a
+		# fixed pull, and only in to the guns' sweet spot.
+		if d > rng * 0.6:
+			t.global_position += (global_position - t.global_position).normalized() * float(tr[0]) * g.ship_speed_factor(owner_id) * delta
+		_tbeams.append([_turret_sprites[i].global_position, t.global_position, 0.5])
 
 ## Another ship's tractor beam slows this one by `slow` (0..1).
 func tractor_hit(slow: float) -> void:
