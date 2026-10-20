@@ -444,7 +444,7 @@ const TECHS := {
 		"effects": {"planet_shield": 0.60, "planet_damage": 0.25}, "desc": "+60% planetary shield, +25% battery damage."},
 
 	# --- Logistics: tier 3 is a choice of what a harvester is good at.
-	"convoy_protocols": {"name": "Convoy Protocols", "group": "logistics", "tier": 2, "requires": ["gas_skimming"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
+	"convoy_protocols": {"name": "Convoy Protocols", "group": "logistics", "tier": 2, "requires": [], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
 		"effects": {}, "desc": "Harvesters gain shields and armor equal to their hull."},
 	"jump_drives": {"name": "Jump Drives", "group": "logistics", "tier": 3, "requires": ["fusion_drives"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
 		"effects": {"speed": 0.40, "upkeep": -0.10}, "desc": "+40% ship speed, -10% empire upkeep multiplier."},
