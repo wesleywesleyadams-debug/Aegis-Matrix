@@ -3600,7 +3600,8 @@ func _duel() -> void:
 	if OS.get_environment("SL_DUEL_SCALE") != "":
 		for part in OS.get_environment("SL_DUEL_SCALE").split(","):
 			var kv := part.split(":")
-			for k9 in ["hp", "armor", "shield"]:
+			# Optional third field "ha": scale hull and armor only.
+			for k9 in (["hp", "armor"] if kv.size() > 2 and kv[2] == "ha" else ["hp", "armor", "shield"]):
 				Defs.SHIPS[kv[0]][k9] = Defs.SHIPS[kv[0]][k9] * float(kv[1])
 	# SL_DUEL_SHIFT="destroyer:30" moves 30 points of that class's shields
 	# (and its variants') into hull, for tuning sweeps.
