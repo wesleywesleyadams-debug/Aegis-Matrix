@@ -792,10 +792,25 @@ func tech_state(pid: int, tech_id: String) -> String:
 		return "active"
 	if tech_id in research_queue[pid]:
 		return "queued"
+	# "requires_any": one of the listed techs is enough; otherwise all are needed.
+	var any_req: bool = Defs.TECHS[tech_id].get("requires_any", false)
+	var met := 0
 	for req in Defs.TECHS[tech_id]["requires"]:
-		if not has_tech(pid, req) and research[pid].get("id", "") != req and req not in research_queue[pid]:
+		if has_tech(pid, req) or research[pid].get("id", "") == req or req in research_queue[pid]:
+			met += 1
+		elif not any_req:
 			return "locked"
+	if any_req and met == 0 and not Defs.TECHS[tech_id]["requires"].is_empty():
+		return "locked"
 	return "available"
+
+## A tech's prerequisites as text: "A, B" (all needed) or "A or B" (any one).
+## `short`: a card-sized "requires_label" when the tech has one.
+static func requires_text(tech_id: String, short: bool = false) -> String:
+	var t: Dictionary = Defs.TECHS[tech_id]
+	if short and t.has("requires_label"):
+		return t["requires_label"]
+	return (" or " if t.get("requires_any", false) else ", ").join(t["requires"].map(func(r): return Defs.TECHS[r]["name"] if Defs.TECHS.has(r) else str(r)))
 
 ## Queues a tech (prerequisites may be earlier in the queue). Returns "" or
 ## a reason it can't be queued.
@@ -803,7 +818,7 @@ func queue_research(pid: int, tech_id: String) -> String:
 	match tech_state(pid, tech_id):
 		"done": return "Already researched"
 		"active", "queued": return "Already in the research queue"
-		"locked": return "Requires " + ", ".join(Defs.TECHS[tech_id]["requires"].map(func(r): return Defs.TECHS[r]["name"]))
+		"locked": return "Requires " + requires_text(tech_id)
 	# One project at a time: finish or cancel the current one first.
 	if not research[pid].is_empty() or not research_queue[pid].is_empty():
 		return "Already researching something else"

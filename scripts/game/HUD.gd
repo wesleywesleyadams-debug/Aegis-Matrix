@@ -993,7 +993,7 @@ func _refresh_research() -> void:
 		w["desc"].text = t["desc"]
 		# Prerequisites: a padlock and the techs' names.
 		w["req"].visible = not t["requires"].is_empty()
-		w["req_label"].text = ", ".join(t["requires"].map(func(r): return Defs.TECHS[r]["name"]))
+		w["req_label"].text = Game.requires_text(id, true)
 		w["req_label"].add_theme_color_override("font_color", MUTED if st == "locked" else TEXT)
 		for style in ["normal", "hover", "pressed"]:
 			var sb: StyleBoxFlat = _panel_style(6, STATE_COLORS[st].lightened(0.3 if style == "normal" else 0.55))

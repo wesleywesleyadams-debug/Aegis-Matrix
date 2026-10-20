@@ -524,8 +524,8 @@ const TECHS := {
 		"effects": {"energy": 0.25}, "desc": "+25% energy: worlds, starbases, Sail Arrays."},
 	"dark_matter": {"name": "Dark Matter Reactors", "group": "worlds", "tier": 3, "requires": ["plasma_reactors"], "cost": {"spice": 200}, "time": 215.0,
 		"effects": {"energy": 0.50}, "desc": "+50% energy: worlds, starbases, Sail Arrays."},
-	"spice_navigation": {"name": "Spice Navigation", "group": "logistics", "tier": 3, "requires": ["convoy_protocols"], "cost": {"spice": 200}, "time": 180.0,
-		"effects": {}, "desc": "Ships resist 75% of spice nebula radiation."},
+	"spice_navigation": {"name": "Spice Navigation", "group": "logistics", "tier": 3, "requires": ["gas_skimming", "convoy_protocols"], "requires_any": true, "requires_label": "Skimming or Convoy", "cost": {"spice": 200}, "time": 180.0,
+		"effects": {}, "desc": "Ships resist 75% of nebula radiation."},
 	# Mods (research screen's Mods tab): one per ship class at a time - a
 	# row's three are exclusive (see Game._on_tech_done), and an active one
 	# can be switched off and on for free (Game.mods_disabled). "mod" names

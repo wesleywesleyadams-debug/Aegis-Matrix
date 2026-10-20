@@ -741,7 +741,7 @@ func _tech_card(id: String) -> Control:
 		lock.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		lock.modulate = Color("8a96bd")
 		req.add_child(lock)
-		req.add_child(_label(", ".join(t["requires"].map(func(r): return Defs.TECHS[r]["name"] if Defs.TECHS.has(r) else str(r))), DIM, 12))
+		req.add_child(_label(Game.requires_text(id, true), DIM, 12))
 		v.add_child(req)
 	return card
 
