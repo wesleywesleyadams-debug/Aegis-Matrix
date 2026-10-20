@@ -724,7 +724,7 @@ const MOD_WEAPONS := {
 	#   tractor- Tractor Beams: [slow far, slow close, reach x weapon range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
-	"mod_flak_cannons": {"dmg": 0.75, "weapon": "flak"},
+	"mod_flak_cannons": {"dmg": 0.83, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
 	"mod_cluster_bombs": {"dmg": 0.55, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0], "run": true},
@@ -733,7 +733,7 @@ const MOD_WEAPONS := {
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
 	"mod_point_defense_lattice": {"dmg": 0.8, "pd": 220.0},
-	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.2543, "count": 2, "range": 1.2, "run": true},
+	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.28, "count": 2, "range": 1.2, "run": true},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
 	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 2.9, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
