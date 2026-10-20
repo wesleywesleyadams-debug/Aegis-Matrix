@@ -542,7 +542,14 @@ func _page_combat() -> void:
 	var ild: float = float(Defs.MOD_WEAPONS["mod_ion_lance"]["dmg"])
 	_para("Ion Lance: each turret holds a continuous beam on its target once aimed (within 8 degrees), with no reload. Damage ramps the longer it stays on one target, from %d%% to %d%% of a laser's damage rate over %d s, and starts over on a new target: strong on one big hull, weak against swarms. Defensive Fire never pauses the beam." % [int(round(ilb[0] * ild * 100.0)), int(round(ilb[1] * ild * 100.0)), int(ilb[2])])
 	_para("Tractor Beams: each turret's beam (it grabs ships and drones) reaches %dx weapon range and slows its target by %d%% far out to %d%% up close, reeling it in. Slows from several beams multiply (two 50%% beams: 75%%). Missile Barrage: a %d-missile salvo every %d s at +%d%% range." % [int(trb[2]), int(trb[0] * 100), int(trb[1] * 100), 4 * int(Defs.MOD_WEAPONS["mod_missile_barrage"]["count"]), int(Defs.MOD_WEAPONS["mod_missile_barrage"]["cd"]), int((Defs.MOD_WEAPONS["mod_missile_barrage"]["range"] - 1.0) * 100)])
-	_para("Proton Torpedoes are built to hunt big hulls: x%.2f damage to destroyers, x%.2f to cruisers and x%.2f to carriers, and weaker than lasers against corvettes. They steer gently, so a ship that turns hard can shake one off." % [vs["destroyer"], vs["cruiser"], vs["carrier"]])
+	var tb: float = float(Defs.MOD_WEAPONS["mod_proton_torpedoes"]["dmg"])
+	var tcd: float = float(Defs.MOD_WEAPONS["mod_proton_torpedoes"]["cd"])
+	_para("Proton Torpedoes are built to hunt big hulls. Each torpedo hits for %d%% of a laser shot, times the bonus below, and reloads %dx slower than a laser. They steer gently, so a ship that turns hard can shake one off." % [int(round(tb * 100.0)), int(tcd)])
+	var trows: Array = []
+	for k in [["Corvette", "corvette"], ["Destroyer", "destroyer"], ["Cruiser", "cruiser"], ["Carrier", "carrier"], ["Starbase", "starbase"], ["World", "world"], ["Other constructs", "construct"]]:
+		var m: float = float(vs.get(k[1], 1.0))
+		trows.append([k[0], "x%s" % String.num(m, 2), "%d%%" % int(round(tb * m * 100.0)), "%d%%" % int(round(tb * m / tcd * 100.0))])
+	_table(["Target", "Bonus", "Per torpedo (vs a laser shot)", "Damage over time (vs lasers)"], trows)
 
 	_heading("Defense research")
 	_para("Four lines on the Defense tab: shields, armor and hull below, plus screens, which cut a share of every hit (all three: -52%). They are expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech costs time as well as energy.")
