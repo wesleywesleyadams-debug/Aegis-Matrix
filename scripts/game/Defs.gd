@@ -417,7 +417,7 @@ const TECHS := {
 	"maneuvers_2": {"name": "Evasive Maneuvers", "group": "logistics", "tier": 2, "requires": ["maneuvers_1"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
 		"effects": {}, "desc": "Ships swerve out of the path of incoming shots."},
 	"maneuvers_3": {"name": "Strafing Thrusters", "group": "logistics", "tier": 3, "requires": ["maneuvers_2"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
-		"effects": {}, "desc": "Ships also strafe aside mid-attack."},
+		"effects": {}, "desc": "Ships strafe aside instead, without turning."},
 	"hullbreaker_rounds": {"name": "Rupture Charges", "group": "weapons", "tier": 3, "requires": ["burst_cyclers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls."},
 

@@ -466,17 +466,19 @@ func _find_dodge() -> Vector2:
 		_dodge_shot = p
 	return dir
 
-## How this ship may dodge right now without costing an attack: "swerve"
-## (the hull turns with the move), "strafe" (Strafing Thrusters: a sideways
-## slide that keeps the nose on target), or "" (not now). Turreted hulls aim
-## with their mounts and may always swerve; fixed guns swerve only while
-## reloading, peeling away or with nothing in range, and strafe otherwise.
+## How this ship may dodge right now without costing an attack: "strafe"
+## (Strafing Thrusters: always, a full-speed sideways slide that keeps the
+## nose on target), "swerve" (the hull turns with the move: turreted hulls
+## always, fixed guns only while reloading, peeling away or with nothing in
+## range), or "" (not now).
 func _dodge_mode() -> String:
+	if Game.instance.has_tech(owner_id, "maneuvers_3"):
+		return "strafe"
 	if def.has("turrets") or (_runs() and _run_out > 0.0):
 		return "swerve"
 	if _cooldown > 0.35 or not (is_instance_valid(target) and target.is_alive() and global_position.distance_to(target.global_position) <= weapon_range() + float(target.get("radius"))):
 		return "swerve"
-	return "strafe" if Game.instance.has_tech(owner_id, "maneuvers_3") else ""
+	return ""
 
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
