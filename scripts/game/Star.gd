@@ -83,6 +83,9 @@ func _process(delta: float) -> void:
 			var cut := Abilities.radiation_mult(e) if e is SpaceEntity else 1.0
 			if cut <= 0.0:
 				continue
+			# Spice Navigation: ships resist half of it.
+			if e is Ship and Game.instance.has_tech(e.owner_id, "spice_navigation"):
+				cut *= 0.5
 			e.take_damage(dps * dt * cut, null)
 			if e.owner_id == Game.instance.player_id:
 				Game.instance.alert("Your ships are taking radiation damage from %s!" % star_name, "alert_ships", false, e.global_position)
