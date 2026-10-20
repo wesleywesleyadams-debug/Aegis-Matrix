@@ -1,0 +1,4 @@
+corvette:1,cruiser:1
+cruiser:1,corvette:1
+corvette:1,carrier:1
+carrier:1,corvette:1
