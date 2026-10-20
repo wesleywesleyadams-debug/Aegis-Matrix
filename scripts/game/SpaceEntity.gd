@@ -161,6 +161,9 @@ func _regen_shields(delta: float) -> void:
 	if Game.instance.in_nebula(global_position):
 		var m: float = Abilities.radiation_mult(self)
 		if m > 0.0:
+			# Spice Navigation: ships resist most of the nebula's radiation.
+			if self is Ship and Game.instance.has_tech(owner_id, "spice_navigation"):
+				m *= Abilities.SPICE_NAV_RADIATION
 			take_damage(SpiceNebula.RADIATION_DPS * delta * m, null)
 			if owner_id == Game.instance.player_id:
 				Game.instance.warn_nebula(global_position)

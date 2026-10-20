@@ -981,7 +981,7 @@ func _star_section() -> void:
 		[["A star", Color("ffb347")], "Its radiation zone (sizes above)", "Strongest at the surface, falling steeply toward the edge"],
 		[["A spice nebula", Color("ff9a2e")], "Anywhere inside the gas", "%d per second, about a star's outer zone: low, but constant" % int(SpiceNebula.RADIATION_DPS)],
 	])
-	_para("Spice Navigation (Logistics research) makes your ships take %d%% less radiation damage from both, and anything inside a Radiation Sail Array's charged bubble takes none." % int(round((1.0 - Abilities.SPICE_NAV_RADIATION) * 100.0)))
+	_para("Spice Navigation (Logistics research) makes your ships take %d%% less radiation damage inside a spice nebula (not from a star), and anything inside a Radiation Sail Array's charged bubble takes none." % int(round((1.0 - Abilities.SPICE_NAV_RADIATION) * 100.0)))
 
 
 func _page_terms() -> void:
