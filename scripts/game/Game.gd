@@ -3687,6 +3687,18 @@ func _duel() -> void:
 			print("DUEL_SIDE world: shield %d, pop %d, batteries %d" % [int(wn.shield), int(wn.pop), wn.count_building("battery")])
 			fleets[i].append(wn)
 			continue
+		# "depot" / "station": one finished Weapons Depot or Mining Station.
+		if t == "depot" or t == "station":
+			var cn: Node2D = WeaponsDepot.new() if t == "depot" else MiningStation.new()
+			cn.owner_id = i + 1
+			cn.under_construction = false
+			if t == "station":
+				cn.construct_progress = Defs.MINING_STATION["build_time"]
+			cn.position = c + Vector2((-1.0 if i == 0 else 1.0) * 320.0, 0)
+			starbases_root.add_child(cn)
+			print("DUEL_SIDE %s: 1" % t)
+			fleets[i].append(cn)
+			continue
 		if t == "starbase":
 			var sbn: Starbase = STARBASE_SCENE.instantiate()
 			sbn.owner_id = i + 1
@@ -3754,6 +3766,9 @@ func _duel() -> void:
 		if not other.is_empty() and other[0] is Planet:
 			for s in fleets[si]:
 				s.order_bombard(other[0])
+		elif not other.is_empty() and (other[0] is WeaponsDepot or other[0] is MiningStation):
+			for s in fleets[si]:
+				s.order_attack(other[0])
 	var next_report := 30.0
 	var side_max := [0.0, 0.0]
 	for si in 2:

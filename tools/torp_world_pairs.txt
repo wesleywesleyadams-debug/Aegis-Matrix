@@ -1,4 +1,4 @@
-corvette:1:mod_proton_torpedoes,world:2
-world:2,corvette:1:mod_proton_torpedoes
-corvette:1,world:2
-world:2,corvette:1
+corvette:1:mod_proton_torpedoes,world:0
+world:0,corvette:1:mod_proton_torpedoes
+corvette:1,world:0
+world:0,corvette:1

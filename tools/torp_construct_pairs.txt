@@ -1,0 +1,4 @@
+corvette:1:mod_proton_torpedoes,depot
+corvette:1,depot
+corvette:1:mod_proton_torpedoes,station
+corvette:1,station
