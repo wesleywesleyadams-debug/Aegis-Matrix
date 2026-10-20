@@ -23,6 +23,8 @@ var _vel: Vector2
 var splash := 0.0
 var splash_r := 0.0
 var free_flight := false
+## When it was fired (Evasive Maneuvers: ships react only after DODGE_REACT).
+var born := 0.0
 var owner_pid := 0
 ## Missiles and torpedoes leave a fading exhaust trail (world points).
 var trail_on := false
@@ -42,6 +44,7 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 		add_to_group("ordnance")
 	# Every shot in flight, so Evasive Maneuvers can see what is coming.
 	add_to_group("projectiles")
+	born = Game.now()
 	trail_on = weapon in ["missile", "proton", "torpedo"] and not Game.instance.sim_mode
 	torp_wake = weapon in ["proton", "torpedo"]
 	if Defs.AOE_RADIUS.has(weapon):

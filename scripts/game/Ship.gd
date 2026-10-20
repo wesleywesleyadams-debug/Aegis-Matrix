@@ -412,38 +412,58 @@ func _runs() -> bool:
 func _chases() -> bool:
 	return not weapon_mod.get("run", false) and Game.instance.has_tech(owner_id, "maneuvers_1")
 
-## Maneuvers II/III: the incoming shot this ship is getting out of the way
-## of, and the sideways direction it is moving to do it (rechecked often).
+## Maneuvers II/III: the one incoming shot this ship is watching, and the
+## sideways direction it is moving to get out of its way.
+var _dodge_shot: Node2D = null
 var _dodge_dir := Vector2.ZERO
 var _dodge_scan := 0.0
-const DODGE_LOOK := 1.2   # seconds ahead a shot is seen coming
+const DODGE_LOOK := 0.5    # seconds ahead a shot is seen coming
+const DODGE_REACT := 0.3   # a shot must have flown this long before anyone reacts
+const STRAFE_SPEED := 0.5  # Strafing Thrusters slide at this share of top speed
 
-## A sideways velocity away from the nearest enemy shot on course to hit
-## this ship within DODGE_LOOK seconds, or zero. Any shot can be dodged, but
-## only as far as the ship's own speed takes it in the time it has.
+## Where shot `p` passes this ship: [seconds to closest approach, miss
+## distance, sideways way out], or [] when it won't hit within DODGE_LOOK.
+func _shot_threat(p: Node2D) -> Array:
+	var v: Vector2 = p._vel - velocity
+	var vv := v.length_squared()
+	if vv < 1.0:
+		return []
+	var rel: Vector2 = global_position - p.global_position
+	var t := rel.dot(v) / vv
+	if t <= 0.0 or t >= DODGE_LOOK:
+		return []
+	if (rel - v * t).length() > radius + 4.0:
+		return []
+	var side := v.orthogonal().normalized()
+	if side.dot(rel) < 0.0:
+		side = -side   # step off on whichever side we already lean
+	return [t, side]
+
+## The way out of the one shot this ship is watching. It keeps watching that
+## shot until it has passed or no longer threatens, and only then notices
+## another: the nearest enemy shot on course to hit it within DODGE_LOOK
+## seconds that has been flying at least DODGE_REACT. Any shot can be
+## dodged, but only as far as the ship's speed takes it in the time it has.
 func _find_dodge() -> Vector2:
+	if is_instance_valid(_dodge_shot):
+		var th := _shot_threat(_dodge_shot)
+		if not th.is_empty():
+			return th[1]
+	_dodge_shot = null
 	var best_t := DODGE_LOOK
 	var dir := Vector2.ZERO
+	var now := Game.now()
 	for p in get_tree().get_nodes_in_group("projectiles"):
 		if not is_instance_valid(p) or p.owner_pid == owner_id or not Game.instance.is_hostile(owner_id, p.owner_pid):
 			continue
-		var v: Vector2 = p._vel - velocity
-		var vv := v.length_squared()
-		if vv < 1.0:
+		if now - float(p.born) < DODGE_REACT or p.global_position.distance_squared_to(global_position) > 250000.0:
 			continue
-		var rel: Vector2 = global_position - p.global_position
-		var t := rel.dot(v) / vv   # time of closest approach
-		if t <= 0.0 or t >= best_t:
+		var th := _shot_threat(p)
+		if th.is_empty() or th[0] >= best_t:
 			continue
-		var miss := (rel - v * t).length()
-		if miss > radius + 4.0:
-			continue
-		best_t = t
-		# Step off the shot's line, on whichever side we already lean.
-		var side := v.orthogonal().normalized()
-		if side.dot(rel) < 0.0:
-			side = -side
-		dir = side
+		best_t = th[0]
+		dir = th[1]
+		_dodge_shot = p
 	return dir
 
 ## Whether dodging now would not get in the way of an attack. Strafing
@@ -1311,8 +1331,10 @@ func _physics_process(delta: float) -> void:
 			_dodge_scan = 0.1
 			_dodge_dir = _find_dodge() if _may_dodge() else Vector2.ZERO
 		if _dodge_dir != Vector2.ZERO:
-			desired = _dodge_dir * max_speed()
-			if not Game.instance.has_tech(owner_id, "maneuvers_3"):
+			if Game.instance.has_tech(owner_id, "maneuvers_3"):
+				desired = _dodge_dir * max_speed() * STRAFE_SPEED
+			else:
+				desired = _dodge_dir * max_speed()
 				face = null
 	_steer(desired + crowd, delta, face)
 	# Duel arena: nobody leaves.
