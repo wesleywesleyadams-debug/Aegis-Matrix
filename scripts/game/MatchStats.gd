@@ -125,5 +125,5 @@ static func sample(t: float) -> Dictionary:
 		var r: Dictionary = g.resources[pid]
 		out[str(pid)] = {"food": int(r["food"]), "minerals": int(r["minerals"]), "energy": int(r["energy"]), "spice": int(r["spice"]),
 			"pop": int(pop), "worlds": worlds, "warships": war, "power": int(power), "miners": miners, "starbases": bases,
-			"techs": g.researched[pid].size(), "score": g.stats.score(pid) if g.stats else 0, "mode": str(g.ai._state.get(pid, {}).get("mode", ""))}
+			"upkeep_mult": snappedf(g.upkeep_multiplier(pid), 0.01), "upkeep": snappedf(g.upkeep(pid), 0.1), "techs": g.researched[pid].size(), "score": g.stats.score(pid) if g.stats else 0, "mode": str(g.ai._state.get(pid, {}).get("mode", ""))}
 	return out
