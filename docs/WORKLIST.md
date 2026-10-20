@@ -7,9 +7,9 @@ code or art. Last updated 2026-10-20.
 
 ## Balance
 
-- **[balance] Upkeep economy under the new compounding multiplier.** One AI game ran fine (an AI still reached 83 ships). Needs a batch of AI-vs-AI sims on GitHub to confirm economies don't stall or snowball.
-- **[balance] Starbase cost tripled (1,250 minerals + 75 spice) to match its combat strength.** Check expansion pacing, and whether the scripted AI still builds a second starbase.
-- **[balance] Corvettes are weak as a class at mid-game budgets** (round-robin, before the Mod fixes). Re-check now that the corvette Mods are buffed.
+- **[balance] Upkeep explodes late.** AI sims (2026-10-20): x2.7 at 30 min, x12 (~3,900 energy/min) at 45 min; nobody starved yet thanks to 50k stockpiles, but longer games will hit a wall. Options: smaller weight for harvesters/support, a cap, or keep.
+- **[balance] Starbase cost 1,250 + 75 spice:** AI still expands, a bit later (2.3 bases at 20 min vs 3.3 before; 5.2 vs 6.0 at 45).
+- **[balance] Corvettes lose to every bigger class at equal cost** (size grid, 2026-10-20). Fits the size ladder; consider giving them a job (speed, cheap upkeep, raiding).
 - **[balance] Plasma has no matchup of its own** (left as-is by choice, 2026-10-20): best used against cruiser/carrier-heavy fleets of uncertain mix.
 
 ## AI
@@ -22,7 +22,7 @@ code or art. Last updated 2026-10-20.
 
 - **[missing] Defensive Fire only helps turreted hulls.** Corvettes, and carriers running the drone Mod, get nothing from it.
 - **[missing] Tractor Beams only grab ships**, not drones or starbases.
-- **[missing] Drone status in a selected carrier's panel, and drone kills in the stats.
+- **[missing] Drone status** in a selected carrier's panel, and drone kills in the stats.
 - **[missing] Munitions and reloading** (idea, 2026-09-22): limited ammo, restocked at a starbase.
 - **[missing] "Claude plays a match via text"** (idea, 2026-10-17).
 
