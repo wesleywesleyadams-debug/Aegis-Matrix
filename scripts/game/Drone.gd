@@ -5,7 +5,7 @@ extends SpaceEntity
 ## ship, but is not a ship: no selection, orders, score or upkeep. The
 ## carrier builds a replacement for each one lost (Ship.DRONE_BUILD).
 
-const HULL := 50.0   # all hull: no shields or armor, and no marks or tech change it
+const HULL := 40.0   # all hull: no shields or armor, and no marks or tech change it
 
 ## Flight speed; SL_DRONE_SPEED / SL_DRONE_R override it and the hit radius for tuning runs.
 var SPEED := 140.0
