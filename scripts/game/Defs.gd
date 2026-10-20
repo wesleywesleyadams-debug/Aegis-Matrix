@@ -103,7 +103,7 @@ const BASE_SHIPS := {
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
-		"hp": 66.6, "armor": 44.4, "shield": 22.2, "speed": 125.0, "radius": 8.0,
+		"hp": 66.0, "armor": 44.0, "shield": 22.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
 		"weapon": "laser", "damage": 9.0, "cooldown": 1.0, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 15.0},
 	},
