@@ -59,6 +59,10 @@ func _traverse(point: Vector2, delta: float) -> bool:
 func _fire_turrets(delta: float) -> void:
 	if weapon_mod.has("drones"):
 		_fly_drones(delta)
+		# The launch doors double as point defense with Defensive Fire.
+		_df_cd -= delta
+		if _df_cd <= 0.0 and _defensive_fire():
+			_df_cd = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate")
 		return
 	elif not _drones.is_empty():
 		_clear_drones()
@@ -199,7 +203,7 @@ func _tractor(delta: float, rng: float, n: int) -> void:
 				if is_instance_valid(e) and e.is_alive() and not held.has(e):
 					t = e
 					break
-		if t == null or not (t is Ship):
+		if t == null or not (t is Ship or t is Drone):
 			continue
 		var d: float = global_position.distance_to(t.global_position)
 		if d > reach + t.radius:
@@ -389,6 +393,22 @@ func _exit_tree() -> void:
 
 ## Defensive Fire (Targeting tier 3): how near ordnance must be for an idle turret to shoot it down.
 const DEFENSIVE_FIRE_R := 120.0
+## Defensive Fire for hulls without free turrets (fixed-gun ships, drone
+## carriers): when ready and idle, shoot down one enemy missile, torpedo or
+## bomblet within DEFENSIVE_FIRE_R. Returns whether it fired; fixed guns
+## then reload as from a normal shot.
+var _df_cd := 0.0
+func _defensive_fire() -> bool:
+	if not Game.instance.has_tech(owner_id, "defensive_fire") or weapon_mod.has("pd"):
+		return false
+	var sd := _pd_target(DEFENSIVE_FIRE_R, {})
+	if sd == null:
+		return false
+	Game.instance.intercept(self, sd)
+	if not weapon_mod.has("drones"):
+		_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate")
+	return true
+
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
 ## Point-Defense: the nearest enemy drone within weapon range `r` not
@@ -1170,6 +1190,8 @@ func _physics_process(delta: float) -> void:
 				shoot = Game.instance.nearest_enemy(self, weapon_range())
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
+		if shoot == null:
+			_defensive_fire()   # fixed guns with nothing to shoot
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
 			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))
 			var ready := false

@@ -26,7 +26,6 @@ func _init() -> void:
 		"boom": _explosion(0.45, 0.55),
 		"boom_big": _explosion(1.1, 0.8),
 		"build": _arp([523.0, 659.0, 784.0], 0.07, 0.25),
-		# A carrier's bays: clamps closing, then the catapult letting go.
 		"claim": _arp([392.0, 523.0, 659.0, 1047.0], 0.09, 0.25),
 		"alert": _arp([330.0, 247.0, 330.0, 247.0], 0.1, 0.25),
 		"click": _sweep(0.03, 900.0, 700.0, 0.15, true),

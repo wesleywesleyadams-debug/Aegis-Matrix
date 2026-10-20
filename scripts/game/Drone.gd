@@ -120,7 +120,7 @@ func _physics_process(delta: float) -> void:
 	if global_position.distance_to(home) > reach:
 		goal = home
 	heading = rotate_toward(heading, (goal - global_position).angle(), TURN * delta * sf)
-	velocity = Vector2.from_angle(heading) * SPEED * sf
+	velocity = Vector2.from_angle(heading) * SPEED * sf * _tractor_keep()
 	global_position += velocity * delta
 	rotation = heading
 	cd -= delta * sf
@@ -135,6 +135,26 @@ func _physics_process(delta: float) -> void:
 ## Whether `e` is a live enemy close enough to the carrier to chase.
 func _ok(e, home: Vector2, reach: float) -> bool:
 	return is_instance_valid(e) and e.is_alive() and home.distance_to(e.global_position) <= reach + e.radius + SEARCH
+
+## Tractor Beams: an enemy beam slows this drone by `slow` (0..1); several
+## beams multiply. Gathered over one physics frame, used the next.
+var _tr_frame := -1
+var _tr_acc := 1.0
+var _tr_prev := 1.0
+func tractor_hit(slow: float) -> void:
+	_tr_roll()
+	_tr_acc *= 1.0 - slow
+
+func _tr_roll() -> void:
+	var f := Engine.get_physics_frames()
+	if f != _tr_frame:
+		_tr_prev = _tr_acc if f == _tr_frame + 1 else 1.0
+		_tr_acc = 1.0
+		_tr_frame = f
+
+func _tractor_keep() -> float:
+	_tr_roll()
+	return _tr_prev
 
 func shot(to: Vector2) -> void:
 	_shot_from = global_position

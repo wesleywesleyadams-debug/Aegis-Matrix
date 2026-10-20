@@ -34,7 +34,7 @@ A research tab called **Mods**. Each Mod changes the weapon of one ship class.
 
 - **Stacking:** slows from several beams stack with diminishing returns, multiplicatively. A target keeps the product of (1 − slow) for every beam on it, so two 50% beams make a 75% slow.
 - **No damage trade:** the lasers keep full damage (the user's call).
-- **Ships only:** beams don't grab drones or starbases.
+- **Ships and drones:** beams grab enemy ships and drones. Starbases never move, so there is nothing to slow there.
 
 ## Engine change: independent turrets (all ships)
 
