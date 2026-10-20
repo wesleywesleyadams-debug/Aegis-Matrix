@@ -1274,7 +1274,7 @@ func spawn_blast(pos: Vector2, radius: float) -> void:
 	sfx.play_at("boom", pos, -8.0)
 
 ## Point-Defense: `from` zaps an enemy projectile out of the sky.
-func intercept(from: Ship, p: Node2D) -> void:
+func intercept(from: Node2D, p: Node2D) -> void:
 	if not sim_mode:
 		var arc := ArcFx.new()
 		arc.setup(PackedVector2Array([from.global_position, p.global_position]), false, Color("ffd84a"))
