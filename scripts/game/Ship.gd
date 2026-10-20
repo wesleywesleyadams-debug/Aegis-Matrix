@@ -171,7 +171,7 @@ func _fire_turrets(delta: float) -> void:
 					var off := 0.0 if n_proj == 1 else lerpf(-spread, spread, float(j) / (n_proj - 1)) + randf_range(-0.06, 0.06)
 					g.fire(self, tgt, wpn, shot, off)
 		_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
-		if weapon_mod.get("run", false):
+		if _runs():
 			_run_out = _t_cd[i] * 0.5
 
 	if weapon_mod.has("tractor"):
@@ -403,6 +403,22 @@ func _defensive_fire(r: float) -> bool:
 	Game.instance.intercept(self, sd)
 	_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 	return true
+
+## Maneuvers I: ordnance Mods (MOD_WEAPONS "run") make hit-and-run attacks.
+func _runs() -> bool:
+	return weapon_mod.get("run", false) and Game.instance.has_tech(owner_id, "maneuvers_1")
+
+## Maneuvers I: every other ship chases its target in to half weapon range.
+func _chases() -> bool:
+	return not weapon_mod.get("run", false) and Game.instance.has_tech(owner_id, "maneuvers_1")
+
+## Maneuvers II/III: a dodge away from incoming ordnance `p` - a hard swerve,
+## or with strafing (III) a sideways slide that keeps the nose on target.
+func jink(p: Node2D) -> void:
+	var side := (p.global_position - global_position).orthogonal().normalized()
+	if randf() < 0.5:
+		side = -side
+	velocity += side * max_speed() * (1.2 if Game.instance.has_tech(owner_id, "maneuvers_3") else 0.8)
 
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
@@ -1048,13 +1064,14 @@ func _physics_process(delta: float) -> void:
 				state = State.ATTACK_MOVE
 			else:
 				var d := global_position.distance_to(target.global_position)
-				var keep: float = weapon_range() * 0.8
-				if weapon_mod.get("run", false) and _run_out > 0.0:
+				# Maneuvers I: everything that doesn't make attack runs presses in close.
+				var keep: float = weapon_range() * (0.5 if _chases() else 0.8)
+				if _runs() and _run_out > 0.0:
 					# Breaking away after a launch: curve out and off to the side.
 					var away := (global_position - target.global_position).normalized()
 					desired = (away + away.orthogonal() * 0.8).normalized() * max_speed()
 				else:
-					if d > keep * (0.6 if weapon_mod.get("run", false) else 1.0):
+					if d > keep * (0.6 if _runs() else 1.0):
 						desired = _arrive(target.global_position, 1.0)
 					# A turreted hull (the carrier) lets its mounts do the aiming and
 					# keeps its own heading; only fixed guns need the nose on target.
@@ -1117,11 +1134,11 @@ func _physics_process(delta: float) -> void:
 				move_goal = global_position
 			else:
 				var keep: float = weapon_range() * 0.8 + bombard_target.radius
-				if weapon_mod.get("run", false) and _run_out > 0.0:
+				if _runs() and _run_out > 0.0:
 					# Attack run (torpedoes): break away after a launch, as against ships.
 					var away := (global_position - bombard_target.global_position).normalized()
 					desired = (away + away.orthogonal() * 0.8).normalized() * max_speed()
-				elif global_position.distance_to(bombard_target.global_position) > (bombard_target.radius + weapon_range() * 0.48 if weapon_mod.get("run", false) else keep):
+				elif global_position.distance_to(bombard_target.global_position) > (bombard_target.radius + weapon_range() * 0.48 if _runs() else keep):
 					desired = _arrive(bombard_target.global_position, 1.0, keep)
 				face_target = null
 				# Fixed guns must point at the world to fire; a planet is no
@@ -1231,7 +1248,7 @@ func _physics_process(delta: float) -> void:
 						Game.instance.fire(self, shoot, wpn, dmg)
 				_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 				# Attack run: peel away for half the reload, then come round again.
-				if weapon_mod.get("run", false):
+				if _runs():
 					_run_out = _cooldown * 0.5
 
 	if Game.instance.is_ai(owner_id):

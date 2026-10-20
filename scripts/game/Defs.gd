@@ -411,6 +411,13 @@ const TECHS := {
 		"effects": {}, "desc": "No accuracy loss when firing on the move."},
 	"defensive_fire": {"name": "Defensive Fire", "group": "weapons", "tier": 3, "requires": ["gyro_stabilizers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {}, "desc": "Idle guns and drones shoot down ordnance and drones."},
+	# MANEUVERS row (logistics; Ship/Game read these with Game.has_tech).
+	"maneuvers_1": {"name": "Attack Patterns", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 65}, "time": 55.0,
+		"effects": {}, "desc": "Ordnance ships hit and run; others chase in close."},
+	"maneuvers_2": {"name": "Evasive Maneuvers", "group": "logistics", "tier": 2, "requires": ["maneuvers_1"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
+		"effects": {}, "desc": "Ships swerve to dodge 15% of missiles, torpedoes, bombs."},
+	"maneuvers_3": {"name": "Strafing Thrusters", "group": "logistics", "tier": 3, "requires": ["maneuvers_2"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
+		"effects": {}, "desc": "Ships strafe sideways to dodge 30% of ordnance."},
 	"hullbreaker_rounds": {"name": "Rupture Charges", "group": "weapons", "tier": 3, "requires": ["burst_cyclers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls."},
 

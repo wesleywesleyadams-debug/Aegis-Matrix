@@ -503,7 +503,8 @@ func _page_combat() -> void:
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
 	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x3.0).")
-	_pic("hit_run", "Proton Torpedoes, Cluster Bombs and Homing Missiles attack hit-and-run.", Vector2(460, 150))
+	_pic("hit_run", "With Attack Patterns researched, ordnance Mods attack hit-and-run.", Vector2(460, 150))
+	_para("Maneuvers (Logistics research). Attack Patterns: ships with an ordnance Mod (Proton Torpedoes, Cluster Bombs, Homing Missiles, Missile Barrage) close in, launch and peel away while they reload, against any target, worlds included; every other ship chases its target in to half its weapon range. Without it, all ships stand at 80%% of weapon range and trade fire. Evasive Maneuvers: a ship swerves away from incoming missiles, torpedoes and bombs, dodging %d%% of them (laser-fast shots can't be dodged). Strafing Thrusters: ships slide sideways instead, dodging %d%%." % [int(Game.DODGE_CHANCE[1] * 100.0), int(Game.DODGE_CHANCE[2] * 100.0)])
 	# The Mods tab as it appears on the research screen.
 	_tech_tree("mods", _research_rows("mods"))
 	var coming: Array = []
