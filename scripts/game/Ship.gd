@@ -808,9 +808,13 @@ func refresh_stats() -> void:
 	var sh_frac := shield / max_shield if max_shield > 0.0 else 1.0
 	max_hp = def["hp"] * g.hull_mod(owner_id, ship_type, "hull")
 	max_shield = def["shield"] * g.hull_mod(owner_id, ship_type, "shield")
+	max_armor = def.get("armor", 0.0) * g.hull_mod(owner_id, ship_type, "armor")
+	# Convoy Protocols: harvesters gain shields and armor equal to their hull.
+	if is_harvester() and g.has_tech(owner_id, "convoy_protocols"):
+		max_shield += max_hp
+		max_armor += max_hp
 	hp = max_hp * hp_frac
 	shield = max_shield * sh_frac
-	max_armor = def.get("armor", 0.0) * g.hull_mod(owner_id, ship_type, "armor")
 	armor = max_armor * ar_frac
 
 func max_speed() -> float:
