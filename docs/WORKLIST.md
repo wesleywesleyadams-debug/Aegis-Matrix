@@ -2,78 +2,34 @@
 
 A running catalog of what the game needs. Nothing here is decided: each item
 waits for a go-ahead. Tags: **[bug]** wrong behaviour, **[balance]** needs
-tuning or a design call, **[stale]** text that no longer matches the game,
-**[missing]** not built yet, **[cleanup]** dead code. Paths are under
-`scripts/game/` unless given. Last updated 2026-10-19.
+tuning or a design call, **[missing]** not built yet, **[cleanup]** dead
+code or art. Last updated 2026-10-20.
 
-## Bugs
+## Balance
 
-None open. (Fixed 2026-10-19: drones showing through fog, drones left with an eliminated player, ships overlapping carriers, drones not saved.)
-
-## Balance and design calls
-
-- **[balance] Drones: shooting them down isn't a counter yet.** Laser carriers hit drones about 3% of the time. In a free fight with drone damage 2.9, drone carriers trade 1.62× laser carriers. Variants tested:
-
-  | Variant | Trade |
-  |---|---|
-  | Current (speed 240, 5 px hitbox) | 1.62× |
-  | Speed 140 | 2.58× (slow drones turn tighter and fire more) |
-  | Speed 140, 10 px hitbox | 1.57× |
-
-  With the enemy focusing the carriers instead, drone carriers lose in every variant (about 0.69×). Next ideas: faster laser bolts (210 → 400), less drone hull, or a bigger hitbox on its own. Measure the laser hit rate on drones for each.
-- **[balance] Every Mod needs re-checking.** Three changes since tuning shift them: shots only lead with the new Target Prediction tech (it used to be free), turrets now turn at 6.0 instead of 2.0, and guided shots no longer lead.
-- **[balance] Proton Torpedoes vs corvettes.** By the numbers, a torpedo corvette deals about 16% of a laser corvette's damage per second to another corvette. The Codex says "a little weaker". Confirm in a duel, then fix the tuning or the text.
-- **[balance] Missile Barrage swings with one value.** Around damage 0.83 one salvo either kills a corvette or doesn't (0.5× vs 3× trade). It's set to 0.8. Pick a side or reshape it (more, weaker missiles).
-- **[balance] Mod costs are placeholders.** They're identical within each row (Defs.gd ~521).
-- **[missing] Defensive Fire only helps turreted hulls.** Corvettes, and carriers running the drone Mod, get nothing from it. Decide whether that's fine.
-- **[missing] Tractor Beams only grab ships**, not drones or starbases.
+- **[balance] Upkeep economy under the new compounding multiplier.** One AI game ran fine (an AI still reached 83 ships). Needs a batch of AI-vs-AI sims on GitHub to confirm economies don't stall or snowball.
+- **[balance] Starbase cost tripled (1,250 minerals + 75 spice) to match its combat strength.** Check expansion pacing, and whether the scripted AI still builds a second starbase.
+- **[balance] Drones: shooting them down isn't a counter yet.** Laser carriers hit drones about 3% of the time; drone carriers lose when the enemy ignores the drones and focuses the carriers. Options: faster laser bolts, less drone hull.
+- **[balance] Corvettes are weak as a class at mid-game budgets** (round-robin, before the Mod fixes). Re-check now that the corvette Mods are buffed.
+- **[balance] Missile Barrage swings with one value.** Around damage 0.83 one salvo either kills a corvette or doesn't. It's at 0.8.
+- **[balance] Mod research costs are placeholders.** Identical within each row.
+- **[balance] Plasma has no matchup of its own** (left as-is by choice, 2026-10-20): best used against cruiser/carrier-heavy fleets of uncertain mix.
 
 ## AI
 
-- **[missing] The scripted AI never researches or uses Mods.** `AIController.gd:114` filters them out, and it never toggles them. Wanted: pick a Mod per class that suits what the enemy fields.
-- **[missing] The neural AI is blind to Mods and drones.** It can't toggle Mods, and drones aren't in the `entities` group it reads. `NeuralCommander.gd:20-27` research groups lack Mods, the Targeting row and Quantum Lenses. Needs a model update with a version bump.
-- **[cleanup] The neural AI keeps a "dock" verb** for the removed hangars (RLAgent.gd:37, 255, 429; tools/rl/model.py:18,23). Removing it shifts action indices and breaks trained weights, so leave the slot until the next version bump.
+- **[missing] The neural AI is blind to Mods and drones.** It can't toggle Mods, and drones aren't in the `entities` group it reads. `NeuralCommander.gd` research groups lack Mods, the Targeting row and Quantum Lenses. Needs a model update and a version bump.
+- **[cleanup] The neural AI keeps a "dock" verb** for the removed hangars (RLAgent.gd, tools/rl/model.py). Never allowed now; drop it at the next model version bump.
+- **[missing] Neural AI training is paused.** On resume: fix the closing-in reward loophole (count every warship, not the 8 closest); add the income reward at the expand stage; restart from the checkpoint.
 
-## Leftovers from removing carrier hangars
+## Features
 
-All of this is dead code now (the carrier has no `bays`, and `fits_bay()` returns false).
-
-- **[cleanup] Ship.gd:**
-  - States `DOCK_GO`/`DOCKED` (enum at line 7, bodies at ~1078-1114, checks at ~1286 and ~1351).
-  - Fields `bay_craft`, `dock_carrier`, `dock_slot`, `BAY_REPAIR_PER_SEC` (~516-522).
-  - Functions `bay_offset`, `free_bay`, `fits_bay`, `order_dock`, `_launch_from_bay` (~703-753).
-- **[cleanup] Defs.gd:** `BAY_MAX_RADIUS`, `carrier_bays()` and `WARSHIP_ART_SIZE` (~603-635).
-- **[cleanup] HUD.gd:** `_add_hangar_panel` (~1215-1250) and the state names (~1438).
-- **[cleanup] AIController.gd:** the block that sends hurt ships to a carrier (~226-248).
-- **[cleanup] SaveGame.gd:** dock orders and re-docking (~165-169, ~358-381).
-- **[cleanup] Game.gd:** the `SL_SHOT_OPEN=carrier` dev hook (~3200-3224) and the `SL_LOAD` "bay" printout (~210).
-- **[cleanup] Carrier art:** `tools/gen_art.gd` (~1495, ~1591) still draws bay cradles on the carrier sprite.
-- **[cleanup] Sounds:** "dock" and "launch" are now never played.
-
-## Stale text
-
-- **[stale] docs/MODS.md is badly out of date:**
-  - Proton: says ×1.16 and ×2.92/3.73/4.5; now 0.47 and ×6.2/6.6/7.4.
-  - Flak: says "within 50 for 60%"; now radius 20 at 100%.
-  - Rail: says half rate ×2; now cooldown 4, ×3.4.
-  - Ion Lance: says 60→140%; now 0.15→1.85 ×0.75.
-  - Drones: build rate, hull, killable, PD ×2.
-  - The "damage per second stays the same" rule no longer holds.
-- **[stale] Flak Cannons desc** (Defs.gd:531) says "within 50 for 60%". The comment at Defs.gd:748 documents a `splash` key that's gone.
-- **[stale] Codex carrier blurb** (Codex.gd:993) doesn't mention carrier Mods.
-- **[stale] The Weapon Mods section** has no numbers for Drones, Tractor Beams or Missile Barrage.
-- **[cleanup] Small leftovers:**
-  - Codex.gd:595 hangar-bays line (can no longer fire).
-  - Codex.gd:475-495 "(coming)" logic (all Mods are built).
-  - Drone.gd:6 cites a nonexistent `Defs.DRONE_REBUILD` (it's `Ship.DRONE_BUILD`).
-  - Effect keys `mod_*` and `unlock_carrier/cruiser/destroyer` have no reader.
-
-## Not built yet
-
-- **[missing] Drones on the minimap.** Also missing: drone status in a selected carrier's panel, and drone kills in the stats.
-- **[missing] Munitions and reloading** (an idea from 2026-09-22): limited ammo, restocked at a starbase.
-- **[missing] Neural AI training is paused.** On resume:
-  1. Fix the closing-in reward loophole (count every warship, not the 8 closest).
-  2. Add the income reward once training reaches the expand stage.
-  3. Restart from the checkpoint.
+- **[missing] Defensive Fire only helps turreted hulls.** Corvettes, and carriers running the drone Mod, get nothing from it.
+- **[missing] Tractor Beams only grab ships**, not drones or starbases.
+- **[missing] Drones on the minimap**, drone status in a selected carrier's panel, and drone kills in the stats.
+- **[missing] Munitions and reloading** (idea, 2026-09-22): limited ammo, restocked at a starbase.
 - **[missing] "Claude plays a match via text"** (idea, 2026-10-17).
+
+## Cleanup
+
+- **[cleanup] Carrier art:** `tools/gen_art.gd` (~1495, ~1591) still draws hangar-bay cradles on the carrier sprite.
+- **[cleanup] Sounds:** "dock" and "launch" are never played now.
