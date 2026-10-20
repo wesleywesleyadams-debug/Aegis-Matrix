@@ -1491,17 +1491,6 @@ func _mark_parts(mark: int, w: int, h: int) -> Array:
 
 ## The carrier's turret: a drum with a twin barrel, drawn pointing +X so the
 ## game can simply rotate it to the bearing.
-## Where a carrier's bays sit, in design units. This mirrors
-## Defs.carrier_bays(): the generator cannot import Defs (that file reaches
-## for autoloads, which a --script run has none of), so the layout is
-## written twice and the two must be kept in step.
-func _carrier_bays(w: int, h: int) -> Array:
-	var a: float = h * 0.30
-	var out: Array = []
-	for t in [0.24, 0.44, 0.64]:
-		out.append(Vector2(w * t, a))
-	return out
-
 ## Rank marks, one overlay per research mark, fitted to each class's own hull.
 ## A ship starts plain at Mk I and is progressively dressed as it is refined:
 ## Mk II lays a lit rail along the spine and a chevron at the bow, Mk III adds
@@ -1588,14 +1577,6 @@ func _gen_hull_marks() -> void:
 		var a: float = h * 0.30
 		var team_fn := func(_x: int, dy: float) -> bool: return absf(dy) > a - 2.0
 		var parts: Array = _mark_parts(shape, w, h)
-		if cls == "carrier":
-			# A cradle per bay, standing off the member it hangs from, so a
-			# docked corvette has something to sit in.
-			for bay in _carrier_bays(w, h):
-				var bx: float = bay.x
-				var by: float = bay.y
-				parts.append([int(bx) - 3, int(bx) + 3, 1.4, 1.4, by])
-				parts.append([int(bx) - 2, int(bx) + 2, 2.6, 2.6, by + 2.4])
 		# Engines sit on the members that reach the stern: the nacelles of an
 		# H, the prongs of a Y, the wings of an X, the legs of an A.
 		var thrusters: Array = [-a, -a + 0.8, a - 0.8, a]
