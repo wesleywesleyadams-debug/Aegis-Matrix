@@ -27,8 +27,6 @@ func _init() -> void:
 		"boom_big": _explosion(1.1, 0.8),
 		"build": _arp([523.0, 659.0, 784.0], 0.07, 0.25),
 		# A carrier's bays: clamps closing, then the catapult letting go.
-		"dock": _join([_sweep(0.06, 420.0, 180.0, 0.22, true), _sweep(0.05, 150.0, 110.0, 0.18, false)]),
-		"launch": _join([_sweep(0.05, 200.0, 520.0, 0.20, true), _noise_sweep(0.18, 0.5, 0.12, 0.18)]),
 		"claim": _arp([392.0, 523.0, 659.0, 1047.0], 0.09, 0.25),
 		"alert": _arp([330.0, 247.0, 330.0, 247.0], 0.1, 0.25),
 		"click": _sweep(0.03, 900.0, 700.0, 0.15, true),
