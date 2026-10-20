@@ -410,7 +410,7 @@ const TECHS := {
 	"gyro_stabilizers": {"name": "Gyro-Stabilizers", "group": "weapons", "tier": 2, "requires": ["target_prediction"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
 		"effects": {}, "desc": "No accuracy loss when firing on the move."},
 	"defensive_fire": {"name": "Defensive Fire", "group": "weapons", "tier": 3, "requires": ["gyro_stabilizers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
-		"effects": {}, "desc": "Idle guns, and drones, shoot down missiles and bombs."},
+		"effects": {}, "desc": "Corvettes shoot down missiles and bombs in range before ships; drones and idle guns do too."},
 	"hullbreaker_rounds": {"name": "Rupture Charges", "group": "weapons", "tier": 3, "requires": ["burst_cyclers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls."},
 

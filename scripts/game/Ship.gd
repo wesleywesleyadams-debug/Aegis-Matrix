@@ -392,10 +392,10 @@ const DEFENSIVE_FIRE_R := 120.0
 ## Defensive Fire for fixed-gun ships: when ready and idle, shoot down one
 ## enemy missile, torpedo or bomblet within DEFENSIVE_FIRE_R, then reload as
 ## from a normal shot. (Drone carriers get none: their doors don't fire.)
-func _defensive_fire() -> bool:
+func _defensive_fire(r: float) -> bool:
 	if not Game.instance.has_tech(owner_id, "defensive_fire") or weapon_mod.has("pd") or weapon_mod.has("drones"):
 		return false
-	var sd := _pd_target(DEFENSIVE_FIRE_R, {})
+	var sd := _pd_target(r, {})
 	if sd == null:
 		return false
 	Game.instance.intercept(self, sd)
@@ -1170,8 +1170,9 @@ func _physics_process(delta: float) -> void:
 	# Turreted hulls: every turret aims and fires on its own (_fire_turrets).
 	if def["weapon"] != "" and def.has("turrets") and not _turret_sprites.is_empty():
 		_fire_turrets(delta)
-	# Fire at whatever is in range, even while moving.
-	elif def["weapon"] != "" and _cooldown <= 0.0:
+	# Fire at whatever is in range, even while moving. Defensive Fire: a ready
+	# corvette gun first spends its shot on enemy ordnance in range, even mid-fight.
+	elif def["weapon"] != "" and _cooldown <= 0.0 and not (def.get("base", ship_type) == "corvette" and _defensive_fire(weapon_range())):
 		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
 		if state == State.BOMBARD and is_instance_valid(bombard_target):
 			shoot = bombard_target
@@ -1184,7 +1185,7 @@ func _physics_process(delta: float) -> void:
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
 		if shoot == null:
-			_defensive_fire()   # fixed guns with nothing to shoot
+			_defensive_fire(DEFENSIVE_FIRE_R)   # other fixed guns with nothing to shoot
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
 			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))
 			var ready := false
