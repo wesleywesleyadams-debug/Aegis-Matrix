@@ -527,9 +527,9 @@ const TECHS := {
 	"mod_proton_torpedoes": {"name": "Proton Torpedoes", "group": "mods", "mod": "corvette", "tier": 1, "requires": [], "cost": {"energy": 150, "spice": 25}, "time": 60.0,
 		"effects": {"mod_corvette": 1.0}, "desc": "Heavy torpedoes; x2-4 vs big hulls."},
 	"mod_kinetic_repeaters": {"name": "Kinetic Repeaters", "group": "mods", "mod": "corvette", "tier": 2, "requires": [], "cost": {"energy": 150, "spice": 25}, "time": 60.0,
-		"effects": {"mod_corvette": 1.0}, "desc": "3x fire rate, 70% damage per slug, -25% range."},
+		"effects": {"mod_corvette": 1.0}, "desc": "3x fire rate, 58% damage per slug, -25% range."},
 	"mod_arc_emitters": {"name": "Arc Emitters", "group": "mods", "mod": "corvette", "tier": 3, "requires": [], "cost": {"energy": 150, "spice": 25}, "time": 60.0,
-		"effects": {"mod_corvette": 1.0}, "desc": "Chains to 2 more enemies (90/35/35%)."},
+		"effects": {"mod_corvette": 1.0}, "desc": "Chains to 2 more enemies (80/30/30%)."},
 	"mod_flak_cannons": {"name": "Flak Cannons", "group": "mods", "mod": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"energy": 180, "spice": 30}, "time": 75.0,
 		"effects": {"mod_destroyer": 1.0}, "desc": "Shells burst, hitting all enemies within 20."},
 	"mod_cluster_bombs": {"name": "Cluster Bombs", "group": "mods", "mod": "destroyer", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 180, "spice": 30}, "time": 75.0,
@@ -541,7 +541,7 @@ const TECHS := {
 	"mod_rail_cannons": {"name": "Rail Cannons", "group": "mods", "mod": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 210, "spice": 35}, "time": 90.0,
 		"effects": {"mod_cruiser": 1.0}, "desc": "+40% range, big slow shots: best vs big hulls."},
 	"mod_point_defense_lattice": {"name": "Point-Defense Lattice", "group": "mods", "mod": "cruiser", "tier": 3, "requires": ["cruisers"], "cost": {"energy": 210, "spice": 35}, "time": 90.0,
-		"effects": {"mod_cruiser": 1.0}, "desc": "Shoots down torpedoes, missiles and bombs, then drones (x2); -20% vs ships."},
+		"effects": {"mod_cruiser": 1.0}, "desc": "Shoots down torpedoes, missiles and bombs, then drones (x2); +10% vs ships."},
 	"mod_interceptor_drones": {"name": "Interceptor Drones", "group": "mods", "mod": "carrier", "tier": 1, "requires": ["carriers"], "cost": {"energy": 240, "spice": 40}, "time": 105.0,
 		"effects": {"mod_carrier": 1.0}, "desc": "4 drones attack enemies within 300."},
 	"mod_tractor_beams": {"name": "Tractor Beams", "group": "mods", "mod": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 240, "spice": 40}, "time": 105.0,
@@ -711,8 +711,8 @@ const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
 	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.70, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.0},
-	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.7, "cd": 1.0 / 3.0, "range": 0.75},
-	"mod_arc_emitters": {"weapon": "arc", "chain": [0.9, 0.35, 0.35], "jump": 120.0},
+	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.58, "cd": 1.0 / 3.0, "range": 0.75},
+	"mod_arc_emitters": {"weapon": "arc", "chain": [0.8, 0.3, 0.3], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
 	#   fan    - [min, max] total fan width in degrees, rolled fresh each launch
 	#   beam   - Ion Lance: [start, end, seconds] - a continuous beam whose damage
@@ -723,23 +723,23 @@ const MOD_WEAPONS := {
 	#   tractor- Tractor Beams: [slow far, slow close, reach x weapon range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
-	"mod_flak_cannons": {"dmg": 0.83, "weapon": "flak"},
+	"mod_flak_cannons": {"dmg": 0.74, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
-	"mod_cluster_bombs": {"dmg": 0.55, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0]},
-	"mod_ion_lance": {"weapon": "beam", "dmg": 0.68, "beam": [0.15, 1.85, 4.0]},
-	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.8, "cd": 4.0, "range": 1.4},
+	"mod_cluster_bombs": {"dmg": 0.45, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0]},
+	"mod_ion_lance": {"weapon": "beam", "dmg": 0.75, "beam": [0.15, 1.85, 4.0]},
+	"mod_rail_cannons": {"weapon": "rail", "dmg": 4.2, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
-	"mod_point_defense_lattice": {"dmg": 0.8, "pd": 220.0},
+	"mod_point_defense_lattice": {"dmg": 1.1, "pd": 220.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.28, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
-	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 2.9, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
+	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.3, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
 	"mod_tractor_beams": {"tractor": [40.0, 2.0]},
-	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.48, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
+	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.55, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
 static func damage_profile(d: Dictionary) -> Dictionary:
