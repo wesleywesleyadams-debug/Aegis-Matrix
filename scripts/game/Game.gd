@@ -1249,6 +1249,11 @@ func splash(pos: Vector2, r: float, damage: float, pid: int, from: Node2D, profi
 	for x in hulls_near(pos, r + 30.0):
 		if x.owner_id != pid and x.is_enemy_of(pid) and x.global_position.distance_to(pos) <= r + x.radius:
 			x.take_damage(damage * vs_mult(vs_class, x), src, profile)
+	# Depots and Mining Stations inside the blast too (not in the hull grid).
+	for grp in ["depots", "mining_stations"]:
+		for cn in get_tree().get_nodes_in_group(grp):
+			if cn.is_alive() and cn.owner_id != pid and cn.is_enemy_of(pid) and cn.global_position.distance_to(pos) <= r + cn.radius:
+				cn.take_damage(damage * vs_mult(vs_class, cn), src, profile)
 	# Enemy worlds inside the blast take their share too.
 	for w in get_tree().get_nodes_in_group("planets"):
 		if w.owner_id != pid and w.is_enemy_of(pid) and w.global_position.distance_to(pos) <= r + w.radius:
