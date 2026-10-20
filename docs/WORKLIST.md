@@ -19,13 +19,9 @@ code or art. Last updated 2026-10-20.
 
 ## Features
 
-- **[missing] Defensive Fire only helps turreted hulls.** Corvettes, and carriers running the drone Mod, get nothing from it.
-- **[missing] Tractor Beams only grab ships**, not drones or starbases.
 - **[missing] Drone status** in a selected carrier's panel, and drone kills in the stats.
 - **[missing] Munitions and reloading** (idea, 2026-09-22): limited ammo, restocked at a starbase.
 - **[missing] "Claude plays a match via text"** (idea, 2026-10-17).
 
 ## Cleanup
 
-- **[cleanup] Carrier art:** `tools/gen_art.gd` (~1495, ~1591) still draws hangar-bay cradles on the carrier sprite.
-- **[cleanup] Sounds:** "dock" and "launch" are never played now.
