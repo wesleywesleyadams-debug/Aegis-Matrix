@@ -711,7 +711,7 @@ const AOE_SHARE := 1.0
 const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
-	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.4731, "vs_class": {"destroyer": 6.2, "cruiser": 6.6, "carrier": 7.4}, "cd": 3.0, "run": true},
+	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.4731, "vs_class": {"destroyer": 6.2, "cruiser": 6.6, "carrier": 7.4, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.0, "run": true},
 	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.7, "cd": 1.0 / 3.0, "range": 0.75},
 	"mod_arc_emitters": {"weapon": "arc", "chain": [0.9, 0.35, 0.35], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
@@ -740,7 +740,7 @@ const MOD_WEAPONS := {
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
 	"mod_tractor_beams": {"tractor": [0.1, 0.9, 2.0]},
-	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.48, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
+	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.48, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5, "run": true},
 }
 
 static func damage_profile(d: Dictionary) -> Dictionary:
