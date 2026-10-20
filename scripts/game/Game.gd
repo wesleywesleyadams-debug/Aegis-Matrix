@@ -3678,6 +3678,11 @@ func _duel() -> void:
 			if sid == kv2[0] or Defs.SHIPS[sid].get("base", "") == kv2[0]:
 				Defs.SHIPS[sid]["shield"] = float(Defs.SHIPS[sid]["shield"]) - float(kv2[1])
 				Defs.SHIPS[sid]["hp"] = float(Defs.SHIPS[sid]["hp"]) + float(kv2[1])
+	# SL_DUEL_TECHS: comma-separated techs both sides start with (free).
+	for tid in OS.get_environment("SL_DUEL_TECHS").split(",", false):
+		for pid9 in [1, 2]:
+			researched[pid9][tid] = true
+			_on_tech_done(pid9, tid)
 	var budget := float(OS.get_environment("SL_DUEL_BUDGET")) if OS.get_environment("SL_DUEL_BUDGET") != "" else 2550.0
 	var specs := OS.get_environment("SL_DUEL").split(",")
 	var c := Vector2(float(OS.get_environment("SL_DUEL_X")) if OS.get_environment("SL_DUEL_X") != "" else -900.0, -700.0)

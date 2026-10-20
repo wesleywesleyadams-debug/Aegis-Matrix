@@ -718,7 +718,7 @@ const AOE_SHARE := 1.0
 const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
-	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.70, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 2.7, "world": 2.7, "construct": 1.35}, "cd": 3.0, "run": true},
+	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.70, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.0, "run": true},
 	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.7, "cd": 1.0 / 3.0, "range": 0.75},
 	"mod_arc_emitters": {"weapon": "arc", "chain": [0.9, 0.35, 0.35], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
