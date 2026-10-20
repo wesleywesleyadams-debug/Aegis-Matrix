@@ -420,6 +420,7 @@ var _dodge_mode_now := ""
 var _dodge_scan := 0.0
 const DODGE_LOOK := 0.5    # seconds ahead a shot is seen coming
 const DODGE_REACT := 0.15  # a shot must have flown this long before anyone reacts
+const STRAFE_REACT := 0.1  # ...or this long, with Strafing Thrusters
 
 ## Where shot `p` passes this ship: [seconds to closest approach, miss
 ## distance, sideways way out], or [] when it won't hit within DODGE_LOOK.
@@ -453,10 +454,11 @@ func _find_dodge() -> Vector2:
 	var best_t := DODGE_LOOK
 	var dir := Vector2.ZERO
 	var now := Game.now()
+	var react := STRAFE_REACT if Game.instance.has_tech(owner_id, "maneuvers_3") else DODGE_REACT
 	for p in get_tree().get_nodes_in_group("projectiles"):
 		if not is_instance_valid(p) or p.owner_pid == owner_id or not Game.instance.is_hostile(owner_id, p.owner_pid):
 			continue
-		if now - float(p.born) < DODGE_REACT or p.global_position.distance_squared_to(global_position) > 250000.0:
+		if now - float(p.born) < react or p.global_position.distance_squared_to(global_position) > 250000.0:
 			continue
 		var th := _shot_threat(p)
 		if th.is_empty() or th[0] >= best_t:
