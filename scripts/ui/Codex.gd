@@ -503,7 +503,6 @@ func _page_combat() -> void:
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
 	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x3.0).")
-	_pic("hit_run", "Ordnance Mods (Proton Torpedoes, Cluster Bombs, Homing Missiles, Missile Barrage) attack hit-and-run, against any target, worlds included.", Vector2(460, 150))
 	# The Mods tab as it appears on the research screen.
 	_tech_tree("mods", _research_rows("mods"))
 	var coming: Array = []
@@ -999,7 +998,6 @@ func _page_terms() -> void:
 		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair."],
 		["Mod", "A research option that changes one ship class's weapon (Mods tab). One per class; another replaces it; click an active one to switch it off."],
 		["Blast", "The area an exploding shot hits: every enemy inside takes its full damage, the target included."],
-		["Hit-and-run", "How Proton Torpedo, Cluster Bomb and Homing Missile ships attack: close in, fire, peel away while reloading, come round again."],
 		["Mega Shield", "Touching Radiation Sail Array bubbles of yours merged into one. Its points are their sum (three full arrays: 300), every hit is shared among them by charge, and it bursts for all of them at 0. If they drift apart, each keeps its share as its own bubble."],
 		["Fog of war", "What your sensors can see. Unexplored is black, explored-but-unseen is dimmed and out of date."],
 		["Beacon", "A Scout's dropped sensor buoy: watches a spot for 90 seconds."],

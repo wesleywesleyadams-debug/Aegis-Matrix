@@ -171,8 +171,6 @@ func _fire_turrets(delta: float) -> void:
 					var off := 0.0 if n_proj == 1 else lerpf(-spread, spread, float(j) / (n_proj - 1)) + randf_range(-0.06, 0.06)
 					g.fire(self, tgt, wpn, shot, off)
 		_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
-		if _runs():
-			_run_out = _t_cd[i] * 0.5
 
 	if weapon_mod.has("tractor"):
 		_tractor(delta, rng, n)
@@ -404,10 +402,6 @@ func _defensive_fire(r: float) -> bool:
 	_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 	return true
 
-## Ordnance Mods (MOD_WEAPONS "run") make hit-and-run attacks.
-func _runs() -> bool:
-	return weapon_mod.get("run", false)
-
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
 ## Point-Defense: the nearest enemy drone within weapon range `r` not
@@ -462,8 +456,6 @@ const SUN_RISK_HP := 0.6
 var target: SpaceEntity
 ## The class's active weapon Mod (Defs.MOD_WEAPONS entry), {} for none.
 var weapon_mod := {}
-## Attack runs (Proton Torpedoes): seconds left peeling away after a shot.
-var _run_out := 0.0
 ## True when `target` came from an attack order (player or AI), not from the
 ## ship picking a fight on its own: turrets focus only an ordered target.
 var target_ordered := false
@@ -981,7 +973,6 @@ func _physics_process(delta: float) -> void:
 	# Out of energy: weapons recharge (and engines run) at a quarter speed.
 	var power := Game.instance.ship_speed_factor(owner_id)
 	_cooldown -= delta * power
-	_run_out -= delta
 	for i in _t_cd.size():
 		_t_cd[i] -= delta * power
 	_acquire_timer -= delta
@@ -1057,17 +1048,12 @@ func _physics_process(delta: float) -> void:
 			else:
 				var d := global_position.distance_to(target.global_position)
 				var keep: float = weapon_range() * 0.8
-				if _runs() and _run_out > 0.0:
-					# Breaking away after a launch: curve out and off to the side.
-					var away := (global_position - target.global_position).normalized()
-					desired = (away + away.orthogonal() * 0.8).normalized() * max_speed()
-				else:
-					if d > keep * (0.6 if _runs() else 1.0):
-						desired = _arrive(target.global_position, 1.0)
-					# A turreted hull (the carrier) lets its mounts do the aiming and
-					# keeps its own heading; only fixed guns need the nose on target.
-					if not def.has("turrets"):
-						face_target = target
+				if d > keep:
+					desired = _arrive(target.global_position, 1.0)
+				# A turreted hull (the carrier) lets its mounts do the aiming and
+				# keeps its own heading; only fixed guns need the nose on target.
+				if not def.has("turrets"):
+					face_target = target
 		State.MINE_GO:
 			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
 				var want: String = mine_target.resource if is_instance_valid(mine_target) else cargo_type
@@ -1125,11 +1111,7 @@ func _physics_process(delta: float) -> void:
 				move_goal = global_position
 			else:
 				var keep: float = weapon_range() * 0.8 + bombard_target.radius
-				if _runs() and _run_out > 0.0:
-					# Attack run (torpedoes): break away after a launch, as against ships.
-					var away := (global_position - bombard_target.global_position).normalized()
-					desired = (away + away.orthogonal() * 0.8).normalized() * max_speed()
-				elif global_position.distance_to(bombard_target.global_position) > (bombard_target.radius + weapon_range() * 0.48 if _runs() else keep):
+				if global_position.distance_to(bombard_target.global_position) > keep:
 					desired = _arrive(bombard_target.global_position, 1.0, keep)
 				face_target = null
 				# Fixed guns must point at the world to fire; a planet is no
@@ -1238,9 +1220,6 @@ func _physics_process(delta: float) -> void:
 					else:
 						Game.instance.fire(self, shoot, wpn, dmg)
 				_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
-				# Attack run: peel away for half the reload, then come round again.
-				if _runs():
-					_run_out = _cooldown * 0.5
 
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)

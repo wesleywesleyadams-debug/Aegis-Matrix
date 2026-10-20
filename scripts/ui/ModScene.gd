@@ -12,7 +12,7 @@ const THEIRS := Color("ff4f5e")
 
 ## id -> [best-at caption, our ships [[class, x, y, angle]], their ships, effect]
 const SCENES := {
-	"mod_proton_torpedoes": ["Corvettes hunting a big ship: run in, launch, peel away.",
+	"mod_proton_torpedoes": ["Corvettes hunting a big ship from range.",
 		[["corvette", 50, 45, 0.3], ["corvette", 70, 105, -0.2]], [["carrier", 225, 75, 3.14]], "torpedo"],
 	"mod_kinetic_repeaters": ["Close-range dogfights between small ships.",
 		[["corvette", 105, 75, 0.0]], [["corvette", 185, 60, 3.0], ["corvette", 195, 95, 3.3]], "kinetic"],

@@ -221,24 +221,6 @@ func _k_mod_toggle() -> void:
 			_text("click", r.position + Vector2(133, 30), DIM, 11)
 	_text("Off = the class fires its standard laser. Switching is free.", Vector2(230, 130), DIM, 12)
 
-## Hit-and-run: close in, fire, peel away while reloading, come round.
-func _k_hit_run() -> void:
-	var path := PackedVector2Array()
-	for k in 41:
-		var t := k / 40.0
-		var a := t * TAU
-		path.append(Vector2(230, 75) + Vector2(cos(a) * 170.0, sin(a) * 45.0))
-	draw_polyline(path, Color(YOU, 0.4), 1.5)
-	_sprite("ship_cruiser", Vector2(400, 75), 50, FOE, PI)
-	_sprite("ship_corvette", Vector2(330, 42), 26, YOU, 0.2)
-	draw_line(Vector2(345, 46), Vector2(380, 66), Color("bfe9ff"), 2.0)
-	_text("1 close in, fire", Vector2(300, 22), INK, 12)
-	_sprite("ship_corvette", Vector2(250, 118), 26, YOU, PI - 0.2)
-	_text("2 peel away, reload", Vector2(250, 145), INK, 12)
-	_sprite("ship_corvette", Vector2(70, 60), 26, YOU, -1.2)
-	_text("3 come round again", Vector2(80, 22), INK, 12)
-
-## Blast radii drawn to scale beside a corvette.
 func _k_blasts() -> void:
 	var k := 1.3
 	var items := [["flak", "Flak shell"], ["missile", "Missile"], ["proton", "Proton torpedo"], ["bomblet", "Bomblet"]]
