@@ -1984,7 +1984,6 @@ const TECH_ROWS := {
 		["HARVEST", ["cutting_lasers", "resonance_drills", "mass_drivers"]],
 		["SPEED", ["ion_thrusters", "fusion_drives", "jump_drives"]],
 		["SUPPLY", ["gas_skimming", "convoy_protocols", "spice_navigation"]],
-		["MANEUVERS", ["maneuvers_1", "maneuvers_2", "maneuvers_3"]],
 	],
 	"mods": [
 		["CORVETTE", ["mod_proton_torpedoes", "mod_kinetic_repeaters", "mod_arc_emitters"]],

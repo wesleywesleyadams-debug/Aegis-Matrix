@@ -13,6 +13,11 @@ const SLIP_SHOT := Color("ff7a14")
 var speed: float
 var homing: bool
 var weak_lock := false
+## Homing shots: the fastest their heading can swing, radians per second.
+const TURN_MISSILE := 2.5
+const TURN_TORPEDO := 1.6
+const TURN_WEAK := 0.9    # Proton Torpedoes steer gently
+var turn_rate := 0.0
 ## Damage multipliers by target class (Defs.MOD_WEAPONS "vs_class").
 var vs_class := {}
 var life: float = 3.0
@@ -23,8 +28,6 @@ var _vel: Vector2
 var splash := 0.0
 var splash_r := 0.0
 var free_flight := false
-## When it was fired (Evasive Maneuvers: ships react only after DODGE_REACT).
-var born := 0.0
 var owner_pid := 0
 ## Missiles and torpedoes leave a fading exhaust trail (world points).
 var trail_on := false
@@ -42,9 +45,6 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	# Ordnance Point-Defense can shoot down.
 	if weapon in ["missile", "proton", "torpedo", "bomblet"]:
 		add_to_group("ordnance")
-	# Every shot in flight, so Evasive Maneuvers can see what is coming.
-	add_to_group("projectiles")
-	born = Game.now()
 	trail_on = weapon in ["missile", "proton", "torpedo"] and not Game.instance.sim_mode
 	torp_wake = weapon in ["proton", "torpedo"]
 	if Defs.AOE_RADIUS.has(weapon):
@@ -53,6 +53,7 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	# Proton Torpedoes steer only gently and give up once the target is well
 	# off their nose: a target that turns hard can shake them off.
 	weak_lock = weapon == "proton"
+	turn_rate = TURN_WEAK if weak_lock else (TURN_MISSILE if weapon == "missile" else TURN_TORPEDO)
 	if from is Ship:
 		vs_class = from.weapon_mod.get("vs_class", {})
 	# Kinetic Repeater slugs: fast and small.
@@ -138,8 +139,12 @@ func _physics_process(delta: float) -> void:
 			if weak_lock and absf(_vel.angle_to(to_t)) > deg_to_rad(50.0):
 				homing = false   # lost the lock: flies on straight and may miss
 			else:
-				var want := to_t.normalized() * speed
-				_vel = _vel.move_toward(want, speed * (0.9 if weak_lock else 3.0) * delta)
+				# A real turn limit: the heading swings at most turn_rate per
+				# second, at full speed, so a target that moves hard enough
+				# and late enough can slip out of its turn.
+				var ang := _vel.angle_to(to_t)
+				var step := turn_rate * delta
+				_vel = _vel.rotated(clampf(ang, -step, step))
 				rotation = _vel.angle()
 		# Sweep the whole step against the target, not just the end point: at
 		# high game speeds a bolt covers more ground per tick than the target

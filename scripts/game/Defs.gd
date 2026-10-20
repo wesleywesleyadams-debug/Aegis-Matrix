@@ -411,13 +411,6 @@ const TECHS := {
 		"effects": {}, "desc": "No accuracy loss when firing on the move."},
 	"defensive_fire": {"name": "Defensive Fire", "group": "weapons", "tier": 3, "requires": ["gyro_stabilizers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {}, "desc": "Idle guns and drones shoot down ordnance and drones."},
-	# MANEUVERS row (logistics; Ship/Game read these with Game.has_tech).
-	"maneuvers_1": {"name": "Attack Patterns", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 65}, "time": 55.0,
-		"effects": {}, "desc": "Ordnance ships hit and run; others chase in close."},
-	"maneuvers_2": {"name": "Evasive Maneuvers", "group": "logistics", "tier": 2, "requires": ["maneuvers_1"], "cost": {"energy": 145, "spice": 20}, "time": 85.0,
-		"effects": {}, "desc": "Ships swerve out of the path of incoming shots."},
-	"maneuvers_3": {"name": "Strafing Thrusters", "group": "logistics", "tier": 3, "requires": ["maneuvers_2"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
-		"effects": {}, "desc": "Ships strafe aside instead, without turning."},
 	"hullbreaker_rounds": {"name": "Rupture Charges", "group": "weapons", "tier": 3, "requires": ["burst_cyclers"], "cost": {"energy": 810, "spice": 160}, "time": 245.0,
 		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls."},
 
@@ -542,7 +535,7 @@ const TECHS := {
 	"mod_cluster_bombs": {"name": "Cluster Bombs", "group": "mods", "mod": "destroyer", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 180, "spice": 30}, "time": 75.0,
 		"effects": {"mod_destroyer": 1.0}, "desc": "Bombing runs: a spread of unguided bomblets."},
 	"mod_homing_missiles": {"name": "Homing Missiles", "group": "mods", "mod": "destroyer", "tier": 3, "requires": ["destroyers"], "cost": {"energy": 180, "spice": 30}, "time": 75.0,
-		"effects": {"mod_destroyer": 1.0}, "desc": "4-missile volleys that never miss, +20% range."},
+		"effects": {"mod_destroyer": 1.0}, "desc": "4-missile homing volleys, +20% range."},
 	"mod_ion_lance": {"name": "Ion Lance", "group": "mods", "mod": "cruiser", "tier": 1, "requires": ["cruisers"], "cost": {"energy": 210, "spice": 35}, "time": 90.0,
 		"effects": {"mod_cruiser": 1.0}, "desc": "Beam ramps up on one target; weak vs swarms."},
 	"mod_rail_cannons": {"name": "Rail Cannons", "group": "mods", "mod": "cruiser", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 210, "spice": 35}, "time": 90.0,

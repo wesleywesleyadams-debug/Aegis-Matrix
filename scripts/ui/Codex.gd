@@ -503,8 +503,7 @@ func _page_combat() -> void:
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
 	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x3.0).")
-	_pic("hit_run", "With Attack Patterns researched, ordnance Mods attack hit-and-run.", Vector2(460, 150))
-	_para("Maneuvers (Logistics research). Attack Patterns: ships with an ordnance Mod (Proton Torpedoes, Cluster Bombs, Homing Missiles, Missile Barrage) close in, launch and peel away while they reload, against any target, worlds included; every other ship chases its target in to half its weapon range. Without it, all ships stand at 80%% of weapon range and trade fire. Evasive Maneuvers: a ship watches one incoming shot at a time - any kind (lasers, slugs, missiles, torpedoes, bombs) once it has flown %.1f s, due to hit within %.1f s - and swerves out of its path, as far as its speed allows - fast hulls slip most, homing missiles turn to follow. Fixed guns only swerve while reloading or with nothing in range, so a dodge never costs a shot. Strafing Thrusters: ships always slide sideways at full speed instead of swerving, keeping their nose on target, so they can dodge even mid-attack, and react sooner (after %.2f s)." % [Ship.DODGE_REACT, Ship.DODGE_LOOK, Ship.STRAFE_REACT])
+	_pic("hit_run", "Ordnance Mods (Proton Torpedoes, Cluster Bombs, Homing Missiles, Missile Barrage) attack hit-and-run, against any target, worlds included.", Vector2(460, 150))
 	# The Mods tab as it appears on the research screen.
 	_tech_tree("mods", _research_rows("mods"))
 	var coming: Array = []
