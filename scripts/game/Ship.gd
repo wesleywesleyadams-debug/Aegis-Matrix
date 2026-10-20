@@ -133,7 +133,9 @@ func _fire_turrets(delta: float) -> void:
 				_t_rot[i] = (sd.global_position - global_position).angle()
 				_turret_sprites[i].rotation = _t_rot[i] - rotation
 				g.intercept(self, sd)
-				_t_cd[i] = def["cooldown"] / g.mod(owner_id, "fire_rate")
+				# The same reload as a shot at a ship (the Ion Lance's beam
+				# goes dark for one gun cooldown).
+				_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 				continue
 		if tgt == null:
 			continue
@@ -145,7 +147,7 @@ func _fire_turrets(delta: float) -> void:
 		var on_target: bool = absf(angle_difference(_t_rot[i], want)) <= deg_to_rad(8.0)
 		# Ion Lance: a continuous beam, damage every tick, ramping on one target.
 		if weapon_mod.has("beam"):
-			if on_target:
+			if on_target and _t_cd[i] <= 0.0:
 				var b: Array = weapon_mod["beam"]
 				_t_beam_time[i] += delta
 				var ramp: float = lerpf(b[0], b[1], clampf(_t_beam_time[i] / b[2], 0.0, 1.0)) * float(weapon_mod.get("dmg", 1.0))
@@ -407,7 +409,7 @@ func _defensive_fire(r: float) -> bool:
 	if sd == null:
 		return false
 	Game.instance.intercept(self, sd)
-	_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate")
+	_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 	return true
 
 ## Point-Defense: x damage against Interceptor Drones.
