@@ -1117,7 +1117,11 @@ func _physics_process(delta: float) -> void:
 				move_goal = global_position
 			else:
 				var keep: float = weapon_range() * 0.8 + bombard_target.radius
-				if global_position.distance_to(bombard_target.global_position) > keep:
+				if weapon_mod.get("run", false) and _run_out > 0.0:
+					# Attack run (torpedoes): break away after a launch, as against ships.
+					var away := (global_position - bombard_target.global_position).normalized()
+					desired = (away + away.orthogonal() * 0.8).normalized() * max_speed()
+				elif global_position.distance_to(bombard_target.global_position) > (bombard_target.radius + weapon_range() * 0.48 if weapon_mod.get("run", false) else keep):
 					desired = _arrive(bombard_target.global_position, 1.0, keep)
 				face_target = null
 				# Fixed guns must point at the world to fire; a planet is no
