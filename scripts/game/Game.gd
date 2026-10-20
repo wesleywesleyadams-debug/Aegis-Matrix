@@ -3683,6 +3683,11 @@ func _duel() -> void:
 		for pid9 in [1, 2]:
 			researched[pid9][tid] = true
 			_on_tech_done(pid9, tid)
+	# SL_DUEL_TECHS_A / _B: techs only the first / second spec's side gets.
+	for pair9 in [["SL_DUEL_TECHS_A", 1], ["SL_DUEL_TECHS_B", 2]]:
+		for tid in OS.get_environment(pair9[0]).split(",", false):
+			researched[pair9[1]][tid] = true
+			_on_tech_done(pair9[1], tid)
 	var budget := float(OS.get_environment("SL_DUEL_BUDGET")) if OS.get_environment("SL_DUEL_BUDGET") != "" else 2550.0
 	var specs := OS.get_environment("SL_DUEL").split(",")
 	var c := Vector2(float(OS.get_environment("SL_DUEL_X")) if OS.get_environment("SL_DUEL_X") != "" else -900.0, -700.0)
