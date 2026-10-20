@@ -416,10 +416,10 @@ func _chases() -> bool:
 ## sideways direction it is moving to get out of its way.
 var _dodge_shot: Node2D = null
 var _dodge_dir := Vector2.ZERO
+var _dodge_mode_now := ""
 var _dodge_scan := 0.0
 const DODGE_LOOK := 0.5    # seconds ahead a shot is seen coming
-const DODGE_REACT := 0.3   # a shot must have flown this long before anyone reacts
-const STRAFE_SPEED := 0.5  # Strafing Thrusters slide at this share of top speed
+const DODGE_REACT := 0.15  # a shot must have flown this long before anyone reacts
 
 ## Where shot `p` passes this ship: [seconds to closest approach, miss
 ## distance, sideways way out], or [] when it won't hit within DODGE_LOOK.
@@ -466,16 +466,17 @@ func _find_dodge() -> Vector2:
 		_dodge_shot = p
 	return dir
 
-## Whether dodging now would not get in the way of an attack. Strafing
-## (III) keeps the nose on target, so it always may; a plain swerve (II)
-## turns the hull, so fixed guns only swerve while reloading or with
-## nothing in range. Turreted hulls aim with their mounts and always may.
-func _may_dodge() -> bool:
-	if Game.instance.has_tech(owner_id, "maneuvers_3") or def.has("turrets"):
-		return true
-	if _runs() and _run_out > 0.0:
-		return true
-	return _cooldown > 0.35 or not (is_instance_valid(target) and target.is_alive() and global_position.distance_to(target.global_position) <= weapon_range() + float(target.get("radius")))
+## How this ship may dodge right now without costing an attack: "swerve"
+## (the hull turns with the move), "strafe" (Strafing Thrusters: a sideways
+## slide that keeps the nose on target), or "" (not now). Turreted hulls aim
+## with their mounts and may always swerve; fixed guns swerve only while
+## reloading, peeling away or with nothing in range, and strafe otherwise.
+func _dodge_mode() -> String:
+	if def.has("turrets") or (_runs() and _run_out > 0.0):
+		return "swerve"
+	if _cooldown > 0.35 or not (is_instance_valid(target) and target.is_alive() and global_position.distance_to(target.global_position) <= weapon_range() + float(target.get("radius"))):
+		return "swerve"
+	return "strafe" if Game.instance.has_tech(owner_id, "maneuvers_3") else ""
 
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
@@ -1329,12 +1330,11 @@ func _physics_process(delta: float) -> void:
 		_dodge_scan -= delta
 		if _dodge_scan <= 0.0:
 			_dodge_scan = 0.1
-			_dodge_dir = _find_dodge() if _may_dodge() else Vector2.ZERO
+			_dodge_mode_now = _dodge_mode()
+			_dodge_dir = _find_dodge() if _dodge_mode_now != "" else Vector2.ZERO
 		if _dodge_dir != Vector2.ZERO:
-			if Game.instance.has_tech(owner_id, "maneuvers_3"):
-				desired = _dodge_dir * max_speed() * STRAFE_SPEED
-			else:
-				desired = _dodge_dir * max_speed()
+			desired = _dodge_dir * max_speed()
+			if _dodge_mode_now == "swerve":
 				face = null
 	_steer(desired + crowd, delta, face)
 	# Duel arena: nobody leaves.
