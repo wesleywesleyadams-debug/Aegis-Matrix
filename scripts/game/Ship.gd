@@ -59,10 +59,6 @@ func _traverse(point: Vector2, delta: float) -> bool:
 func _fire_turrets(delta: float) -> void:
 	if weapon_mod.has("drones"):
 		_fly_drones(delta)
-		# The launch doors double as point defense with Defensive Fire.
-		_df_cd -= delta
-		if _df_cd <= 0.0 and _defensive_fire():
-			_df_cd = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate")
 		return
 	elif not _drones.is_empty():
 		_clear_drones()
@@ -393,20 +389,17 @@ func _exit_tree() -> void:
 
 ## Defensive Fire (Targeting tier 3): how near ordnance must be for an idle turret to shoot it down.
 const DEFENSIVE_FIRE_R := 120.0
-## Defensive Fire for hulls without free turrets (fixed-gun ships, drone
-## carriers): when ready and idle, shoot down one enemy missile, torpedo or
-## bomblet within DEFENSIVE_FIRE_R. Returns whether it fired; fixed guns
-## then reload as from a normal shot.
-var _df_cd := 0.0
+## Defensive Fire for fixed-gun ships: when ready and idle, shoot down one
+## enemy missile, torpedo or bomblet within DEFENSIVE_FIRE_R, then reload as
+## from a normal shot. (Drone carriers get none: their doors don't fire.)
 func _defensive_fire() -> bool:
-	if not Game.instance.has_tech(owner_id, "defensive_fire") or weapon_mod.has("pd"):
+	if not Game.instance.has_tech(owner_id, "defensive_fire") or weapon_mod.has("pd") or weapon_mod.has("drones"):
 		return false
 	var sd := _pd_target(DEFENSIVE_FIRE_R, {})
 	if sd == null:
 		return false
 	Game.instance.intercept(self, sd)
-	if not weapon_mod.has("drones"):
-		_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate")
+	_cooldown = def["cooldown"] / Game.instance.mod(owner_id, "fire_rate")
 	return true
 
 ## Point-Defense: x damage against Interceptor Drones.
