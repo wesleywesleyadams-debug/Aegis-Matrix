@@ -522,7 +522,7 @@ const TECHS := {
 	# Mods (research screen's Mods tab): one per ship class at a time - a
 	# row's three are exclusive (see Game._on_tech_done), and an active one
 	# can be switched off and on for free (Game.mods_disabled). "mod" names
-	# the class; "tier" is only the column on the tab. Costs are placeholders.
+	# the class; "tier" is only the column on the tab. Equal costs per row are final (round-robin balanced).
 	# The weapons themselves come next (docs/MODS.md).
 	"mod_proton_torpedoes": {"name": "Proton Torpedoes", "group": "mods", "mod": "corvette", "tier": 1, "requires": [], "cost": {"energy": 120, "spice": 20}, "time": 60.0,
 		"effects": {"mod_corvette": 1.0}, "desc": "Torpedo runs; x6-7 vs bigger hulls."},
@@ -547,7 +547,7 @@ const TECHS := {
 	"mod_tractor_beams": {"name": "Tractor Beams", "group": "mods", "mod": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 280, "spice": 50}, "time": 105.0,
 		"effects": {"mod_carrier": 1.0}, "desc": "Each turret's beam pulls and slows its target."},
 	"mod_missile_barrage": {"name": "Missile Barrage", "group": "mods", "mod": "carrier", "tier": 3, "requires": ["carriers"], "cost": {"energy": 280, "spice": 50}, "time": 105.0,
-		"effects": {"mod_carrier": 1.0}, "desc": "12-missile salvo every 8 s, longest range."},
+		"effects": {"mod_carrier": 1.0}, "desc": "20-missile salvo every 8 s, longest range."},
 }
 
 static func tex(name: String) -> Texture2D:
@@ -740,7 +740,7 @@ const MOD_WEAPONS := {
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
 	"mod_tractor_beams": {"tractor": [0.1, 0.9, 2.0]},
-	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.8000, "count": 3, "cd": 8.0, "range": 1.6, "spread": 0.5},
+	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.48, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
 static func damage_profile(d: Dictionary) -> Dictionary:

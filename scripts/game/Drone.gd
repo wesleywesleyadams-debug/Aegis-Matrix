@@ -47,6 +47,9 @@ func _init() -> void:
 	radius = 10.0
 	if OS.get_environment("SL_DRONE_SPEED") != "":
 		SPEED = float(OS.get_environment("SL_DRONE_SPEED"))
+	if OS.get_environment("SL_DRONE_HULL") != "":
+		max_hp = float(OS.get_environment("SL_DRONE_HULL"))
+		hp = max_hp
 	if OS.get_environment("SL_DRONE_R") != "":
 		radius = float(OS.get_environment("SL_DRONE_R"))
 	display_name = "Interceptor Drone"

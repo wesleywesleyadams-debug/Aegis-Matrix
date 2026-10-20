@@ -95,6 +95,11 @@ func _draw() -> void:
 		if s.selected:
 			c = Color.WHITE
 		draw_rect(Rect2(_map_to_ui(s.global_position) - Vector2(1, 1), Vector2(2, 2) if s.radius < 12 else Vector2(3, 3)), c)
+	# Interceptor drones: single faint pixels in their owner's color (hidden
+	# ones, out of sight, are skipped like ships).
+	for d in tree.get_nodes_in_group("drones"):
+		if d.visible:
+			draw_rect(Rect2(_map_to_ui(d.global_position), Vector2(1, 1)), Color(Defs.team_color(d.owner_id), 0.8))
 	# Event flares (see Game.add_flare): red for alerts, light blue for
 	# notifications. A bright dot plus rings pulsing outward, fading over
 	# the flare's life. Real time, so they fade even while paused.
