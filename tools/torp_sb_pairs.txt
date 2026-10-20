@@ -1,0 +1,4 @@
+corvette:1:mod_proton_torpedoes,starbase
+starbase,corvette:1:mod_proton_torpedoes
+corvette:1,starbase
+starbase,corvette:1

@@ -303,7 +303,7 @@ func drone_hit(tg: Node2D) -> void:
 	var count: int = int(weapon_mod.get("drones", [4])[0])
 	var dmg: float = def["damage"] * Defs.mark_mult(ship_type, g.mark_level(owner_id, ship_type)) * float(weapon_mod.get("dmg", 1.0))
 	var per: float = float(def.get("guns", count)) / float(count)
-	var k: float = float(weapon_mod.get("vs_class", {}).get(tg.def.get("base", tg.get("ship_type")), 1.0)) if tg is Ship else 1.0
+	var k: float = Game.vs_mult(weapon_mod.get("vs_class", {}), tg)
 	tg.take_damage(dmg * per * k * g.mod(owner_id, "damage"), self, Defs.damage_profile(def))
 
 ## Seconds between one drone's shots.
@@ -778,6 +778,13 @@ func refresh_stats() -> void:
 	if OS.get_environment("SL_MOD_DMG") != "" and m == OS.get_environment("SL_MOD"):
 		weapon_mod = weapon_mod.duplicate()
 		weapon_mod["dmg"] = float(OS.get_environment("SL_MOD_DMG"))
+	# Dev: SL_MOD_VS="starbase:4.5,world:3" adds to a vs_class Mod's multipliers.
+	if OS.get_environment("SL_MOD_VS") != "" and weapon_mod.has("vs_class"):
+		weapon_mod = weapon_mod.duplicate()
+		var vc: Dictionary = weapon_mod["vs_class"].duplicate()
+		for kv in OS.get_environment("SL_MOD_VS").split(",", false):
+			vc[kv.get_slice(":", 0)] = float(kv.get_slice(":", 1))
+		weapon_mod["vs_class"] = vc
 	display_name = g.ship_name(owner_id, ship_type)
 	_apply_mark()
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0

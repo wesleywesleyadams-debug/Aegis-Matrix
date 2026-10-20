@@ -1224,18 +1224,35 @@ func arc_strike(from: Ship, to: Node2D, damage: float, chain: Array, jump: float
 		fx_root.add_child(arc)
 		sfx.play_at("laser", from.global_position, -8.0)
 
+## A Mod's per-target multiplier (MOD_WEAPONS "vs_class"): keyed by ship
+## class, "drone", or "starbase", "world" and "construct" (every other construct).
+static func vs_mult(vs_class: Dictionary, x: Node) -> float:
+	if vs_class.is_empty():
+		return 1.0
+	var key: String
+	if x is Ship:
+		key = str(x.def.get("base", x.ship_type))
+	elif x is Starbase:
+		key = "starbase"
+	elif x is Planet:
+		key = "world"
+	elif x is Drone:
+		key = "drone"
+	else:
+		key = "construct"
+	return float(vs_class.get(key, 1.0))
+
 ## Flak / bomb bursts: `damage` to every enemy of `pid` within `r` of `pos`.
 ## `vs_class`: per-class multipliers (Proton Torpedoes), applied to each hull hit.
 func splash(pos: Vector2, r: float, damage: float, pid: int, from: Node2D, profile: Dictionary, vs_class: Dictionary = {}) -> void:
 	var src: SpaceEntity = from if is_instance_valid(from) and from is SpaceEntity else null
 	for x in hulls_near(pos, r + 30.0):
 		if x.owner_id != pid and x.is_enemy_of(pid) and x.global_position.distance_to(pos) <= r + x.radius:
-			var mult: float = float(vs_class.get(str(x.def.get("base", x.ship_type)), 1.0)) if x is Ship and not vs_class.is_empty() else 1.0
-			x.take_damage(damage * mult, src, profile)
+			x.take_damage(damage * vs_mult(vs_class, x), src, profile)
 	# Enemy worlds inside the blast take their share too.
 	for w in get_tree().get_nodes_in_group("planets"):
 		if w.owner_id != pid and w.is_enemy_of(pid) and w.global_position.distance_to(pos) <= r + w.radius:
-			w.take_damage(damage, src, profile)
+			w.take_damage(damage * vs_mult(vs_class, w), src, profile)
 	spawn_blast(pos, r)
 
 ## Every live ship and construct with any part near `pos` (the coarse grid,
