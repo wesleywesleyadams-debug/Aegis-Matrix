@@ -73,12 +73,17 @@ static func sail_cover(e: Node2D, owner_only: bool = true) -> Node2D:
 
 ## Radiation damage multiplier: 0 for anything inside a charged solar
 ## shield's bubble - friend or foe, blocking it costs the shield nothing -
-## and 1 everywhere else.
+## and 1 everywhere else (0.5 for ships with Spice Navigation).
 static func radiation_mult(e: Node2D) -> float:
 	# The array itself is always immune, even with its shield down.
 	if e is Ship and e.def.has("solar_sail"):
 		return 0.0
-	return 0.0 if sail_cover(e, false) != null else 1.0
+	if sail_cover(e, false) != null:
+		return 0.0
+	return SPICE_NAV_RADIATION if e is Ship and Game.instance.has_tech(e.owner_id, "spice_navigation") else 1.0
+
+## Spice Navigation: the share of radiation a ship still takes (stars and nebulas).
+const SPICE_NAV_RADIATION := 0.5
 
 ## Weapon fire on anything under a solar shield is soaked by that shield
 ## first. Returns what gets through.
