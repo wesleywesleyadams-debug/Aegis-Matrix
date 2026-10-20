@@ -1274,6 +1274,25 @@ func spawn_blast(pos: Vector2, radius: float) -> void:
 	sfx.play_at("boom", pos, -8.0)
 
 ## Point-Defense: `from` zaps an enemy projectile out of the sky.
+## Defensive Fire: the nearest enemy missile, torpedo, bomblet or drone
+## within `r` of `from` (owned by `pid`), skipping any in `claimed`.
+func df_target(from: Node2D, pid: int, r: float, claimed: Dictionary = {}) -> Node2D:
+	var best: Node2D = null
+	var best_d := r
+	for p in get_tree().get_nodes_in_group("ordnance"):
+		if is_instance_valid(p) and not claimed.has(p) and p.owner_pid != pid and is_hostile(pid, p.owner_pid):
+			var d := from.global_position.distance_to(p.global_position)
+			if d < best_d:
+				best_d = d
+				best = p
+	for p in get_tree().get_nodes_in_group("drones"):
+		if is_instance_valid(p) and p != from and not claimed.has(p) and p.is_alive() and p.is_enemy_of(pid):
+			var d := from.global_position.distance_to(p.global_position)
+			if d < best_d:
+				best_d = d
+				best = p
+	return best
+
 func intercept(from: Node2D, p: Node2D) -> void:
 	if not sim_mode:
 		var arc := ArcFx.new()
@@ -1281,6 +1300,10 @@ func intercept(from: Node2D, p: Node2D) -> void:
 		fx_root.add_child(arc)
 		spawn_explosion(p.global_position, 0.3)
 		sfx.play_at("laser", from.global_position, -12.0)
+	if p is Drone:
+		p._killer = int(from.get("owner_id"))
+		p._die()
+		return
 	p.queue_free()
 
 func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:

@@ -124,17 +124,16 @@ func _fire_turrets(delta: float) -> void:
 		if _t_target[i] != tgt:
 			_t_beam_time[i] = 0.0   # the lance's ramp starts over on a new target
 		_t_target[i] = tgt
-		# Defensive Fire: a ready turret shoots whichever is closer, enemy
-		# ordnance in range or its target.
-		if screen and _t_cd[i] <= 0.0:
-			var sd := _pd_target(_df_reach(rng, tgt), claimed)
+		# Defensive Fire: a ready turret with no ship, construct or world in
+		# range shoots down enemy ordnance or drones instead.
+		if tgt == null and screen and _t_cd[i] <= 0.0:
+			var sd := g.df_target(self, owner_id, rng, claimed)
 			if sd:
 				claimed[sd] = true
 				_t_rot[i] = (sd.global_position - global_position).angle()
 				_turret_sprites[i].rotation = _t_rot[i] - rotation
 				g.intercept(self, sd)
-				# The same reload as a shot at a ship (the Ion Lance's beam
-				# goes dark for one gun cooldown).
+				# The same reload as a shot at a ship.
 				_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 				continue
 		if tgt == null:
@@ -147,7 +146,7 @@ func _fire_turrets(delta: float) -> void:
 		var on_target: bool = absf(angle_difference(_t_rot[i], want)) <= deg_to_rad(8.0)
 		# Ion Lance: a continuous beam, damage every tick, ramping on one target.
 		if weapon_mod.has("beam"):
-			if on_target and _t_cd[i] <= 0.0:
+			if on_target:
 				var b: Array = weapon_mod["beam"]
 				_t_beam_time[i] += delta
 				var ramp: float = lerpf(b[0], b[1], clampf(_t_beam_time[i] / b[2], 0.0, 1.0)) * float(weapon_mod.get("dmg", 1.0))
@@ -392,20 +391,13 @@ func _exit_tree() -> void:
 				d._die()
 	_clear_drones()
 
-## Defensive Fire reach: the weapon range `rng`, cut to the target's
-## near edge when a target `tgt` is nearer, so the closest of the two wins.
-func _df_reach(rng: float, tgt: Node2D) -> float:
-	if tgt == null or not is_instance_valid(tgt):
-		return rng
-	return minf(rng, maxf(global_position.distance_to(tgt.global_position) - float(tgt.get("radius")), 0.0))
-
 ## Defensive Fire for fixed-gun ships: when ready, shoot down one enemy
-## missile, torpedo or bomblet within `r` (the weapon range), then reload as
+## missile, torpedo, bomblet or drone within `r` (the weapon range), then reload as
 ## from a normal shot. (Drone carriers get none: their doors don't fire.)
 func _defensive_fire(r: float) -> bool:
 	if not Game.instance.has_tech(owner_id, "defensive_fire") or weapon_mod.has("pd") or weapon_mod.has("drones"):
 		return false
-	var sd := _pd_target(r, {})
+	var sd := Game.instance.df_target(self, owner_id, r)
 	if sd == null:
 		return false
 	Game.instance.intercept(self, sd)
@@ -1193,9 +1185,9 @@ func _physics_process(delta: float) -> void:
 				shoot = Game.instance.nearest_enemy(self, weapon_range())
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
-		# Defensive Fire: shoot whichever is closer, enemy ordnance or the target.
-		if _defensive_fire(_df_reach(weapon_range(), shoot)):
-			shoot = null
+		# Defensive Fire: nothing else in range, so shoot down ordnance or drones.
+		if shoot == null:
+			_defensive_fire(weapon_range())
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
 			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))
 			var ready := false

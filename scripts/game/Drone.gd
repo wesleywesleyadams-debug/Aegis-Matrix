@@ -124,13 +124,11 @@ func _physics_process(delta: float) -> void:
 	global_position += velocity * delta
 	rotation = heading
 	cd -= delta * sf
-	# Defensive Fire: a ready drone shoots whichever is closer, enemy
-	# ordnance within its attack range or its target.
-	if cd <= 0.0 and Game.instance.has_tech(owner_id, "defensive_fire"):
-		var reach_o := FIRE_REACH
-		if tgt != null:
-			reach_o = minf(reach_o, maxf(global_position.distance_to(tgt.global_position) - float(tgt.get("radius")), 0.0))
-		var ord := _ordnance_near(reach_o)
+	# Defensive Fire: a ready drone with no ship, construct or world in its
+	# attack range shoots down enemy ordnance or drones instead.
+	var tgt_in: bool = tgt != null and global_position.distance_to(tgt.global_position) <= tgt.radius + FIRE_REACH
+	if cd <= 0.0 and not tgt_in and Game.instance.has_tech(owner_id, "defensive_fire"):
+		var ord := Game.instance.df_target(self, owner_id, FIRE_REACH)
 		if ord != null:
 			cd = carrier.drone_cooldown() * randf_range(0.9, 1.1)
 			Game.instance.intercept(self, ord)
@@ -142,19 +140,6 @@ func _physics_process(delta: float) -> void:
 			carrier.drone_hit(tgt)
 			# The bolt runs straight ahead from the nose to the target's range.
 			shot(global_position + Vector2.from_angle(heading) * maxf(to.length() - tgt.radius * 0.5, 4.0))
-
-## The nearest enemy missile, torpedo or bomblet within `r` of this drone.
-func _ordnance_near(r: float) -> Node2D:
-	var best: Node2D = null
-	var best_d := r
-	for p in get_tree().get_nodes_in_group("ordnance"):
-		if not is_instance_valid(p) or p.owner_pid == owner_id or not Game.instance.is_hostile(owner_id, p.owner_pid):
-			continue
-		var d := global_position.distance_to(p.global_position)
-		if d < best_d:
-			best_d = d
-			best = p
-	return best
 
 ## Whether `e` is a live enemy close enough to the carrier to chase.
 func _ok(e, home: Vector2, reach: float) -> bool:
