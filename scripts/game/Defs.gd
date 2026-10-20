@@ -111,7 +111,7 @@ const BASE_SHIPS := {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
 		"hp": 160.3, "armor": 212.8, "shield": 62.6, "speed": 85.0, "radius": 14.6, "size": 1.33,
 		"cost": {"minerals": 170, "spice": 5}, "build_time": 38.0, "upkeep": 1.7,
-		"weapon": "laser", "damage": 13.0, "cooldown": 1.0, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 25.0},
+		"weapon": "laser", "damage": 12.7, "cooldown": 1.0, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 25.0},
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
@@ -121,7 +121,7 @@ const BASE_SHIPS := {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
 		"hp": 385.7, "armor": 192.4, "shield": 577.1, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 80.0, "upkeep": 4.0,
-		"weapon": "laser", "damage": 13.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
+		"weapon": "laser", "damage": 13.1, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
 		# Three laser turrets: the hub and both forward wings.
 		"guns": 3, "turret_rate": 6.0, "turret_scale": 0.6, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
 	},
@@ -132,7 +132,7 @@ const BASE_SHIPS := {
 		# makes up for it with several mounts instead of one.
 		"hp": 911.6, "armor": 1367.4, "shield": 1367.4, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 153.0, "upkeep": 8.0,
-		"weapon": "laser", "damage": 13.8, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
+		"weapon": "laser", "damage": 13.6, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
@@ -710,9 +710,9 @@ const AOE_SHARE := 1.0
 const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
-	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.53, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.0},
-	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.39, "cd": 1.0 / 3.0, "range": 0.75},
-	"mod_arc_emitters": {"weapon": "arc", "chain": [0.6, 0.22, 0.22], "jump": 120.0},
+	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.55, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.0},
+	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.4, "cd": 1.0 / 3.0, "range": 0.75},
+	"mod_arc_emitters": {"weapon": "arc", "chain": [0.57, 0.21, 0.21], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
 	#   fan    - [min, max] total fan width in degrees, rolled fresh each launch
 	#   beam   - Ion Lance: [start, end, seconds] - a continuous beam whose damage
@@ -723,23 +723,23 @@ const MOD_WEAPONS := {
 	#   tractor- Tractor Beams: [slow far, slow close, reach x weapon range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
-	"mod_flak_cannons": {"dmg": 0.5, "weapon": "flak"},
+	"mod_flak_cannons": {"dmg": 0.51, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
-	"mod_cluster_bombs": {"dmg": 0.28, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0]},
-	"mod_ion_lance": {"weapon": "beam", "dmg": 0.64, "beam": [0.15, 1.85, 4.0]},
-	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.68, "cd": 4.0, "range": 1.4},
+	"mod_cluster_bombs": {"dmg": 0.27, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0]},
+	"mod_ion_lance": {"weapon": "beam", "dmg": 0.66, "beam": [0.15, 1.85, 4.0]},
+	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.57, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
-	"mod_point_defense_lattice": {"dmg": 0.94, "pd": 220.0},
-	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.26, "count": 2, "range": 1.2},
+	"mod_point_defense_lattice": {"dmg": 1.04, "pd": 220.0},
+	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.27, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
-	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.02, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
+	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.05, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
-	"mod_tractor_beams": {"tractor": [40.0, 2.0], "dmg": 0.91},
-	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.37, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
+	"mod_tractor_beams": {"tractor": [40.0, 2.0]},
+	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.35, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
 static func damage_profile(d: Dictionary) -> Dictionary:
