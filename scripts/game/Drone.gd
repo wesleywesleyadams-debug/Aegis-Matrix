@@ -64,6 +64,11 @@ func _worth() -> float:
 
 func _die() -> void:
 	_dead = true
+	# Match stats: a kill for whoever shot it down, a loss for its owner.
+	if Game.instance and Game.instance.stats:
+		if _killer != 0:
+			Game.instance.stats.count(_killer, "drone_kills")
+		Game.instance.stats.count(owner_id, "drones_lost")
 	Game.instance.spawn_explosion(global_position, 0.4)
 	died.emit(self)
 	queue_free()

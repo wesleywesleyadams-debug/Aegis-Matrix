@@ -520,6 +520,10 @@ var drones_ready := false
 ## Loading a save: this many drones were out, so launch them at once.
 var drones_saved := 0
 
+## Seconds until this carrier launches its next drone (for the panel).
+func drone_next_in() -> float:
+	return _drone_timer
+
 ## Live Interceptor Drones out from this carrier (for saves).
 func drone_count() -> int:
 	return _drones.filter(func(d): return is_instance_valid(d) and d.is_alive()).size()

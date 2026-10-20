@@ -1418,18 +1418,28 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 	# Defense layers in the order damage takes them: shields, armor, hull.
 	var txt := ""
 	if e.max_shield > 0:
-		txt += "Shield %d/%d   " % [ceili(e.shield), e.max_shield]
+		txt += "Shield %d/%d   " % [ceili(e.shield), ceili(e.max_shield)]
 	if e.max_armor > 0:
-		txt += "Armor %d/%d   " % [ceili(e.armor), e.max_armor]
-	txt += "Hull %d/%d" % [ceili(e.hp), e.max_hp]
+		txt += "Armor %d/%d   " % [ceili(e.armor), ceili(e.max_armor)]
+	txt += "Hull %d/%d" % [ceili(e.hp), ceili(e.max_hp)]
 	if e is Ship:
 		var s := e as Ship
 		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Bombarding planet", "Refitting at Weapons Depot"][s.state]
 		if s.is_miner():
 			txt += "   Cargo %d/%d %s" % [s.cargo, s.cargo_cap(), s.cargo_type]
+		elif s.weapon_mod.has("drones"):
+			txt += "   Interceptor Drones"
 		elif s.def["weapon"] != "":
 			txt += "   %s %.0f dmg / %.1fs" % [s.def["weapon"].capitalize(), s.def["damage"] * game.mod(e.owner_id, "damage") * Defs.mark_mult(s.ship_type, game.mark_level(e.owner_id, s.ship_type)), s.def["cooldown"]]
 		txt += "   Upkeep %.1f/min" % (s.def["upkeep"] * game.upkeep_multiplier(s.owner_id))
+		# Interceptor Drones: how many are out, and when the next launches.
+		if s.weapon_mod.has("drones"):
+			var full: int = int(s.weapon_mod["drones"][0])
+			var out: int = s.drone_count()
+			txt += "
+Drones %d/%d" % [out, full]
+			if out < full:
+				txt += " · next in %d s" % ceili(maxf(s.drone_next_in(), 0.0))
 		if not s.order_queue.is_empty():
 			txt += "\n%d queued order%s (Shift + right-click to add, T clears)" % [s.order_queue.size(), "" if s.order_queue.size() == 1 else "s"]
 	elif e is Starbase:
@@ -1796,6 +1806,8 @@ func _show_stats(on: bool) -> void:
 	var lines := [
 		["Ships built", func(p): return st.get_count(p, "ships_built")],
 		["Ships lost", func(p): return st.get_count(p, "ships_lost")],
+		["Drones destroyed", func(p): return st.get_count(p, "drone_kills")],
+		["Drones lost", func(p): return st.get_count(p, "drones_lost")],
 		["Enemy ships lost", func(p): return game.players.filter(func(o): return game.is_hostile(p, o)).reduce(func(a, o): return a + st.get_count(o, "ships_lost"), 0)],
 		["Worlds colonized / taken", func(p): return st.get_count(p, "planets_won")],
 		["Worlds lost", func(p): return st.get_count(p, "planets_lost")],

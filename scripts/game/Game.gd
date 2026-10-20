@@ -2856,6 +2856,9 @@ func _enter_dev_capture() -> void:
 				theirs[k].order_attack_move(c0 + Vector2(-240, 0))
 			else:
 				theirs[k].order_attack(ours[k % ours.size()])
+		# SL_DUEL_SELECT: select our first ship (to capture its panel).
+		if OS.get_environment("SL_DUEL_SELECT") != "":
+			_set_selection([ours[0]], false)
 		center_on(c0)
 		# SL_DUEL_SPEED: faster duels for number-only runs (physics stays 60/s).
 		if OS.get_environment("SL_DUEL_SPEED") != "":
