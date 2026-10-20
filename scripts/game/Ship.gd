@@ -126,7 +126,7 @@ func _fire_turrets(delta: float) -> void:
 		_t_target[i] = tgt
 		if tgt == null:
 			if screen and _t_cd[i] <= 0.0:
-				var sd := _pd_target(DEFENSIVE_FIRE_R, claimed)
+				var sd := _pd_target(rng, claimed)
 				if sd:
 					claimed[sd] = true
 					_t_rot[i] = (sd.global_position - global_position).angle()
@@ -387,10 +387,8 @@ func _exit_tree() -> void:
 				d._die()
 	_clear_drones()
 
-## Defensive Fire (Targeting tier 3): how near ordnance must be for an idle turret to shoot it down.
-const DEFENSIVE_FIRE_R := 120.0
-## Defensive Fire for fixed-gun ships: when ready and idle, shoot down one
-## enemy missile, torpedo or bomblet within DEFENSIVE_FIRE_R, then reload as
+## Defensive Fire for fixed-gun ships: when ready, shoot down one enemy
+## missile, torpedo or bomblet within `r` (the weapon range), then reload as
 ## from a normal shot. (Drone carriers get none: their doors don't fire.)
 func _defensive_fire(r: float) -> bool:
 	if not Game.instance.has_tech(owner_id, "defensive_fire") or weapon_mod.has("pd") or weapon_mod.has("drones"):
@@ -1185,7 +1183,7 @@ func _physics_process(delta: float) -> void:
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
 		if shoot == null:
-			_defensive_fire(DEFENSIVE_FIRE_R)   # other fixed guns with nothing to shoot
+			_defensive_fire(weapon_range())   # other fixed guns with nothing to shoot
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
 			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))
 			var ready := false
