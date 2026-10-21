@@ -94,6 +94,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# What the build picker needs to know about the fleet it is adding to.
 	st["fleet"] = war.size()
 	st["carriers"] = war.filter(func(s): return s.is_carrier()).size()
+	# Warships inside a Warp Gate or mid-warp take no orders: they count for
+	# strength (all_war) but the order-giving code below only sees the rest.
+	var all_war := war
+	war = war.filter(func(s): return not s.warping and not (s.docked and is_instance_valid(s.warp_gate)))
 	if OS.get_environment("SL_AI_DEBUG") != "" and int(Game.now()) % 20 == 0:
 		print("AIDBG t=%d pid=%d mode=%s queue=%s stalled=%s stall=%s blocked=%s prog=%.1f" % [Game.now(), pid, st.get("mode", ""), str(base.queue), str(base.build_stalled), str(st.get("stall", 0)), str(st.get("blocked", {})), base.build_progress])
 	# Enemies just spotted near home: re-plan now instead of at the next
@@ -102,7 +106,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		st["next_rethink"] = 0.0
 	var nn = st.get("nn")   # NeuralCommander or RLAgent: both have tick()
 	if nn == null:
-		_rethink(pid, st, game, base, war)
+		_rethink(pid, st, game, base, all_war)
 	_manage_queues(pid, st, game, base)
 	var mode: String = st.get("mode", "expand")
 
@@ -118,7 +122,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		if not payable.is_empty():
 			options = payable
 		if not options.is_empty():
-			game.queue_research(pid, _pick_tech(options, war.size()))
+			var tech := _pick_tech(options, all_war.size())
+			game.queue_research(pid, tech)
+			if Defs.TECHS[tech].get("group", "") == "constructs":
+				_flog(pid, "research %s" % tech)
 
 	# Builds: only queue when stockpiles can roughly cover the next item.
 	if nn == null and base.queue.size() < 2:
@@ -209,6 +216,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	_use_jobs(pid, ships, game)
 	_expand_production(pid, st, game, base, ships)
 	_manage_depot(pid, ships, base, game)
+	# Frontier Outposts and Warp Gates (scripted AI only). Before the fleet
+	# orders below, so ships it puts in a gate aren't also sent elsewhere.
+	if nn == null:
+		war = _manage_forts(pid, st, game, base, ships, war, all_war.size())
 
 	# The learned commander decides builds and fleet moves itself.
 	if nn != null:
@@ -275,6 +286,9 @@ func _pick_tech(options: Array, fleet: int) -> String:
 				# What a construct UNLOCKS is worth far more than what it
 				# improves, now that the line is more than one tech deep.
 				score = 75.0 if d["effects"].keys().any(func(k): return k.begins_with("unlock")) else 48.0 - d["tier"] * 6.0
+				# A Warp Gate moves a fleet: worth it only once there is one.
+				if d["effects"].has("unlock_warp_gate") and fleet < 6:
+					score = 30.0
 			"weapons":
 				# Weapons pay off in proportion to the fleet carrying them.
 				score = 40.0 + minf(fleet, 12) * 1.8 - d["tier"] * 6.0
@@ -888,6 +902,11 @@ func _defence_at(pid: int, at: Vector2, game: Game) -> Vector2:
 			dps += p.count_building("battery") * Defs.BATTERY["damage"] / Defs.BATTERY["cooldown"]
 			tough += p.shield + p.pop / Planet.POP_PER_DAMAGE
 	var v: Vision = game.visions.get(pid)
+	# Enemy Frontier Outposts covering the target (only ones we have seen).
+	for f in (v.seen_forts.keys() if v else game.get_tree().get_nodes_in_group("forts")):
+		if is_instance_valid(f) and f is FrontierOutpost and game.is_hostile(pid, f.owner_id) and f.global_position.distance_to(at) < 300.0:
+			dps += Defs.FRONTIER_OUTPOST["damage"] / Defs.FRONTIER_OUTPOST["cooldown"]
+			tough += f.hp + f.armor + f.shield
 	if v:
 		# Only what we have seen recently.
 		for id in v.sightings:
@@ -949,3 +968,314 @@ func _recall_losing_waves(pid: int, war: Array, base: Starbase, game: Game) -> v
 		if not _can_win(pid, g, at, game):
 			for s in g:
 				s.order_move(base.global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
+
+# ---------------------------------------------------------------- forts
+# Frontier Outposts hold exposed ground (worlds, stations and worked belts far
+# from any starbase, on the side facing the enemy); a Warp Gate near home
+# garrisons the idle fleet and flings it at a target it has seen and can
+# beat, or at its own territory under attack. Same costs, sites and
+# information (its own Vision) as a player.
+
+## Seconds between outpost orders, and the most it keeps at once.
+const OUTPOST_EVERY := 150.0
+const OUTPOST_MAX := 4
+## A world / station / belt this far from every own starbase is "exposed".
+const EXPOSED := 900.0
+## Warships in a gate before it warps them at a target.
+const GATE_WAVE := 5
+## The longest ships wait in a gate with nothing to warp at, and how long
+## they then stay out before the gate takes them again.
+const GATE_HOLD := 120.0
+const GATE_REST := 60.0
+## Where a warped wave lands: this far short of its target, outside its guns.
+const WARP_STANDOFF := 650.0
+
+## SL_AI_FORTS_LOG=1: one "AIFORT" line per outpost / gate decision.
+func _flog(pid: int, msg: String) -> void:
+	if OS.get_environment("SL_AI_FORTS_LOG") != "":
+		print("AIFORT t=%d P%d %s" % [int(Game.now()), pid, msg])
+
+## Returns `war` without the ships it sent into a gate this tick.
+func _manage_forts(pid: int, st: Dictionary, game: Game, base: Starbase, ships: Array, war: Array, fleet: int) -> Array:
+	var v: Vision = game.visions.get(pid)
+	var forts: Array = game.get_tree().get_nodes_in_group("forts").filter(func(f): return f.owner_id == pid and f.is_alive())
+	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
+	if OS.get_environment("SL_AI_FORTS_LOG") != "":
+		var done: Dictionary = st.get("forts_done", {})
+		for f in forts:
+			if not f.under_construction and not done.has(f.get_instance_id()):
+				done[f.get_instance_id()] = true
+				_flog(pid, "%s finished at (%d,%d)" % [f.label(), f.global_position.x, f.global_position.y])
+		st["forts_done"] = done
+	# The gate first: it is the one that needs saving up for.
+	if game.has_tech(pid, str(Defs.WARP_GATE["requires"])):
+		_plan_gate(pid, st, game, base, forts, builders, fleet)
+	if game.has_tech(pid, str(Defs.FRONTIER_OUTPOST["requires"])):
+		_plan_outpost(pid, st, game, base, forts, builders.filter(func(c): return c.state != Ship.State.IDLE or not st.get("gate_wants_builder", false)), v, fleet)
+	return _use_gates(pid, st, game, forts, war, v)
+
+## An idle Constructor, or null (then one is queued if none exists).
+func _idle_builder(base: Starbase, builders: Array) -> Ship:
+	for c in builders:
+		if c.state == Ship.State.IDLE:
+			return c
+	if builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
+		base.enqueue("constructor")
+	return null
+
+## Spare energy for one more construct's upkeep (per minute).
+func _upkeep_ok(pid: int, game: Game, upkeep_per_min: float) -> bool:
+	return game.rates[pid].get("energy", 0.0) > 0.06 + upkeep_per_min / 60.0 or game.resources[pid]["energy"] > 250.0
+
+## Enemy starbases and worlds this player knows of (its own Vision).
+func _enemy_spots(pid: int, game: Game, v: Vision) -> Array:
+	var spots: Array = []
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		var o: int = v.known_owner(p) if v else p.owner_id
+		if o > 0 and o != pid and game.is_hostile(pid, o):
+			spots.append(p.global_position)
+	if v:
+		for sb in v.seen_bases:
+			spots.append(v.seen_bases[sb][0])
+	else:
+		for sb in game.get_tree().get_nodes_in_group("starbases"):
+			if game.is_hostile(pid, sb.owner_id):
+				spots.append(sb.global_position)
+	return spots
+
+func _plan_outpost(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Array, builders: Array, v: Vision, fleet: int) -> void:
+	if Game.now() < st.get("next_outpost", 0.0) or st.get("mode", "") == "recover" or st.get("threat", false):
+		return
+	var d: Dictionary = Defs.FRONTIER_OUTPOST
+	var res: Dictionary = game.resources[pid]
+	# Never at the cost of the fleet: a fleet first, and the bill (paid over
+	# the build) in hand with a little to spare.
+	if fleet < 4 or res["minerals"] < d["cost"]["minerals"] + 150.0 or res["spice"] < d["cost"]["spice"] + 30.0 or not _upkeep_ok(pid, game, d["upkeep"]):
+		return
+	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "outpost")
+	var have: int = forts.filter(func(f): return f is FrontierOutpost).size() + pending.size()
+	var worlds: int = game.get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == pid).size()
+	# One to start; another every 7 minutes and per two worlds, up to OUTPOST_MAX.
+	var cap := mini(OUTPOST_MAX, mini(1 + int(Game.now() / 420.0), 1 + worlds / 2))
+	if have >= cap:
+		return
+	var taken: Array = forts.map(func(f): return f.global_position) + pending.map(func(c): return c.build_site)
+	var site := _outpost_site(pid, game, base, taken, v)
+	if site == Vector2.INF:
+		st["next_outpost"] = Game.now() + 30.0
+		return
+	var c := _idle_builder(base, builders)
+	if c == null:
+		return
+	c.order_build_fort(site, "outpost")
+	st["next_outpost"] = Game.now() + OUTPOST_EVERY
+	_flog(pid, "outpost ordered at (%d,%d) (%d/%d)" % [site.x, site.y, have + 1, cap])
+
+## A legal outpost site guarding the most exposed thing we own: a world,
+## Mining Station or worked rock far from every own starbase, nearest the
+## known enemy, with no fort of ours near it yet. Placed on its enemy side.
+func _outpost_site(pid: int, game: Game, base: Starbase, taken: Array, v: Vision) -> Vector2:
+	var enemy := _enemy_spots(pid, game, v)
+	var anchors: Array = []
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid:
+			anchors.append(p.global_position)
+	for m in game.get_tree().get_nodes_in_group("mining_stations"):
+		if m.owner_id == pid:
+			anchors.append(m.global_position)
+	for s in game.get_tree().get_nodes_in_group("ships"):
+		if s.owner_id == pid and s.def["role"] in ["miner", "skimmer"] and is_instance_valid(s.mine_target):
+			anchors.append(s.mine_target.global_position)
+	var best := Vector2.INF
+	var best_score := INF
+	# Exposed holdings first; with none, the front line: whatever we hold
+	# nearest the known enemy (the outpost then goes out in front of it).
+	var reach := 300.0
+	for pass_i in 2:
+		if best != Vector2.INF or (pass_i == 1 and enemy.is_empty()):
+			break
+		if pass_i == 1:
+			reach = 420.0
+		for a in anchors:
+			var yard := game.nearest_starbase(pid, a, true)
+			if pass_i == 0 and yard and yard.global_position.distance_to(a) < EXPOSED:
+				continue
+			if taken.any(func(t): return t.distance_to(a) < 700.0):
+				continue
+			if v and v.enemy_near(a, 700.0) > 0:
+				continue
+			# Nearest the enemy we know of; with none known, farthest from home.
+			var score: float = -a.distance_to(base.global_position)
+			if not enemy.is_empty():
+				score = INF
+				for e in enemy:
+					score = minf(score, a.distance_to(e))
+			if score < best_score:
+				best_score = score
+				best = a
+	if best == Vector2.INF:
+		return Vector2.INF
+	# On the enemy side of it (or the side away from home).
+	var toward := (best - base.global_position).normalized()
+	if not enemy.is_empty():
+		enemy.sort_custom(func(x, y): return best.distance_to(x) < best.distance_to(y))
+		toward = (enemy[0] - best).normalized()
+	for r in [reach - 130.0, reach - 70.0, reach]:
+		for ang in [0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, PI]:
+			var q: Vector2 = best + toward.rotated(ang) * r
+			if game.site_problem("outpost", q) == "":
+				return q
+	return Vector2.INF
+
+func _plan_gate(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Array, builders: Array, fleet: int) -> void:
+	st["gate_wants_builder"] = false
+	if st.get("mode", "") == "recover" or st.get("threat", false):
+		return
+	var d: Dictionary = Defs.WARP_GATE
+	var res: Dictionary = game.resources[pid]
+	var gates := forts.filter(func(f): return f is WarpGate)
+	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "gate")
+	var n: int = gates.size() + pending.size()
+	# One gate; a second only late in a long, rich game.
+	var rich: bool = Game.now() > 1800.0 and res["minerals"] > 6000.0
+	if n >= 2 or (n >= 1 and not rich) or not pending.is_empty():
+		return
+	# The bill is paid over the build, so half of it in hand will do.
+	if fleet < 6 or res["minerals"] < d["cost"]["minerals"] * 0.5 or res["spice"] < d["cost"]["spice"] + 60.0 or not _upkeep_ok(pid, game, d["upkeep"]):
+		return
+	# Beside home (a second beside another yard, well away from the first).
+	var yard: Node2D = base
+	if not gates.is_empty():
+		var far := -1.0
+		for b in game.get_tree().get_nodes_in_group("starbases"):
+			var dg: float = b.global_position.distance_to(gates[0].global_position)
+			if b.owner_id == pid and dg > far:
+				far = dg
+				yard = b
+		if far < 1500.0:
+			return
+	var site := Vector2.INF
+	var dir := (-yard.global_position).normalized() if yard.global_position.length() > 1.0 else Vector2.RIGHT
+	for r in [300.0, 400.0, 520.0]:
+		for ang in [0.6, -0.6, 1.2, -1.2, 0.0, 2.0, -2.0, PI]:
+			var q: Vector2 = yard.global_position + dir.rotated(ang) * r
+			if site == Vector2.INF and game.site_problem("gate", q) == "":
+				site = q
+	if site == Vector2.INF:
+		return
+	var c := _idle_builder(base, builders)
+	st["gate_wants_builder"] = c == null
+	if c == null:
+		return
+	c.order_build_fort(site, "gate")
+	_flog(pid, "gate ordered at (%d,%d)" % [site.x, site.y])
+
+## A landing point WARP_STANDOFF short of `target` on the gate's side, in
+## the gate's reach and clear of stars and debris; INF if none.
+func _landing(target: Vector2, g: WarpGate, game: Game) -> Vector2:
+	var back := (g.global_position - target).normalized()
+	for ang in [0.0, 0.4, -0.4, 0.8, -0.8]:
+		var q: Vector2 = target + back.rotated(ang) * WARP_STANDOFF
+		if q.length() > Game.MAP_RADIUS - 150.0 or game.is_blocked(q, 40.0):
+			continue
+		if game.stars_list.any(func(s): return s.global_position.distance_to(q) < s.radiation_radius + 80.0):
+			continue
+		if g.warp_problem(q) == "":
+			return q
+	return Vector2.INF
+
+## Warps gate `g`'s garrison to `at`; once landed they attack-move on `goal`.
+func _warp_wave(pid: int, st: Dictionary, g: WarpGate, at: Vector2, goal: Vector2, why: String) -> bool:
+	var out := g.ships().duplicate()
+	if g.warp(at) != "":
+		return false
+	var w: Array = st.get("warped", [])
+	for s in out:
+		w.append([s, goal, Game.now() + 90.0])
+	st["warped"] = w
+	st["gate_since"].erase(g.get_instance_id())
+	_flog(pid, "WARP %s: %d ships %d px to (%d,%d), goal (%d,%d)" % [why, out.size(), int(g.global_position.distance_to(at)), at.x, at.y, goal.x, goal.y])
+	return true
+
+## Runs every finished gate: defend, attack, release, then fill it with idle
+## warships near it. Returns `war` minus the ships just sent in.
+func _use_gates(pid: int, st: Dictionary, game: Game, forts: Array, war: Array, v: Vision) -> Array:
+	if not st.has("gate_since"):
+		st["gate_since"] = {}
+	# Warped waves that have landed attack-move on their goal.
+	var w: Array = st.get("warped", [])
+	var landed := 0
+	for i in range(w.size() - 1, -1, -1):
+		var s = w[i][0]
+		if not is_instance_valid(s) or not s.is_alive() or Game.now() > w[i][2]:
+			w.remove_at(i)
+		elif not s.warping:
+			if s.state == Ship.State.IDLE:
+				s.order_attack_move(w[i][1] + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+				landed += 1
+			w.remove_at(i)
+	if landed > 0:
+		_flog(pid, "landed: %d ships attack-moving on their goal" % landed)
+	var mode: String = st.get("mode", "")
+	# Our own worlds and starbases with enemies at them (that we can see).
+	var hurt: Array = []
+	if v:
+		for e in game.get_tree().get_nodes_in_group("starbases") + game.get_tree().get_nodes_in_group("planets"):
+			if e.owner_id == pid and v.enemy_near(e.global_position, 600.0) > 0:
+				hurt.append(e.global_position)
+	for g in forts:
+		if not (g is WarpGate) or not g.is_open():
+			continue
+		var inside: Array = g.ships()
+		var key: int = g.get_instance_id()
+		if inside.is_empty():
+			st["gate_since"].erase(key)
+		elif not st["gate_since"].has(key):
+			st["gate_since"][key] = Game.now()
+		if not inside.is_empty():
+			# Defend: territory under attack far away gets the garrison;
+			# an attack right by the gate gets it ejected to fight.
+			var done := false
+			for h in hurt:
+				if g.global_position.distance_to(h) < Defs.WARP_GATE["warp_min"] + 200.0:
+					g.eject_all()
+					st["gate_since"].erase(key)
+					st["gate_rest"] = Game.now() + 30.0
+					_flog(pid, "eject: enemies near the gate (%d ships)" % inside.size())
+					done = true
+					break
+				if g.cooldown_left <= 0.0:
+					var land: Vector2 = h + (g.global_position - h).normalized() * 250.0
+					if g.warp_problem(land) == "" and _warp_wave(pid, st, g, land, h, "defend"):
+						done = true
+						break
+			if done:
+				continue
+			# Attack: a known target the garrison can beat, far enough to warp.
+			if g.cooldown_left <= 0.0 and inside.size() >= GATE_WAVE and mode != "recover":
+				var goal := _winnable_target(pid, inside, g.global_position, game)
+				if goal != Vector2.INF:
+					var land2 := _landing(goal, g, game)
+					if land2 != Vector2.INF and _warp_wave(pid, st, g, land2, goal, "attack"):
+						st["wave"] = mini(st["wave"] + 4, 30)
+						continue
+			# Nothing worth warping at for a while: let them out.
+			if Game.now() - float(st["gate_since"].get(key, Game.now())) > GATE_HOLD:
+				g.eject_all()
+				st["gate_since"].erase(key)
+				st["gate_rest"] = Game.now() + GATE_REST
+				_flog(pid, "eject: held %ds with no target (%d ships)" % [int(GATE_HOLD), inside.size()])
+				continue
+		# Fill it: idle warships near the gate go in (not while home is under
+		# attack, recovering, or resting after a release).
+		if st.get("threat", false) or mode == "recover" or Game.now() < st.get("gate_rest", 0.0) 				or hurt.any(func(h): return g.global_position.distance_to(h) < Defs.WARP_GATE["warp_min"] + 200.0):
+			continue
+		var sent: Array = []
+		for s in war:
+			if s.state == Ship.State.IDLE and s.global_position.distance_to(g.global_position) < 1400.0:
+				s.order_garrison(g)
+				sent.append(s)
+		if not sent.is_empty():
+			_flog(pid, "garrison: %d ships sent in (%d inside)" % [sent.size(), inside.size()])
+			war = war.filter(func(s): return not sent.has(s))
+	return war

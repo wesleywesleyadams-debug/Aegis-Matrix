@@ -47,6 +47,8 @@ var render := true
 var seen_planet_owner := {}
 var seen_planet_pop := {}
 var seen_bases := {}
+## Enemy Frontier Outposts seen: fort -> position (the AI weighs them as defences).
+var seen_forts := {}
 var sightings := {}
 ## How long a sighted enemy warship still counts toward its fleet estimate.
 const SIGHTING_MEMORY := 120.0
@@ -368,6 +370,12 @@ func _update_intel() -> void:
 	for sb in seen_bases.keys():
 		if not is_instance_valid(sb) or not sb.is_alive():
 			seen_bases.erase(sb)
+	for f in tree.get_nodes_in_group("forts"):
+		if f is FrontierOutpost and game.is_hostile(pid, f.owner_id) and f.is_alive() and can_see(f):
+			seen_forts[f] = f.global_position
+	for f in seen_forts.keys():
+		if not is_instance_valid(f) or not f.is_alive():
+			seen_forts.erase(f)
 	for p in tree.get_nodes_in_group("planets"):
 		if p.owner_id == pid or is_visible_at(p.global_position):
 			seen_planet_owner[p] = p.owner_id

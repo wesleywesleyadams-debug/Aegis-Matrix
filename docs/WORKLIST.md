@@ -18,7 +18,7 @@ code or art. Last updated 2026-10-21.
 ## AI
 
 - **[missing] The neural AI is blind to Mods and drones.** It can't toggle Mods, and drones aren't in the `entities` group it reads. `NeuralCommander.gd` research groups lack Mods, the Targeting row and Quantum Lenses; it also treats Spice Navigation as a speed tech (now nebula radiation resistance). Needs a model update and a version bump.
-- **[missing] No AI builds or uses Frontier Outposts or Warp Gates** (added 2026-10-21, Constructs > Expansion row). The scripted AI never researches toward them on purpose; the neural AI (RLAgent.gd) labels forts as "depot" in its observation and has no garrison/warp verbs.
+- **[partial] Neural AI and forts** (scripted AI done 2026-10-21: researches Outposts/Warp Gates, builds outposts on exposed/front-line holdings, one gate near home (two late), garrisons idle warships and warps them at winnable seen targets or to its own worlds under attack; log with SL_AI_FORTS_LOG=1). Still open: the neural AI (RLAgent.gd) labels forts as "depot" in its observation (a new entity kind changes the observation width and breaks trained checkpoints) and has no garrison/warp verbs.
 - **[cleanup] The neural AI keeps a "dock" verb** for the removed hangars (RLAgent.gd, tools/rl/model.py). Never allowed now; drop it at the next model version bump.
 - **[missing] Neural AI training is paused.** On resume: fix the closing-in reward loophole (count every warship, not the 8 closest); add the income reward at the expand stage; restart from the checkpoint.
 
