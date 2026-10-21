@@ -40,6 +40,8 @@ func _ready() -> void:
 	radius = Defs.STARBASE["radius"]
 	refresh_stats()
 	hp = max_hp * (Game.instance.construct_start_frac(owner_id) if under_construction else 1.0)
+	if under_construction:
+		construct_progress = maxf(construct_progress, float(Defs.STARBASE["build_time"]) * Game.instance.construct_start_progress(owner_id))
 	armor = 0.0 if under_construction else max_armor
 	shield = 0.0 if under_construction else max_shield
 	_update_site_look()
@@ -167,7 +169,7 @@ func _construct(delta: float) -> void:
 	if build_stalled:
 		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f
-	hp = minf(max_hp, hp + max_hp * 0.9 * delta * f / total)
+	hp = minf(max_hp, hp + max_hp * Game.instance.construct_hp_rate(owner_id) * delta * f / total)
 	_update_site_look()
 	queue_redraw()
 	if construct_progress >= total:

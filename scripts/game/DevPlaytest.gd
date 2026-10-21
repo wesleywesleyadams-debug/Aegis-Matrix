@@ -167,7 +167,7 @@ func finished_gate(at: Vector2) -> WarpGate:
 
 func setup() -> void:
 	var pid := game.player_id
-	for t in ["outposts", "warp_gates", "depots"]:
+	for t in ["outposts", "warp_gates", "depots"] + Array(OS.get_environment("SL_PT_TECHS").split(",", false)):
 		game.researched[pid][t] = true
 	game.resources[pid]["minerals"] = 20000.0
 	game.resources[pid]["spice"] = 5000.0

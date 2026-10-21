@@ -452,7 +452,7 @@ const TECHS := {
 	"outposts": {"name": "Outposts", "group": "constructs", "tier": 2, "requires": ["depots"], "cost": {"energy": 165, "spice": 25}, "time": 90.0,
 		"effects": {"unlock_outpost": 1.0}, "desc": "Unlocks the Frontier Outpost."},
 	"rapid_assembly": {"name": "Rapid Assembly", "group": "constructs", "tier": 2, "requires": ["modular_frames"], "cost": {"energy": 155, "spice": 20}, "time": 85.0,
-		"effects": {"construct_start": 4.0}, "desc": "New constructs start at 50% hull instead of 10%."},
+		"effects": {"construct_start": 1.0, "construct_progress": 0.2}, "desc": "New constructs start 20% built, with 20% hull instead of 10%."},
 	"warp_gates": {"name": "Warp Gates", "group": "constructs", "tier": 3, "requires": ["outposts"], "cost": {"energy": 780, "spice": 170}, "time": 235.0,
 		"effects": {"unlock_warp_gate": 1.0}, "desc": "Unlocks the Warp Gate."},
 	"shipyard_networks": {"name": "Shipyard Networks", "group": "constructs", "tier": 3, "requires": ["forward_bases"], "cost": {"energy": 780, "spice": 170}, "time": 235.0,

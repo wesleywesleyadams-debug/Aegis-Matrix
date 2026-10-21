@@ -792,6 +792,16 @@ func harvester_count(pid: int) -> int:
 func construct_start_frac(pid: int) -> float:
 	return clampf(0.1 * mod(pid, "construct_start"), 0.1, 0.9)
 
+## How far along a new construct starts (Rapid Assembly): that share of its
+## build time is already done, and the cost for it is never charged.
+func construct_start_progress(pid: int) -> float:
+	return clampf(mod(pid, "construct_progress") - 1.0, 0.0, 0.9)
+
+## Hull gained per unit of build progress, so a construct reaches full hull
+## exactly as it finishes, whatever it started at.
+func construct_hp_rate(pid: int) -> float:
+	return (1.0 - construct_start_frac(pid)) / maxf(1.0 - construct_start_progress(pid), 0.1)
+
 ## Summed research bonus for `key` (e.g. "damage") as a multiplier.
 func mod(pid: int, key: String) -> float:
 	var m := 1.0

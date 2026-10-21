@@ -33,6 +33,7 @@ func _ready() -> void:
 	refresh_stats()
 	if under_construction:
 		hp = max_hp * Game.instance.construct_start_frac(owner_id)
+		construct_progress = maxf(construct_progress, float(Defs.MINING_STATION["build_time"]) * Game.instance.construct_start_progress(owner_id))
 		shield = 0.0
 		armor = 0.0
 	else:
@@ -97,7 +98,7 @@ func _construct(delta: float) -> void:
 	if build_stalled:
 		queue_redraw()   # keeps the insufficient-funds tag pulsing
 	construct_progress += delta * f
-	hp = minf(max_hp, hp + max_hp * 0.9 * delta * f / total)
+	hp = minf(max_hp, hp + max_hp * Game.instance.construct_hp_rate(owner_id) * delta * f / total)
 	_update_look()
 	if construct_progress >= total:
 		under_construction = false
