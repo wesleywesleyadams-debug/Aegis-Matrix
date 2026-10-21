@@ -796,7 +796,9 @@ func tech_state(pid: int, tech_id: String) -> String:
 	var any_req: bool = Defs.TECHS[tech_id].get("requires_any", false)
 	var met := 0
 	for req in Defs.TECHS[tech_id]["requires"]:
-		if has_tech(pid, req) or research[pid].get("id", "") == req or req in research_queue[pid]:
+		# Only a finished prerequisite counts (one project at a time, so
+		# nothing can be lined up behind one still in progress).
+		if has_tech(pid, req):
 			met += 1
 		elif not any_req:
 			return "locked"
