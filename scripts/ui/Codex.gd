@@ -228,9 +228,9 @@ func _para(text: String) -> void:
 
 ## A table: `cols` are header strings, `rows` are arrays of [text, color]
 ## pairs or plain strings.
-## `striped`: every other row gets a lighter band, so a wide table reads
+## `striped` (default): every other row gets a lighter band, so a table reads
 ## left to right.
-func _table(cols: Array, rows: Array, striped: bool = false) -> void:
+func _table(cols: Array, rows: Array, striped: bool = true) -> void:
 	var grid := GridContainer.new()
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	grid.columns = cols.size()
