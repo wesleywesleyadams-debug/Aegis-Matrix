@@ -22,6 +22,7 @@ code or art. Last updated 2026-10-21.
 
 ## Features
 
+- **[missing] World tooltip: minerals and spice per minute.** It shows food grown/eaten and energy/min, but not minerals (Mining Complexes) or spice (Spice Extractors) collected per minute.
 - **[missing] Munitions and reloading** (idea, 2026-09-22): limited ammo, restocked at a starbase.
 - **[missing] "Claude plays a match via text"** (idea, 2026-10-17).
 
