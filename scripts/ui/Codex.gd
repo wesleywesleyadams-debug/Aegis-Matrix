@@ -928,7 +928,7 @@ func _page_worlds() -> void:
 	_heading("Defense Battery")
 	_para("A world with a Defense Battery is no free kill. Each battery adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries force a raiding party to commit." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
 	_heading("Siege")
-	_para("Enemy worlds are taken by bombardment, not invasion. Warships ordered onto a world fire at it: its planetary shield soaks the damage first and recharges after %d s without hits; then every point of damage kills pops (one base corvette shot is about one pop). Bombardment halts growth. At 0 pops every building is destroyed and the world turns neutral, ready for anyone to colonize." % int(Defs.SHIELD_REGEN_DELAY))
+	_para("Enemy worlds are taken by bombardment, not invasion. Warships ordered onto a world fire at it: its planetary shield soaks the damage first and recharges after %d s without hits; then every point of damage kills pops (one base corvette shot is about one pop). While shots are reaching the pops, growth stops (until %d s after the last such hit); fire the shield absorbs doesn't stop it. At 0 pops every building is destroyed and the world turns neutral, ready for anyone to colonize." % [int(Defs.SHIELD_REGEN_DELAY), int(Planet.SIEGE_TIME)])
 	_heading("Worlds research", TechIcons.GROUP_COLORS.get("worlds", EDGE_LIT))
 	_para(Defs.TECH_GROUP_DESC.get("worlds", ""))
 	_tech_tree("worlds", _research_rows("worlds"))

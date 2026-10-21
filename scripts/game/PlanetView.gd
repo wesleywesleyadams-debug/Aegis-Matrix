@@ -370,7 +370,7 @@ func refresh() -> void:
 		if planet.type_def().has("spice_reserve"):
 			s += "\n%s Reserve %d%s" % [_ic("spice"), int(planet.spice_reserve), "  (exhausted)" if planet.spice_reserve <= 0.0 else ""]
 		if planet.under_siege():
-			s += "\nUNDER BOMBARDMENT: growth halted, %d%% of pops left" % int(ceil(100.0 * planet.pop / maxf(planet.siege_start_pop, 1.0)))
+			s += "\nUNDER BOMBARDMENT: %s, %d%% of pops left" % ["growth halted" if planet.growth_halted() else "shield holding", int(ceil(100.0 * planet.pop / maxf(planet.siege_start_pop, 1.0)))]
 		# Population is the whole reason to grow a world now: it multiplies
 		# what every building on it produces.
 		s += "\n%s bonus x%.2f on every building here" % [_ic("pop"), planet.pop_output_mult()]

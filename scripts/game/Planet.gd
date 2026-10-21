@@ -7,7 +7,7 @@ extends Node2D
 ## type's ceiling. Neutral planets are settled by a Colony Ship over
 ## COLONIZE_TIME seconds. Enemy planets are taken by bombarding them: a
 ## corvette shot kills 1 pop, and every shot scales with its damage (twice a
-## corvette's damage = 2 pops). Bombardment also halts growth; at 0
+## corvette's damage = 2 pops). Hits that reach the pops halt growth; at 0
 ## pop every building is destroyed and the planet turns neutral, ready for
 ## anyone to colonize.
 
@@ -56,6 +56,8 @@ var starving: bool = false
 var siege_start_pop: float = 0.0
 var shield: float = 0.0
 var last_hit_time: float = -1000.0
+## Last time a hit got past the shield and killed pops (halts growth).
+var last_pop_hit_time: float = -1000.0
 ## Colonization in progress: whose, how far, and the ship doing it.
 var colonizing_owner: int = 0
 var colonize_progress: float = 0.0
@@ -279,7 +281,7 @@ func _economy(dt: float) -> void:
 		pop = maxf(0.0, pop + growth_per_min / 60.0 * dt)
 		if owner_id == g.player_id and pop <= 0.0:
 			g.alert("%s has starved to death." % planet_name, "alert_starved", false, global_position)
-	elif pop < cap and not under_siege():
+	elif pop < cap and not growth_halted():
 		growth_per_min = rate
 		pop = minf(cap, pop + growth_per_min / 60.0 * dt)
 	else:
@@ -302,6 +304,11 @@ func is_enemy_of(pid: int) -> bool:
 
 func under_siege() -> bool:
 	return owner_id != 0 and Game.now() - last_hit_time < SIEGE_TIME
+
+## Growth halts only while the pops themselves are being hit: fire the
+## planetary shield absorbs doesn't count.
+func growth_halted() -> bool:
+	return owner_id != 0 and Game.now() - last_pop_hit_time < SIEGE_TIME
 
 ## Weapon fire from bombarding ships: the planetary shield absorbs it first,
 ## then each point kills POP_PER_DAMAGE pops.
@@ -331,6 +338,8 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	amount *= profile.get("vs", {}).get("hull", 1.0)
 	if absorbed > 0.0:
 		g.spawn_shield_hit(global_position, radius * 0.6, from.global_position if is_instance_valid(from) else global_position + Vector2.RIGHT)
+	if amount > 0.0:
+		last_pop_hit_time = g.now()
 	pop -= amount * POP_PER_DAMAGE
 	# Training tally: population bombarded away, in tenths - only below this
 	# world's lowest point so far, so letting it regrow and hitting it again
