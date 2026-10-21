@@ -1454,12 +1454,13 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 			var wname: String = Defs.TECHS[mid]["name"] if mid != "" else s.def["weapon"].capitalize()
 			var cd: float = s.def["cooldown"] * float(wm.get("cd", 1.0)) / game.mod(e.owner_id, "fire_rate")
 			if wm.has("beam"):
-				# Ion Lance: its whole-ship damage per second, from the start of
-				# a beam to full ramp on one target.
-				var b: Array = wm["beam"]
-				var turrets: int = maxi(1, (s.def.get("turrets", []) as Array).size())
-				var dps: float = base_dmg * float(wm.get("dmg", 1.0)) / s.def["cooldown"] * game.mod(e.owner_id, "fire_rate") * turrets
-				txt += "   %s %.0f-%.0f DPS (ramps over %.0fs)" % [wname, dps * float(b[0]), dps * float(b[1]), float(b[2])]
+				# Ion Lance: the damage per second its beams are dealing right
+				# now (each beam's ramp already includes the Mod's damage).
+				var ramp_sum := 0.0
+				for bm in s._beams:
+					ramp_sum += float(bm[2])
+				var dps_now: float = base_dmg / s.def["cooldown"] * game.mod(e.owner_id, "fire_rate") * ramp_sum
+				txt += "   %s %.0f DPS" % [wname, dps_now]
 			elif wm.has("tractor"):
 				txt += "   Laser %.0f dmg / %.1fs + Tractor Beams" % [base_dmg * float(wm.get("dmg", 1.0)), cd]
 			else:
