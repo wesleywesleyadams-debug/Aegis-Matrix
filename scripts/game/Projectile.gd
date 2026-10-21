@@ -70,6 +70,9 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 		scale = Vector2(2.4, 0.3) / Defs.ART_SCALE   # a long thin streak
 	elif weapon == "proton":
 		scale = Vector2.ONE * 1.25 / Defs.ART_SCALE   # a fat, glowing ball
+	# Point-Defense Lattice: sliver-thin, needle-long lasers.
+	if from is Ship and from.weapon_mod.has("pd"):
+		scale = Vector2(3.2, 0.16) / Defs.ART_SCALE
 	# Shot colors: generalists (and starbases) fire yellow; specialists fire
 	# their variant's color (the layer they hit hardest: light blue shields,
 	# red armor, green hull).

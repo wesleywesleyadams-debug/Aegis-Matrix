@@ -1330,6 +1330,56 @@ func df_target(from: Node2D, pid: int, r: float, claimed: Dictionary = {}) -> No
 				best = p
 	return best
 
+## Point-Defense Lattice: a needle laser that destroys ordnance `first`, then
+## bounces on to up to PD_BOUNCES more enemy missiles, torpedoes, bomblets or
+## drones, each within PD_BOUNCE_R of the last. Ordnance is destroyed
+## outright; a drone takes `drone_dmg`.
+const PD_BOUNCES := 3
+const PD_BOUNCE_R := 90.0
+func pd_intercept(from: Ship, first: Node2D, drone_dmg: float) -> void:
+	var pid: int = from.owner_id
+	var hits: Array = [first]
+	var pts := PackedVector2Array([from.global_position, first.global_position])
+	var at: Vector2 = first.global_position
+	for k in PD_BOUNCES:
+		var nxt := df_target_at(at, pid, PD_BOUNCE_R, hits)
+		if nxt == null:
+			break
+		hits.append(nxt)
+		at = nxt.global_position
+		pts.append(at)
+	if not sim_mode:
+		var fx := ArcFx.new()
+		fx.setup(pts, true, Color("9ff0ff"))
+		fx_root.add_child(fx)
+		sfx.play_at("laser", from.global_position, -12.0)
+	for h in hits:
+		if not is_instance_valid(h):
+			continue
+		if h is Drone:
+			h.take_damage(drone_dmg, from, Defs.damage_profile(from.def))
+		else:
+			spawn_explosion(h.global_position, 0.3)
+			h.queue_free()
+
+## df_target around a point: the nearest enemy ordnance or drone within `r`
+## of `at`, skipping those in `skip`.
+func df_target_at(at: Vector2, pid: int, r: float, skip: Array) -> Node2D:
+	var best: Node2D = null
+	var best_d := r
+	for grp in ["ordnance", "drones"]:
+		for p in get_tree().get_nodes_in_group(grp):
+			if not is_instance_valid(p) or p in skip:
+				continue
+			var hostile: bool = (p.owner_pid != pid and is_hostile(pid, p.owner_pid)) if grp == "ordnance" else (p.is_alive() and p.is_enemy_of(pid))
+			if not hostile:
+				continue
+			var d := at.distance_to(p.global_position)
+			if d < best_d:
+				best_d = d
+				best = p
+	return best
+
 func intercept(from: Node2D, p: Node2D) -> void:
 	if not sim_mode:
 		var arc := ArcFx.new()

@@ -96,7 +96,7 @@ func _fire_turrets(delta: float) -> void:
 				claimed[shot_down] = true
 				_t_rot[i] = (shot_down.global_position - global_position).angle()
 				_turret_sprites[i].rotation = _t_rot[i] - rotation
-				g.intercept(self, shot_down)
+				g.pd_intercept(self, shot_down, dmg * float(weapon_mod.get("dmg", 1.0)) * PD_DRONE_MULT * g.mod(owner_id, "damage"))
 				_t_cd[i] = def["cooldown"] * 0.4 / g.mod(owner_id, "fire_rate")
 				continue
 		var tgt: Node2D = null
