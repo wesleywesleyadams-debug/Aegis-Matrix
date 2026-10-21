@@ -275,7 +275,7 @@ func _enforce_fullscreen() -> void:
 ## Dev and test runs (screenshots, sims, duels, training) never write the
 ## player's settings: they only read them.
 static func _dev_run() -> bool:
-	for k in ["SL_SHOT", "SL_SIM", "SL_DUEL", "SL_TITLE_SHOT", "SL_LOBBY_SHOT", "SL_CODEX_SHOT", "SL_OPTIONS_TAB", "SL_NN_WEIGHTS", "SL_HOVER_TEST", "SL_MIXVARIANTS"]:
+	for k in ["SL_SHOT", "SL_SIM", "SL_DUEL", "SL_TITLE_SHOT", "SL_LOBBY_SHOT", "SL_CODEX_SHOT", "SL_OPTIONS_TAB", "SL_NN_WEIGHTS", "SL_HOVER_TEST", "SL_MIXVARIANTS", "SL_PLAYTEST"]:
 		if OS.get_environment(k) != "":
 			return true
 	return false

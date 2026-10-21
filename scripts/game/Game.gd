@@ -358,6 +358,10 @@ func _ready() -> void:
 		message_long.emit(system_settings.get("arrival", "You arrive in uncharted space."), Color("e8d6a8"), ARRIVAL_LINGER)
 		message_long.emit("Grow your worlds, mine the belts, find spice. Win by taking every enemy world, or every enemy starbase and Constructor.", Color("c3cde4"), ARRIVAL_LINGER)
 	_enter_dev_capture()
+	# Dev: SL_PLAYTEST=<scenario> drives the match with injected mouse and
+	# key events through the real HUD and click handlers (DevPlaytest.gd).
+	if OS.get_environment("SL_PLAYTEST") != "":
+		add_child(load("res://scripts/game/DevPlaytest.gd").new())
 	# Nothing researching at the start: open the research panel.
 	_prompt_research("warships")
 	# Dev (SL_SHOT_OPEN=prompt, SL_PROMPT_TECH=id): start a tech and close the
@@ -382,7 +386,7 @@ func _prompt_research(tab: String) -> void:
 		return
 	# (Dev: SL_SHOT_OPEN=prompt lets a capture show it.)
 	if OS.get_environment("SL_SHOT_OPEN") != "prompt":
-		for env in ["SL_DUEL", "SL_SHOT", "SL_SHOT_OPEN", "SL_SIM"]:
+		for env in ["SL_DUEL", "SL_SHOT", "SL_SHOT_OPEN", "SL_SIM", "SL_PLAYTEST"]:
 			if OS.get_environment(env) != "":
 				return
 	if not research[player_id].is_empty() or not research_queue[player_id].is_empty():
@@ -1796,21 +1800,27 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event is InputEventKey and event.pressed and not event.echo and not is_over:
 		_handle_key(event)
 
+## World point under a screen (viewport) position. Clicks use their own
+## event position rather than polling the OS cursor, so an injected event
+## (SL_PLAYTEST) acts exactly where it says.
+func _world_at(screen_pos: Vector2) -> Vector2:
+	return get_canvas_transform().affine_inverse() * screen_pos
+
 func _handle_mouse_button(e: InputEventMouseButton) -> void:
 	match e.button_index:
 		MOUSE_BUTTON_LEFT:
 			if is_placing():
 				if e.pressed:
 					if warp_aiming != null:
-						_aim_warp(get_global_mouse_position())
+						_aim_warp(_world_at(e.position))
 					elif placing_fort != "":
-						_place_fort(get_global_mouse_position())
+						_place_fort(_world_at(e.position))
 					elif placing_depot:
-						_place_depot(get_global_mouse_position())
+						_place_depot(_world_at(e.position))
 					elif placing_station:
-						_place_station(get_global_mouse_position())
+						_place_station(_world_at(e.position))
 					else:
-						_place_starbase(get_global_mouse_position())
+						_place_starbase(_world_at(e.position))
 				return
 			if e.pressed:
 				_mouse_down = true
@@ -1822,14 +1832,14 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 					_box_select(Rect2(_drag_start_screen, e.position - _drag_start_screen).abs(), e.shift_pressed)
 					hud.set_drag_rect(Rect2())
 				else:
-					_click_select(get_global_mouse_position(), e.shift_pressed)
+					_click_select(_world_at(e.position), e.shift_pressed)
 				_dragging = false
 		MOUSE_BUTTON_RIGHT:
 			if e.pressed and not is_over:
 				if is_placing():
 					cancel_placing()
 				else:
-					_issue_command(get_global_mouse_position(), e.ctrl_pressed, e.shift_pressed)
+					_issue_command(_world_at(e.position), e.ctrl_pressed, e.shift_pressed)
 		MOUSE_BUTTON_MIDDLE:
 			_mid_drag = e.pressed
 		MOUSE_BUTTON_WHEEL_UP:
@@ -1964,6 +1974,7 @@ func request_research(tech_id: String) -> void:
 		sfx.play_ui("click")
 
 func start_starbase_placement() -> void:
+	cancel_placing()   # one placement mode at a time: the newest wins
 	placing_starbase = true
 	var n := starbase_count(player_id)
 	message.emit("Left-click open space to found starbase #%d (%s over %ds; your empire upkeep multiplier becomes x%.2f). Right-click to cancel." % [n + 1, Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"], upkeep_multiplier(player_id, Defs.UPKEEP_WEIGHT["starbase"])], Color("c3cde4"))
@@ -2056,6 +2067,7 @@ func _aim_warp(pos: Vector2) -> void:
 	sfx.play_ui("click")
 
 func start_station_placement() -> void:
+	cancel_placing()
 	placing_station = true
 	message.emit("Left-click open space for a Mining Station (%s over %ds): harvesters unload there instead of flying home. Right-click to cancel." % [
 		Defs.cost_text(Defs.MINING_STATION["cost"]), int(Defs.MINING_STATION["build_time"])], Color("c3cde4"))
@@ -3830,8 +3842,8 @@ func start_depot_placement(v: String = "") -> void:
 		return
 	if v != "":
 		placing_depot_variant = v
+	cancel_placing()
 	placing_depot = true
-	placing_starbase = false
 	message.emit("Left-click open space for a %s Depot (%s over %ds): generalists sent here are refitted into %s ships. Right-click to cancel." % [
 		Defs.VARIANTS[placing_depot_variant]["label"], Defs.cost_text(Defs.WEAPONS_DEPOT["cost"]), Defs.WEAPONS_DEPOT["build_time"], Defs.VARIANTS[placing_depot_variant]["label"]], Color("c3cde4"))
 
