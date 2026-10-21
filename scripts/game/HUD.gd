@@ -1062,6 +1062,7 @@ func _on_match_over(won: bool) -> void:
 # ---------------------------------------------------------------- selection panel
 
 func _rebuild_selection() -> void:
+	_depot_live = []   # set again if a depot panel is built below
 	_sel_panel.visible = not (game.selection.filter(func(e): return is_instance_valid(e)).is_empty() and is_instance_valid(game.focused_planet))
 	for c in _sel_body.get_children():
 		c.queue_free()
@@ -1409,6 +1410,25 @@ func _build_planet_panel(p: Planet) -> void:
 	_info_label = _label("")
 	_sel_body.add_child(_info_label)
 
+## Keeps a selected depot's countdowns ticking; rebuilds the panel when a
+## refit finishes, a ship docks or construction completes.
+func _tick_depot_panel() -> void:
+	if _depot_live.is_empty():
+		return
+	var d = _depot_live[0]
+	if not is_instance_valid(d) or not d.is_alive():
+		_depot_live = []
+		return
+	if d.bays.size() != int(_depot_live[1]) or (_depot_live[2] != null) != d.under_construction:
+		_depot_live = []
+		game.selection_changed.emit()
+		return
+	if _depot_live[2] != null and is_instance_valid(_depot_live[2]):
+		_depot_live[2].text = "Under construction: %d%%" % int(100.0 * d.construct_progress / Defs.WEAPONS_DEPOT["build_time"])
+	for r in _depot_live[3]:
+		if is_instance_valid(r[0]):
+			r[0].text = "%s   (%ds left)" % [r[2], int(ceil(r[1]["left"]))]
+
 func _update_selection_info() -> void:
 	_refresh_ability_button()
 	for t in _fleet_tiles:
@@ -1549,6 +1569,7 @@ func _process(delta: float) -> void:
 		_refresh = 0.1
 		_update_top_bar()
 		_update_selection_info()
+		_tick_depot_panel()
 		_score_timer -= 0.1
 		if _score_timer <= 0.0:
 			_score_timer = 1.0
@@ -2200,9 +2221,16 @@ func _add_refit_buttons(sel: Array) -> void:
 ## A selected Weapons Depot: which variant it fits and the ships docked
 ## inside, each with a Cancel button. A cancelled ship leaves the way it went
 ## in — still a generalist — and minerals already spent are not refunded.
+## The depot panel's live parts, refreshed every tick (_tick_depot_panel):
+## [depot, bay count when built, construction label, [[label, bay, prefix]]].
+var _depot_live: Array = []
+
 func _build_depot_panel(d: WeaponsDepot) -> void:
+	_depot_live = [d, d.bays.size(), null, []]
 	if d.under_construction:
-		_sel_body.add_child(_label("Under construction: %d%%" % int(100.0 * d.construct_progress / Defs.WEAPONS_DEPOT["build_time"]), DIM, 14))
+		var cl := _label("Under construction: %d%%" % int(100.0 * d.construct_progress / Defs.WEAPONS_DEPOT["build_time"]), DIM, 14)
+		_depot_live[2] = cl
+		_sel_body.add_child(cl)
 		return
 	var vd: Dictionary = Defs.VARIANTS[d.variant]
 	var info := _label("Refits generalist warships into %s ships: %s" % [vd["label"], vd["desc"]], vd["color"], 14)
@@ -2221,7 +2249,9 @@ func _build_depot_panel(d: WeaponsDepot) -> void:
 		var s: Ship = ship
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
-		var lab := _label("%s  ->  %s %s   (%ds left)" % [s.def["name"], vd["label"], s.def["name"], int(ceil(bay["left"]))], vd["color"], 14)
+		var prefix := "%s  ->  %s %s" % [s.def["name"], vd["label"], s.def["name"]]
+		var lab := _label("%s   (%ds left)" % [prefix, int(ceil(bay["left"]))], vd["color"], 14)
+		_depot_live[3].append([lab, bay, prefix])
 		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(lab)
 		var cancel := Button.new()
