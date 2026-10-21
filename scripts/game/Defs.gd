@@ -103,7 +103,7 @@ const BASE_SHIPS := {
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
-		"hp": 73.5, "armor": 49, "shield": 24.5, "speed": 125.0, "radius": 8.0,
+		"hp": 74.6, "armor": 49.7, "shield": 24.9, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
 		"weapon": "laser", "damage": 12.3, "cooldown": 1.0, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 8.0},
 	},
@@ -710,9 +710,9 @@ const AOE_SHARE := 1.0
 const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
-	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.53, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.0},
+	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.57, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.0},
 	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.4, "cd": 1.0 / 3.0, "range": 0.75},
-	"mod_arc_emitters": {"weapon": "arc", "chain": [0.58, 0.21, 0.21], "jump": 120.0},
+	"mod_arc_emitters": {"weapon": "arc", "chain": [0.59, 0.21, 0.21], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
 	#   fan    - [min, max] total fan width in degrees, rolled fresh each launch
 	#   beam   - Ion Lance: [start, end, seconds] - a continuous beam whose damage
@@ -728,7 +728,7 @@ const MOD_WEAPONS := {
 	# total on a lone ship; the 40 blasts make it far more against a group.
 	"mod_cluster_bombs": {"dmg": 0.28, "weapon": "bomblet", "cd": 3.0, "count": 3, "fan": [10.0, 20.0]},
 	"mod_ion_lance": {"weapon": "beam", "dmg": 0.63, "beam": [0.15, 1.85, 4.0]},
-	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.54, "cd": 4.0, "range": 1.4},
+	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.62, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
 	"mod_point_defense_lattice": {"dmg": 0.95, "pd": 220.0},
@@ -739,7 +739,7 @@ const MOD_WEAPONS := {
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
 	"mod_tractor_beams": {"tractor": [60.0, 2.0], "dmg": 1.0},
-	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.35, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
+	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.28, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
 static func damage_profile(d: Dictionary) -> Dictionary:
