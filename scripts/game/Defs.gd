@@ -98,20 +98,20 @@ const BASE_SHIPS := {
 	"constructor": {
 		"name": "Constructor", "role": "constructor",
 		"hp": 110.0, "armor": 40.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
-		"cost": {"minerals": 120, "spice": 5}, "build_time": 22.0, "upkeep": 0.7,
+		"cost": {"minerals": 120, "spice": 5}, "build_time": 10.0, "upkeep": 0.7,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
 		"hp": 73.5, "armor": 49, "shield": 24.5, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
-		"weapon": "laser", "damage": 12.3, "cooldown": 1.0, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 15.0},
+		"weapon": "laser", "damage": 12.3, "cooldown": 1.0, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 8.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
 		"hp": 160.3, "armor": 212.8, "shield": 62.6, "speed": 85.0, "radius": 14.6, "size": 1.33,
 		"cost": {"minerals": 170, "spice": 5}, "build_time": 38.0, "upkeep": 1.7,
-		"weapon": "laser", "damage": 12.5, "cooldown": 1.0, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 25.0},
+		"weapon": "laser", "damage": 12.5, "cooldown": 1.0, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
@@ -121,7 +121,7 @@ const BASE_SHIPS := {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
 		"hp": 385.7, "armor": 192.4, "shield": 577.1, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 80.0, "upkeep": 4.0,
-		"weapon": "laser", "damage": 13.4, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 35.0},
+		"weapon": "laser", "damage": 13.4, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
 		"guns": 3, "turret_rate": 6.0, "turret_scale": 0.6, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
 	},
@@ -140,7 +140,7 @@ const BASE_SHIPS := {
 		"turret_rate": 6.0, "turrets": [[0.7, -0.22], [0.7, 0.22], [0.3, -0.22], [0.3, 0.22]],
 		# Refitting a hull this size is proportionally dearer and slower than
 		# a cruiser's (15 / 35 s) — twice the hull, twice the yard time.
-		"refit": {"minerals": 30, "time": 70.0},
+		"refit": {"minerals": 30, "time": 14.0},
 	},
 	"scout": {
 		"name": "Scout", "role": "scout",
