@@ -20,6 +20,8 @@ const SECTIONS := [
 	["ships", "Ships"],
 	["research", "Research"],
 	["economy", "Economy"],
+	["worlds", "Worlds"],
+	["constructs", "Constructs"],
 	["systems", "Systems"],
 	["terms", "Terminology"],
 ]
@@ -384,6 +386,8 @@ func _show(id: String) -> void:
 		"ships": _page_ships()
 		"research": _page_research()
 		"economy": _page_economy()
+		"worlds": _page_worlds()
+		"constructs": _page_constructs()
 		"systems": _page_systems()
 		"terms": _page_terms()
 	_flow()
@@ -510,16 +514,6 @@ func _page_combat() -> void:
 	_body.add_child(vgrid)
 	_heading("Hull marks", EDGE_LIT)
 	_para("A mark is rank. It comes from the Warships research tab and raises damage and every defense layer. A variant comes from a Weapons Depot and sets what the ship is good against. They stack. The Ships page compares class, mark and variant.")
-	_heading("Weapons Depots")
-	var wd: Dictionary = Defs.WEAPONS_DEPOT
-	_pic("depot", "Starbases build generalists only; a depot refits them into one variant.", Vector2(460, 150))
-	_para("Build depots with a Constructor (%s, %ds each). %d ships fit at a time; each refit costs:" % [Defs.cost_text(wd["cost"]), int(wd["build_time"]), int(wd["capacity"])])
-	var rrows: Array = []
-	for t in Defs.VARIANTS_OF:
-		var r: Dictionary = Defs.SHIPS[t]["refit"]
-		rrows.append([Defs.SHIPS[t]["name"], "%d minerals" % int(r["minerals"]), "%ds" % int(r["time"])])
-	_table(["Hull", "Refit cost", "Refit time"], rrows)
-	_para("No minerals: the refit waits. Cancel to eject it unchanged. A specialist can't refit again. A destroyed depot throws its ships clear at -60%.")
 	_heading("Weapon Mods")
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
@@ -811,18 +805,6 @@ func _rock_sizes() -> void:
 	_body.add_child(card)
 
 func _page_economy() -> void:
-	_heading("Planets")
-	_para("A planet's size is its number of fields, one building each. Its population cap is size x %d. Colonies start at %d pops. Pops eat %s food per minute; an unfed world shrinks instead of growing. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP), str(Defs.FOOD_PER_POP_PER_MIN)])
-	var prows: Array = []
-	for p in Defs.PLANET_TYPES:
-		var pd: Dictionary = Defs.PLANET_TYPES[p]
-		prows.append([pd["label"], "yes" if pd.get("habitable", true) else "no (gas giant)",
-			", ".join(Defs.planet_traits(p)) if not Defs.planet_traits(p).is_empty() else "-", str(pd.get("spice_reserve", pd.get("gas_reserve", 0)))])
-	_table(["Type", "Habitable", "Effects", "Spice / gas reserve"], prows)
-	var wplate: Array = []
-	for p2 in Defs.PLANET_TYPES:
-		wplate.append([p2 + "_s", Defs.PLANET_TYPES[p2]["label"]])
-	_plate(wplate, 64.0, false)
 	_heading("Harvesting")
 	_plate([["ship_miner", "Mining Barge"], ["asteroid_big_0", "Mineral asteroid"], ["spice_0", "Spice asteroid"],
 		["ship_skimmer", "Gas Skimmer"], ["planet_gas_s", "Gas giant"], ["starbase", "Starbase"]], 76.0, true,
@@ -846,6 +828,27 @@ func _page_economy() -> void:
 	_heading("Asteroid sizes")
 	_para("A small rock holds the same amount whether it is minerals or spice, and so does a large one, on every map. Spice is rare instead: about one rock in seven. Belts differ in their mix: a rich belt has more big rocks, a poor one mostly small. Rocks run dry and vanish; gas giants refill after a pause, and a spice nebula never runs out.")
 	_rock_sizes()
+	_heading("Upkeep")
+	_para("Every ship and construct costs energy per minute, and ALL of it is multiplied by one empire-wide factor (shown on the resource bar): each unit you own multiplies it - starbase x%.2f, carrier x%.2f, cruiser x%.2f, destroyer x%.2f, anything else x%.2f - so the more you own, the dearer every unit gets. Orbital Elevators and Jump Drives each shrink the multiplier by 10%%. With no energy in stock, starbases stop producing and your ships move and fire at %d%% speed." % [
+		Defs.UPKEEP_WEIGHT["starbase"], Defs.UPKEEP_WEIGHT["carrier"], Defs.UPKEEP_WEIGHT["cruiser"], Defs.UPKEEP_WEIGHT["destroyer"], Defs.UPKEEP_WEIGHT_SMALL, int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
+
+func _page_worlds() -> void:
+	_heading("Planets")
+	_para("A planet's size is its number of fields, one building each. Its population cap is size x %d. Colonies start at %d pops. Pops eat %s food per minute; an unfed world shrinks instead of growing. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP), str(Defs.FOOD_PER_POP_PER_MIN)])
+	var prows: Array = []
+	for p in Defs.PLANET_TYPES:
+		var pd: Dictionary = Defs.PLANET_TYPES[p]
+		prows.append([pd["label"], "yes" if pd.get("habitable", true) else "no (gas giant)",
+			", ".join(Defs.planet_traits(p)) if not Defs.planet_traits(p).is_empty() else "-", str(pd.get("spice_reserve", pd.get("gas_reserve", 0)))])
+	_table(["Type", "Habitable", "Effects", "Spice / gas reserve"], prows)
+	var wplate: Array = []
+	for p2 in Defs.PLANET_TYPES:
+		wplate.append([p2 + "_s", Defs.PLANET_TYPES[p2]["label"]])
+	_plate(wplate, 64.0, false)
+	_heading("Colonizing")
+	_para("A Colony Ship settles a free, habitable world and is used up doing it: it orbits for %d s, then the world is yours with %d pops. Colony Pods (Worlds research) start colonies with more." % [int(Planet.COLONIZE_TIME), int(Defs.START_POP)])
+	_heading("Population")
+	_para("Pops grow while a world is fed, up to its cap (Habitats and Worlds research raise it). They are the reason to grow a world: every pop raises the output of every building on it, so a full world makes several times what a fresh colony does. A world's panel shows its bonus as 'x' on every building here.")
 	_heading("Buildings")
 	var bplate: Array = []
 	for b in Defs.BUILDING_ORDER:
@@ -868,9 +871,38 @@ func _page_economy() -> void:
 	_para("Spice covers a food shortfall 1:1, and pops living on it keep growing. If neither food nor spice can feed a world, it starves: growth runs backwards at the rate it would have grown. The shortage lifts only after the world has been fed for %d seconds straight." % int(Defs.REGROW_SECONDS))
 	_heading("Defense Battery")
 	_para("A world with a Defense Battery is no free kill. Each battery adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries force a raiding party to commit." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
-	_heading("Upkeep")
-	_para("Every ship and construct costs energy per minute, and ALL of it is multiplied by one empire-wide factor (shown on the resource bar): each unit you own multiplies it - starbase x%.2f, carrier x%.2f, cruiser x%.2f, destroyer x%.2f, anything else x%.2f - so the more you own, the dearer every unit gets. Orbital Elevators and Jump Drives each shrink the multiplier by 10%%. With no energy in stock, starbases stop producing and your ships move and fire at %d%% speed." % [
-		Defs.UPKEEP_WEIGHT["starbase"], Defs.UPKEEP_WEIGHT["carrier"], Defs.UPKEEP_WEIGHT["cruiser"], Defs.UPKEEP_WEIGHT["destroyer"], Defs.UPKEEP_WEIGHT_SMALL, int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
+	_heading("Siege")
+	_para("Enemy worlds are taken by bombardment, not invasion. Warships ordered onto a world fire at it: its planetary shield soaks the damage first and recharges after %d s without hits; then every point of damage kills pops (one base corvette shot is about one pop). Bombardment halts growth. At 0 pops every building is destroyed and the world turns neutral, ready for anyone to colonize." % int(Defs.SHIELD_REGEN_DELAY))
+	_heading("Worlds research", TechIcons.GROUP_COLORS.get("worlds", EDGE_LIT))
+	_para(Defs.TECH_GROUP_DESC.get("worlds", ""))
+	_tech_tree("worlds", _research_rows("worlds"))
+
+func _page_constructs() -> void:
+	_heading("Constructs")
+	_para("Constructs are the stations you build rather than fly. A Constructor (%s, %d s at a starbase) flies to the site and is used up building it. The cost is paid gradually while it builds; a construct starts at %d%% hull and fills in as it goes (Rapid Assembly: %d%%). Sites need room: clear of planets, the star, other constructs, debris and the map edge." % [Defs.cost_text(Defs.SHIPS["constructor"]["cost"]), int(Defs.SHIPS["constructor"]["build_time"]), 10, 50])
+	_plate([["starbase", "Starbase"], ["ship_depot_plasma", "Weapons Depot"], ["ship_mining_station", "Mining Station"], ["ship_constructor", "Constructor"]], 76.0, true)
+	var crows: Array = []
+	for c in [Defs.STARBASE, Defs.WEAPONS_DEPOT, Defs.MINING_STATION]:
+		var gun: String = ("%d dmg / %.1fs, range %d" % [int(c["damage"]), float(c["cooldown"]), int(c["range"])]) if c.has("weapon") else "-"
+		crows.append([c["name"], Defs.cost_text(c["cost"]), "%ds" % int(c["build_time"]), "%d / %d / %d" % [int(c["shield"]), int(c["armor"]), int(c["hp"])], gun, "%.1f/min" % float(c["upkeep"])])
+	_table(["Construct", "Cost", "Build", "Shield / armor / hull", "Gun", "Upkeep"], crows)
+	_heading("Starbase")
+	_para("Your production station: it builds every ship, takes in harvesters' cargo, and defends itself. Its reactors and refineries add %d energy and %d minerals a minute. Lose every starbase and Constructor and you lose the match. Starbases cost the most upkeep of anything (x%.2f to the empire multiplier each)." % [int(round(Defs.STARBASE["energy_per_sec"] * 60.0)), int(round(Defs.STARBASE["minerals_per_sec"] * 60.0)), Defs.UPKEEP_WEIGHT["starbase"]])
+	_heading("Mining Station")
+	_para("A forward drop-off: harvesters unload here instead of flying home, so a station beside a far belt or nebula shortens every trip. It has a light gun for raiders.")
+	_heading("Weapons Depots")
+	var wd: Dictionary = Defs.WEAPONS_DEPOT
+	_pic("depot", "Starbases build generalists only; a depot refits them into one variant.", Vector2(460, 150))
+	_para("Build depots with a Constructor (%s, %ds each). %d ships fit at a time; each refit costs:" % [Defs.cost_text(wd["cost"]), int(wd["build_time"]), int(wd["capacity"])])
+	var rrows: Array = []
+	for t in Defs.VARIANTS_OF:
+		var r: Dictionary = Defs.SHIPS[t]["refit"]
+		rrows.append([Defs.SHIPS[t]["name"], "%d minerals" % int(r["minerals"]), "%ds" % int(r["time"])])
+	_table(["Hull", "Refit cost", "Refit time"], rrows)
+	_para("No minerals: the refit waits. Cancel to eject it unchanged. A specialist can't refit again. A destroyed depot throws its ships clear at -60%.")
+	_heading("Constructs research", TechIcons.GROUP_COLORS.get("constructs", EDGE_LIT))
+	_para(Defs.TECH_GROUP_DESC.get("constructs", ""))
+	_tech_tree("constructs", _research_rows("constructs"))
 
 func _page_systems() -> void:
 	_heading("Systems")
