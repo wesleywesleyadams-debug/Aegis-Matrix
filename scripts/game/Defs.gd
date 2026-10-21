@@ -738,7 +738,7 @@ const MOD_WEAPONS := {
 	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.03, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# No lasers: each turret holds a beam that pulls and burns at dmg x a laser's DPS
 	# x a factor: [pull/s, reach x range, factor at full reach, factor once pulled in].
-	"mod_tractor_beams": {"tractor": [60.0, 2.0, 0.5, 1.5], "dmg": 1.0},
+	"mod_tractor_beams": {"tractor": [60.0, 2.0, 0.5, 1.5], "dmg": 0.50},
 	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.28, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
