@@ -28,13 +28,32 @@ const SECTIONS := [
 
 ## Long sections split into sub-pages, listed under them in the nav while
 ## the section is open. The first sub-page is the section's landing page.
-const SUBPAGES := {
+## The research tabs in the research screen's order (HUD._build_research);
+## Research gets one sub-page per tab that has techs (see _subpages).
+const RESEARCH_TABS := [["warships", "Warships"], ["weapons", "Weapons"], ["mods", "Mods"], ["defense", "Defense"],
+	["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"], ["general", "General"]]
+
+static var SUBPAGES: Dictionary = _subpages()
+const _SUBPAGES_FIXED := {
 	"combat": [["layers", "Defense layers"], ["classes", "Classes"], ["variants", "Variants"],
 		["mods", "Weapon Mods"], ["matchups", "Matchups"], ["jobs", "Ship jobs"]],
 	"ships": [["overview", "Overview"], ["marks", "Marks"], ["colors", "Variant colors"], ["every", "Every ship"]],
 }
 
+static func _subpages() -> Dictionary:
+	var d: Dictionary = _SUBPAGES_FIXED.duplicate()
+	var r: Array = [["overview", "Overview"]]
+	for tab in RESEARCH_TABS:
+		for id in Defs.TECHS:
+			if Defs.TECHS[id].get("group", "general") == tab[0]:
+				r.append(tab)
+				break
+	d["research"] = r
+	return d
+
 const COL_GAP := 32.0
+## Width of a research card and its caption on a Research tab page.
+const CAPTION_W := 380.0
 
 var _body: VBoxContainer          ## staging: pages build here, then _flow()
 var _rows: VBoxContainer          ## the laid-out page (see _flow)
@@ -75,12 +94,12 @@ func _ready() -> void:
 
 	var nav := VBoxContainer.new()
 	nav.custom_minimum_size = Vector2(260, 0)
-	nav.add_theme_constant_override("separation", 8)
+	nav.add_theme_constant_override("separation", 6)
 	cols.add_child(nav)
 	for s in SECTIONS:
 		var b := Button.new()
 		b.text = s[1]
-		b.custom_minimum_size = Vector2(0, 52)
+		b.custom_minimum_size = Vector2(0, 44)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.focus_mode = Control.FOCUS_NONE
 		b.add_theme_font_size_override("font_size", 22)
@@ -90,7 +109,7 @@ func _ready() -> void:
 		for sp in SUBPAGES.get(s[0], []):
 			var sb := Button.new()
 			sb.text = sp[1]
-			sb.custom_minimum_size = Vector2(0, 26)
+			sb.custom_minimum_size = Vector2(0, 24)
 			sb.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			sb.focus_mode = Control.FOCUS_NONE
 			sb.flat = true
@@ -423,7 +442,8 @@ func _show(id: String) -> void:
 		"ships/marks": _page_marks()
 		"ships/colors": _page_colors()
 		"ships/every": _page_every()
-		"research": _page_research()
+		"research/overview": _page_research()
+		_ when id.begins_with("research/"): _page_research_tab(id.get_slice("/", 1))
 		"economy": _page_economy()
 		"worlds": _page_worlds()
 		"constructs": _page_constructs()
@@ -482,17 +502,7 @@ func _page_layers() -> void:
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
 	_pic("shield_regen", "Spread fire lets unhit ships recover; focused fire keeps their shields down.", Vector2(460, 150))
-	_heading("Defense research")
-	_para("Four lines on the Defense tab: shields, armor and hull below, plus screens, which cut a share of every hit (all three: -52%). They are expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech costs time as well as energy.")
-	_para("The shield line also raises a Radiation Sail Array's solar shield (and a merged mega shield). It refills just as fast, since each energy harvested recharges 10% of the maximum.")
-	var lines := {"shields": "shield", "armor": "armor", "hull": "hull"}
-	for line in lines:
-		var lrows: Array = []
-		for id in Defs.TECHS:
-			var t: Dictionary = Defs.TECHS[id]
-			if t.get("line", "") == line:
-				lrows.append([[t["name"], Defs.LAYER_COLORS[lines[line]]], "Tier %d" % t["tier"], Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t["desc"]])
-		_table([line.to_upper(), "", "Cost", "Time", "Effect"], lrows)
+	_para("Research can raise every layer, and add screens that cut a share of each hit: see Research > Defense.")
 
 func _page_classes() -> void:
 	_heading("Generalists")
@@ -572,8 +582,7 @@ func _page_mods() -> void:
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
 	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x3.0).")
-	# The Mods tab as it appears on the research screen.
-	_tech_tree("mods", _research_rows("mods"))
+	_para("What each Mod costs and does, in numbers: see Research > Mods.")
 	var coming: Array = []
 	for id in Defs.TECHS:
 		if Defs.TECHS[id].has("mod") and not Defs.MOD_WEAPONS.has(id):
@@ -663,7 +672,7 @@ func _page_marks() -> void:
 		mrows0.append(row0)
 	_table(["Class", Defs.HULL_MARKS[1], Defs.HULL_MARKS[2], Defs.HULL_MARKS[3]], mrows0)
 	_para("Every warship has small chevrons beside it, one per mark: one at Mk I, four at Mk IV. Each class researches its own marks, so each class is a separate investment. A mark applies to every ship of that class the moment research finishes, existing ships included.")
-	_tech_tree("warships", _research_rows("warships"))
+	_para("Costs and times for every mark: see Research > Warships.")
 
 func _page_colors() -> void:
 	_heading("Variant — the color")
@@ -716,16 +725,190 @@ func _page_every() -> void:
 		card.set_meta("block", true)
 		_body.add_child(card)
 
-## Every tech, tab by tab: what it needs, costs and does.
+## Research > Overview: how research works.
 func _page_research() -> void:
 	_heading("Research")
-	_para("Research spends energy (and spice for later tiers) over time. Only one project runs at a time. Picking another tech pauses the current one, and a paused tech resumes where it left off. Each tech needs only the tier below it in its row. A warship's Mk II needs the class unlocked first.")
-	# Each tab as it appears on the research screen: named rows, three
-	# columns, the same cards (icon, cost, effect, padlock for what it needs).
-	for g in ["warships", "weapons", "mods", "defense", "constructs", "worlds", "logistics"]:
-		_heading(g.capitalize(), TechIcons.GROUP_COLORS.get(g, EDGE_LIT))
-		_para(Defs.TECH_GROUP_DESC.get(g, ""))
-		_tech_tree(g, _research_rows(g))
+	_para("Research spends energy, and spice for the later tiers, over time. Open the research screen with R. Only one project runs at a time: click a tech to start it. Picking another tech pauses the current one; a paused tech keeps its progress and resumes where it left off. Click the active one to pause it.")
+	_para("The cost is paid gradually while the project runs, not up front. If you can't pay, progress stalls until you can; spice covers an energy shortfall 1:1.")
+	_para("In single player the match waits while the research screen is open. It opens by itself at the start of a match (on Warships) and whenever a project finishes with nothing else running (on that tech's tab), so research never sits idle unnoticed.")
+	_heading("Tiers and requirements", EDGE_LIT)
+	_para("Each tab is a grid: one row per line of upgrades, one column per tier. A tech needs the one before it in its row (the padlock on a card names it); Spice Navigation needs either of two. Tier 1 costs energy only and takes under a minute; tier 2 adds spice and costs about twice as much; tier 3 costs around five times tier 2 and takes about four minutes, so a tier 3 project is a real commitment.")
+	_para("Bonuses of the same kind add together: three damage techs of +20%, +25% and +30% give +75% (x1.75). Different kinds multiply: damage times rate of fire times a ship's mark.")
+	var trows: Array = []
+	for tab in SUBPAGES["research"]:
+		if tab[0] == "overview":
+			continue
+		var n := 0
+		for id in Defs.TECHS:
+			if Defs.TECHS[id].get("group", "general") == tab[0]:
+				n += 1
+		trows.append([[tab[1], TechIcons.GROUP_COLORS.get(tab[0], EDGE_LIT)], str(n), Defs.TECH_GROUP_DESC.get(tab[0], "")])
+	_table(["Tab", "Techs", "What it is for"], trows)
+	_para("Each tab's page here shows its tree with a note under every tech: exact numbers, what it touches, how it stacks, and when it is worth the time.")
+
+## Research > <tab>: the tab's tree, a caption under every card.
+func _page_research_tab(g: String) -> void:
+	var title := g.capitalize()
+	for tab in RESEARCH_TABS:
+		if tab[0] == g:
+			title = tab[1]
+	_heading(title, TechIcons.GROUP_COLORS.get(g, EDGE_LIT))
+	_para(Defs.TECH_GROUP_DESC.get(g, ""))
+	match g:
+		"mods": _para("A row is one class. Its three Mods exclude each other: researching another replaces the one you have (the old one keeps working until the new one is done, and must be researched again to come back). Click an active Mod's card to switch it off and on for free. A Mod changes the weapon's shape; a depot variant still sets its damage profile, and marks and Weapons research apply as usual. Combat > Weapon Mods shows each one in action.")
+		"warships": _para("A mark applies at once to every ship of that class, built or not yet built, and multiplies with Weapons and Defense research.")
+		"defense": _para("Screens apply before the layers: with all three, a hit loses %d%% before shields see it." % int(round(_tot("damage_taken") * 100.0)))
+	_tech_tree(g, _research_rows(g), true)
+
+## ", +N% with the techs before it" for a tech deeper than tier 1 in a line.
+func _cum_text(id: String, key: String) -> String:
+	var total := 0.0
+	var cur := id
+	while cur != "":
+		total += float(Defs.TECHS[cur]["effects"].get(key, 0.0))
+		var req: Array = Defs.TECHS[cur]["requires"]
+		cur = req[0] if req.size() == 1 and Defs.TECHS[req[0]]["effects"].has(key) else ""
+	if is_equal_approx(total, float(Defs.TECHS[id]["effects"].get(key, 0.0))):
+		return ""
+	return " (+%d%% with the techs before it)" % int(round(total * 100.0))
+
+## Sum of one effect key over every tech: the most research can give.
+func _tot(key: String) -> float:
+	var t := 0.0
+	for id in Defs.TECHS:
+		t += float(Defs.TECHS[id]["effects"].get(key, 0.0))
+	return t
+
+func _ship_line(cls: String) -> String:
+	var d: Dictionary = Defs.SHIPS[cls]
+	var gun: String = (", range %d" % int(d["range"])) if str(d.get("weapon", "")) != "" else ", unarmed"
+	return "%s (%s, %d s): %d shield / %d armor / %d hull%s, speed %d" % [d["name"], Defs.cost_text(d["cost"]), int(d["build_time"]), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), gun, int(d["speed"])]
+
+## What a tech does in practice. Numbers come from Defs so they follow balance.
+func _tech_caption(id: String) -> String:
+	var t: Dictionary = Defs.TECHS[id]
+	var e: Dictionary = t["effects"]
+	if t.has("mod"):
+		return _mod_caption(id)
+	if t.has("class"):
+		var cls: String = t["class"]
+		var lvl: int = ["mk2", "mk3", "mk4"].find(id.get_slice("_", 1)) + 1
+		var b: Array = Defs.MARK_BONUS[cls]
+		var s := "Every %s you own, existing ships included, gets +%d%% damage, hull, armor and shields over Mk I" % [str(Defs.SHIPS[cls]["name"]).to_lower(), int(round(b[lvl] * 100.0))]
+		if lvl > 1:
+			s += " (the mark before gave +%d%%, so this step adds %d points)" % [int(round(b[lvl - 1] * 100.0)), int(round((b[lvl] - b[lvl - 1]) * 100.0))]
+		s += ". It multiplies with the rest: with every Weapons damage tech as well, its guns hit x%.2f as hard as a fresh Mk I. " % ((1.0 + b[lvl]) * (1.0 + _tot("damage")))
+		match lvl:
+			1: s += "Cheap and quick: worth it as soon as this class is the backbone of your fleet."
+			2: s += "Good value: buy it for the class you build most."
+			3: s += "The biggest single jump, at a tier-3 price: commit only to the class you will still be building at the end."
+		return s
+	match id:
+		"destroyers": return _ship_line("destroyer") + ". Destroyers lean on armor and outrange corvettes. Also opens destroyer marks and Mods, and leads to Cruisers. Cheap: the usual first tech unless you are rushing with corvettes."
+		"cruisers": return _ship_line("cruiser") + ", %d turreted guns. Cruisers lean on shields, which regenerate between fights. Opens cruiser marks and Mods, and leads to Carriers." % int(Defs.SHIPS["cruiser"]["guns"])
+		"carriers": return _ship_line("carrier") + ". The heaviest hull, shields and armor in equal measure, slow, and the dearest upkeep after a starbase. Opens carrier marks and Mods. A late-game investment."
+		# --- Weapons
+		"ion_cannons", "particle_lances", "lance_batteries":
+			var why: String = {"ion_cannons": "The cheapest raw combat upgrade in the game: almost always worth it early.", "particle_lances": "A strong mid-game pick once you fight regularly.", "lance_batteries": "The heavy-gun end of the tier-3 choice; pairs best with slow, heavy weapons (Rail Cannons, Proton Torpedoes)."}[id]
+			var mid := " It applies to every shot you fire: warships, drones, starbases, outposts, mining stations and world batteries, against ships, constructs and worlds alike (so bombardment kills pops faster too), on top of marks, variants and Mods." if int(t["tier"]) == 1 else ""
+			return "+%d%% weapon damage%s; the whole line gives +%d%% (x%.2f).%s %s" % [_pct(id, "damage"), _cum_text(id, "damage"), int(round(_tot("damage") * 100.0)), 1.0 + _tot("damage"), mid, why]
+		"targeting_arrays", "beam_focusing", "capital_batteries":
+			var why2: String = {"targeting_arrays": "Cheap; best for fleets that stand off (cruisers, Rail Cannons).", "beam_focusing": "Also lets starbases cover more of the space around them.", "capital_batteries": "Late game: with Citadel Protocols a starbase outranges most fleets."}[id]
+			var mid2 := " It reaches every ship, starbase and Frontier Outpost (Mining Stations keep theirs), and multiplies a Mod's own range: with the whole line Rail Cannons' x1.4 becomes x%.2f. Longer reach gives you the first volley and lets you kite slower fleets." % (1.4 * (1.0 + _tot("range"))) if int(t["tier"]) == 1 else ""
+			return "+%d%% weapon range%s; the whole line gives +%d%%.%s %s" % [_pct(id, "range"), _cum_text(id, "range"), int(round(_tot("range") * 100.0)), mid2, why2]
+		"autoloaders", "heavy_mounts", "scatter_arrays":
+			var why3: String = {"autoloaders": "Worth about as much as a damage tech; take whichever is cheaper first.", "heavy_mounts": "Best with many small guns: corvette swarms, Kinetic Repeaters, Flak.", "scatter_arrays": "The fast-gun end of the tier-3 choice (Lance Batteries is the heavy-gun end)."}[id]
+			var mid3 := " It speeds the reload of ships, drones and starbases (outposts and Mining Stations keep theirs); more shots also means more Defensive Fire intercepts and Point-Defense needles." if int(t["tier"]) == 1 else ""
+			return "+%d%% rate of fire%s; the whole line gives +%d%%.%s %s" % [_pct(id, "fire_rate"), _cum_text(id, "fire_rate"), int(round(_tot("fire_rate") * 100.0)), mid3, why3]
+		"overcharged_coils": return "%d%% of each hit ignores enemy shields and goes straight on to armor. Strongest against cruisers, carriers and starbases (shield-heavy); no help once a target's shields are down. Plasma, Slip and Disruptor variants already pass shields, so it adds nothing to them." % _pct(id, "shield_pierce")
+		"burst_cyclers": return "%d%% of what reaches the armor skips it and hits the hull. Best against destroyers and carriers, which carry the most armor. With Overcharged Coils a laser shot gets a quarter past each of the first two layers." % _pct(id, "armor_pierce")
+		"hullbreaker_rounds": return "Damage that reaches the hull is x%.2f. Every kill ends on the hull, so it helps against everything, most against hull-heavy corvettes and anything already stripped. Pairs with the two piercing techs, which push more of each shot onto the hull." % (1.0 + float(e["hull_damage"]))
+		"target_prediction": return "Unguided shots aim where a moving target will be, not where it is. Without it fast ships (corvettes, speed %d) dodge much of the fire aimed at them at range. Homing weapons don't need it. Cheap: worth it whenever you fight anything fast." % int(Defs.SHIPS["corvette"]["speed"])
+		"gyro_stabilizers": return "No accuracy loss on the move. Without it a ship firing at full speed lands only about %d%% of its shots (less loss the slower it goes). Essential for kiting, chasing and fighting while retreating." % int(round(Ship.MOVING_ACCURACY * 100.0))
+		"defensive_fire": return "A ship's gun, or a drone, with no enemy ship, construct or world in range shoots down enemy missiles, torpedoes, bombs and drones there instead, at its normal reload. Point-Defense cruisers already do this, and drone carriers' turret doors don't fire. The answer to missile, bomb and torpedo fleets."
+		# --- Defense
+		"deflectors", "phase_shields", "aegis_matrix":
+			var w4: String = {"deflectors": "Shields are the layer that comes back: they regenerate, for a little energy, once a ship stops taking hits, so this pays off over many fights. Best for cruisers and carriers.", "phase_shields": "Also thickens planetary shields and a Radiation Sail Array's solar shield, which refills just as fast (each energy harvested charges a share of the maximum).", "aegis_matrix": "The biggest step; commit to it when most of your fleet's toughness is shields (cruisers, carriers, starbases)."}[id]
+			return "+%d%% shields on every ship, construct and world%s; the whole line gives +%d%%. %s" % [_pct(id, "shield"), _cum_text(id, "shield"), int(round(_tot("shield") * 100.0)), w4]
+		"composite_plating", "reactive_armor", "neutronium_armor":
+			var w5: String = {"composite_plating": "Armor never regenerates; only a Repair Tender restores it, so it suits fleets that fight decisively or bring tenders. Worlds have none.", "reactive_armor": "Best for destroyers and carriers, which carry the most armor; Breachers and Burst Cyclers are the enemy's answer to it.", "neutronium_armor": "The biggest step; worth it when destroyers and carriers are your fleet's core."}[id]
+			return "+%d%% armor on every ship and construct%s; the whole line gives +%d%%. %s" % [_pct(id, "armor"), _cum_text(id, "armor"), int(round(_tot("armor") * 100.0)), w5]
+		"reinforced_frames", "nanite_plating", "adaptive_hulls":
+			var w6: String = {"reinforced_frames": "Hull is the last layer, the one Ravagers and Rupture Charges hit hardest, so this blunts both. Best for hull-heavy corvette swarms.", "nanite_plating": "Harvesters gain too, and with Convoy Protocols a harvester's extra shields and armor grow with its hull.", "adaptive_hulls": "The biggest step; worth it for corvette-heavy fleets, which keep most of their toughness in hull."}[id]
+			return "+%d%% hull on every ship and construct%s; the whole line gives +%d%%. %s" % [_pct(id, "hull"), _cum_text(id, "hull"), int(round(_tot("hull") * 100.0)), w6]
+		"flak_screens", "point_defense", "aegis_umbrella":
+			var why4: String = "Cheap: the best defense for the price." if int(t["tier"]) == 1 else ("Worth it once the fleet is most of your spending." if int(t["tier"]) == 2 else "Expensive, but no layer tech gives as much in one step.")
+			return "-%d%% damage taken by every ship and construct, before shields. Screens add together: all three cut %d%% of every hit, radiation included, which is like nearly doubling every layer at once. Worlds are not covered. %s" % [_pct(id, "damage_taken"), int(round(_tot("damage_taken") * 100.0)), why4]
+		# --- Constructs
+		"garrison_guns": return "Construct guns hit +%d%%: starbases, Mining Stations and Frontier Outposts (world batteries are on the Worlds tab). It multiplies with Weapons damage: with all of both, a starbase shot is x%.2f. Worth it if raiders keep reaching your base or stations." % [_pct(id, "structure_damage"), (1.0 + float(e["structure_damage"])) * (1.0 + _tot("damage"))]
+		"reinforced_docks": return "+%d%% hull and armor on every construct: starbases, depots, stations, outposts and gates. Multiplies with the Defense hull and armor lines. Buy it when your starbase is what the enemy is aiming for." % _pct(id, "structure")
+		"citadel_protocols": return "+%d%% construct shields (multiplied with the Defense shield line) and +%d%% range for starbase and outpost guns (multiplied with Weapons range). A turtling pick: a starbase that outranges besiegers and refills its shields between waves." % [_pct(id, "structure_shield"), _pct(id, "structure_range")]
+		"depots": return "Unlocks the Weapons Depot (%s), which refits generalist warships into a specialist variant: Plasma, Breacher, Ravager, Slip or Disruptor. Needed for any variant at all. Leads to Outposts." % Defs.cost_text(Defs.WEAPONS_DEPOT["cost"])
+		"outposts": return "Unlocks the Frontier Outpost (%s): half a starbase's shields, armor, hull and gun. It builds nothing and takes no cargo, but holds ground; construct gun research applies to it. Upkeep weighs as a cruiser. Use it to claim a belt or a choke point." % Defs.cost_text(Defs.FRONTIER_OUTPOST["cost"])
+		"warp_gates": return "Unlocks the Warp Gate (%s, no gun): garrison any number of ships inside, then fling them all %d-%d px at %dx speed, fog or not, every %d s. Ships inside still cost upkeep and die with the gate, which weighs as a starbase in the upkeep multiplier. Late-game reach for surprise strikes." % [Defs.cost_text(Defs.WARP_GATE["cost"]), int(Defs.WARP_GATE["warp_min"]), int(Defs.WARP_GATE["warp_max"]), int(Defs.WARP_GATE["warp_speed_mult"]), int(Defs.WARP_GATE["warp_cooldown"])]
+		"orbital_yards", "shipyard_networks":
+			return "Starbases build ships +%d%% faster; the cost is paid faster too, so a ship costs the same. With Forward Bases the yard line adds up to +%d%%. Worth it when the build queue, not resources, is the bottleneck." % [_pct(id, "build_speed"), int(round(_tot("build_speed") * 100.0))]
+		"forward_bases": return "Ships +%d%% faster at starbases, and constructs +%d%% faster. Adds to Orbital Yards and to the Construction row. A bridge to Shipyard Networks." % [_pct(id, "build_speed"), _pct(id, "construct_speed")]
+		"modular_frames": return "Constructors raise constructs +%d%% faster: starbases, depots, stations, outposts and gates. The less time a half-built construct stands, the less chance a raider kills it. With every construction tech, x%.2f speed." % [_pct(id, "construct_speed"), 1.0 + _tot("construct_speed")]
+		"rapid_assembly": return "New constructs start at %d%% hull instead of 10%%, so a site under fire survives its first seconds. It does not shorten the build. Best when you expand into contested space." % int(round(0.1 * (1.0 + float(e["construct_start"])) * 100.0))
+		"orbital_elevators": return "Constructs build +%d%% faster, and the empire upkeep multiplier shrinks by %d%% (with Jump Drives, %d%%). Every unit you own gets cheaper to keep, so it pays back most for a large empire." % [_pct(id, "construct_speed"), -_pct(id, "upkeep"), -int(round(_tot("upkeep") * 100.0))]
+		# --- Worlds
+		"hydroponics", "orbital_farms":
+			var farm: float = Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN
+			return "Farms grow +%d%% food. The food line, with Terraforming, adds up to +%d%%: one Farm on a fertile world then feeds %d pops instead of %d. Fewer fields spent on Farms leaves more for Power Plants and Mining Complexes." % [_pct(id, "food"), int(round(_tot("food") * 100.0)), int(farm * (1.0 + _tot("food"))), int(farm)]
+		"terraforming": return "+%d%% food and +%d%% population cap on every world. The cap bonus adds to the Population row's. A capstone for when your worlds are near their caps." % [_pct(id, "food"), _pct(id, "max_pop")]
+		"rationing", "gene_clinics":
+			var w7: String = {"rationing": "A fed world gains %s pop a minute for every 2 pops, so growth snowballs: the bigger a world, the faster it grows. Cheap: get it early if you plan to grow worlds." % str(Defs.GROWTH_PER_PAIR_PER_MIN), "gene_clinics": "The step that matters: worlds reach the output bonus much sooner and refill faster after bombardment or a famine."}[id]
+			return "+%d%% population growth%s; all growth techs give +%d%%. %s" % [_pct(id, "growth"), _cum_text(id, "growth"), int(round(_tot("growth") * 100.0)), w7]
+		"gene_forges": return "+%d%% growth and +%d%% population cap. The biggest growth step: worlds refill fast after bombardment or starvation." % [_pct(id, "growth"), _pct(id, "max_pop")]
+		"habitat_modules", "arcologies", "deep_vaults":
+			var extra := (", +%d%% growth" % _pct(id, "growth")) if e.has("growth") else ""
+			var w8: String = {"habitat_modules": "Pops multiply every Farm, Power Plant, Mining Complex and Spice Extractor on their world; that bonus levels off toward x%.2f, and the three cap techs together lift the ceiling to x%.2f (a Habitat on the world adds 0.1 more). Cheap, but it only pays once worlds fill: pair with growth." % [1.0 + Defs.OUTPUT_POP_BONUS, 1.0 + Defs.OUTPUT_POP_BONUS + _tot("pop_bonus")], "arcologies": "Bigger worlds produce more twice over: more pops, and a higher ceiling on what each pop adds. Worth it once your core worlds are near their caps.", "deep_vaults": "The largest cap step, with some growth built in so the new room fills; the end-game economy tech for wide empires."}[id]
+			return "+%d%% population cap on every world%s, and population's output bonus can rise %.2fx higher. %s" % [_pct(id, "max_pop"), extra, float(e["pop_bonus"]), w8]
+		"colony_pods": return "New colonies start with %d pops instead of %d. Growth counts pairs of pops, so a new colony also grows twice as fast at first. Worth it if you plan several colonies." % [int(Defs.START_POP * (1.0 + float(e["colony_pop"]))), int(Defs.START_POP)]
+		"planetary_shields", "planetary_citadels":
+			var s2 := "+%d%% planetary shield (%d base, +%d per Defense Battery), multiplied with the Defense shield line. Bombardment must break the shield before it kills pops, and the shield refills after %d s without hits." % [_pct(id, "planet_shield"), int(Planet.PLANET_SHIELD), int(Defs.BATTERY_SHIELD), int(Defs.SHIELD_REGEN_DELAY)]
+			if e.has("planet_damage"):
+				s2 += " Batteries also hit +%d%%." % _pct(id, "planet_damage")
+			return s2 + " Worth it when the enemy raids your worlds."
+		"solar_collectors", "plasma_reactors", "dark_matter":
+			var why5: String = {"solar_collectors": "Strong early, when every project is energy-bound.", "plasma_reactors": "Worth it once upkeep from a growing fleet starts eating your income.", "dark_matter": "Costs only spice, no energy: a way to turn spare spice into permanent energy."}[id]
+			var mid5 := " Energy pays for research, upkeep and shield regeneration, so this speeds up everything." if int(t["tier"]) == 1 else ""
+			return "+%d%% energy from Power Plants, starbase reactors and Radiation Sail Arrays%s; the line gives +%d%%.%s %s" % [_pct(id, "energy"), _cum_text(id, "energy"), int(round(_tot("energy") * 100.0)), mid5, why5]
+		# --- Logistics
+		"deep_drills", "bulk_holds":
+			return "Harvesters (Mining Barges and Gas Skimmers) carry +%d%% per load. Cargo adds up to +%d%%. Fewer trips per load hauled: worth most when belts are far from your drop-off." % [_pct(id, "cargo"), int(round(_tot("cargo") * 100.0))]
+		"logistics_command": return "Harvesters gather +%d%% faster and carry +%d%% more. Adds to both the Cargo and Harvest rows." % [_pct(id, "harvest"), _pct(id, "cargo")]
+		"cutting_lasers", "resonance_drills", "mass_drivers":
+			return "Harvesters gather +%d%% faster while parked on a rock, gas giant or nebula. Gather rate adds up to +%d%% (x%.2f). Worth most when belts are close and trips short, so time spent gathering dominates." % [_pct(id, "harvest"), int(round(_tot("harvest") * 100.0)), 1.0 + _tot("harvest")]
+		"ion_thrusters", "fusion_drives":
+			return "+%d%% speed for every ship, harvesters and Constructors included. Speed adds up to +%d%%. Faster harvest trips, faster reinforcements, easier kiting." % [_pct(id, "speed"), int(round(_tot("speed") * 100.0))]
+		"jump_drives": return "+%d%% speed for every ship, and the empire upkeep multiplier shrinks by %d%% (with Orbital Elevators, %d%%)." % [_pct(id, "speed"), -_pct(id, "upkeep"), -int(round(_tot("upkeep") * 100.0))]
+		"gas_skimming": return "Unlocks the " + _ship_line("skimmer") + ". It works gas giants (they refill after a pause) and spice nebulae (endless spice, but low Radiation inside). Worth it on maps with gas near your base."
+		"convoy_protocols": return "Every harvester gains extra shields and extra armor, each equal to its hull, so it takes about three times the damage to kill. Get it when the enemy hunts your harvesters."
+		"spice_navigation": return "Your ships take %d%% less radiation inside a spice nebula (not from a star). Needs Gas Skimming or Convoy Protocols. Worth it if skimmers or fleets spend time in nebulae." % int(round((1.0 - Abilities.SPICE_NAV_RADIATION) * 100.0))
+	return t["desc"]
+
+## A Mod's caption, from Defs.MOD_WEAPONS.
+func _mod_caption(id: String) -> String:
+	var m: Dictionary = Defs.MOD_WEAPONS.get(id, {})
+	var dm := int(round(float(m.get("dmg", 1.0)) * 100.0))
+	match id:
+		"mod_proton_torpedoes":
+			var vs: Dictionary = m["vs_class"]
+			return "Slow, steerable torpedoes: each hits for %d%% of a laser shot and reloads %.1fx slower, but deals x%s vs destroyers, x%s vs cruisers and x%s vs carriers, starbases and worlds. Loses slightly to laser corvettes. The corvette answer to big hulls and sieges." % [dm, float(m["cd"]), String.num(vs["destroyer"]), String.num(vs["cruiser"]), String.num(vs["carrier"])]
+		"mod_kinetic_repeaters": return "%.1fx the fire rate at %d%% damage per slug, %d%% of a laser's damage over time, at %d%% range. Rate-of-fire research multiplies it. For brawling corvettes against other light hulls." % [1.0 / float(m["cd"]), dm, int(round(float(m["dmg"]) / float(m["cd"]) * 100.0)), int(round(float(m["range"]) * 100.0))]
+		"mod_arc_emitters": return "Each shot hits its target for %d%%, then jumps to up to 2 more enemies within %d for %d%% each. Strong against tight swarms; no gain on a lone big hull." % [int(round(m["chain"][0] * 100.0)), int(m["jump"]), int(round(m["chain"][1] * 100.0))]
+		"mod_flak_cannons": return "Shells burst, hitting every enemy within %d of the blast for %d%% of a laser shot. Weak against one target, strong against corvette clumps and drones." % [int(Defs.AOE_RADIUS["flak"]), dm]
+		"mod_cluster_bombs": return "Every %.1fx reload each gun throws %d unguided bomblets in a %d-%d degree fan, each %d%% of a laser shot with a %d-wide blast. About a laser's damage on a lone ship, far more on a group or a world." % [float(m["cd"]), int(m["count"]), int(m["fan"][0]), int(m["fan"][1]), dm, int(Defs.AOE_RADIUS["bomblet"])]
+		"mod_homing_missiles": return "Volleys of homing missiles at +%d%% range, each %d%% of a laser shot with a small blast. They steer onto their target, so Target Prediction and Gyro-Stabilizers don't matter; Defensive Fire and Point-Defense can shoot them down." % [int(round((float(m["range"]) - 1.0) * 100.0)), dm]
+		"mod_ion_lance": return "A continuous beam per turret, no reload: it ramps from %d%% to %d%% of a laser's damage rate over %d s on one target and restarts on a new one. Melts single big hulls; weak against swarms." % [int(round(m["beam"][0] * float(m["dmg"]) * 100.0)), int(round(m["beam"][1] * float(m["dmg"]) * 100.0)), int(m["beam"][2])]
+		"mod_rail_cannons": return "A heavy slug every %.0fx the reload for %d%% of a laser shot: about %d%% of a laser's damage over time, at %d%% range. Best against big hulls from beyond their reach." % [float(m["cd"]), dm, int(round(float(m["dmg"]) / float(m["cd"]) * 100.0)), int(round(float(m["range"]) * 100.0))]
+		"mod_point_defense_lattice": return "Needle lasers: each turret first shoots down enemy ordnance within %d (bouncing on to %d more), then drones (x%d damage), and only then ships at %d%% damage. The hard counter to missiles, torpedoes, bombs and drones." % [int(m["pd"]), Game.PD_BOUNCES, int(Ship.PD_DRONE_MULT), dm]
+		"mod_interceptor_drones": return "The turrets stand down; the carrier launches up to %d drones (%d hull each) that fight within %d of it and die with it. Weaker against heavy hulls (x%s vs carriers). Flak, Point-Defense and Defensive Fire counter them." % [int(m["drones"][0]), int(Drone.HULL), int(m["drones"][1]), String.num(m["vs_class"]["carrier"])]
+		"mod_tractor_beams": return "The lasers keep firing; each turret also holds a beam on an enemy ship or drone up to %dx weapon range away and drags it toward the carrier at %d per second, until it is well inside gun range. No damage, no slow. Pulls kiters and runners into your fleet." % [int(m["tractor"][1]), int(m["tractor"][0])]
+		"mod_missile_barrage": return "A %d-missile salvo every %d s at +%d%% range, each missile %d%% of a laser shot: the longest reach a carrier has. A strong opener; Point-Defense and Defensive Fire thin it." % [4 * int(m["count"]), int(m["cd"]), int(round((float(m["range"]) - 1.0) * 100.0)), dm]
+	return Defs.TECHS[id]["desc"]
 
 ## A tab's rows, [name, [three tech ids]], in the research screen's layout.
 func _research_rows(g: String) -> Array:
@@ -746,7 +929,7 @@ func _research_rows(g: String) -> Array:
 			return out
 	return HUD.TECH_ROWS.get(g, [])
 
-func _tech_tree(g: String, rows: Array) -> void:
+func _tech_tree(g: String, rows: Array, captions: bool = false) -> void:
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 12)
@@ -759,9 +942,26 @@ func _tech_tree(g: String, rows: Array) -> void:
 		var head := _label(r[0], col, 14)
 		head.custom_minimum_size = Vector2(110, 0)
 		head.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		if captions:
+			head.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+			head.custom_minimum_size.y = 72
 		grid.add_child(head)
 		for id in r[1]:
-			grid.add_child(_tech_card(id) if id != "" and Defs.TECHS.has(id) else Control.new())
+			if id == "" or not Defs.TECHS.has(id):
+				grid.add_child(Control.new())
+			elif captions:
+				var cell := VBoxContainer.new()
+				cell.add_theme_constant_override("separation", 4)
+				var card := _tech_card(id)
+				card.custom_minimum_size.x = CAPTION_W
+				cell.add_child(card)
+				var cap := _label(_tech_caption(id), DIM, 14)
+				cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				cap.custom_minimum_size = Vector2(CAPTION_W, 0)
+				cell.add_child(cap)
+				grid.add_child(cell)
+			else:
+				grid.add_child(_tech_card(id))
 	grid.set_meta("block", true)
 	_body.add_child(grid)
 
@@ -929,9 +1129,7 @@ func _page_worlds() -> void:
 	_para("A world with a Defense Battery is no free kill. Each battery adds %d to its planetary shield and fires on besieging ships (%d damage, %d px). Two batteries force a raiding party to commit." % [int(Defs.BATTERY_SHIELD), int(Defs.BATTERY["damage"]), int(Defs.BATTERY["range"])])
 	_heading("Siege")
 	_para("Enemy worlds are taken by bombardment, not invasion. Warships ordered onto a world fire at it: its planetary shield soaks the damage first and recharges after %d s without hits; then every point of damage kills pops (one base corvette shot is about one pop). While shots are reaching the pops, growth stops (until %d s after the last such hit); fire the shield absorbs doesn't stop it. At 0 pops every building is destroyed and the world turns neutral, ready for anyone to colonize." % [int(Defs.SHIELD_REGEN_DELAY), int(Planet.SIEGE_TIME)])
-	_heading("Worlds research", TechIcons.GROUP_COLORS.get("worlds", EDGE_LIT))
-	_para(Defs.TECH_GROUP_DESC.get("worlds", ""))
-	_tech_tree("worlds", _research_rows("worlds"))
+	_para("Food, growth, population cap, colony and energy techs: see Research > Worlds.")
 
 func _page_constructs() -> void:
 	_heading("Constructs")
@@ -962,9 +1160,7 @@ func _page_constructs() -> void:
 		rrows.append([Defs.SHIPS[t]["name"], "%d minerals" % int(r["minerals"]), "%ds" % int(r["time"])])
 	_table(["Hull", "Refit cost", "Refit time"], rrows)
 	_para("No minerals: the refit waits. Cancel to eject it unchanged. A specialist can't refit again. A destroyed depot throws its ships clear at -60%.")
-	_heading("Constructs research", TechIcons.GROUP_COLORS.get("constructs", EDGE_LIT))
-	_para(Defs.TECH_GROUP_DESC.get("constructs", ""))
-	_tech_tree("constructs", _research_rows("constructs"))
+	_para("Construct guns, toughness, build speed and the Depot / Outpost / Warp Gate unlocks: see Research > Constructs.")
 
 func _page_systems() -> void:
 	_heading("Systems")

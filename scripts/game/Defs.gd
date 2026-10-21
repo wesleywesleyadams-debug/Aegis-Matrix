@@ -595,7 +595,6 @@ const TECH_GROUP_DESC := {
 	"worlds": "Feeding and growing your colonies: food, population and the cap on both.",
 	"logistics": "Hauling, skimming and fleet movement: how fast cargo and ships get there.",
 	"mods": "Change what a ship class fires. One Mod per class: researching another replaces it. Click an active Mod to switch it off.",
-	"general": "Everything else.",
 }
 
 ## Star types (set per system; see Star.set_type and SystemGen). core: glowing
