@@ -1430,7 +1430,19 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 		elif s.weapon_mod.has("drones"):
 			txt += "   Interceptor Drones"
 		elif s.def["weapon"] != "":
-			txt += "   %s %.0f dmg / %.1fs" % [s.def["weapon"].capitalize(), s.def["damage"] * game.mod(e.owner_id, "damage") * Defs.mark_mult(s.ship_type, game.mark_level(e.owner_id, s.ship_type)), s.def["cooldown"]]
+			# The equipped weapon: the class's active Mod, else its laser.
+			var base_dmg: float = s.def["damage"] * game.mod(e.owner_id, "damage") * Defs.mark_mult(s.ship_type, game.mark_level(e.owner_id, s.ship_type))
+			var wm: Dictionary = s.weapon_mod
+			var mid: String = game.active_mod(e.owner_id, str(s.def.get("base", s.ship_type))) if not wm.is_empty() else ""
+			var wname: String = Defs.TECHS[mid]["name"] if mid != "" else s.def["weapon"].capitalize()
+			var cd: float = s.def["cooldown"] * float(wm.get("cd", 1.0)) / game.mod(e.owner_id, "fire_rate")
+			if wm.has("beam"):
+				txt += "   %s (continuous beam)" % wname
+			elif wm.has("tractor"):
+				txt += "   Laser %.0f dmg / %.1fs + Tractor Beams" % [base_dmg * float(wm.get("dmg", 1.0)), cd]
+			else:
+				var cnt: int = int(wm.get("count", 1))
+				txt += "   %s %.0f dmg%s / %.1fs" % [wname, base_dmg * float(wm.get("dmg", 1.0)), (" x%d" % cnt) if cnt > 1 else "", cd]
 		txt += "   Upkeep %.1f/min" % (s.def["upkeep"] * game.upkeep_multiplier(s.owner_id))
 		# Interceptor Drones: how many are out, and when the next launches.
 		if s.weapon_mod.has("drones"):
