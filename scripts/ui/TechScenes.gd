@@ -37,6 +37,7 @@ const SCENES := [
 	"orbital_farms", "planetary_shields", "terraforming", "deep_vaults", "gene_forges", "planetary_citadels",
 	"deep_drills", "bulk_holds", "cutting_lasers", "resonance_drills", "gas_skimming", "ion_thrusters",
 	"fusion_drives", "jump_drives", "convoy_protocols", "mass_drivers", "logistics_command", "spice_navigation",
+	"vectored_thrusters", "strafing_thrusters", "reverse_thrusters",
 	"mod_proton_torpedoes", "mod_kinetic_repeaters", "mod_arc_emitters", "mod_flak_cannons", "mod_cluster_bombs",
 	"mod_homing_missiles", "mod_ion_lance", "mod_rail_cannons", "mod_point_defense_lattice",
 	"mod_interceptor_drones", "mod_tractor_beams", "mod_missile_barrage",
@@ -384,6 +385,22 @@ static func call_scene(id: String, img: Image) -> void:
 		"ion_thrusters":
 			_poly(img, [Vector2(14, 22), Vector2(30, 26), Vector2(30, 38), Vector2(14, 42)], Color("8a95b8"))
 			_poly(img, [Vector2(30, 28), Vector2(56, 32), Vector2(30, 36)], Color("7fd8ff"))
+		# Maneuvers: the hull faces right; the white arrow is the motion,
+		# the flame points the other way.
+		"vectored_thrusters":
+			_sprite(img, "ship_destroyer", C + Vector2(0, 6), 28.0)
+			_arc(img, C, 22.0, -2.6, -0.3, 2.5, Color("f2f2f2"))
+			var e := C + Vector2.from_angle(-0.3) * 22.0
+			var tg := Vector2.from_angle(-0.3 + PI * 0.5)
+			_poly(img, [e + tg * 7.0, e - tg.orthogonal() * 5.0, e + tg.orthogonal() * 5.0], Color("f2f2f2"))
+		"strafing_thrusters":
+			_sprite(img, "ship_destroyer", Vector2(30, 38), 28.0)
+			_arrow(img, Vector2(30, 28), Vector2(30, 4), Color("f2f2f2"))
+			_flame(img, Vector2(30, 48), Vector2(0, 1))
+		"reverse_thrusters":
+			_sprite(img, "ship_destroyer", Vector2(34, 32), 28.0)
+			_arrow(img, Vector2(19, 32), Vector2(2, 32), Color("f2f2f2"))
+			_flame(img, Vector2(49, 32), Vector2(1, 0))
 		"fusion_drives":
 			_sprite(img, "ship_cruiser", Vector2(38, 32), 28.0)
 			_poly(img, [Vector2(24, 28), Vector2(4, 32), Vector2(24, 36)], Color("ff8a3a"))
@@ -523,6 +540,18 @@ static func _helix(img: Image, col: Color) -> void:
 static func _beam(img: Image, a: Vector2, b: Vector2, col: Color, w: float) -> void:
 	_line(img, a, b, w * 2.2, Color(col, col.a * 0.3))
 	_line(img, a, b, w, col)
+
+## A motion arrow from `a` to `b`, head at `b`.
+static func _arrow(img: Image, a: Vector2, b: Vector2, col: Color) -> void:
+	var d := (b - a).normalized()
+	_line(img, a, b - d * 5.0, 2.5, col)
+	_poly(img, [b, b - d * 8.0 + d.orthogonal() * 5.0, b - d * 8.0 - d.orthogonal() * 5.0], col)
+
+## A thruster flame from `at` pointing along `dir` (opposite the motion).
+static func _flame(img: Image, at: Vector2, dir: Vector2) -> void:
+	var n := dir.orthogonal()
+	_poly(img, [at + n * 6.0, at + dir * 15.0, at - n * 6.0], Color("ff6a1a"))
+	_poly(img, [at + n * 3.0, at + dir * 9.0, at - n * 3.0], Color("ffffff"))
 
 static func _dashes(img: Image, a: Vector2, b: Vector2, col: Color) -> void:
 	var n := 6

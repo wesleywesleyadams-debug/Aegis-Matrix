@@ -992,6 +992,7 @@ func _refresh_research() -> void:
 			line += "  PAUSED %d%%" % int(100.0 * kept / t["time"])
 		w["label"].text = line
 		w["desc"].text = t["desc"]
+		w["button"].tooltip_text = t["desc"]
 		# Prerequisites: a padlock and the techs' names.
 		w["req"].visible = not t["requires"].is_empty()
 		w["req_label"].text = Game.requires_text(id, true)
@@ -2012,6 +2013,9 @@ const TECH_CARD_W := 400.0
 ## takes from the text.
 const TECH_ICON := 120.0
 const TECH_ICON_PAD := 134.0
+## Description lines a research card shows before it trims with an ellipsis
+## (one fewer when the prerequisites row is shown under it).
+const TECH_DESC_LINES := 3
 const TECH_ROW_HEAD_W := 110.0
 
 ## One row header: a name, optionally over an icon.
@@ -2054,6 +2058,7 @@ const TECH_ROWS := {
 		["HARVEST", ["cutting_lasers", "resonance_drills", "mass_drivers"]],
 		["SPEED", ["ion_thrusters", "fusion_drives", "jump_drives"]],
 		["SUPPLY", ["gas_skimming", "convoy_protocols", "spice_navigation"]],
+		["MANEUVERS", ["vectored_thrusters", "strafing_thrusters", "reverse_thrusters"]],
 	],
 	"mods": [
 		["CORVETTE", ["mod_proton_torpedoes", "mod_kinetic_repeaters", "mod_arc_emitters"]],
@@ -2145,6 +2150,10 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 	desc.custom_minimum_size = Vector2(width - TECH_ICON_PAD - 12.0, 0)
 	desc.add_theme_font_size_override("font_size", 14)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Never spill past the card: the lines that fit, then an ellipsis (the
+	# whole text is in the card's tooltip).
+	desc.max_lines_visible = TECH_DESC_LINES - (0 if Defs.TECHS[id].get("requires", []).is_empty() else 1)
+	desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	box.add_child(desc)
 	var req := HBoxContainer.new()
 	req.add_theme_constant_override("separation", 6)

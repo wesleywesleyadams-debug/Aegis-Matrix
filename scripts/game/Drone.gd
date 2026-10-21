@@ -119,7 +119,7 @@ func _physics_process(delta: float) -> void:
 	# Stay inside the leash: past it, turn for home.
 	if global_position.distance_to(home) > reach:
 		goal = home
-	heading = rotate_toward(heading, (goal - global_position).angle(), TURN * delta * sf)
+	heading = rotate_toward(heading, (goal - global_position).angle(), TURN * delta * sf * g.mod(owner_id, "turn_rate"))
 	velocity = Vector2.from_angle(heading) * SPEED * sf
 	global_position += velocity * delta
 	rotation = heading

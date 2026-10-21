@@ -378,10 +378,18 @@ const TECHS := {
 		"effects": {"damage": 0.25}, "desc": "+25% weapon damage: ships, constructs, worlds."},
 	"ion_thrusters": {"name": "Ion Thrusters", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 80}, "time": 60.0,
 		"effects": {"speed": 0.15}, "desc": "+15% ship speed."},
+	# --- Logistics: Maneuvers. Ships fly nose-first; these add turn and
+	# thrust on the other axes (Ship._steer).
+	"vectored_thrusters": {"name": "Vectored Thrusters", "group": "logistics", "tier": 1, "requires": [], "cost": {"energy": 80}, "time": 60.0,
+		"effects": {"turn_rate": 0.50}, "desc": "+50% ship turn and turret traverse."},
+	"strafing_thrusters": {"name": "Strafing Thrusters", "group": "logistics", "tier": 2, "requires": ["vectored_thrusters"], "cost": {"energy": 145, "spice": 25}, "time": 85.0,
+		"effects": {}, "desc": "Ships can move sideways at half speed."},
+	"reverse_thrusters": {"name": "Reverse Thrusters", "group": "logistics", "tier": 3, "requires": ["strafing_thrusters"], "cost": {"energy": 690, "spice": 120}, "time": 215.0,
+		"effects": {}, "desc": "Ships can move backward at half speed."},
 	"gene_clinics": {"name": "Gene Clinics", "group": "worlds", "tier": 2, "requires": ["rationing"], "cost": {"energy": 100, "spice": 20}, "time": 75.0,
 		"effects": {"growth": 0.50}, "desc": "+50% population growth."},
 	"arcologies": {"name": "Arcologies", "group": "worlds", "tier": 2, "requires": ["habitat_modules"], "cost": {"energy": 110, "spice": 20}, "time": 80.0,
-		"effects": {"max_pop": 0.30, "pop_bonus": 0.20}, "desc": "+30% population cap; population's output bonus can rise 0.20x higher."},
+		"effects": {"max_pop": 0.30, "pop_bonus": 0.20}, "desc": "+30% pop cap; pop output bonus cap +0.20x."},
 	# --- Weapons: reach and rate of fire, alongside the damage line.
 	"targeting_arrays": {"name": "Quantum Lenses", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 60}, "time": 50.0,
 		"effects": {"range": 0.15}, "desc": "+15% weapon range: ships and starbases."},
@@ -418,7 +426,7 @@ const TECHS := {
 	"terraforming": {"name": "Terraforming", "group": "worlds", "tier": 3, "requires": ["orbital_farms"], "cost": {"energy": 690, "spice": 140}, "time": 225.0,
 		"effects": {"food": 0.40, "max_pop": 0.20}, "desc": "+40% food production, +20% population cap."},
 	"deep_vaults": {"name": "Deep Vaults", "group": "worlds", "tier": 3, "requires": ["arcologies"], "cost": {"energy": 720, "spice": 150}, "time": 235.0,
-		"effects": {"max_pop": 0.40, "growth": 0.25, "pop_bonus": 0.25}, "desc": "+40% population cap, +25% population growth; population's output bonus can rise 0.25x higher."},
+		"effects": {"max_pop": 0.40, "growth": 0.25, "pop_bonus": 0.25}, "desc": "+40% pop cap, +25% growth; pop output bonus cap +0.25x."},
 
 	# --- Weapons: every step up the line costs something. The two tier 3
 	# projects are a fork, not a sequence: heavy slow guns or light fast ones.

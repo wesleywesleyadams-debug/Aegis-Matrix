@@ -264,6 +264,10 @@ func _ready() -> void:
 					upkeep(player_id), ship_count(player_id)]))
 	# Dev: SL_DUEL="type:mark,type:mark" pits two equal-cost fleets against
 	# each other with no AI, prints who won and quits.
+	# Dev: SL_MANEUVER_TEST=fly|back|side logs one ship's movement and quits.
+	if OS.get_environment("SL_MANEUVER_TEST") != "":
+		_maneuver_test()
+		return
 	if OS.get_environment("SL_DUEL") != "":
 		_duel()
 		return
@@ -4021,6 +4025,44 @@ func _make_arena() -> void:
 	stars_list = []
 	nav = null
 	arena_radius = ARENA_RADIUS
+
+## Dev (SL_MANEUVER_TEST): one ship of SL_MT_TYPE (default destroyer) at the
+## arena center, nose east. "fly": ordered to a point 600 px astern. "back" /
+## "side": an unarmed enemy colony ship 200 px ahead, ours ordered 300 px
+## astern / abeam. SL_MT_TECHS=1 gives it all three Maneuvers techs. Logs
+## position, heading and body-frame velocity every 0.25 s.
+func _maneuver_test() -> void:
+	hud.visible = false
+	ai.process_mode = Node.PROCESS_MODE_DISABLED
+	Engine.time_scale = 1.0
+	_make_arena()
+	await get_tree().process_frame
+	var mode := OS.get_environment("SL_MANEUVER_TEST")
+	var typ := OS.get_environment("SL_MT_TYPE") if OS.get_environment("SL_MT_TYPE") != "" else "destroyer"
+	if OS.get_environment("SL_MT_TECHS") != "":
+		for tid in ["vectored_thrusters", "strafing_thrusters", "reverse_thrusters"]:
+			researched[1][tid] = true
+	var s := spawn_ship(typ, 1, Vector2.ZERO)
+	s.rotation = 0.0
+	var goal := Vector2(-600, 0)
+	if mode != "fly":
+		var e := spawn_ship("colony", 2, Vector2(float(OS.get_environment("SL_MT_D")) if OS.get_environment("SL_MT_D") != "" else 200.0, 0))
+		e.order_stop()
+		goal = Vector2(-300, 0) if mode == "back" else Vector2(0, 300)
+	await get_tree().physics_frame
+	s.order_move(goal)
+	var t0 := now()
+	var arrived := -1.0
+	while now() - t0 < float(OS.get_environment("SL_MT_T") if OS.get_environment("SL_MT_T") != "" else "12"):
+		await get_tree().create_timer(0.25).timeout
+		if not is_instance_valid(s):
+			break
+		var fw := Vector2.from_angle(s.rotation)
+		print("MT t=%.2f pos=(%.0f,%.0f) head=%.0f vf=%.1f vl=%.1f state=%d lock=%s" % [now() - t0, s.global_position.x, s.global_position.y, rad_to_deg(wrapf(s.rotation, -PI, PI)), s.velocity.dot(fw), s.velocity.dot(fw.orthogonal()), s.state, s._face_lock])
+		if arrived < 0.0 and s.state == Ship.State.IDLE:
+			arrived = now() - t0
+			print("MT_ARRIVE %s techs=%s %.2fs" % [typ, OS.get_environment("SL_MT_TECHS"), arrived])
+	get_tree().quit()
 
 ## Dev duel (SL_DUEL): two fleets of the same mineral cost, side 1 left and
 ## side 2 right, ordered at each other. Prints the result and quits.

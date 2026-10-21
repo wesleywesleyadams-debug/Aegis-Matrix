@@ -44,7 +44,7 @@ const MOVING_ACCURACY := 0.65
 ## offset by the hull's own rotation.
 func _traverse(point: Vector2, delta: float) -> bool:
 	var want: float = (point - global_position).angle()
-	var rate: float = float(def.get("turret_rate", 1.0))
+	var rate: float = float(def.get("turret_rate", 1.0)) * Game.instance.mod(owner_id, "turn_rate")
 	_turret_rot = rotate_toward(_turret_rot, want, rate * delta)
 	for t in _turret_sprites:
 		if is_instance_valid(t):
@@ -81,7 +81,7 @@ func _fire_turrets(delta: float) -> void:
 	if g.duel_nomovepen or g.has_tech(owner_id, "gyro_stabilizers"):
 		acc = 1.0
 	var taken := {}
-	var rate: float = float(def.get("turret_rate", 1.0))
+	var rate: float = float(def.get("turret_rate", 1.0)) * g.mod(owner_id, "turn_rate")
 	var had_beams := not _beams.is_empty()
 	_beams.clear()
 	var pd: float = float(weapon_mod.get("pd", 0.0))
@@ -223,6 +223,8 @@ func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 		# fixed pull, and only in to the guns' sweet spot.
 		if d > rng * 0.6:
 			t.global_position += (global_position - t.global_position).normalized() * float(tr[0]) * g.ship_speed_factor(owner_id) * delta
+			if t is Ship:
+				(t as Ship)._tractored_at = Game.now()
 		_tbeams.append([_turret_sprites[i].global_position, t.global_position, 0.5])
 
 
@@ -437,6 +439,24 @@ var _scan_cd: float = 0.0
 ## max_speed() is asked several times a tick; compute it once per tick.
 var _speed_frame: int = -1
 var _speed_cache: float = 0.0
+## Maneuvers (see _steer): ships thrust nose-first. Strafing Thrusters add
+## sideways thrust, Reverse Thrusters backward thrust, each up to this share
+## of full speed; parked ships keep station with a little thrust on every axis.
+const LATERAL_THRUST := 0.5
+const REVERSE_THRUST := 0.5
+const STATION_THRUST := 0.3
+## Whether the hull is holding its nose on its face target while it moves
+## (hysteresis, so it does not flick between that and the travel heading).
+var _face_lock := false
+## Last turn direction, kept while the wanted heading is nearly dead astern
+## so the hull does not dither between turning left and right.
+var _turn_sign := 0.0
+## Tractor Beams: when an enemy beam last pulled this ship, and the spot it
+## was holding when the pull began (Reverse Thrusters back toward it).
+var _tractored_at := -100.0
+var _tractor_hold := Vector2.INF
+## What the fixed guns last fired at (kept faced between shots, see above).
+var _aim_at: Node2D
 ## Where _arrive was last steering to (for AI sun avoidance).
 var _nav_goal: Vector2
 ## Route around debris rings: remaining waypoints, the goal they lead to,
@@ -1067,6 +1087,10 @@ func _physics_process(delta: float) -> void:
 				# keeps its own heading; only fixed guns need the nose on target.
 				if not def.has("turrets"):
 					face_target = target
+				# With Strafing or Reverse Thrusters a turreted hull keeps its
+				# bow on the fight too and moves by sliding or backing.
+				elif d <= weapon_range() * 1.3 and lateral_thrust() + reverse_thrust() > 0.0:
+					face_target = target
 		State.MINE_GO:
 			if not is_instance_valid(mine_target) or mine_target.amount <= 0:
 				var want: String = mine_target.resource if is_instance_valid(mine_target) else cargo_type
@@ -1199,6 +1223,11 @@ func _physics_process(delta: float) -> void:
 	# Turreted hulls: every turret aims and fires on its own (_fire_turrets).
 	if def["weapon"] != "" and def.has("turrets") and not _turret_sprites.is_empty():
 		_fire_turrets(delta)
+		# Strafing / Reverse Thrusters: a turreted hull on the move keeps its
+		# bow on what its lead turret is shooting (if it can fly that way).
+		if face_target == null and face_at == null and not _t_target.is_empty() and _t_target[0] is SpaceEntity \
+				and is_instance_valid(_t_target[0]) and lateral_thrust() + reverse_thrust() > 0.0:
+			face_target = _t_target[0]
 	# Fire at whatever is in range, even while moving.
 	elif def["weapon"] != "" and _cooldown <= 0.0:
 		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
@@ -1216,6 +1245,7 @@ func _physics_process(delta: float) -> void:
 		if shoot == null:
 			_defensive_fire(weapon_range())
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
+			_aim_at = shoot
 			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))
 			var ready := false
 			if def.has("turrets"):
@@ -1247,6 +1277,23 @@ func _physics_process(delta: float) -> void:
 						Game.instance.fire(self, shoot, wpn, dmg)
 				_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
+	# Strafing / Reverse Thrusters: fixed guns stay on what they last shot at
+	# between shots while it is in reach, so the hull can back or slide
+	# rather than swing away (it still turns away if it cannot fly that way).
+	if face_target == null and face_at == null and is_instance_valid(_aim_at) and _aim_at is SpaceEntity \
+			and (_aim_at as SpaceEntity).is_alive() and lateral_thrust() + reverse_thrust() > 0.0 \
+			and global_position.distance_to(_aim_at.global_position) <= weapon_range() + float(_aim_at.get("radius")) + 20.0:
+		face_target = _aim_at
+	# Reverse Thrusters: a ship held by a tractor beam that is not trying to
+	# go anywhere backs off toward where it was when the pull began, nose
+	# still on whatever it is fighting.
+	if Game.now() - _tractored_at < 0.3 and Game.instance.has_tech(owner_id, "reverse_thrusters"):
+		if _tractor_hold == Vector2.INF:
+			_tractor_hold = global_position
+		if desired == Vector2.ZERO:
+			desired = _arrive(_tractor_hold, 1.0)
+	else:
+		_tractor_hold = Vector2.INF
 	if Game.instance.is_ai(owner_id):
 		desired = _avoid_sun(desired)
 	var crowd := _separation()
@@ -1329,10 +1376,86 @@ func _separation() -> Vector2:
 					push += Vector2.from_angle(randf() * TAU) * 6.0
 	return push
 
+## Radians a second this hull turns: bigger hulls turn slower.
+func turn_rate() -> float:
+	return clampf(6.0 * 8.0 / radius, 1.2, 6.0) * Game.instance.ship_speed_factor(owner_id) * Game.instance.mod(owner_id, "turn_rate")
+
+## Top sideways / backward thrust (Strafing / Reverse Thrusters), px/s.
+func lateral_thrust() -> float:
+	return max_speed() * LATERAL_THRUST if Game.instance.has_tech(owner_id, "strafing_thrusters") else 0.0
+
+func reverse_thrust() -> float:
+	return max_speed() * REVERSE_THRUST if Game.instance.has_tech(owner_id, "reverse_thrusters") else 0.0
+
+## `want` (a world velocity) as the hull can fly it with its nose at
+## `heading`: forward up to full speed, sideways up to `lat`, backward up to
+## `rev`, each axis on its own. Returns (forward, sideways) in the body frame.
+func _body_thrust(heading: float, want: Vector2, lat: float, rev: float) -> Vector2:
+	var f := Vector2.from_angle(heading)
+	return Vector2(clampf(want.dot(f), -rev, max_speed()), clampf(want.dot(f.orthogonal()), -lat, lat))
+
+## Ships fly nose-first (Maneuvers). The hull turns toward where it wants to
+## go and thrusts along its nose, using any sideways / backward thrust it
+## has to get there meanwhile. With a face target (a fight) it keeps its
+## nose on the target as long as the wanted movement can still be flown that
+## way (backing, sliding or a nearly straight approach), else it turns to
+## travel. Velocity is accelerated per body axis; drift along an axis the
+## hull cannot thrust on is damped out at the same rate.
 func _steer(desired: Vector2, delta: float, face: Node2D) -> void:
 	var speed: float = max_speed()
 	var accel := speed * 2.2
-	velocity = velocity.move_toward(desired.limit_length(speed), accel * delta)
+	var want := desired.limit_length(speed)
+	var lat := lateral_thrust()
+	var rev := reverse_thrust()
+	var parked := _parked()
+	if parked:
+		# Station keeping: a parked hull shuffles a few pixels for crowding
+		# or a nudge back onto its spot without swinging round.
+		lat = maxf(lat, speed * STATION_THRUST)
+		rev = maxf(rev, speed * STATION_THRUST)
+	var small := want.length() < maxf(6.0, speed * 0.08)
+	var head := rotation
+	var turning := false
+	if face:
+		var fa := (face.global_position - global_position).angle()
+		var ok := small
+		if not ok:
+			# Can the wanted movement be flown with the nose on the target?
+			var bt := _body_thrust(fa, want, lat, rev)
+			var ff := Vector2.from_angle(fa)
+			var got := ff * bt.x + ff.orthogonal() * bt.y
+			var err := absf(angle_difference(got.angle(), want.angle())) if got.length() > 0.5 else PI
+			var frac := got.length() / want.length()
+			if _face_lock:
+				ok = err < deg_to_rad(25.0) and frac > 0.4
+			else:
+				ok = err < deg_to_rad(12.0) and frac > 0.45
+		_face_lock = ok
+		if ok:
+			head = fa
+			turning = true
+	else:
+		_face_lock = false
+	if not turning and not small and not parked:
+		head = want.angle()
+		turning = true
+	if turning:
+		var diff := angle_difference(rotation, head)
+		# Nearly dead astern: keep turning the way we already were.
+		if absf(diff) > deg_to_rad(165.0) and _turn_sign != 0.0:
+			diff = _turn_sign * absf(diff)
+		elif absf(diff) > 0.01:
+			_turn_sign = signf(diff)
+		var step_a := turn_rate() * delta
+		rotation += clampf(diff, -step_a, step_a)
+
+	# Thrust per body axis toward what the hull can fly of `want`.
+	var fwd := Vector2.from_angle(rotation)
+	var r := fwd.orthogonal()
+	var bt2 := _body_thrust(rotation, want, lat, rev)
+	var vf := move_toward(velocity.dot(fwd), bt2.x, accel * delta)
+	var vl := move_toward(velocity.dot(r), bt2.y, accel * delta)
+	velocity = fwd * vf + r * vl
 	var step := velocity * delta
 	# Debris is solid: slide along it (try each axis), else stop.
 	if Game.instance.nav != null and Game.instance.is_blocked(global_position + step, radius * 0.5) and not Game.instance.is_blocked(global_position, radius * 0.5):
@@ -1346,16 +1469,6 @@ func _steer(desired: Vector2, delta: float, face: Node2D) -> void:
 			step = Vector2.ZERO
 			velocity = Vector2.ZERO
 	global_position += step
-
-	var face_dir := Vector2.ZERO
-	if face:
-		face_dir = face.global_position - global_position
-	elif velocity.length() > 8.0:
-		face_dir = velocity
-	if face_dir != Vector2.ZERO:
-		# Bigger hulls turn slower.
-		var turn_rate := clampf(6.0 * 8.0 / radius, 1.2, 6.0) * Game.instance.ship_speed_factor(owner_id)
-		rotation = rotate_toward(rotation, face_dir.angle(), turn_rate * delta)
 
 	var thrusting := velocity.length() > 12.0
 	if thrusting:
