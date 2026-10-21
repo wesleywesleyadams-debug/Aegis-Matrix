@@ -2472,7 +2472,7 @@ const ENGAGE_TIPS := [
 	"Default: the standard way to fight - close to about 80% of weapon range and hold there. What the game's balance is tuned for.",
 	"Aggressive: close to about 40% of weapon range and stay on the target, following it if it runs.",
 	"Defensive: fight from about 90% of weapon range. If an enemy closes inside 75%, fall back to open the range again (backing off while firing with Reverse Thrusters; otherwise turning away and coming back about).",
-	"Evasive: fight as Default, but sidestep or back off from incoming missiles, torpedoes, bomblets, rail and kinetic rounds (not lasers). Needs Strafing or Reverse Thrusters to dodge.",
+	"Evasive: fight as Default, but sidestep bomblets, juke torpedoes at the last moment and weave against lasers, flak and long-range rail. Homing Missiles and Kinetic slugs are too fast to dodge. Needs Strafing or Reverse Thrusters to dodge (Strafing to weave).",
 ]
 
 func _own_warships(sel: Array) -> Array:

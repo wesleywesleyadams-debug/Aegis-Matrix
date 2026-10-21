@@ -46,8 +46,12 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	if weapon in ["missile", "proton", "torpedo", "bomblet"]:
 		add_to_group("ordnance")
 	# Evasive warships watch for slow shots aimed at them.
-	if to is Ship and (to as Ship).engagement == Ship.Engage.EVASIVE and weapon in Ship.DODGE_WEAPONS:
-		(to as Ship).incoming.append(self)
+	var jink_at: Ship = null
+	if to is Ship and (to as Ship).engagement == Ship.Engage.EVASIVE:
+		if weapon in Ship.DODGE_WEAPONS:
+			(to as Ship).incoming.append(self)
+		elif weapon in Ship.JINK_WEAPONS:
+			jink_at = to as Ship
 	trail_on = weapon in ["missile", "proton", "torpedo"] and not Game.instance.sim_mode
 	torp_wake = weapon in ["proton", "torpedo"]
 	if Defs.AOE_RADIUS.has(weapon):
@@ -103,6 +107,9 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	if not homing and Game.instance.has_tech(owner_pid, "target_prediction") and to.get("velocity") is Vector2:
 		lead += to.get("velocity") * (from.global_position.distance_to(to.global_position) / speed)
 	_vel = (lead - global_position).normalized().rotated(spread) * speed
+	# Evasive warships start jinking when fast rounds come at them.
+	if jink_at != null:
+		jink_at.note_fast_shot(self)
 	rotation = _vel.angle()
 	if free_flight:
 		life = from.global_position.distance_to(to.global_position) * 1.3 / speed

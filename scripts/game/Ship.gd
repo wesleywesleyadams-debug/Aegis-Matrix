@@ -11,8 +11,8 @@ enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE,
 ##  AGGRESSIVE: closes to ENGAGE_CLOSE of its range and sticks to the target.
 ##  DEFENSIVE: fights from ENGAGE_FAR of its range, kiting out to it when an
 ##    enemy comes inside ENGAGE_KITE.
-##  EVASIVE: as Default, but sidesteps / backs off from incoming DODGE_WEAPONS
-##    shots - not lasers (needs Strafing or Reverse Thrusters).
+##  EVASIVE: as Default, but dodges DODGE_WEAPONS (homing ones juked late)
+##    and weaves against JINK_WEAPONS (needs Strafing or Reverse Thrusters).
 enum Engage { DEFAULT, AGGRESSIVE, DEFENSIVE, EVASIVE }
 const ENGAGE_NAMES := ["Default", "Aggressive", "Defensive", "Evasive"]
 const ENGAGE_CLOSE := 0.4
@@ -32,7 +32,40 @@ const ENGAGE_KITE_PAUSE := 3.0
 ## Evasive: shots in flight at this ship that it may dodge (Projectile adds
 ## them), the one it is reacting to, when it was first seen, and the dodge
 ## under way (world direction and end time).
-const DODGE_WEAPONS := ["missile", "proton", "torpedo", "bomblet", "rail", "kinetic"]
+const DODGE_WEAPONS := ["missile", "proton", "torpedo", "bomblet"]
+## Homing shots (Projectile.homing) are not dodged at launch: the ship waits
+## until the shot's time-to-impact is about what a boosted sidestep of
+## (radius + JUKE_CLEAR) needs (x JUKE_LEAD, clamped to JUKE_T_MIN..MAX),
+## then jukes square across its path, to the side it already sits on, so the
+## shot's limited turn rate makes it overshoot. A juke is a dodge burst
+## (boost, then penalty) that lasts at least JUKE_MIN s.
+const JUKE_CLEAR := 6.0
+const JUKE_LEAD := 1.6
+const JUKE_T_MIN := 0.2
+const JUKE_T_MAX := 0.8
+const JUKE_MIN := 0.35
+## A homing shot is only juked when the boosted sidestep is at least this
+## fraction of the shot's speed, or the shot loses its lock when far off its
+## nose (Proton Torpedoes): a pure-pursuit missile with a full lock runs down
+## anything slower sideways (Homing Missiles vs every hull), so the ship
+## does not waste a burst on it.
+const JUKE_SPEED_RATIO := 0.9
+## Jinking: while fast unguided rounds (JINK_WEAPONS) have been fired at it
+## in the last JINK_WINDOW s, an Evasive ship with Strafing Thrusters weaves:
+## every JINK_STEP_MIN..MAX s it picks a side (usually the other one) and
+## slides that way at its normal lateral thrust (no burst, no penalty), so a
+## lead worked out when a round was fired is stale by the time it arrives.
+## Translation only: the nose stays on its target. Only rounds whose flight
+## time is long enough to slide a hull's radius count (note_fast_shot).
+const JINK_WEAPONS := ["rail", "kinetic", "laser", "flak"]
+const JINK_WINDOW := 1.5
+const JINK_STEP_MIN := 0.25
+const JINK_STEP_MAX := 0.6
+const JINK_SWITCH := 0.75
+var _fast_seen := -10.0
+var _fast_dir := Vector2.ZERO
+var _jink_side := 1.0
+var _jink_next := -1.0
 const DODGE_REACT := 0.15
 const DODGE_TIME := 0.7
 const DODGE_LOOK := 1.6
@@ -137,6 +170,7 @@ func set_engagement(v: int) -> void:
 	_evade_penalty_until = -1.0
 	_threat = null
 	incoming.clear()
+	_fast_seen = -10.0
 	if _mark_tag != null:
 		_mark_tag.engage = v
 		_mark_tag.queue_redraw()
@@ -995,7 +1029,7 @@ func refresh_stats() -> void:
 func max_speed() -> float:
 	var f := Engine.get_physics_frames()
 	if f == _speed_frame:
-		return _speed_cache
+		return _speed_cache * _evade_mult()
 	_speed_frame = f
 	var storm := IonStorm.SLOW if Game.instance.in_storm(global_position) else 1.0
 	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
@@ -1544,6 +1578,8 @@ func _physics_process(delta: float) -> void:
 		var dv := _evade()
 		if dv != Vector2.ZERO:
 			desired = dv
+		else:
+			desired += _jink()
 	desired = _leash(desired)
 	# Reverse Thrusters: a ship held by a tractor beam that is not trying to
 	# go anywhere backs off toward where it was when the pull began, nose
@@ -1604,7 +1640,8 @@ func _engage_move(d: float) -> Vector2:
 
 ## Evasive: the dodge velocity this tick, or zero. One dodge at a time,
 ## a short reaction delay on a new threat, and a committed direction until
-## the dodge ends, so the hull never twitches between sides.
+## the dodge ends, so the hull never twitches between sides. Unguided slow
+## shots (bomblets) are dodged as they come; homing ones are juked late.
 func _evade() -> Vector2:
 	var lat := lateral_thrust()
 	var rev := reverse_thrust()
@@ -1612,6 +1649,7 @@ func _evade() -> Vector2:
 	if state == State.MOVE:
 		incoming.clear()
 		_dodge_until = -1.0
+		_fast_seen = -10.0
 		_end_dodge(now)
 		return Vector2.ZERO
 	# A dodge under way runs its minimum time, then on while the shot it
@@ -1623,18 +1661,54 @@ func _evade() -> Vector2:
 	# Recovering from the last burst: no new dodge yet.
 	if now < _evade_penalty_until:
 		return Vector2.ZERO
-	# Nearest live threat that will arrive soon.
+	# Nearest live unguided threat that will arrive soon, and any homing
+	# shot that is now close enough to juke.
 	var best: Node2D = null
 	var best_t := DODGE_LOOK
+	var juke: Node2D = null
+	var juke_t := INF
+	var lead := _juke_lead() if lat > 0.0 else 0.0
+	var slide := base_speed() * LATERAL_THRUST * (1.0 + EVADE_BOOST)
 	for i in range(incoming.size() - 1, -1, -1):
 		var p = incoming[i]
 		if not is_instance_valid(p) or p.target != self:
 			incoming.remove_at(i)
 			continue
-		var tt: float = global_position.distance_to(p.global_position) / maxf(p.speed, 1.0)
+		var to: Vector2 = global_position - p.global_position
+		if p.homing and lat > 0.0:
+			if not p.weak_lock and slide < p.speed * JUKE_SPEED_RATIO:
+				continue
+			# Time to impact from the closing speed (never below the shot's
+			# own speed's worth of a crawl).
+			var close: float = maxf((p._vel - velocity).dot(to.normalized()), p.speed * 0.25)
+			var tt: float = maxf(to.length() - radius, 0.0) / close
+			if tt <= lead and tt < juke_t:
+				juke_t = tt
+				juke = p
+			continue
+		var tt: float = to.length() / maxf(p.speed, 1.0)
 		if tt < best_t:
 			best_t = tt
 			best = p
+	if juke != null:
+		# Juke square across the shot's path, to the side we already sit on
+		# (its turn is already chasing us that way: going further makes the
+		# turn it needs grow faster than it can swing). Dead ahead, keep
+		# whichever way we were already sliding.
+		var along: Vector2 = (juke._vel as Vector2).normalized()
+		var side := along.orthogonal()
+		var off := side.dot(global_position - juke.global_position)
+		if absf(off) < 1.0:
+			off = side.dot(velocity) if absf(side.dot(velocity)) > 1.0 else (1.0 if randf() < 0.5 else -1.0)
+		if off < 0.0:
+			side = -side
+		_dodge_dir = side
+		_dodge_start = now
+		_dodge_until = now + JUKE_MIN
+		_dodge_shot = juke
+		_dodging = true
+		incoming.erase(juke)
+		return _dodge_dir * max_speed()
 	if best == null:
 		_threat = null
 		return Vector2.ZERO
@@ -1675,6 +1749,43 @@ func _evade() -> Vector2:
 	incoming.erase(best)
 	_threat = null
 	return _dodge_dir * max_speed()
+
+## Evasive: how long before impact a homing shot is juked - the time a
+## boosted sidestep needs to carry the hull (radius + JUKE_CLEAR) across,
+## from rest, at boosted lateral thrust and acceleration.
+func _juke_lead() -> float:
+	var v := base_speed() * LATERAL_THRUST * (1.0 + EVADE_BOOST)
+	var a := base_speed() * (1.0 + EVADE_BOOST) * 2.2
+	if v <= 0.0 or a <= 0.0:
+		return 0.0
+	var d := radius + JUKE_CLEAR
+	var t := sqrt(2.0 * d / a) if d <= v * v / (2.0 * a) else v / (2.0 * a) + d / v
+	return clampf(t * JUKE_LEAD, JUKE_T_MIN, JUKE_T_MAX)
+
+## Projectile: a fast unguided round (JINK_WEAPONS) was fired at this ship.
+## Only rounds slow enough over their range to be beaten count: if a slide at
+## lateral thrust cannot clear the hull's radius in the round's flight time
+## (Rail at close range, Kinetic slugs at their short range), weaving would
+## only cost accuracy.
+func note_fast_shot(p: Node2D) -> void:
+	var flight: float = global_position.distance_to(p.global_position) / maxf(float(p.get("speed")), 1.0)
+	if flight * lateral_thrust() < radius:
+		return
+	_fast_seen = Game.now()
+	_fast_dir = (p.get("_vel") as Vector2).normalized()
+
+## Evasive jinking: the sideways velocity to add this tick while fast rounds
+## are coming in (see JINK_WEAPONS), else zero.
+func _jink() -> Vector2:
+	var lat := lateral_thrust()
+	var now := Game.now()
+	if lat <= 0.0 or now - _fast_seen > JINK_WINDOW or _fast_dir == Vector2.ZERO:
+		return Vector2.ZERO
+	if now >= _jink_next:
+		if _jink_next < 0.0 or now - _jink_next > JINK_WINDOW or randf() < JINK_SWITCH:
+			_jink_side = -_jink_side
+		_jink_next = now + randf_range(JINK_STEP_MIN, JINK_STEP_MAX)
+	return _fast_dir.orthogonal() * _jink_side * lat
 
 ## Desired velocity toward `goal`, slowing inside the braking radius.
 ## `stop_at` leaves a gap (e.g. to hover beside an asteroid).

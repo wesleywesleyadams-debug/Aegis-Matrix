@@ -4163,6 +4163,9 @@ func _engage_test() -> void:
 	# (and pause), so its techs are just marked researched.
 	for tid in OS.get_environment("SL_ET_TECHS").split(",", false):
 		researched[1][tid] = true
+	# SL_ET_ETECHS: comma list of extra techs for side 2 (e.g. target_prediction).
+	for tid in OS.get_environment("SL_ET_ETECHS").split(",", false):
+		researched[2][tid] = true
 	if en.size() > 1:
 		researched[2][en[1]] = true
 		_on_tech_done(2, en[1])
@@ -4245,7 +4248,7 @@ func _engage_test() -> void:
 		print("ET t=%.2f e=(%.0f,%.0f) s=(%.0f,%.0f) d=%.0f d/R=%.2f head=%.0f tgtbrg=%.0f vf=%.0f vl=%.0f spd=%.0f kite=%s dodge=%s hits=%d dmg=%.0f st=%d anc=%.0f leash=%.0f ehits=%d" % [now() - t0, e.global_position.x, e.global_position.y, s.global_position.x, s.global_position.y, d, d / s.weapon_range(),
 			rad_to_deg(wrapf(s.rotation, -PI, PI)), rad_to_deg((e.global_position - s.global_position).angle()), s.velocity.dot(fw), s.velocity.dot(fw.orthogonal()), s.actual_speed,
 			s._kiting, now() < s._dodge_until, s.dbg_hits, s.dbg_dmg, s.state, s.global_position.distance_to(anchor0), s.weapon_range() * Ship.STANCE_LEASH, e.dbg_hits])
-	print("ET_DONE %s scen=%s techs=%s enemy=%s hits=%d dmg=%.0f flips=%d" % [mode, scen, OS.get_environment("SL_ET_TECHS"), ":".join(en), s.dbg_hits, s.dbg_dmg, flips])
+	print("ET_DONE %s scen=%s techs=%s enemy=%s hits=%d dmg=%.0f flips=%d ehits=%d edmg=%.0f" % [mode, scen, OS.get_environment("SL_ET_TECHS"), ":".join(en), s.dbg_hits, s.dbg_dmg, flips, e.dbg_hits if is_instance_valid(e) else -1, e.dbg_dmg if is_instance_valid(e) else -1.0])
 	get_tree().quit()
 
 ## Dev duel (SL_DUEL): two fleets of the same mineral cost, side 1 left and
