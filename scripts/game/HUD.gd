@@ -30,6 +30,8 @@ const RESEARCH_BLINK := 2.0
 
 var _res_labels := {}
 var _res_boxes := {}
+## Resource-bar icons, which carry the same tooltip as their counter.
+var _bar_icons := {}
 var _pop_label: Label
 var _fleet_label: Label
 var _harv_label: Label
@@ -166,6 +168,13 @@ static func _padlock_tex() -> ImageTexture:
 		_padlock = ImageTexture.create_from_image(img)
 	return _padlock
 
+func _set_bar_tip(key: String, tip: String) -> void:
+	var ic: Control = _bar_icons.get(key)
+	if ic == null:
+		return
+	ic.tooltip_text = tip
+	ic.mouse_filter = Control.MOUSE_FILTER_STOP
+
 func _icon(name: String, scale_px: int = 2) -> TextureRect:
 	var tr := TextureRect.new()
 	tr.texture = Defs.tex(name)
@@ -236,7 +245,9 @@ func _build_top_bar(root: Control) -> void:
 		var box := HBoxContainer.new()
 		box.add_theme_constant_override("separation", 6)
 		box.mouse_filter = Control.MOUSE_FILTER_STOP
-		box.add_child(_icon("icon_" + key))
+		var ri := _icon("icon_" + key)
+		box.add_child(ri)
+		_bar_icons[key] = ri
 		var l := _label("0")
 		# Longest realistic text: "54.3k ▼▼▼".
 		l.custom_minimum_size = Vector2(100, 0)
@@ -248,7 +259,8 @@ func _build_top_bar(root: Control) -> void:
 	# Population: its icon, then the total.
 	var popbox := HBoxContainer.new()
 	popbox.add_theme_constant_override("separation", 6)
-	popbox.add_child(_icon("icon_pop"))
+	_bar_icons["pop"] = _icon("icon_pop")
+	popbox.add_child(_bar_icons["pop"])
 	_pop_label = _label("0", TEXT)
 	_pop_label.custom_minimum_size = Vector2(70, 0)   # "99.9k"
 	_pop_label.clip_text = true
@@ -258,7 +270,8 @@ func _build_top_bar(root: Control) -> void:
 	# Ships (all kinds), harvesters, and the empire-wide upkeep multiplier.
 	var fleet := HBoxContainer.new()
 	fleet.add_theme_constant_override("separation", 6)
-	fleet.add_child(_icon("icon_fleet"))
+	_bar_icons["fleet"] = _icon("icon_fleet")
+	fleet.add_child(_bar_icons["fleet"])
 	_fleet_label = _label("0")
 	_fleet_label.custom_minimum_size = Vector2(44, 0)
 	_fleet_label.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -266,11 +279,13 @@ func _build_top_bar(root: Control) -> void:
 	var hv := _icon("ship_miner", 1)
 	hv.custom_minimum_size = Vector2(22, 18)
 	fleet.add_child(hv)
+	_bar_icons["harv"] = hv
 	_harv_label = _label("0")
 	_harv_label.custom_minimum_size = Vector2(36, 0)
 	_harv_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	fleet.add_child(_harv_label)
-	fleet.add_child(_icon("icon_upkeep"))
+	_bar_icons["upkeep"] = _icon("icon_upkeep")
+	fleet.add_child(_bar_icons["upkeep"])
 	_upkeep_label = _label("x1.00")
 	_upkeep_label.custom_minimum_size = Vector2(64, 0)
 	_upkeep_label.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1644,6 +1659,13 @@ OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starve
 	_upkeep_label.tooltip_text = "Empire upkeep multiplier. Every ship and construct you own multiplies ALL energy upkeep: starbase x%.2f, carrier x%.2f, cruiser x%.2f, destroyer x%.2f, anything else x%.2f.\nUpkeep now: %.1f energy/min (%.1f base x%.2f)." % [
 		Defs.UPKEEP_WEIGHT["starbase"], Defs.UPKEEP_WEIGHT["carrier"], Defs.UPKEEP_WEIGHT["cruiser"], Defs.UPKEEP_WEIGHT["destroyer"], Defs.UPKEEP_WEIGHT_SMALL,
 		game.upkeep(pid), game.base_upkeep(pid), um]
+	# The icons show the same tooltip as their counters.
+	for k in Defs.RESOURCES:
+		_set_bar_tip(k, _res_boxes[k].tooltip_text)
+	_set_bar_tip("pop", _pop_label.tooltip_text)
+	_set_bar_tip("fleet", _fleet_label.tooltip_text)
+	_set_bar_tip("harv", _harv_label.tooltip_text)
+	_set_bar_tip("upkeep", _upkeep_label.tooltip_text)
 	var cur: Dictionary = game.research[pid]
 	# The button blinks in real time, so it looks the same at any game speed:
 	# yellow when nothing is queued, green while researching, red when stalled.
