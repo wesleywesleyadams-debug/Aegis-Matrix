@@ -268,6 +268,11 @@ func _ready() -> void:
 	if OS.get_environment("SL_MANEUVER_TEST") != "":
 		_maneuver_test()
 		return
+	# Dev: SL_ENGAGE_TEST=default|aggressive|defensive|evasive logs one
+	# warship's fight against one enemy under that Engagement and quits.
+	if OS.get_environment("SL_ENGAGE_TEST") != "":
+		_engage_test()
+		return
 	if OS.get_environment("SL_DUEL") != "":
 		_duel()
 		return
@@ -4062,6 +4067,103 @@ func _maneuver_test() -> void:
 		if arrived < 0.0 and s.state == Ship.State.IDLE:
 			arrived = now() - t0
 			print("MT_ARRIVE %s techs=%s %.2fs" % [typ, OS.get_environment("SL_MT_TECHS"), arrived])
+	get_tree().quit()
+
+## Dev (SL_ENGAGE_TEST=default|aggressive|defensive|evasive): our warship
+## (SL_ET_TYPE, default destroyer) at the arena center and one enemy
+## (SL_ET_ENEMY="type[:mod]", default destroyer) SL_ET_D px east. Ours is
+## ordered to attack it. SL_ET_SCEN: "flee" - the enemy runs north-east for
+## SL_ET_RUN s then stops; "chase" - the enemy attacks us (Aggressive-like:
+## it closes to 40%) and stops chasing after SL_ET_RUN s; "hold" - it fights
+## from where it is. SL_ET_TECHS: comma list for side 1 (e.g.
+## strafing_thrusters,reverse_thrusters). Both hulls get x50 toughness.
+## Logs distance / range, heading and state every 0.25 s; SL_ET_SHOT=secs
+## saves user://shot.png centered on the pair.
+func _engage_test() -> void:
+	hud.visible = OS.get_environment("SL_ET_HUD") != ""
+	ai.process_mode = Node.PROCESS_MODE_DISABLED
+	Engine.time_scale = float(OS.get_environment("SL_ET_SPEED")) if OS.get_environment("SL_ET_SPEED") != "" else 1.0
+	var mode := OS.get_environment("SL_ENGAGE_TEST")
+	var typ := OS.get_environment("SL_ET_TYPE") if OS.get_environment("SL_ET_TYPE") != "" else "destroyer"
+	var en := (OS.get_environment("SL_ET_ENEMY") if OS.get_environment("SL_ET_ENEMY") != "" else "destroyer").split(":")
+	var scen := OS.get_environment("SL_ET_SCEN") if OS.get_environment("SL_ET_SCEN") != "" else "hold"
+	var run := float(OS.get_environment("SL_ET_RUN")) if OS.get_environment("SL_ET_RUN") != "" else 8.0
+	# Side 1 is the player: _on_tech_done would open the research panel
+	# (and pause), so its techs are just marked researched.
+	for tid in OS.get_environment("SL_ET_TECHS").split(",", false):
+		researched[1][tid] = true
+	if en.size() > 1:
+		researched[2][en[1]] = true
+		_on_tech_done(2, en[1])
+	_make_arena()
+	await get_tree().process_frame
+	var x0 := float(OS.get_environment("SL_ET_X")) if OS.get_environment("SL_ET_X") != "" else -200.0
+	var s := spawn_ship(typ, 1, Vector2(x0, 0))
+	s.rotation = 0.0
+	var e := spawn_ship(en[0], 2, Vector2(x0 + (float(OS.get_environment("SL_ET_D")) if OS.get_environment("SL_ET_D") != "" else 300.0), 0))
+	e.rotation = PI
+	for x in [s, e]:
+		x.max_hp *= 50.0; x.hp = x.max_hp; x.max_armor *= 50.0; x.armor = x.max_armor; x.max_shield *= 50.0; x.shield = x.max_shield
+	# SL_ET_ANCHOR: the enemy cannot move (its guns and beams still work).
+	if OS.get_environment("SL_ET_ANCHOR") != "":
+		e.def = e.def.duplicate()
+		e.def["speed"] = 0.0
+	await get_tree().physics_frame
+	s.set_engagement(["default", "aggressive", "defensive", "evasive"].find(mode))
+	s.order_attack(e)
+	match scen:
+		"flee": e.order_move(e.global_position + Vector2(500, -350))
+		"chase":
+			e.set_engagement(Ship.Engage.AGGRESSIVE)
+			e.order_attack(s)
+		_: e.order_stop()
+	# SL_ET_SELECT=1 selects our ship; =mixed adds an Aggressive corvette, a
+	# Default cruiser and a Mining Barge behind it and selects all four.
+	if OS.get_environment("SL_ET_SELECT") != "":
+		var pick: Array = [s]
+		if OS.get_environment("SL_ET_SELECT") == "mixed":
+			var cv := spawn_ship("corvette", 1, s.global_position + Vector2(-60, -40))
+			cv.set_engagement(Ship.Engage.AGGRESSIVE)
+			pick.append(cv)
+			pick.append(spawn_ship("cruiser", 1, s.global_position + Vector2(-90, 40)))
+			pick.append(spawn_ship("miner", 1, s.global_position + Vector2(-120, 0)))
+			for x in pick:
+				x.order_stop()
+		_set_selection(pick, false)
+	if OS.get_environment("SL_ET_SHOT") != "":
+		get_tree().create_timer(float(OS.get_environment("SL_ET_SHOT"))).timeout.connect(func():
+			camera.zoom = Vector2.ONE * (get_viewport().get_visible_rect().size.y / 700.0)
+			center_on((s.global_position + e.global_position) / 2.0)
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("user://shot.png"))
+	var t0 := now()
+	var stopped := false
+	var last_head := s.rotation
+	var flips := 0
+	var last_turn := 0.0
+	while now() - t0 < float(OS.get_environment("SL_ET_T") if OS.get_environment("SL_ET_T") != "" else "20"):
+		await get_tree().create_timer(0.25).timeout
+		if not is_instance_valid(s) or not is_instance_valid(e):
+			break
+		if not stopped and now() - t0 >= run and scen != "hold":
+			stopped = true
+			# Stops pursuing: holds still (and holds fire) from here on.
+			e.velocity = Vector2.ZERO
+			e.set_physics_process(false)
+			print("ET enemy stops at t=%.2f" % (now() - t0))
+		var turn := angle_difference(last_head, s.rotation)
+		# Heading jitter: the turn direction flipping between samples while turning.
+		if absf(turn) > 0.05 and absf(last_turn) > 0.05 and signf(turn) != signf(last_turn):
+			flips += 1
+		if absf(turn) > 0.05:
+			last_turn = turn
+		last_head = s.rotation
+		var d := s.global_position.distance_to(e.global_position)
+		var fw := Vector2.from_angle(s.rotation)
+		print("ET t=%.2f e=(%.0f,%.0f) s=(%.0f,%.0f) d=%.0f d/R=%.2f head=%.0f tgtbrg=%.0f vf=%.0f vl=%.0f spd=%.0f kite=%s dodge=%s hits=%d dmg=%.0f st=%d" % [now() - t0, e.global_position.x, e.global_position.y, s.global_position.x, s.global_position.y, d, d / s.weapon_range(),
+			rad_to_deg(wrapf(s.rotation, -PI, PI)), rad_to_deg((e.global_position - s.global_position).angle()), s.velocity.dot(fw), s.velocity.dot(fw.orthogonal()), s.actual_speed,
+			s._kiting, now() < s._dodge_until, s.dbg_hits, s.dbg_dmg, s.state])
+	print("ET_DONE %s scen=%s techs=%s enemy=%s hits=%d dmg=%.0f flips=%d" % [mode, scen, OS.get_environment("SL_ET_TECHS"), ":".join(en), s.dbg_hits, s.dbg_dmg, flips])
 	get_tree().quit()
 
 ## Dev duel (SL_DUEL): two fleets of the same mineral cost, side 1 left and

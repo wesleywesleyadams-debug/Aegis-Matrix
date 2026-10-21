@@ -1111,6 +1111,7 @@ func _rebuild_selection() -> void:
 		grid.add_child(box)
 	_sel_body.add_child(grid)
 	_add_fleet_tiles(sel)
+	_add_engagement_row(sel)
 	if sel.any(func(e): return e is Ship and e.def["role"] == "constructor"):
 		_add_constructor_buttons()
 	_add_refit_buttons(sel)
@@ -1236,6 +1237,7 @@ func _entity_icon(e: SpaceEntity, px: int) -> Control:
 
 func _build_ship_controls(s: Ship) -> void:
 	_add_job_panel(s)
+	_add_engagement_row([s])
 	_add_refit_buttons([s])
 	match s.def["role"]:
 		"colony":
@@ -2433,6 +2435,65 @@ func _tick_gate_panel() -> void:
 		cd.text = "Ready to warp"
 		cd.add_theme_color_override("font_color", GOOD)
 	warp.disabled = g.cooldown_left > 0.0 or g.garrison.is_empty()
+
+# ---------------------------------------------------------------- engagement
+
+## The four engagement buttons for the selected warships (see Ship.Engage)
+## and the label above them; kept so a press can refresh them in place.
+var _engage_buttons: Array = []
+var _engage_label: Label
+const ENGAGE_TIPS := [
+	"Default: the standard way to fight - close to about 80% of weapon range and hold there. What the game's balance is tuned for.",
+	"Aggressive: close to about 40% of weapon range and stay on the target, following it if it runs.",
+	"Defensive: fight from about 90% of weapon range. If an enemy closes inside 75%, fall back to open the range again (backing off while firing with Reverse Thrusters; otherwise turning away and coming back about).",
+	"Evasive: fight as Default, but sidestep or back off from incoming missiles, torpedoes, bomblets, rail and kinetic rounds (not lasers). Needs Strafing or Reverse Thrusters to dodge.",
+]
+
+func _own_warships(sel: Array) -> Array:
+	return sel.filter(func(e): return is_instance_valid(e) and e is Ship and e.owner_id == game.player_id and (e as Ship).is_warship())
+
+func _add_engagement_row(sel: Array) -> void:
+	_engage_buttons.clear()
+	_engage_label = null
+	if _own_warships(sel).is_empty():
+		return
+	_engage_label = _label("", TEXT, 14)
+	_sel_body.add_child(_engage_label)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	for i in Ship.ENGAGE_NAMES.size():
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.toggle_mode = true
+		b.custom_minimum_size = Vector2(118, 32)
+		b.text = Ship.ENGAGE_NAMES[i]
+		b.tooltip_text = "Engagement: " + ENGAGE_TIPS[i]
+		if i > 0:
+			b.add_theme_color_override("font_pressed_color", Ship.ENGAGE_COLORS[i])
+		b.pressed.connect(_set_engagement.bind(i))
+		_register_action(b)
+		row.add_child(b)
+		_engage_buttons.append(b)
+	_sel_body.add_child(row)
+	_refresh_engagement()
+
+func _set_engagement(v: int) -> void:
+	for s in _own_warships(game.selection):
+		s.set_engagement(v)
+	_refresh_engagement()
+
+## Highlights the selection's mode, or none and "Mixed" when they differ.
+func _refresh_engagement() -> void:
+	if _engage_label == null or not is_instance_valid(_engage_label):
+		return
+	var modes := {}
+	for s in _own_warships(game.selection):
+		modes[int(s.engagement)] = true
+	var one: int = modes.keys()[0] if modes.size() == 1 else -1
+	_engage_label.text = "Engagement: " + (Ship.ENGAGE_NAMES[one] if one >= 0 else "Mixed")
+	for i in _engage_buttons.size():
+		if is_instance_valid(_engage_buttons[i]):
+			_engage_buttons[i].set_pressed_no_signal(i == one)
 
 # ---------------------------------------------------------------- panel keys
 

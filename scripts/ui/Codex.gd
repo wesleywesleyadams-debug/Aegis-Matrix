@@ -36,7 +36,7 @@ const RESEARCH_TABS := [["warships", "Warships"], ["weapons", "Weapons"], ["mods
 static var SUBPAGES: Dictionary = _subpages()
 const _SUBPAGES_FIXED := {
 	"combat": [["layers", "Defense layers"], ["classes", "Classes"], ["variants", "Variants"],
-		["mods", "Weapon Mods"], ["matchups", "Matchups"], ["jobs", "Ship jobs"]],
+		["mods", "Weapon Mods"], ["matchups", "Matchups"], ["jobs", "Ship jobs"], ["engagement", "Engagement"]],
 	"ships": [["overview", "Overview"], ["marks", "Marks"], ["colors", "Variant colors"], ["every", "Every ship"]],
 }
 
@@ -438,6 +438,7 @@ func _show(id: String) -> void:
 		"combat/mods": _page_mods()
 		"combat/matchups": _section_matchups()
 		"combat/jobs": _page_jobs()
+		"combat/engagement": _page_engagement()
 		"ships/overview": _page_ships()
 		"ships/marks": _page_marks()
 		"ships/colors": _page_colors()
@@ -627,6 +628,16 @@ func _page_mods() -> void:
 		trows.append([k[0], "x%s" % String.num(m, 2), "%d%%" % int(round(tb * m * 100.0)), "%d%%" % int(round(tb * m / tcd * 100.0))])
 	_table(["Target", "Bonus", "Per torpedo (vs a laser shot)", "Damage over time (vs lasers)"], trows)
 
+
+func _page_engagement() -> void:
+	_heading("Engagement")
+	_para("Each warship has an Engagement setting, chosen with the four buttons in its panel (one or many warships at once; a mixed selection shows Mixed). It shapes how the ship fights once it engages, automatically or on an attack order. A move order still goes exactly where it is sent; the ship takes up its Engagement again on arrival. A small colored dot under a warship's chevrons marks a non-Default setting.")
+	_table(["Engagement", "What it does"], [
+		["Default", "Closes to about 80% of weapon range and holds there. New ships start here, and the game's balance is tuned for it."],
+		[["Aggressive", Color("ff5a4a")], "Closes to about 40% of weapon range and sticks to its target, following it if it runs."],
+		[["Defensive", Color("5aa8ff")], "Fights from about 90% of weapon range. An enemy closing inside 75% makes it fall back until the range is open again: backing off while firing with Reverse Thrusters, otherwise turning away, flying out and coming back about."],
+		[["Evasive", Color("6cf08a")], "Fights as Default but sidesteps (Strafing Thrusters) or backs off (Reverse Thrusters) from incoming slow shots. It works well against bomblets; missiles and torpedoes home in, and rail, kinetic and laser shots are too fast, so it rarely escapes those. Without either thruster it fights as Default."],
+	])
 
 func _page_jobs() -> void:
 	_heading("Ship jobs")

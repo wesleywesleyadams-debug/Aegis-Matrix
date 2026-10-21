@@ -5,6 +5,64 @@ extends SpaceEntity
 ## assets/pixel/ship_<type>.png plus a team-tinted overlay layer.
 
 enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD, REFIT, GARRISON }
+## Warship engagement modes ("Engagement") (player-set; balance is tuned for DEFAULT, which
+## every new ship and every AI ship uses). They shape how the ship fights
+## once it is engaging; a plain move order still goes where it is sent.
+##  AGGRESSIVE: closes to ENGAGE_CLOSE of its range and sticks to the target.
+##  DEFENSIVE: fights from ENGAGE_FAR of its range, kiting out to it when an
+##    enemy comes inside ENGAGE_KITE.
+##  EVASIVE: as Default, but sidesteps / backs off from slow incoming shots
+##    (needs Strafing or Reverse Thrusters).
+enum Engage { DEFAULT, AGGRESSIVE, DEFENSIVE, EVASIVE }
+const ENGAGE_NAMES := ["Default", "Aggressive", "Defensive", "Evasive"]
+const ENGAGE_CLOSE := 0.4
+const ENGAGE_FAR := 0.9
+const ENGAGE_KITE := 0.75
+var engagement: Engage = Engage.DEFAULT
+## Defensive: currently opening the range back out to ENGAGE_FAR.
+var _kiting := false
+## Defensive without Reverse Thrusters: when the kite began and the range
+## then; a pursuer that keeps pace for ENGAGE_KITE_GIVEUP s is turned on
+## and fought (until ENGAGE_KITE_PAUSE s later) instead of fled forever.
+var _kite_from := 0.0
+var _kite_d0 := 0.0
+var _kite_pause_until := -1.0
+const ENGAGE_KITE_GIVEUP := 4.0
+const ENGAGE_KITE_PAUSE := 3.0
+## Evasive: shots in flight at this ship that it may dodge (Projectile adds
+## them), the one it is reacting to, when it was first seen, and the dodge
+## under way (world direction and end time).
+const DODGE_WEAPONS := ["missile", "proton", "torpedo", "bomblet", "rail", "kinetic"]
+const DODGE_REACT := 0.15
+const DODGE_TIME := 0.7
+const DODGE_LOOK := 1.6
+var incoming: Array = []
+var _threat: Node2D = null
+var _threat_seen := 0.0
+var _dodge_dir := Vector2.ZERO
+var _dodge_until := -1.0
+var _dodge_start := -1.0
+var _dodge_shot: Node2D = null
+const DODGE_MAX := 1.5
+
+func is_warship() -> bool:
+	return str(def.get("role", "")) == "warship"
+
+## Glyph colors for the non-default modes (the tiny dot under the chevrons).
+const ENGAGE_COLORS := [Color.TRANSPARENT, Color("ff5a4a"), Color("5aa8ff"), Color("6cf08a")]
+
+## Sets the engagement mode (warships only) and updates its map glyph.
+func set_engagement(v: int) -> void:
+	if not is_warship():
+		return
+	engagement = v as Engage
+	_kiting = false
+	_dodge_until = -1.0
+	_threat = null
+	incoming.clear()
+	if _mark_tag != null:
+		_mark_tag.engage = v
+		_mark_tag.queue_redraw()
 
 @export_enum("miner", "colony", "constructor", "corvette", "destroyer", "cruiser") var ship_type: String = "corvette":
 	set(v):
@@ -38,6 +96,44 @@ const MAX_HULL_RADIUS := 64.0   # the carrier
 
 ## How well a turreted hull shoots at full speed, against standing still.
 const MOVING_ACCURACY := 0.65
+## How fast the hull is really going through space (px/s): its net
+## displacement over the last SPEED_WINDOW s, whatever moved it - its own
+## engines, a Tractor Beam's pull, crowding. A ship backing against a
+## tractor pull while barely moving shoots as if standing still (a net
+## measure, so a tick-by-tick tug of war cancels out). Jumps (warp, leaving
+## a depot or gate) are not movement.
+var actual_speed := 0.0
+var _trail_pos := PackedVector2Array()
+var _trail_t := PackedFloat64Array()
+var _last_pos := Vector2.INF
+var _track_clock := 0.0
+const SPEED_WINDOW := 0.25
+
+## Share of full speed the hull is actually moving at (0..1), for the
+## moving-accuracy penalty.
+func moving_frac() -> float:
+	return clampf(actual_speed / maxf(max_speed(), 1.0), 0.0, 1.0)
+
+## Updates actual_speed from the net distance moved over SPEED_WINDOW.
+func _track_speed(delta: float) -> void:
+	# Physics time of its own: Game.now() advances per rendered frame, and
+	# displacement is per physics tick.
+	_track_clock += delta
+	var now := _track_clock
+	if _last_pos != Vector2.INF and delta > 0.0 and global_position.distance_to(_last_pos) / delta > max_speed() * 4.0 + 60.0:
+		# Several times top speed in one tick is a jump, not movement.
+		_last_pos = Vector2.INF
+	if _last_pos == Vector2.INF:
+		_trail_pos.clear()
+		_trail_t.clear()
+	_last_pos = global_position
+	_trail_pos.append(global_position)
+	_trail_t.append(now)
+	while _trail_t.size() > 2 and now - _trail_t[1] >= SPEED_WINDOW:
+		_trail_pos.remove_at(0)
+		_trail_t.remove_at(0)
+	var dt := now - _trail_t[0]
+	actual_speed = global_position.distance_to(_trail_pos[0]) / dt if dt > 0.0 else 0.0
 
 ## Swings the turrets toward `point` at their own rate and says whether they
 ## are on the bearing yet. The sprites are drawn in hull space, so they are
@@ -77,7 +173,7 @@ func _fire_turrets(delta: float) -> void:
 	var n := _turret_sprites.size()
 	var dmg: float = def["damage"] * Defs.mark_mult(ship_type, g.mark_level(owner_id, ship_type))
 	var per: int = maxi(1, int(round(float(def.get("guns", n)) / float(n))))
-	var acc := lerpf(1.0, MOVING_ACCURACY, clampf(velocity.length() / maxf(max_speed(), 1.0), 0.0, 1.0))
+	var acc := lerpf(1.0, MOVING_ACCURACY, moving_frac())
 	if g.duel_nomovepen or g.has_tech(owner_id, "gyro_stabilizers"):
 		acc = 1.0
 	var taken := {}
@@ -843,8 +939,14 @@ func cargo_cap() -> int:
 
 # ---------------------------------------------------------------- orders
 
+## Dev tests (SL_ENGAGE_TEST): hits taken and raw damage.
+var dbg_hits := 0
+var dbg_dmg := 0.0
+
 func take_damage(amount: float, from: SpaceEntity = null, profile: Dictionary = {}) -> void:
 	super.take_damage(amount, from, profile)
+	dbg_hits += 1
+	dbg_dmg += amount
 	if owner_id == Game.instance.player_id and hp > 0.0 and from != null:
 		Game.instance.alert("Your ships are under attack!", "alert_ships", false, global_position)
 
@@ -986,10 +1088,13 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	if docked:
+		_last_pos = Vector2.INF
 		return
 	if warping:
+		_last_pos = Vector2.INF
 		_warp_tick(delta)
 		return
+	_track_speed(delta)
 	if def.has("solar_sail"):
 		_solar_tick(delta)
 	else:
@@ -1081,8 +1186,12 @@ func _physics_process(delta: float) -> void:
 			else:
 				var d := global_position.distance_to(target.global_position)
 				var keep: float = weapon_range() * 0.8
-				if d > keep:
-					desired = _arrive(target.global_position, 1.0)
+				if engagement == Engage.DEFAULT or engagement == Engage.EVASIVE:
+					_kiting = false
+					if d > keep:
+						desired = _arrive(target.global_position, 1.0)
+				else:
+					desired = _engage_move(d)
 				# A turreted hull (the carrier) lets its mounts do the aiming and
 				# keeps its own heading; only fixed guns need the nose on target.
 				if not def.has("turrets"):
@@ -1263,7 +1372,7 @@ func _physics_process(delta: float) -> void:
 			if ready:
 				# Every gun aims the same: a shooter on the move is a worse one,
 				# and at full speed roughly a third of its shots go wide.
-				var acc := lerpf(1.0, MOVING_ACCURACY, clampf(velocity.length() / maxf(max_speed(), 1.0), 0.0, 1.0))
+				var acc := lerpf(1.0, MOVING_ACCURACY, moving_frac())
 				if Game.instance.duel_nomovepen or Game.instance.has_tech(owner_id, "gyro_stabilizers"):
 					acc = 1.0
 				var wpn: String = weapon_mod.get("weapon", def["weapon"])
@@ -1284,6 +1393,11 @@ func _physics_process(delta: float) -> void:
 			and (_aim_at as SpaceEntity).is_alive() and lateral_thrust() + reverse_thrust() > 0.0 \
 			and global_position.distance_to(_aim_at.global_position) <= weapon_range() + float(_aim_at.get("radius")) + 20.0:
 		face_target = _aim_at
+	# Evasive engagement: an incoming slow shot overrides the wanted movement.
+	if engagement == Engage.EVASIVE:
+		var dv := _evade()
+		if dv != Vector2.ZERO:
+			desired = dv
 	# Reverse Thrusters: a ship held by a tractor beam that is not trying to
 	# go anywhere backs off toward where it was when the pull began, nose
 	# still on whatever it is fighting.
@@ -1308,6 +1422,99 @@ func _physics_process(delta: float) -> void:
 	# Duel arena: nobody leaves.
 	if Game.instance.arena_radius > 0.0 and global_position.length() > Game.instance.arena_radius:
 		global_position = global_position.limit_length(Game.instance.arena_radius)
+
+## Aggressive / Defensive movement against `target` at distance `d`.
+func _engage_move(d: float) -> Vector2:
+	var rng := weapon_range()
+	var to := target.global_position - global_position
+	var tv: Vector2 = target.get("velocity") if target.get("velocity") is Vector2 else Vector2.ZERO
+	if engagement == Engage.AGGRESSIVE:
+		_kiting = false
+		if d > rng * ENGAGE_CLOSE:
+			# Close in, at full speed until near, and match the target's run.
+			return to.normalized() * max_speed() * clampf((d - rng * ENGAGE_CLOSE) / 40.0, 0.35, 1.0) + tv
+		# On it: keep pace with it.
+		return tv
+	# Defensive.
+	var now := Game.now()
+	if d < rng * ENGAGE_KITE and not _kiting and now >= _kite_pause_until:
+		_kiting = true
+		_kite_from = now
+		_kite_d0 = d
+	elif d >= rng * ENGAGE_FAR:
+		_kiting = false
+	# Without Reverse Thrusters the kite flies nose-away and cannot shoot; a
+	# pursuer as fast as us never lets it open the range, so after a while
+	# turn and fight for a spell.
+	if _kiting and reverse_thrust() <= 0.0 and now - _kite_from > ENGAGE_KITE_GIVEUP and d < _kite_d0 + 20.0:
+		_kiting = false
+		_kite_pause_until = now + ENGAGE_KITE_PAUSE
+	if _kiting:
+		return -to.normalized() * max_speed()
+	if d > rng * ENGAGE_FAR + 10.0:
+		return _arrive(target.global_position, 1.0, rng * ENGAGE_FAR)
+	return Vector2.ZERO
+
+## Evasive: the dodge velocity this tick, or zero. One dodge at a time,
+## a short reaction delay on a new threat, and a committed direction until
+## the dodge ends, so the hull never twitches between sides.
+func _evade() -> Vector2:
+	var lat := lateral_thrust()
+	var rev := reverse_thrust()
+	if lat + rev <= 0.0 or state == State.MOVE:
+		incoming.clear()
+		_dodge_until = -1.0
+		return Vector2.ZERO
+	var now := Game.now()
+	# A dodge under way runs its minimum time, then on while the shot it
+	# dodges is still coming (up to DODGE_MAX), in the direction it chose.
+	if now < _dodge_until or (now < _dodge_start + DODGE_MAX and is_instance_valid(_dodge_shot) 			and _dodge_shot.target == self and (global_position - _dodge_shot.global_position).dot(_dodge_shot._vel) > 0.0):
+		return _dodge_dir * max_speed()
+	_dodge_shot = null
+	# Nearest live threat that will arrive soon.
+	var best: Node2D = null
+	var best_t := DODGE_LOOK
+	for i in range(incoming.size() - 1, -1, -1):
+		var p = incoming[i]
+		if not is_instance_valid(p) or p.target != self:
+			incoming.remove_at(i)
+			continue
+		var tt: float = global_position.distance_to(p.global_position) / maxf(p.speed, 1.0)
+		if tt < best_t:
+			best_t = tt
+			best = p
+	if best == null:
+		_threat = null
+		return Vector2.ZERO
+	if best != _threat:
+		_threat = best
+		_threat_seen = now
+		return Vector2.ZERO
+	if now - _threat_seen < DODGE_REACT:
+		return Vector2.ZERO
+	# Dodge: sideways off the shot's line (Strafing Thrusters) and back along
+	# it (Reverse Thrusters), each as hard as the hull can. Shortly after a
+	# dodge the next one keeps the same side, so the ship does not weave
+	# back into the line it just left.
+	var along: Vector2 = (best._vel as Vector2).normalized()
+	var dir := Vector2.ZERO
+	if lat > 0.0:
+		var side := along.orthogonal()
+		if now - _dodge_until < 1.0 and _dodge_dir != Vector2.ZERO:
+			if side.dot(_dodge_dir) < 0.0:
+				side = -side
+		elif side.dot(global_position - best.global_position) < 0.0:
+			side = -side
+		dir += side
+	if rev > 0.0:
+		dir += along
+	_dodge_dir = dir.normalized()
+	_dodge_start = now
+	_dodge_until = now + DODGE_TIME
+	_dodge_shot = best
+	incoming.erase(best)
+	_threat = null
+	return _dodge_dir * max_speed()
 
 ## Desired velocity toward `goal`, slowing inside the braking radius.
 ## `stop_at` leaves a gap (e.g. to hover beside an asteroid).
@@ -1518,6 +1725,8 @@ class MarkTag extends Node2D:
 	var host: Ship
 	var count := 1
 	var color := Color.YELLOW
+	## Engagement mode: non-default ones show a small colored dot below.
+	var engage := 0
 
 	func _process(_delta: float) -> void:
 		if not is_instance_valid(host):
@@ -1536,6 +1745,9 @@ class MarkTag extends Node2D:
 			var pts := PackedVector2Array([Vector2(-3, y + 1.5), Vector2(0, y - 1.5), Vector2(3, y + 1.5)])
 			draw_polyline(pts, Color(0, 0, 0, 0.8), 2.6)
 			draw_polyline(pts, color, 1.3)
+		if engage > 0 and engage < Ship.ENGAGE_COLORS.size():
+			draw_circle(Vector2(0, 5.0), 1.9, Color(0, 0, 0, 0.8))
+			draw_circle(Vector2(0, 5.0), 1.3, Ship.ENGAGE_COLORS[engage])
 
 var _cargo_fx: CargoTank
 
