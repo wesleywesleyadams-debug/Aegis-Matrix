@@ -762,7 +762,7 @@ func _build_research(root: Control) -> void:
 		def_rows.append([_row_head(line[1], line[2], LINE_ICONS[line[0]]), ids])
 	pages["defense"] = _tech_page(v, def_rows)
 
-	var order := [["warships", "Warships"], ["weapons", "Weapons"], ["mods", "Mods"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"], ["general", "General"]]
+	var order := [["warships", "Warships"], ["weapons", "Weapons"], ["mods", "Mods"], ["defense", "Defense"], ["constructs", "Constructs"], ["worlds", "Worlds"], ["logistics", "Logistics"]]
 	var buttons := {}
 	for pair in order:
 		if not pages.has(pair[0]):
