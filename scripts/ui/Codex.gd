@@ -432,6 +432,32 @@ func _page_combat() -> void:
 		rows.append([d["name"], [str(int(d["shield"])), Defs.LAYER_COLORS["shield"]], [str(int(d.get("armor", 0))), Defs.LAYER_COLORS["armor"]],
 			[str(int(d["hp"])), Defs.LAYER_COLORS["hull"]], _lean_cell(d)])
 	_table(["Ship", "Shield", "Armor", "Hull", "Leans on"], rows)
+	var wrows: Array = []
+	for t in Defs.MARK_LINES:
+		var d: Dictionary = Defs.SHIPS[t]
+		wrows.append([d["name"], "%s every %s s" % [String.num(float(d["damage"]), 1), String.num(float(d["cooldown"]), 1)], "%d" % int(d["range"]), "%d" % int(d.get("guns", 1)), "%d" % int(d["speed"])])
+	_table(["Ship", "Laser damage", "Range", "Guns", "Speed"], wrows)
+	_heading("Matchups")
+	_para("How each class fares against each other class at equal cost, from the latest balance round robin: every class's plain lasers and all twelve Mods fought one another, 12 times per pairing. Each figure is the row class's win rate against the column class, across all its sides (lasers and Mods). The aim is a gentle size ladder: corvettes 47%, destroyers 49%, cruisers 51%, carriers 53% overall.")
+	var mk := ["Corvette", "Destroyer", "Cruiser", "Carrier"]
+	var mt := [[50, 8, 80, 42], [92, 50, 38, 27], [20, 62, 50, 78], [58, 73, 22, 50]]
+	var mt_rows: Array = []
+	for i in 4:
+		var r: Array = [mk[i]]
+		for j in 4:
+			var v: int = mt[i][j]
+			r.append(["%d%%" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
+		mt_rows.append(r)
+	_table(["vs", "Corvettes", "Destroyers", "Cruisers", "Carriers"], mt_rows)
+	_para("So every class has a prey and a predator: destroyers crush corvettes, corvettes swarm cruisers, cruisers outlast destroyers and carriers, and carriers grind down destroyers. Overall win rates of every side:")
+	var ow := [["Missile Barrage", "Carrier", 69], ["Lasers", "Destroyer", 61], ["Point-Defense Lattice", "Cruiser", 58], ["Lasers", "Cruiser", 56],
+		["Cluster Bombs", "Destroyer", 52], ["Interceptor Drones", "Carrier", 51], ["Ion Lance", "Cruiser", 49], ["Kinetic Repeaters", "Corvette", 48],
+		["Rail Cannons", "Cruiser", 48], ["Flak Cannons", "Destroyer", 47], ["Homing Missiles", "Destroyer", 47], ["Lasers", "Corvette", 45],
+		["Arc Emitters", "Corvette", 45], ["Lasers", "Carrier", 44], ["Proton Torpedoes", "Corvette", 41], ["Tractor Beams", "Carrier", 40]]
+	var ow_rows: Array = []
+	for e in ow:
+		ow_rows.append([e[0], e[1], "%d%%" % int(e[2])])
+	_table(["Weapon", "Class", "Wins"], ow_rows)
 	_heading("Specialist variants")
 	_pic("variants", "Every variant costs the same as its generalist; its chevrons and shots share its color.", Vector2(460, 160))
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
