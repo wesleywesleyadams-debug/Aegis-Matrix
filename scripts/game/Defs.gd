@@ -738,7 +738,7 @@ const MOD_WEAPONS := {
 	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.03, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
-	"mod_tractor_beams": {"tractor": [40.0, 2.0], "dmg": 0.96},
+	"mod_tractor_beams": {"tractor": [40.0, 2.0], "dmg": 1.0},
 	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.35, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
