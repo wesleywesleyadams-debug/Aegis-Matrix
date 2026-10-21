@@ -710,7 +710,7 @@ const AOE_SHARE := 1.0
 const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
-	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.57, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.093},
+	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.585, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.093},
 	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.4, "cd": 0.3436, "range": 0.75},
 	"mod_arc_emitters": {"weapon": "arc", "cd": 1.031, "chain": [0.59, 0.21, 0.21], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
@@ -731,7 +731,7 @@ const MOD_WEAPONS := {
 	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.62, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
-	"mod_point_defense_lattice": {"dmg": 0.95, "pd": 220.0},
+	"mod_point_defense_lattice": {"dmg": 0.97, "pd": 220.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.415, "dmg": 0.28, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
