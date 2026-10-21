@@ -781,7 +781,8 @@ func _tot(key: String) -> float:
 
 func _ship_line(cls: String) -> String:
 	var d: Dictionary = Defs.SHIPS[cls]
-	return "%s (%s, %d s): %d shield / %d armor / %d hull, range %d, speed %d" % [d["name"], Defs.cost_text(d["cost"]), int(d["build_time"]), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), int(d["range"]), int(d["speed"])]
+	var gun: String = (", range %d" % int(d["range"])) if str(d.get("weapon", "")) != "" else ", unarmed"
+	return "%s (%s, %d s): %d shield / %d armor / %d hull%s, speed %d" % [d["name"], Defs.cost_text(d["cost"]), int(d["build_time"]), int(d["shield"]), int(d.get("armor", 0)), int(d["hp"]), gun, int(d["speed"])]
 
 ## What a tech does in practice. Numbers come from Defs so they follow balance.
 func _tech_caption(id: String) -> String:
