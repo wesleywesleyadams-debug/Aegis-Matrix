@@ -132,7 +132,7 @@ const BASE_SHIPS := {
 		# makes up for it with several mounts instead of one.
 		"hp": 911.6, "armor": 1367.4, "shield": 1367.4, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 153.0, "upkeep": 8.0,
-		"weapon": "laser", "damage": 13.6, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
+		"weapon": "laser", "damage": 14.7, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
@@ -735,11 +735,11 @@ const MOD_WEAPONS := {
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.415, "dmg": 0.28, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
-	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.03, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
+	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 2.803, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# tractor: [slow at the far edge, slow up close, reach x attack range].
 	# The lasers are untouched; each turret adds a beam that slows its target.
-	"mod_tractor_beams": {"tractor": [60.0, 2.0], "dmg": 1.0},
-	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.28, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
+	"mod_tractor_beams": {"tractor": [60.0, 2.0], "dmg": 0.925},
+	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.259, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
 static func damage_profile(d: Dictionary) -> Dictionary:
