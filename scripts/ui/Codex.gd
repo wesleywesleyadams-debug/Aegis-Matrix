@@ -26,11 +26,20 @@ const SECTIONS := [
 	["terms", "Terminology"],
 ]
 
+## Long sections split into sub-pages, listed under them in the nav while
+## the section is open. The first sub-page is the section's landing page.
+const SUBPAGES := {
+	"combat": [["layers", "Defense layers"], ["classes", "Classes"], ["variants", "Variants"],
+		["mods", "Weapon Mods"], ["matchups", "Matchups"], ["jobs", "Ship jobs"]],
+	"ships": [["overview", "Overview"], ["marks", "Marks"], ["colors", "Variant colors"], ["every", "Every ship"]],
+}
+
 const COL_GAP := 32.0
 
 var _body: VBoxContainer          ## staging: pages build here, then _flow()
 var _rows: VBoxContainer          ## the laid-out page (see _flow)
 var _nav_buttons := {}
+var _sub_buttons := {}
 var _current := "overview"
 ## Opened over a running match (from the pause menu) instead of from the
 ## title screen: Back closes the overlay and leaves the match alone.
@@ -78,6 +87,22 @@ func _ready() -> void:
 		b.pressed.connect(func(): _show(s[0]))
 		nav.add_child(b)
 		_nav_buttons[s[0]] = b
+		for sp in SUBPAGES.get(s[0], []):
+			var sb := Button.new()
+			sb.text = sp[1]
+			sb.custom_minimum_size = Vector2(0, 26)
+			sb.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			sb.focus_mode = Control.FOCUS_NONE
+			sb.flat = true
+			sb.add_theme_font_size_override("font_size", 17)
+			var pad := StyleBoxEmpty.new()
+			pad.content_margin_left = 20
+			for st in ["normal", "hover", "pressed", "focus"]:
+				sb.add_theme_stylebox_override(st, pad)
+			sb.pressed.connect(func(): _show(s[0] + "/" + sp[0]))
+			sb.visible = false
+			nav.add_child(sb)
+			_sub_buttons[s[0] + "/" + sp[0]] = sb
 	# Leaving sits at the bottom of the same column, in red.
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -374,16 +399,30 @@ func _rule() -> void:
 # ---------------------------------------------------------------- sections
 
 func _show(id: String) -> void:
+	if SUBPAGES.has(id):
+		id += "/" + SUBPAGES[id][0][0]
 	_current = id
+	var top := id.get_slice("/", 0)
 	for k in _nav_buttons:
-		_nav_buttons[k].add_theme_color_override("font_color", EDGE_LIT if k == id else TEXT)
+		_nav_buttons[k].add_theme_color_override("font_color", EDGE_LIT if k == top else TEXT)
+	for k in _sub_buttons:
+		_sub_buttons[k].visible = k.begins_with(top + "/")
+		_sub_buttons[k].add_theme_color_override("font_color", EDGE_LIT if k == id else DIM)
 	for c in _body.get_children():
 		c.queue_free()
 	match id:
 		"overview": _page_overview()
 		"controls": _page_controls()
-		"combat": _page_combat()
-		"ships": _page_ships()
+		"combat/layers": _page_layers()
+		"combat/classes": _page_classes()
+		"combat/variants": _page_variants()
+		"combat/mods": _page_mods()
+		"combat/matchups": _section_matchups()
+		"combat/jobs": _page_jobs()
+		"ships/overview": _page_ships()
+		"ships/marks": _page_marks()
+		"ships/colors": _page_colors()
+		"ships/every": _page_every()
 		"research": _page_research()
 		"economy": _page_economy()
 		"worlds": _page_worlds()
@@ -434,7 +473,7 @@ func _lean_cell(d: Dictionary) -> Variant:
 		return [leans[0][0], Defs.LAYER_COLORS[leans[0][1]]]
 	return " + ".join(leans.map(func(l): return l[0]))
 
-func _page_combat() -> void:
+func _page_layers() -> void:
 	_heading("Defense layers")
 	_pic("layers", "Damage drains shields, then armor, then hull.", Vector2(460, 150))
 	_table(["Layer", "Regenerates", "Notes"], [
@@ -443,6 +482,19 @@ func _page_combat() -> void:
 		[["Hull", Defs.LAYER_COLORS["hull"]], "No", "A Repair Tender heals hull first, then armor"],
 	])
 	_pic("shield_regen", "Spread fire lets unhit ships recover; focused fire keeps their shields down.", Vector2(460, 150))
+	_heading("Defense research")
+	_para("Four lines on the Defense tab: shields, armor and hull below, plus screens, which cut a share of every hit (all three: -52%). They are expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech costs time as well as energy.")
+	_para("The shield line also raises a Radiation Sail Array's solar shield (and a merged mega shield). It refills just as fast, since each energy harvested recharges 10% of the maximum.")
+	var lines := {"shields": "shield", "armor": "armor", "hull": "hull"}
+	for line in lines:
+		var lrows: Array = []
+		for id in Defs.TECHS:
+			var t: Dictionary = Defs.TECHS[id]
+			if t.get("line", "") == line:
+				lrows.append([[t["name"], Defs.LAYER_COLORS[lines[line]]], "Tier %d" % t["tier"], Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t["desc"]])
+		_table([line.to_upper(), "", "Cost", "Time", "Effect"], lrows)
+
+func _page_classes() -> void:
 	_heading("Generalists")
 	_para("Each class leans on a different layer: corvettes on hull, destroyers on armor, cruisers on shields, carriers on shields and armor. That gives specialists a target.")
 	var rows: Array = []
@@ -456,7 +508,8 @@ func _page_combat() -> void:
 		var d: Dictionary = Defs.SHIPS[t]
 		wrows.append([d["name"], "%s every %s s" % [String.num(float(d["damage"]), 1), String.num(float(d["cooldown"]), 1)], "%d" % int(d["range"]), "%d" % int(d.get("guns", 1)), "%d" % int(d["speed"])])
 	_table(["Ship", "Laser damage", "Range", "Guns", "Speed"], wrows)
-	_section_matchups()
+
+func _page_variants() -> void:
 	_heading("Specialist variants")
 	_pic("variants", "Every variant costs the same as its generalist; its chevrons and shots share its color.", Vector2(460, 160))
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
@@ -512,8 +565,9 @@ func _page_combat() -> void:
 		cell.add_child(vc)
 		vgrid.add_child(cell)
 	_body.add_child(vgrid)
-	_heading("Hull marks", EDGE_LIT)
-	_para("A mark is rank. It comes from the Warships research tab and raises damage and every defense layer. A variant comes from a Weapons Depot and sets what the ship is good against. They stack. The Ships page compares class, mark and variant.")
+	_para("A variant comes from a Weapons Depot and stacks with the ship's mark (Ships > Marks).")
+
+func _page_mods() -> void:
 	_heading("Weapon Mods")
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
@@ -564,17 +618,8 @@ func _page_combat() -> void:
 		trows.append([k[0], "x%s" % String.num(m, 2), "%d%%" % int(round(tb * m * 100.0)), "%d%%" % int(round(tb * m / tcd * 100.0))])
 	_table(["Target", "Bonus", "Per torpedo (vs a laser shot)", "Damage over time (vs lasers)"], trows)
 
-	_heading("Defense research")
-	_para("Four lines on the Defense tab: shields, armor and hull below, plus screens, which cut a share of every hit (all three: -52%). They are expensive on purpose: committing to a layer is a strategic choice. Only one project runs at a time, so every tech costs time as well as energy.")
-	_para("The shield line also raises a Radiation Sail Array's solar shield (and a merged mega shield). It refills just as fast, since each energy harvested recharges 10% of the maximum.")
-	var lines := {"shields": "shield", "armor": "armor", "hull": "hull"}
-	for line in lines:
-		var lrows: Array = []
-		for id in Defs.TECHS:
-			var t: Dictionary = Defs.TECHS[id]
-			if t.get("line", "") == line:
-				lrows.append([[t["name"], Defs.LAYER_COLORS[lines[line]]], "Tier %d" % t["tier"], Defs.cost_text(t["cost"]), "%ds" % int(t["time"]), t["desc"]])
-		_table([line.to_upper(), "", "Cost", "Time", "Effect"], lrows)
+
+func _page_jobs() -> void:
 	_heading("Ship jobs")
 	_para("Jobs are what a ship does besides shooting. Passive jobs always work. Use an active one with Q or its ship panel button.")
 	var jrows: Array = []
@@ -606,6 +651,8 @@ func _page_ships() -> void:
 		cls_plate.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
 	_plate(cls_plate, 104.0, true, "One shape per class, for life: corvette A, destroyer Y, cruiser X, carrier H.")
 	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow. A destroyer is a tail boom forking into two prongs. A cruiser is four wings crossed at a hub. A carrier is two nacelles either side of a central spine. Silhouettes show a fleet's makeup.")
+
+func _page_marks() -> void:
 	_heading("Mark — the rank")
 	_para("Each mark adds to damage, hull, armor and shields alike. Later marks are worth more, and bigger classes gain more from each. Bonus over Mk I:")
 	var mrows0: Array = []
@@ -616,15 +663,20 @@ func _page_ships() -> void:
 		mrows0.append(row0)
 	_table(["Class", Defs.HULL_MARKS[1], Defs.HULL_MARKS[2], Defs.HULL_MARKS[3]], mrows0)
 	_para("Every warship has small chevrons beside it, one per mark: one at Mk I, four at Mk IV. Each class researches its own marks, so each class is a separate investment. A mark applies to every ship of that class the moment research finishes, existing ships included.")
+	_tech_tree("warships", _research_rows("warships"))
+
+func _page_colors() -> void:
 	_heading("Variant — the color")
 	_para("A variant keeps its class's hull; only its chevrons change color. Generalists wear yellow chevrons. Each variant has its own color, the same as its shots:")
 	var crows: Array = [[["Generalist", Defs.GENERALIST_COLOR], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	for tv in Defs.VARIANTS:
 		crows.append([[Defs.VARIANTS[tv]["label"], Defs.VARIANTS[tv]["color"]], ["^ ^ ^", Defs.VARIANTS[tv]["color"]]])
 	_table(["Variant", "Chevrons"], crows)
-	_para("Chevron count shows rank; color shows variant. The Combat page covers what each variant does to damage.")
+	_para("Chevron count shows rank; color shows variant. Combat > Variants covers what each variant does to damage.")
+
+func _page_every() -> void:
 	_heading("Every ship")
-	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat).")
+	_para("Stats as built, before research. Specialist variants share their generalist's hull and cost; only their damage profile changes (see Combat > Variants).")
 	for t in Defs.BUILD_ORDER:
 		var d: Dictionary = Defs.SHIPS[t]
 		var card := PanelContainer.new()
