@@ -4,7 +4,7 @@ extends SpaceEntity
 ## A single ship. Stats come from Defs.SHIPS[ship_type]; sprites are
 ## assets/pixel/ship_<type>.png plus a team-tinted overlay layer.
 
-enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD, REFIT }
+enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE, BUILD, BOMBARD, REFIT, GARRISON }
 
 @export_enum("miner", "colony", "constructor", "corvette", "destroyer", "cruiser") var ship_type: String = "corvette":
 	set(v):
@@ -461,6 +461,13 @@ var build_variant: String = "plasma"
 var refit_variant: String = ""
 var refit_depot: WeaponsDepot
 var refit_left: float = 0.0
+## Warp Gates: the gate this ship is flying into or garrisoned in
+## (State.GARRISON / docked), and a warp in progress — a straight run at
+## warp_target at WARP_GATE.warp_speed_mult x speed, deaf to orders and
+## holding fire until it arrives.
+var warp_gate: WarpGate
+var warping: bool = false
+var warp_target: Vector2 = Vector2.ZERO
 
 ## Jobs (see Abilities): when the Q ability can be used again, until when
 ## its effect lasts, and the ships a Repair Tender is currently healing.
@@ -824,6 +831,9 @@ func do_or_queue(queued: bool, method: String, args: Array) -> void:
 		order_queue.append([method, args])
 		queue_redraw()
 		return
+	# Mid-warp: no orders until it arrives.
+	if warping:
+		return
 	if not queued:
 		order_queue.clear()
 	callv(method, args)
@@ -931,6 +941,8 @@ func order_build_starbase(pos: Vector2) -> void:
 func order_stop() -> void:
 	# Deliberate: this is the player (or the AI) saying stay put, which turns
 	# off the idle re-tasking below.
+	if warping:
+		return
 	held = true
 	order_queue.clear()
 	state = State.IDLE
@@ -943,6 +955,9 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	if docked:
+		return
+	if warping:
+		_warp_tick(delta)
 		return
 	if def.has("solar_sail"):
 		_solar_tick(delta)
@@ -1112,6 +1127,7 @@ func _physics_process(delta: float) -> void:
 					match build_kind:
 						"depot": Game.instance.found_depot(owner_id, build_site, build_variant)
 						"station": Game.instance.found_station(owner_id, build_site)
+						"outpost", "gate": Game.instance.found_fort(owner_id, build_site, build_kind)
 						_: Game.instance.found_starbase(owner_id, build_site)
 					_dead = true
 					died.emit(self)
@@ -1136,6 +1152,18 @@ func _physics_process(delta: float) -> void:
 					desired = _arrive(refit_depot.global_position, 1.0, hold)
 				elif refit_depot.has_room():
 					refit_depot.dock(self)
+		State.GARRISON:
+			# Fly to the Warp Gate and go in.
+			if not is_instance_valid(warp_gate) or not warp_gate.is_open() or warp_gate.owner_id != owner_id:
+				warp_gate = null
+				state = State.IDLE
+				move_goal = global_position
+			else:
+				var hold2: float = warp_gate.radius + radius + 10.0
+				if global_position.distance_to(warp_gate.global_position) > hold2 + 6.0:
+					desired = _arrive(warp_gate.global_position, 1.0, hold2)
+				else:
+					warp_gate.admit(self)
 		State.RETURN:
 			# The one it was sent to, or whichever is closest: starbase or
 			# Mining Station.
@@ -1330,6 +1358,17 @@ func _draw() -> void:
 	if Engine.is_editor_hint():
 		return
 	_draw_job()
+	# At warp: blue-white streaks trailing back from the hull.
+	if warping:
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE / scale)
+		var r := radius * scale.x
+		for k in 5:
+			var off := float(k - 2) * r * 0.35
+			var ln := r * (6.0 - absf(k - 2) * 1.5)
+			var a := Vector2(-r * 0.6, off)
+			draw_line(a, a - Vector2(ln, 0), Color(0.6, 0.9, 1.0, 0.65 - absf(k - 2) * 0.18), 2.0 if k == 2 else 1.0)
+		draw_circle(Vector2(-r * 0.6, 0), r * 0.35, Color(0.85, 0.97, 1.0, 0.7))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# Ion Lance beams, brighter and wider as they ramp up.
 	for bm in _beams:
 		var a := to_local(bm[0])
@@ -1644,6 +1683,74 @@ func _become(new_type: String) -> void:
 		g.selection_changed.emit()
 	queue_redraw()
 
+## Sent into one of its owner's Warp Gates to garrison there.
+func order_garrison(g: WarpGate) -> void:
+	held = false
+	warp_gate = g
+	target = null
+	state = State.GARRISON
+
+## Goes inside a Warp Gate: hidden, out of the grid and untargetable, like a
+## ship in a depot (the `docked` flag), until ejected or warped.
+func enter_gate(g: WarpGate) -> void:
+	docked = true
+	warp_gate = g
+	order_queue.clear()
+	state = State.IDLE
+	velocity = Vector2.ZERO
+	global_position = g.global_position
+	visible = false
+	selected = false
+	Game.instance.selection.erase(self)
+
+## Ejected from a gate: back out beside it, idle.
+func leave_gate(g: WarpGate) -> void:
+	docked = false
+	visible = true
+	warp_gate = null
+	var dir := Vector2.from_angle(randf() * TAU)
+	global_position = g.global_position + dir * (g.radius + radius + 10.0 + randf() * 14.0)
+	move_goal = global_position
+	state = State.IDLE
+
+## Flung out of a gate at `to`: leaves from the gate's rim on that side,
+## a little spread out so a big garrison doesn't stack into one dot.
+func start_warp(g: WarpGate, to: Vector2) -> void:
+	docked = false
+	visible = true
+	warp_gate = null
+	var dir := (to - g.global_position).normalized()
+	var side := dir.orthogonal() * randf_range(-1.0, 1.0) * (g.radius + 8.0)
+	global_position = g.global_position + dir * (g.radius + radius + 4.0) + side
+	warp_target = to + side
+	warping = true
+	order_queue.clear()
+	target = null
+	state = State.IDLE
+	rotation = dir.angle()
+	velocity = dir * max_speed() * float(Defs.WARP_GATE["warp_speed_mult"])
+
+## One tick of a warp: a straight line at warp speed, through debris and
+## everything else; on arrival it drops to normal speed and idles there.
+func _warp_tick(delta: float) -> void:
+	var to := warp_target - global_position
+	var spd: float = max_speed() * float(Defs.WARP_GATE["warp_speed_mult"])
+	var step := spd * delta
+	if to.length() <= step:
+		global_position = warp_target
+		warping = false
+		velocity = Vector2.ZERO
+		move_goal = global_position
+		attack_move_goal = global_position
+		state = State.IDLE
+		_acquire_timer = 0.0
+		queue_redraw()
+		return
+	velocity = to.normalized() * spd
+	rotation = velocity.angle()
+	global_position += velocity * delta
+	queue_redraw()
+
 ## Builds a Mining Station on site; the Constructor is used up doing it.
 func order_build_station(pos: Vector2) -> void:
 	held = false
@@ -1651,6 +1758,18 @@ func order_build_station(pos: Vector2) -> void:
 		return
 	build_site = pos
 	build_kind = "station"
+	state = State.BUILD
+	move_goal = pos
+	target = null
+
+## Builds a Frontier Outpost ("outpost") or Warp Gate ("gate") on site; the
+## Constructor is used up doing it.
+func order_build_fort(pos: Vector2, kind: String) -> void:
+	held = false
+	if def["role"] != "constructor":
+		return
+	build_site = pos
+	build_kind = kind
 	state = State.BUILD
 	move_goal = pos
 	target = null

@@ -26,7 +26,7 @@ static func has_method_scene(id: String) -> bool:
 ## id -> painter. Written as a lookup so a missing scene is just a missing key.
 const SCENES := [
 	"garrison_guns", "orbital_yards", "modular_frames", "depots", "reinforced_docks", "forward_bases",
-	"siege_platforms", "rapid_assembly", "citadel_protocols", "fortress_doctrine", "shipyard_networks", "orbital_elevators",
+	"outposts", "rapid_assembly", "citadel_protocols", "warp_gates", "shipyard_networks", "orbital_elevators",
 	"deflectors", "phase_shields", "aegis_matrix", "composite_plating", "reactive_armor", "neutronium_armor",
 	"reinforced_frames", "nanite_plating", "adaptive_hulls", "flak_screens", "point_defense", "aegis_umbrella",
 	"ion_cannons", "particle_lances", "capital_batteries", "targeting_arrays", "beam_focusing", "lance_batteries",
@@ -139,10 +139,11 @@ static func call_scene(id: String, img: Image) -> void:
 			_sprite(img, "starbase", Vector2(16, 44), 20.0)
 			_dashes(img, Vector2(22, 38), Vector2(44, 20), Color("ffd84a"))
 			_sprite(img, "starbase", Vector2(46, 18), 22.0)
-		"siege_platforms":
-			_sprite(img, "starbase", Vector2(14, 46), 22.0)
-			_beam(img, Vector2(20, 40), Vector2(54, 12), Color("ff6a4a"), 2.5)
-			_burst(img, Vector2(54, 12), 6.0, Color("ffd84a"))
+		"outposts":
+			# A lone fort on the edge of the map, its laser reaching out.
+			_sprite(img, "ship_frontier_outpost", Vector2(22, 40), 30.0)
+			_beam(img, Vector2(28, 34), Vector2(54, 12), Color("ff6a4a"), 2.0)
+			_burst(img, Vector2(54, 12), 5.0, Color("ffd84a"))
 		"rapid_assembly":
 			_sprite(img, "ship_mining_station", C + Vector2(0, 4), 34.0)
 			# The top half is still only scaffold.
@@ -154,9 +155,12 @@ static func call_scene(id: String, img: Image) -> void:
 				var hgt: float = [14, 24, 32, 28, 20, 12][k]
 				_tower(img, 14 + k * 6, 46, 5, hgt, Color("7f8bb0"))
 			_arc(img, Vector2(32, 46), 26.0, PI, TAU, 1.5, Color("7fd8ff", 0.7))
-		"fortress_doctrine":
-			_sprite(img, "starbase", C, 26.0)
-			_hex(img, C, 24.0, 3.0, Color("ffb347"))
+		"warp_gates":
+			# The gate, and a ship streaking away from it at warp.
+			_sprite(img, "ship_warp_gate", Vector2(18, 44), 30.0)
+			for k in 3:
+				_line(img, Vector2(26 + k * 2, 34 - k * 3), Vector2(46 + k * 2, 18 - k * 3), 1.0, Color("7fd8ff", 0.5 + k * 0.2))
+			_sprite(img, "ship_corvette", Vector2(52, 12), 14.0)
 		"shipyard_networks":
 			var pts := [Vector2(14, 16), Vector2(50, 22), Vector2(28, 48)]
 			for i in 3:

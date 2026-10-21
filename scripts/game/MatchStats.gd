@@ -65,6 +65,9 @@ func score(pid: int) -> int:
 		for c in g.get_tree().get_nodes_in_group(grp[0]):
 			if c.owner_id == pid and c.is_alive() and not c.under_construction:
 				owned += _cost(grp[1]["cost"])
+	for f in g.get_tree().get_nodes_in_group("forts"):
+		if f.owner_id == pid and f.is_alive() and not f.under_construction:
+			owned += _cost(f.def()["cost"])
 	var worlds := 0
 	var pop := 0.0
 	for p in g.get_tree().get_nodes_in_group("planets"):

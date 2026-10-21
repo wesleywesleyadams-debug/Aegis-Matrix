@@ -97,7 +97,7 @@ func reveal_all() -> void:
 	visible = false
 	for s in get_tree().get_nodes_in_group("ships"):
 		s.visible = true
-	for sb in get_tree().get_nodes_in_group("starbases") + get_tree().get_nodes_in_group("depots"):
+	for sb in get_tree().get_nodes_in_group("starbases") + get_tree().get_nodes_in_group("depots") + get_tree().get_nodes_in_group("forts"):
 		sb.visible = true
 	for p in game.fx_root.get_children():
 		p.visible = true
@@ -188,6 +188,10 @@ func _refresh() -> void:
 	for dp in tree.get_nodes_in_group("depots"):
 		if game.are_allies(pid, dp.owner_id) and dp.is_alive():
 			_sources.append([dp.global_position, 300.0, false])
+	# Forts: an outpost sees a little past its gun, a gate like a depot.
+	for f in tree.get_nodes_in_group("forts"):
+		if game.are_allies(pid, f.owner_id) and f.is_alive():
+			_sources.append([f.global_position, 340.0 if f is FrontierOutpost else 300.0, false])
 	for b in tree.get_nodes_in_group("beacons"):
 		if game.are_allies(pid, b.owner_id):
 			_sources.append([b.global_position, b.sensor_range(), true])
@@ -227,8 +231,8 @@ func _hide_unseen() -> void:
 			if not s.visible and s.selected:
 				game.selection.erase(s)
 				s.selected = false
-	# Enemy starbases and depots: shown once seen, then remembered.
-	for sb in tree.get_nodes_in_group("starbases") + tree.get_nodes_in_group("depots"):
+	# Enemy starbases, depots and forts: shown once seen, then remembered.
+	for sb in tree.get_nodes_in_group("starbases") + tree.get_nodes_in_group("depots") + tree.get_nodes_in_group("forts"):
 		if not game.are_allies(pid, sb.owner_id):
 			if can_see(sb):
 				sb.set_meta("seen", true)

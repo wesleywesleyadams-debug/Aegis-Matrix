@@ -936,9 +936,9 @@ func _page_worlds() -> void:
 func _page_constructs() -> void:
 	_heading("Constructs")
 	_para("Constructs are the stations you build rather than fly. A Constructor (%s, %d s at a starbase) flies to the site and is used up building it. The cost is paid gradually while it builds; a construct starts at %d%% hull and fills in as it goes (Rapid Assembly: %d%%). Sites need room: clear of planets, the star, other constructs, debris and the map edge." % [Defs.cost_text(Defs.SHIPS["constructor"]["cost"]), int(Defs.SHIPS["constructor"]["build_time"]), 10, 50])
-	_plate([["starbase", "Starbase"], ["ship_depot_plasma", "Weapons Depot"], ["ship_mining_station", "Mining Station"], ["ship_constructor", "Constructor"]], 76.0, true)
+	_plate([["starbase", "Starbase"], ["ship_depot_plasma", "Weapons Depot"], ["ship_mining_station", "Mining Station"], ["ship_frontier_outpost", "Frontier Outpost"], ["ship_warp_gate", "Warp Gate"], ["ship_constructor", "Constructor"]], 76.0, true)
 	var crows: Array = []
-	for c in [Defs.STARBASE, Defs.WEAPONS_DEPOT, Defs.MINING_STATION]:
+	for c in [Defs.STARBASE, Defs.WEAPONS_DEPOT, Defs.MINING_STATION, Defs.FRONTIER_OUTPOST, Defs.WARP_GATE]:
 		var gun: String = ("%d dmg / %.1fs, range %d" % [int(c["damage"]), float(c["cooldown"]), int(c["range"])]) if c.has("weapon") else "-"
 		crows.append([c["name"], Defs.cost_text(c["cost"]), "%ds" % int(c["build_time"]), "%d / %d / %d" % [int(c["shield"]), int(c["armor"]), int(c["hp"])], gun, "%.1f/min" % float(c["upkeep"])])
 	_table(["Construct", "Cost", "Build", "Shield / armor / hull", "Gun", "Upkeep"], crows)
@@ -946,6 +946,12 @@ func _page_constructs() -> void:
 	_para("Your production station: it builds every ship, takes in harvesters' cargo, and defends itself. Its reactors and refineries add %d energy and %d minerals a minute. Lose every starbase and Constructor and you lose the match. Starbases cost the most upkeep of anything (x%.2f to the empire multiplier each)." % [int(round(Defs.STARBASE["energy_per_sec"] * 60.0)), int(round(Defs.STARBASE["minerals_per_sec"] * 60.0)), Defs.UPKEEP_WEIGHT["starbase"]])
 	_heading("Mining Station")
 	_para("A forward drop-off: harvesters unload here instead of flying home, so a station beside a far belt or nebula shortens every trip. It has a light gun for raiders.")
+	_heading("Frontier Outpost")
+	_para("Half a starbase: half its shields, armor, hull and gun, on a cheaper site (Outposts research). It builds nothing and takes no cargo; it only holds the space around it, and enemy ships attack it on sight like a starbase. Construct weapon research (damage, starbase range) applies to its laser. Upkeep weight x%.2f, as a cruiser." % Defs.UPKEEP_WEIGHT["cruiser"])
+	_heading("Warp Gate")
+	var wg: Dictionary = Defs.WARP_GATE
+	_para("No gun (Warp Gates research). Right-click your gate with ships selected to garrison them inside, any number; they still cost upkeep, and if the gate is destroyed every ship inside is lost with it. Its panel ejects one ship or all of them. Warp (Q) flings the whole garrison at a point %s-%s px away, fog or not: they fly there in a straight line at %dx speed, holding fire and ignoring orders until they arrive, and can be shot on the way. The gate then recharges for %d s. Upkeep weight x%.2f, as a starbase." % [
+		str(int(wg["warp_min"])), str(int(wg["warp_max"])), int(wg["warp_speed_mult"]), int(wg["warp_cooldown"]), Defs.UPKEEP_WEIGHT["starbase"]])
 	_heading("Weapons Depots")
 	var wd: Dictionary = Defs.WEAPONS_DEPOT
 	_pic("depot", "Starbases build generalists only; a depot refits them into one variant.", Vector2(460, 150))

@@ -135,6 +135,8 @@ func _worth() -> float:
 		c = Defs.MINING_STATION["cost"]
 	elif self is WeaponsDepot:
 		c = Defs.WEAPONS_DEPOT["cost"]
+	elif self is FortConstruct:
+		c = self.call("def")["cost"]
 	var t := 0.0
 	for k in c:
 		t += float(c[k])

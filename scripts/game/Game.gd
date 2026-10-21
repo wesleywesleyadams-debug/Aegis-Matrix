@@ -100,12 +100,19 @@ var placing_starbase: bool = false
 var placing_depot: bool = false
 ## Placing a Mining Station (see start_station_placement).
 var placing_station: bool = false
+## Placing a fort (start_fort_placement): "outpost", "gate" or "".
+var placing_fort: String = ""
+## A Warp Gate picking its warp destination (start_warp_targeting), or null.
+var warp_aiming: WarpGate = null
 
 var _grid := {}
 var _grid_big := {}
 ## Cached once per physics tick (see _physics_process).
 var stars_list: Array = []
 var starbase_list: Array = []
+## Starbases plus forts (Frontier Outposts, Warp Gates): the constructs ships
+## auto-target, besides other ships.
+var hard_targets: Array = []
 var nebula_list: Array = []
 var storm_list: Array = []
 var ring_list: Array = []
@@ -745,6 +752,10 @@ func upkeep_multiplier(pid: int, extra: float = 1.0) -> float:
 		for n in get_tree().get_nodes_in_group(grp):
 			if n.owner_id == pid:
 				m *= Defs.UPKEEP_WEIGHT_SMALL
+	# A Frontier Outpost weighs as a cruiser, a Warp Gate as a starbase.
+	for f in get_tree().get_nodes_in_group("forts"):
+		if f.owner_id == pid:
+			m *= Defs.UPKEEP_WEIGHT["starbase"] if f is WarpGate else Defs.UPKEEP_WEIGHT["cruiser"]
 	# Upkeep research (Orbital Elevators, Jump Drives) shrinks the multiplier
 	# itself: -10% each.
 	return m * mod(pid, "upkeep")
@@ -832,6 +843,9 @@ func base_upkeep(pid: int) -> float:
 	for ms in get_tree().get_nodes_in_group("mining_stations"):
 		if ms.owner_id == pid:
 			u += Defs.MINING_STATION["upkeep"]
+	for f in get_tree().get_nodes_in_group("forts"):
+		if f.owner_id == pid:
+			u += f.def()["upkeep"]
 	return u
 
 # ---------------------------------------------------------------- research
@@ -1008,6 +1022,7 @@ func _physics_process(delta: float) -> void:
 				job_ships[jid] = []
 			job_ships[jid].append(s)
 	starbase_list = get_tree().get_nodes_in_group("starbases")
+	hard_targets = starbase_list + get_tree().get_nodes_in_group("forts")
 	nebula_list = get_tree().get_nodes_in_group("nebulae")
 	storm_list = get_tree().get_nodes_in_group("storms")
 	ring_list = get_tree().get_nodes_in_group("debris_rings")
@@ -1099,7 +1114,7 @@ func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
 				if d < best_d:
 					best_d = d
 					best = s
-	for sb in starbase_list:
+	for sb in hard_targets:
 		if is_instance_valid(sb) and sb.is_enemy_of(pid) and sb.is_alive() and sees(pid, sb):
 			var d: float = fp.distance_to(sb.global_position) - sb.radius
 			if d < best_d:
@@ -1128,7 +1143,7 @@ func enemies_near(from: SpaceEntity, max_dist: float, count: int, around: Vector
 				if d > max_dist:
 					continue
 				found.append([d + (40.0 if s.def["role"] != "warship" else 0.0), s])
-	for sb in starbase_list:
+	for sb in hard_targets:
 		if is_instance_valid(sb) and sb.is_enemy_of(pid) and sb.is_alive() and sees(pid, sb):
 			var d2: float = fp.distance_to(sb.global_position) - sb.radius
 			if d2 <= max_dist:
@@ -1201,7 +1216,8 @@ func entity_at(world_pos: Vector2, foe_drones: bool = false) -> SpaceEntity:
 			if d.is_enemy_of(player_id) and (vision == null or vision.can_see(d)):
 				pool.append(d)
 	for e in pool:
-		if not e.is_alive():
+		# Ships inside a depot or Warp Gate sit at its centre: never picked.
+		if not e.is_alive() or e.docked:
 			continue
 		var d := world_pos.distance_to(e.global_position)
 		if d <= e.radius + 4.0 and d < best_d:
@@ -1229,7 +1245,7 @@ func site_problem(kind: String, pos: Vector2) -> String:
 	if pos.length() > MAP_RADIUS - 60.0:
 		return "Too close to the edge of the system"
 	var ring := Defs.placement_ring(kind)
-	for n in get_tree().get_nodes_in_group("starbases") + get_tree().get_nodes_in_group("depots") + get_tree().get_nodes_in_group("mining_stations"):
+	for n in get_tree().get_nodes_in_group("starbases") + get_tree().get_nodes_in_group("depots") + get_tree().get_nodes_in_group("mining_stations") + get_tree().get_nodes_in_group("forts"):
 		if n.global_position.distance_to(pos) < ring + n.radius * Defs.PLACEMENT_RING:
 			return "Too close to another construct"
 	for p in get_tree().get_nodes_in_group("planets"):
@@ -1338,7 +1354,7 @@ func splash(pos: Vector2, r: float, damage: float, pid: int, from: Node2D, profi
 	spawn_blast(pos, r)
 
 ## Every live ship and construct with any part near `pos` (the coarse grid,
-## plus starbases).
+## plus starbases and forts).
 func hulls_near(pos: Vector2, r: float) -> Array:
 	var out: Array = []
 	var lo := Vector2i(((pos - Vector2(r, r)) / BIG_CELL).floor())
@@ -1351,7 +1367,7 @@ func hulls_near(pos: Vector2, r: float) -> Array:
 			for s in cell:
 				if is_instance_valid(s) and s.is_alive() and s.global_position.distance_to(pos) <= r + s.radius:
 					out.append(s)
-	for sb in starbase_list:
+	for sb in hard_targets:
 		if is_instance_valid(sb) and sb.is_alive() and sb.global_position.distance_to(pos) <= r + sb.radius:
 			out.append(sb)
 	return out
@@ -1774,9 +1790,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _handle_mouse_button(e: InputEventMouseButton) -> void:
 	match e.button_index:
 		MOUSE_BUTTON_LEFT:
-			if placing_starbase or placing_depot or placing_station:
+			if is_placing():
 				if e.pressed:
-					if placing_depot:
+					if warp_aiming != null:
+						_aim_warp(get_global_mouse_position())
+					elif placing_fort != "":
+						_place_fort(get_global_mouse_position())
+					elif placing_depot:
 						_place_depot(get_global_mouse_position())
 					elif placing_station:
 						_place_station(get_global_mouse_position())
@@ -1797,10 +1817,8 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 				_dragging = false
 		MOUSE_BUTTON_RIGHT:
 			if e.pressed and not is_over:
-				if placing_starbase or placing_depot or placing_station:
-					placing_starbase = false
-					placing_depot = false
-					placing_station = false
+				if is_placing():
+					cancel_placing()
 				else:
 					_issue_command(get_global_mouse_position(), e.ctrl_pressed, e.shift_pressed)
 		MOUSE_BUTTON_MIDDLE:
@@ -1815,10 +1833,8 @@ func _handle_mouse_button(e: InputEventMouseButton) -> void:
 func _handle_key(e: InputEventKey) -> void:
 	var k := e.keycode
 	if k == KEY_ESCAPE:
-		if placing_starbase or placing_depot or placing_station:
-			placing_starbase = false
-			placing_depot = false
-			placing_station = false
+		if is_placing():
+			cancel_placing()
 		elif hud.research_open():
 			# The research screen sits on top, so it closes first.
 			hud.toggle_research()
@@ -1943,6 +1959,93 @@ func start_starbase_placement() -> void:
 	var n := starbase_count(player_id)
 	message.emit("Left-click open space to found starbase #%d (%s over %ds; your empire upkeep multiplier becomes x%.2f). Right-click to cancel." % [n + 1, Defs.cost_text(Defs.STARBASE["cost"]), Defs.STARBASE["build_time"], upkeep_multiplier(player_id, Defs.UPKEEP_WEIGHT["starbase"])], Color("c3cde4"))
 
+## Any placement or targeting mode that takes the next left-click.
+func is_placing() -> bool:
+	return placing_starbase or placing_depot or placing_station or placing_fort != "" or warp_aiming != null
+
+func cancel_placing() -> void:
+	placing_starbase = false
+	placing_depot = false
+	placing_station = false
+	placing_fort = ""
+	warp_aiming = null
+
+## Constructor: place a Frontier Outpost ("outpost") or Warp Gate ("gate").
+func start_fort_placement(kind: String) -> void:
+	var d: Dictionary = Defs.construct_def(kind)
+	if not has_tech(player_id, str(d["requires"])):
+		message.emit("%s needs the %s tech." % [d["name"], Defs.TECHS[d["requires"]]["name"]], Color("ffb24a"))
+		sfx.play_ui("deny")
+		return
+	cancel_placing()
+	placing_fort = kind
+	var what := "a laser fort that holds the space around it" if kind == "outpost" else "ships garrisoned inside can be warped across the system"
+	message.emit("Left-click open space for a %s (%s over %ds): %s. Right-click to cancel." % [
+		d["name"], Defs.cost_text(d["cost"]), int(d["build_time"]), what], Color("c3cde4"))
+
+func _place_fort(pos: Vector2) -> void:
+	var why := site_problem(placing_fort, pos)
+	if why != "":
+		message.emit(why + ".", Color("ff8a5a"))
+		sfx.play_ui("deny")
+		return
+	var builders3: Array = _own_ships_selected().filter(func(s): return s.def["role"] == "constructor")
+	var kind := placing_fort
+	placing_fort = ""
+	if builders3.is_empty():
+		return
+	builders3.sort_custom(func(a, b): return a.global_position.distance_to(pos) < b.global_position.distance_to(pos))
+	builders3[0].order_build_fort(pos, kind)
+	hud.ping(pos, Color("ffd46b"))
+	sfx.play_ui("click")
+
+func found_fort(pid: int, pos: Vector2, kind: String) -> FortConstruct:
+	var f: FortConstruct = WarpGate.new() if kind == "gate" else FrontierOutpost.new()
+	f.owner_id = pid
+	f.position = pos
+	starbases_root.add_child(f)
+	if pid == player_id:
+		notify("%s construction started." % f.label(), "note_starbase", pos)
+	return f
+
+## The selected own Warp Gate, if one is selected.
+func selected_gate() -> WarpGate:
+	for e in selection:
+		if is_instance_valid(e) and e is WarpGate and e.owner_id == player_id:
+			return e
+	return null
+
+## Warp Gate panel, Warp (or its hotkey): the next left-click picks where
+## the garrison goes. HUD draws the reach rings while this is on.
+func start_warp_targeting(g: WarpGate) -> void:
+	var why := ""
+	if g.cooldown_left > 0.0:
+		why = "The gate is recharging (%ds)" % int(ceil(g.cooldown_left))
+	elif g.ships().is_empty():
+		why = "No ships in the gate"
+	if why != "":
+		message.emit(why + ".", Color("ff8a5a"))
+		sfx.play_ui("deny")
+		return
+	cancel_placing()
+	warp_aiming = g
+	message.emit("Left-click a destination %d-%d px from the gate to warp %d ships there. Right-click to cancel." % [
+		int(Defs.WARP_GATE["warp_min"]), int(Defs.WARP_GATE["warp_max"]), g.ships().size()], Color("9fdcff"))
+
+func _aim_warp(pos: Vector2) -> void:
+	var g := warp_aiming
+	if not is_instance_valid(g) or not g.is_alive():
+		warp_aiming = null
+		return
+	var why := g.warp(pos)
+	if why != "":
+		message.emit(why + ".", Color("ff8a5a"))
+		sfx.play_ui("deny")
+		return
+	warp_aiming = null
+	hud.ping(pos, Color("9fdcff"))
+	sfx.play_ui("click")
+
 func start_station_placement() -> void:
 	placing_station = true
 	message.emit("Left-click open space for a Mining Station (%s over %ds): harvesters unload there instead of flying home. Right-click to cancel." % [
@@ -2056,7 +2159,7 @@ func _detonate(list: Array) -> void:
 			x._die()
 
 func _set_selection(list: Array, additive: bool) -> void:
-	list = list.filter(func(e): return is_instance_valid(e))
+	list = list.filter(func(e): return is_instance_valid(e) and not e.docked)
 	if not additive:
 		for e in selection:
 			if is_instance_valid(e):
@@ -2305,6 +2408,12 @@ func _issue_command(world_pos: Vector2, attack_move: bool, queued: bool = false)
 				s.do_or_queue(queued, "order_move", [world_pos])
 			return
 
+	# An own finished Warp Gate: everything selected goes inside.
+	if target is WarpGate and target.owner_id == player_id and target.is_open():
+		for s in ships:
+			s.do_or_queue(queued, "order_garrison", [target])
+		hud.flash_target(target, "")
+		return
 	if target is WeaponsDepot and target.owner_id == player_id and not target.under_construction:
 		var sent := 0
 		for s in ships.duplicate():
@@ -2708,9 +2817,12 @@ func _enter_dev_capture() -> void:
 			mk.visible = lvl > 0
 		center_on(c0 + Vector2(345, 170))
 	if OS.get_environment("SL_SHOT_OPEN") == "ctorpanel":
-		# Dev: the Constructor's build options as square icon buttons.
+		# Dev: the Constructor's build options as square icon buttons (Outposts
+		# researched, Warp Gates still locked). SL_CON_PAGE=depots opens the
+		# Weapons Depot page.
 		var hb4 := nearest_starbase(player_id, Vector2.ZERO)
 		researched[player_id]["depots"] = true
+		researched[player_id]["outposts"] = true
 		var c4 := spawn_ship("constructor", player_id, hb4.global_position + Vector2(90, 90))
 		_set_selection([c4], false)
 	if OS.get_environment("SL_SHOT_OPEN") == "sbbuild":
@@ -2783,6 +2895,8 @@ func _enter_dev_capture() -> void:
 						bg2.global_position.distance_to(hs.global_position)]))
 		get_tree().create_timer(70.0).timeout.connect(func():
 			print("STATION minerals=%d (deliveries land)" % int(resources[player_id]["minerals"])))
+	if OS.get_environment("SL_WARP_TEST") != "":
+		_warp_test()   # runs alongside: not awaited, so SL_SHOT still fires
 	if OS.get_environment("SL_SHOT_OPEN") == "rclose":
 		# Dev: the research screen closes on Esc and on a click outside it.
 		hud.toggle_research()
@@ -3813,6 +3927,79 @@ func _duel_tough(s: Node, full: bool) -> float:
 		return s.max_pop() + s.max_shield() if full else s.pop + s.shield
 	return s.max_hp + s.max_armor + s.max_shield if full else s.hp + s.armor + s.shield
 
+## Dev (SL_WARP_TEST=<px>): a finished Warp Gate by the home starbase,
+## five ships inside, warped that far (clamped to the map) toward the far
+## side after 1 s. Prints WARP lines (positions, speeds, gate recharge) with
+## the camera on the destroyer; at ~7 s three more ships go in, the gate is
+## selected and the camera returns to it, so SL_SHOT="8,1,3" shows its panel
+## and recharge ring. SL_WARP_FOE=1 adds an enemy outpost by the landing
+## point (the crew should attack it on arrival).
+func _warp_test() -> void:
+	var dist := float(OS.get_environment("SL_WARP_TEST"))
+	researched[player_id]["outposts"] = true
+	researched[player_id]["warp_gates"] = true
+	var home := nearest_starbase(player_id, Vector2.ZERO)
+	var gpos := home.global_position
+	for k in 24:
+		var tryp: Vector2 = home.global_position + Vector2.from_angle(k * TAU / 24.0) * 330.0
+		if site_problem("gate", tryp) == "":
+			gpos = tryp
+			break
+	var gate: WarpGate = found_fort(player_id, gpos, "gate")
+	gate.under_construction = false
+	gate.construct_progress = Defs.WARP_GATE["build_time"]
+	gate.refresh_stats()
+	gate.hp = gate.max_hp
+	gate.shield = gate.max_shield
+	gate.armor = gate.max_armor
+	gate._update_look()
+	var crew: Array = []
+	for t in ["corvette", "corvette", "corvette", "destroyer", "cruiser"]:
+		var sh := spawn_ship(t, player_id, gpos + Vector2(randf_range(-60, 60), 60))
+		crew.append(sh)
+	await get_tree().process_frame
+	for sh in crew:
+		gate.admit(sh)
+	print("WARP gate at (%d,%d) garrison=%d upkeep x%.3f" % [int(gpos.x), int(gpos.y), gate.ships().size(), upkeep_multiplier(player_id)])
+	var dest: Vector2 = (gpos + (-gpos).normalized() * dist).limit_length(MAP_RADIUS - 80.0)
+	# An enemy outpost beside the landing point: the crew should pick it
+	# as a target on its own once they drop out of warp.
+	var foe: FortConstruct = null
+	if OS.get_environment("SL_WARP_FOE") != "":
+		foe = found_fort(2 if player_id == 1 else 1, dest + Vector2(0, 170), "outpost")
+		foe.under_construction = false
+		foe.construct_progress = Defs.FRONTIER_OUTPOST["build_time"]
+		foe.refresh_stats()
+		foe.hp = foe.max_hp
+		foe.shield = foe.max_shield
+	await get_tree().create_timer(1.0).timeout
+	print("WARP too-close check: '%s'" % gate.warp_problem(gpos + Vector2(500, 0)))
+	print("WARP to (%d,%d), %d px away: '%s'" % [int(dest.x), int(dest.y), int(gpos.distance_to(dest)), gate.warp(dest)])
+	print("WARP again right away: '%s'" % gate.warp_problem(dest))
+	var lead_ref: WeakRef = weakref(crew[3])
+	var follow := [true]
+	get_tree().process_frame.connect(func():
+		var lead: Node2D = lead_ref.get_ref()
+		if lead != null and follow[0]:
+			camera.global_position = lead.global_position)
+	for i in 24:
+		await get_tree().create_timer(0.25).timeout
+		var line := "WARP t=%.2f cooldown=%.1f |" % [0.25 * (i + 1), gate.cooldown_left]
+		for sh in crew:
+			if is_instance_valid(sh):
+				line += " %s(%d,%d) v=%d/%d %s |" % [sh.ship_type.left(4), int(sh.global_position.x), int(sh.global_position.y),
+					int(sh.velocity.length()), int(sh.max_speed()), "WARP" if sh.warping else Ship.State.keys()[sh.state]]
+		if foe != null and is_instance_valid(foe):
+			line += " foe hp=%d sh=%d" % [int(foe.hp), int(foe.shield)]
+		print(line)
+	for t2 in ["corvette", "corvette", "destroyer"]:
+		gate.admit(spawn_ship(t2, player_id, gpos + Vector2(0, 50)))
+	_set_selection([gate], false)
+	follow[0] = false
+	camera.global_position = gpos
+	await get_tree().create_timer(25.0).timeout
+	print("WARP t=%.1f cooldown=%.1f can warp: '%s'" % [Game.now(), gate.cooldown_left, gate.warp_problem(dest)])
+
 ## The duel arena: an empty patch of space - no star, worlds, rocks, bases,
 ## nebulae, storms or rings - just the two fleets, held inside ARENA_RADIUS
 ## so neither can run away.
@@ -3820,7 +4007,7 @@ func _make_arena() -> void:
 	for root in [$World/Planets, $World/Asteroids, starbases_root, ships_root]:
 		for n in root.get_children():
 			n.queue_free()
-	for grp in ["nebulae", "spice_nebulae", "storms", "rings", "beacons", "mining_stations", "depots"]:
+	for grp in ["nebulae", "spice_nebulae", "storms", "rings", "beacons", "mining_stations", "depots", "forts"]:
 		for n in get_tree().get_nodes_in_group(grp):
 			n.queue_free()
 	for n in world.get_children():
@@ -3900,6 +4087,16 @@ func _duel() -> void:
 			wn.shield = wn.max_shield()
 			print("DUEL_SIDE world: shield %d, pop %d, batteries %d" % [int(wn.shield), int(wn.pop), wn.count_building("battery")])
 			fleets[i].append(wn)
+			continue
+		# "outpost" / "gate": one finished Frontier Outpost or Warp Gate.
+		if t == "outpost" or t == "gate":
+			var fn: FortConstruct = FrontierOutpost.new() if t == "outpost" else WarpGate.new()
+			fn.owner_id = i + 1
+			fn.under_construction = false
+			fn.position = c + Vector2((-1.0 if i == 0 else 1.0) * 320.0, 0)
+			starbases_root.add_child(fn)
+			print("DUEL_SIDE %s: 1" % t)
+			fleets[i].append(fn)
 			continue
 		# "depot" / "station": one finished Weapons Depot or Mining Station.
 		if t == "depot" or t == "station":
@@ -3990,7 +4187,7 @@ func _duel() -> void:
 		if not other.is_empty() and other[0] is Planet:
 			for s in fleets[si]:
 				s.order_bombard(other[0])
-		elif not other.is_empty() and (other[0] is WeaponsDepot or other[0] is MiningStation):
+		elif not other.is_empty() and (other[0] is WeaponsDepot or other[0] is MiningStation or other[0] is FortConstruct):
 			for s in fleets[si]:
 				s.order_attack(other[0])
 	var next_report := 30.0

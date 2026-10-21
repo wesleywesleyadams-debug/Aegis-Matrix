@@ -1063,6 +1063,7 @@ func _on_match_over(won: bool) -> void:
 
 func _rebuild_selection() -> void:
 	_depot_live = []   # set again if a depot panel is built below
+	_gate_live = []    # likewise for a Warp Gate panel
 	_sel_panel.visible = not (game.selection.filter(func(e): return is_instance_valid(e)).is_empty() and is_instance_valid(game.focused_planet))
 	for c in _sel_body.get_children():
 		c.queue_free()
@@ -1106,10 +1107,14 @@ func _rebuild_selection() -> void:
 				_build_ship_controls(e)
 			elif e is WeaponsDepot:
 				_build_depot_panel(e)
+			elif e is WarpGate:
+				_build_gate_panel(e)
+			elif e is FrontierOutpost:
+				_build_outpost_panel(e)
 		return
 	var counts := {}
 	for e in sel:
-		var k: String = e.ship_type if e is Ship else ("depot_" + (e as WeaponsDepot).variant if e is WeaponsDepot else "starbase")
+		var k: String = e.ship_type if e is Ship else ("depot_" + (e as WeaponsDepot).variant if e is WeaponsDepot else ((e as FortConstruct).sprite_name().trim_prefix("ship_") if e is FortConstruct else "starbase"))
 		counts[k] = counts.get(k, 0) + 1
 	_sel_body.add_child(_label("%d selected" % sel.size(), TEXT, 20))
 	var grid := HFlowContainer.new()
@@ -1231,6 +1236,8 @@ func _entity_icon(e: SpaceEntity, px: int) -> Control:
 		tex_name = "ship_depot_" + (e as WeaponsDepot).variant
 	elif e is MiningStation:
 		tex_name = "ship_mining_station"
+	elif e is FortConstruct:
+		tex_name = (e as FortConstruct).sprite_name()
 	elif e is Ship:
 		tex_name = "ship_" + (e as Ship).def.get("base", (e as Ship).ship_type)
 	var stack := Control.new()
@@ -1461,7 +1468,7 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 	txt += "Hull %d/%d" % [ceili(e.hp), ceili(e.max_hp)]
 	if e is Ship:
 		var s := e as Ship
-		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Bombarding planet", "Refitting at Weapons Depot"][s.state]
+		txt += "\n" + ["Idle", "Moving", "Engaging", "Attack-moving", "En route to mine", "Mining", "Returning cargo", "Colonizing", "Flying to build site", "Bombarding planet", "Refitting at Weapons Depot", "Entering Warp Gate"][s.state] if not s.warping else "At warp: no orders until it arrives"
 		if s.is_miner():
 			txt += "   Cargo %d/%d %s" % [s.cargo, s.cargo_cap(), s.cargo_type]
 		elif s.weapon_mod.has("drones"):
@@ -1506,6 +1513,11 @@ Starbases %d · upkeep %.2f/min each (empire x%.2f)" % [game.starbase_count(sb.o
 		elif not sb.queue.is_empty():
 			var d: Dictionary = Defs.SHIPS[sb.queue[0]]
 			txt += "\nBuilding %s %d%%%s" % [d["name"], int(100.0 * sb.build_progress / d["build_time"]), "  STALLED: insufficient funds" if sb.build_stalled else ""]
+	elif e is FortConstruct:
+		var f := e as FortConstruct
+		txt += "\nUpkeep %.2f/min (empire x%.2f)" % [f.def()["upkeep"] * game.upkeep_multiplier(f.owner_id), game.upkeep_multiplier(f.owner_id)]
+		if f.under_construction:
+			txt += "\nConstruction %d%%%s" % [int(100.0 * f.construct_progress / f.def()["build_time"]), "  STALLED: insufficient funds" if f.build_stalled else ""]
 	_info_label.text = txt
 	if e is Starbase and _queue_row.visible:
 		var sb := e as Starbase
@@ -1570,6 +1582,7 @@ func _process(delta: float) -> void:
 		_update_top_bar()
 		_update_selection_info()
 		_tick_depot_panel()
+		_tick_gate_panel()
 		_score_timer -= 0.1
 		if _score_timer <= 0.0:
 			_score_timer = 1.0
@@ -1739,6 +1752,8 @@ func _draw_overlay() -> void:
 		placing = "depot"
 	elif game.placing_station:
 		placing = "station"
+	elif game.placing_fort != "":
+		placing = game.placing_fort
 	if placing != "":
 		var wp := game.get_global_mouse_position()
 		var z := game.camera.zoom.x
@@ -1746,6 +1761,19 @@ func _draw_overlay() -> void:
 		var sp: Vector2 = xf * wp
 		_overlay.draw_arc(sp, float(Defs.construct_def(placing)["radius"]) * z, 0, TAU, 48, c, 2.0)
 		_overlay.draw_arc(sp, Defs.placement_ring(placing) * z, 0, TAU, 96, Color(c, 0.35), 1.0)
+	# Aiming a warp: the gate's reach (outer ring) and dead zone (inner), and
+	# a line to the cursor, green where the garrison can go.
+	if is_instance_valid(game.warp_aiming):
+		var g: WarpGate = game.warp_aiming
+		var gz := game.camera.zoom.x
+		var gp: Vector2 = xf * g.global_position
+		var wp2 := game.get_global_mouse_position()
+		var ok := g.warp_problem(wp2) == ""
+		var wc := Color("9fdcff") if ok else BAD
+		_overlay.draw_arc(gp, float(Defs.WARP_GATE["warp_max"]) * gz, 0, TAU, 256, Color("9fdcff", 0.6), 2.0)
+		_overlay.draw_arc(gp, float(Defs.WARP_GATE["warp_min"]) * gz, 0, TAU, 128, Color(BAD, 0.6), 2.0)
+		_overlay.draw_dashed_line(gp, xf * wp2, Color(wc, 0.7), 2.0, 10.0)
+		_overlay.draw_arc(xf * wp2, 14.0, 0, TAU, 32, wc, 2.0)
 	# Target flashes: a ring with corner brackets, blinking twice.
 	var real_now := Time.get_ticks_msec() / 1000.0
 	for f in _flashes:
@@ -2024,7 +2052,7 @@ const TECH_ROWS := {
 	],
 	"constructs": [
 		["FORTIFICATION", ["garrison_guns", "reinforced_docks", "citadel_protocols"]],
-		["STRONGHOLDS", ["depots", "siege_platforms", "fortress_doctrine"]],
+		["EXPANSION", ["depots", "outposts", "warp_gates"]],
 		["SHIPYARDS", ["orbital_yards", "forward_bases", "shipyard_networks"]],
 		["CONSTRUCTION", ["modular_frames", "rapid_assembly", "orbital_elevators"]],
 	],
@@ -2163,15 +2191,40 @@ func _tech_button(id: String, width: float = TECH_CARD_W) -> Button:
 
 # ---------------------------------------------------------------- weapons depot
 
-## Constructor: one button per depot type. Each depot fits one variant;
-## E places the last type picked.
-
+## The Constructor grid's page: "" for the main grid, "depots" for the six
+## depot variants behind the Weapons Depot button.
+var _con_page := "depots" if OS.get_environment("SL_CON_PAGE") == "depots" else ""
 
 ## Everything a Constructor can build, as square icon buttons on one grid:
-## a starbase, a Mining Station, and one depot per variant.
+## a starbase, a Mining Station, the Weapons Depot sub-menu (one depot per
+## variant, plus Back), a Frontier Outpost and a Warp Gate.
 func _add_constructor_buttons() -> void:
 	var pid := game.player_id
 	var grid := _button_grid()
+	var depot_locked := not game.has_tech(pid, str(Defs.WEAPONS_DEPOT["requires"]))
+	if _con_page == "depots" and not depot_locked:
+		for v in Defs.VARIANTS:
+			var vd: Dictionary = Defs.VARIANTS[v]
+			var b := _panel_build_button("ship_depot_" + v, "%s Depot" % vd["label"], Defs.WEAPONS_DEPOT["cost"], Defs.WEAPONS_DEPOT["build_time"],
+				"Refits a generalist warship into a %s ship: %s" % [vd["label"], vd["desc"]], vd["color"])
+			b.pressed.connect(func(): game.start_depot_placement(v))
+			_register_action(b)
+			grid.add_child(b)
+		var back := Button.new()
+		back.custom_minimum_size = PANEL_BTN
+		back.focus_mode = Control.FOCUS_NONE
+		back.text = "< Back"
+		back.add_theme_color_override("font_color", GOOD)
+		back.add_theme_color_override("font_hover_color", GOOD.lightened(0.3))
+		back.tooltip_text = "Back to everything a Constructor can build."
+		back.pressed.connect(func():
+			_con_page = ""
+			_rebuild_selection())
+		_register_action(back)
+		grid.add_child(back)
+		_sel_body.add_child(grid)
+		return
+	_con_page = ""
 	var n := game.starbase_count(pid)
 	var now_u: float = game.upkeep(pid)
 	var next_u: float = (game.base_upkeep(pid) + Defs.STARBASE["upkeep"]) * game.upkeep_multiplier(pid, Defs.UPKEEP_WEIGHT["starbase"])
@@ -2188,17 +2241,31 @@ func _add_constructor_buttons() -> void:
 	_register_action(st)
 	grid.add_child(st)
 
-	var locked := not game.has_tech(pid, str(Defs.WEAPONS_DEPOT["requires"]))
-	for v in Defs.VARIANTS:
-		var vd: Dictionary = Defs.VARIANTS[v]
-		var b := _panel_build_button("ship_depot_" + v, "%s Depot" % vd["label"], Defs.WEAPONS_DEPOT["cost"], Defs.WEAPONS_DEPOT["build_time"],
-			"Refits a generalist warship into a %s ship: %s" % [vd["label"], vd["desc"]], vd["color"])
-		if locked:
-			b.disabled = true
-			b.tooltip_text = "Weapons Depots need the %s tech." % Defs.TECHS[Defs.WEAPONS_DEPOT["requires"]]["name"]
-		b.pressed.connect(func(): game.start_depot_placement(v))
-		_register_action(b)
-		grid.add_child(b)
+	# One button for all six depots: it opens their page.
+	var dp := _panel_build_button("ship_depot_plasma", "Weapons Depot", Defs.WEAPONS_DEPOT["cost"], Defs.WEAPONS_DEPOT["build_time"],
+		"Opens the six depot types. Each depot refits generalist warships into one variant.")
+	if depot_locked:
+		dp.disabled = true
+		dp.tooltip_text = "Weapons Depots need the %s tech." % Defs.TECHS[Defs.WEAPONS_DEPOT["requires"]]["name"]
+	dp.pressed.connect(func():
+		_con_page = "depots"
+		_rebuild_selection())
+	_register_action(dp)
+	grid.add_child(dp)
+
+	for kind in ["outpost", "gate"]:
+		var d: Dictionary = Defs.construct_def(kind)
+		var tip := ("Half a starbase: %d hull / %d armor / %d shields and a %d-range laser. Holds ground; builds nothing, takes no deliveries." % [
+			int(d["hp"]), int(d["armor"]), int(d["shield"]), int(d["range"])]) if kind == "outpost" else \
+			("Right-click it with ships to garrison them (no limit). Warp sends them all %d-%d px at %dx speed, then recharges %ds. Ships inside die if it falls." % [
+			int(d["warp_min"]), int(d["warp_max"]), int(d["warp_speed_mult"]), int(d["warp_cooldown"])])
+		var fb := _panel_build_button("ship_frontier_outpost" if kind == "outpost" else "ship_warp_gate", d["name"], d["cost"], d["build_time"], tip)
+		if not game.has_tech(pid, str(d["requires"])):
+			fb.disabled = true
+			fb.tooltip_text = "%s needs the %s tech." % [d["name"], Defs.TECHS[d["requires"]]["name"]]
+		fb.pressed.connect(func(): game.start_fort_placement(kind))
+		_register_action(fb)
+		grid.add_child(fb)
 	_sel_body.add_child(grid)
 
 ## Generalist warships selected: one line saying how a refit happens. No
@@ -2269,6 +2336,108 @@ func _build_depot_panel(d: WeaponsDepot) -> void:
 	all.focus_mode = Control.FOCUS_NONE
 	all.pressed.connect(func(): d.cancel_all(); game.selection_changed.emit())
 	_sel_body.add_child(all)
+
+# ---------------------------------------------------------------- forts
+
+## A selected Frontier Outpost: what it does (its stats are in the info line).
+func _build_outpost_panel(f: FrontierOutpost) -> void:
+	if f.under_construction:
+		return
+	var d: Dictionary = Defs.FRONTIER_OUTPOST
+	_sel_body.add_child(_label("Laser %.0f dmg / %.1fs, range %d. Holds the space around it; enemy ships will attack it." % [
+		d["damage"] * game.mod(f.owner_id, "structure_damage"), d["cooldown"], int(f.weapon_range())], DIM, 13))
+
+## The gate panel's live parts, refreshed every tick (_tick_gate_panel):
+## [gate, garrison size when built, construction?, cooldown label, warp button].
+var _gate_live: Array = []
+
+## A selected Warp Gate: Warp (with its recharge), the garrison with an
+## Eject button each, and Eject all.
+func _build_gate_panel(g: WarpGate) -> void:
+	var inside: Array = g.ships()
+	_gate_live = [g, inside.size(), g.under_construction, null, null]
+	if g.under_construction:
+		return
+	var d: Dictionary = Defs.WARP_GATE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	var warp := Button.new()
+	warp.text = "Warp"
+	warp.custom_minimum_size = PANEL_BTN
+	warp.focus_mode = Control.FOCUS_NONE
+	warp.add_theme_color_override("font_color", Color("9fdcff"))
+	warp.tooltip_text = "Pick a point %d-%d px away: every ship inside flies there at %dx speed, holding fire, then the gate recharges for %ds." % [
+		int(d["warp_min"]), int(d["warp_max"]), int(d["warp_speed_mult"]), int(d["warp_cooldown"])]
+	warp.pressed.connect(func(): game.start_warp_targeting(g))
+	_register_action(warp)
+	row.add_child(warp)
+	var cd := _label("", DIM, 14)
+	cd.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(cd)
+	_sel_body.add_child(row)
+	_gate_live[3] = cd
+	_gate_live[4] = warp
+	_tick_gate_panel()
+	_sel_body.add_child(_label("Garrison: %d ship%s. Right-click the gate with ships selected to send them in." % [
+		inside.size(), "" if inside.size() == 1 else "s"], DIM, 13))
+	if inside.is_empty():
+		return
+	# One row per ship, up to a screenful; the rest are summed up.
+	var shown := 0
+	for ship in inside:
+		if shown >= 6:
+			_sel_body.add_child(_label("... and %d more." % (inside.size() - shown), DIM, 13))
+			break
+		var s: Ship = ship
+		var r2 := HBoxContainer.new()
+		r2.add_theme_constant_override("separation", 10)
+		var lab := _label("%s   %d/%d hull" % [s.display_name, ceili(s.hp), ceili(s.max_hp)], TEXT, 14)
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r2.add_child(lab)
+		var ej := Button.new()
+		ej.text = "Eject"
+		ej.custom_minimum_size = Vector2(90, 28)
+		ej.add_theme_font_size_override("font_size", 13)
+		ej.focus_mode = Control.FOCUS_NONE
+		ej.tooltip_text = "Puts this ship back out beside the gate."
+		ej.pressed.connect(func(): g.eject(s); game.selection_changed.emit())
+		r2.add_child(ej)
+		_sel_body.add_child(r2)
+		shown += 1
+	var all := Button.new()
+	all.text = "Eject all"
+	all.custom_minimum_size = Vector2(0, 30)
+	all.focus_mode = Control.FOCUS_NONE
+	all.pressed.connect(func(): g.eject_all(); game.selection_changed.emit())
+	_sel_body.add_child(all)
+
+## Keeps the gate's recharge countdown live; rebuilds the panel when the
+## garrison changes or construction completes.
+func _tick_gate_panel() -> void:
+	if _gate_live.is_empty():
+		return
+	var g = _gate_live[0]
+	if not is_instance_valid(g) or not g.is_alive():
+		_gate_live = []
+		return
+	if g.garrison.size() != int(_gate_live[1]) or g.under_construction != bool(_gate_live[2]):
+		_gate_live = []
+		game.selection_changed.emit()
+		return
+	var cd = _gate_live[3]
+	var warp = _gate_live[4]
+	if cd == null or not is_instance_valid(cd):
+		return
+	if g.cooldown_left > 0.0:
+		cd.text = "Recharging: %ds" % int(ceil(g.cooldown_left))
+		cd.add_theme_color_override("font_color", BAD)
+	elif g.garrison.is_empty():
+		cd.text = "Ready - no ships inside"
+		cd.add_theme_color_override("font_color", DIM)
+	else:
+		cd.text = "Ready to warp"
+		cd.add_theme_color_override("font_color", GOOD)
+	warp.disabled = g.cooldown_left > 0.0 or g.garrison.is_empty()
 
 # ---------------------------------------------------------------- panel keys
 

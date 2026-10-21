@@ -88,6 +88,15 @@ func _draw() -> void:
 			var dpos := _map_to_ui(dp.global_position)
 			var dc := Defs.team_color(dp.owner_id)
 			draw_polyline(PackedVector2Array([dpos + Vector2(0, -4), dpos + Vector2(4, 0), dpos + Vector2(0, 4), dpos + Vector2(-4, 0), dpos + Vector2(0, -4)]), dc, 1.5)
+	# Forts: a Frontier Outpost a small filled diamond, a Warp Gate a ring.
+	for f in tree.get_nodes_in_group("forts"):
+		if f.visible:
+			var fpos := _map_to_ui(f.global_position)
+			var fc := Defs.team_color(f.owner_id)
+			if f is WarpGate:
+				draw_arc(fpos, 3.5, 0, TAU, 12, fc, 1.5)
+			else:
+				draw_colored_polygon(PackedVector2Array([fpos + Vector2(0, -4), fpos + Vector2(4, 0), fpos + Vector2(0, 4), fpos + Vector2(-4, 0)]), fc)
 	for s in tree.get_nodes_in_group("ships"):
 		if not s.visible:
 			continue

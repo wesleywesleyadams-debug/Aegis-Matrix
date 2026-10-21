@@ -42,6 +42,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"asteroids": {},
 		"starbases": [],
 		"depots": [],
+		"forts": [],
 		"stations": [],
 		"ships": [],
 		"camera": _v(game.camera.global_position),
@@ -81,6 +82,12 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		if dp.is_alive():
 			data["depots"].append({"owner": dp.owner_id, "pos": _v(dp.global_position), "hp": dp.hp, "armor": dp.armor, "shield": dp.shield,
 				"under_construction": dp.under_construction, "construct_progress": dp.construct_progress, "seen": dp.get_meta("seen", false), "variant": dp.variant})
+	for f in tree.get_nodes_in_group("forts"):
+		if f.is_alive():
+			data["forts"].append({"kind": "gate" if f is WarpGate else "outpost", "owner": f.owner_id, "pos": _v(f.global_position),
+				"hp": f.hp, "armor": f.armor, "shield": f.shield, "under_construction": f.under_construction,
+				"construct_progress": f.construct_progress, "seen": f.get_meta("seen", false),
+				"cooldown": f.cooldown_left if f is WarpGate else 0.0})
 	for st in tree.get_nodes_in_group("mining_stations"):
 		if st.is_alive():
 			data["stations"].append({"owner": st.owner_id, "pos": _v(st.global_position), "hp": st.hp, "armor": st.armor, "shield": st.shield,
@@ -92,7 +99,10 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 			"type": s.ship_type, "owner": s.owner_id, "pos": _v(s.global_position), "rot": s.rotation,
 			"hp": s.hp, "shield": s.shield, "armor": s.armor, "cargo": s.cargo, "cargo_type": s.cargo_type,
 			"held": s.held,
-			"docked": s.docked, "docked_variant": s.refit_depot.variant if s.docked and is_instance_valid(s.refit_depot) else "",
+			"docked": s.docked and not is_instance_valid(s.warp_gate), "docked_variant": s.refit_depot.variant if s.docked and is_instance_valid(s.refit_depot) else "",
+			# Inside a Warp Gate (rebuilt at load), or mid-warp to a point.
+			"garrisoned": s.docked and is_instance_valid(s.warp_gate),
+			"warp_to": _v(s.warp_target) if s.warping else null,
 			"refit_left": s.refit_left,
 			"drones": s.drone_count(),
 			"order": _order_of(s),
@@ -266,10 +276,11 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			a.queue_free()
 
 	# Replace the scene's starting ships and starbases with the saved ones.
-	for n in tree.get_nodes_in_group("ships") + tree.get_nodes_in_group("starbases") + tree.get_nodes_in_group("mining_stations"):
+	for n in tree.get_nodes_in_group("ships") + tree.get_nodes_in_group("starbases") + tree.get_nodes_in_group("mining_stations") + tree.get_nodes_in_group("forts"):
 		n.remove_from_group("ships")
 		n.remove_from_group("starbases")
 		n.remove_from_group("mining_stations")
+		n.remove_from_group("forts")
 		n.remove_from_group("entities")
 		n.get_parent().remove_child(n)
 		n.free()
@@ -302,6 +313,19 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		dp.armor = float(d.get("armor", 0.0))
 		dp.shield = float(d.get("shield", 0.0))
 		dp.set_meta("seen", bool(d.get("seen", false)))
+	for d in data.get("forts", []):
+		var f: FortConstruct = WarpGate.new() if str(d.get("kind", "outpost")) == "gate" else FrontierOutpost.new()
+		f.owner_id = int(d["owner"])
+		f.under_construction = bool(d.get("under_construction", false))
+		f.position = _p(d["pos"])
+		game.starbases_root.add_child(f)
+		f.construct_progress = float(d.get("construct_progress", 0.0))
+		f.hp = float(d["hp"])
+		f.armor = float(d.get("armor", 0.0))
+		f.shield = float(d.get("shield", 0.0))
+		if f is WarpGate:
+			f.cooldown_left = float(d.get("cooldown", 0.0))
+		f.set_meta("seen", bool(d.get("seen", false)))
 	for d in data.get("stations", []):
 		var st := MiningStation.new()
 		st.owner_id = int(d["owner"])
@@ -343,6 +367,10 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			"build":
 				if o.get("what", "starbase") == "depot":
 					s.order_build_depot(_p(o["at"]))
+				elif o.get("what", "") == "station":
+					s.order_build_station(_p(o["at"]))
+				elif o.get("what", "") in ["outpost", "gate"]:
+					s.order_build_fort(_p(o["at"]), str(o["what"]))
 				else:
 					s.order_build_starbase(_p(o["at"]))
 			"refit":
@@ -357,6 +385,25 @@ static func apply(game: Game, data: Dictionary) -> bool:
 			var entry := _queued_entry(q, rocks, planets)
 			if not entry.is_empty():
 				s.order_queue.append(entry)
+	# Ships that were inside a Warp Gate go back in; ships mid-warp fly on.
+	for d in data.get("ships", []):
+		var garrisoned := bool(d.get("garrisoned", false))
+		if not garrisoned and d.get("warp_to") == null:
+			continue
+		for s3 in tree.get_nodes_in_group("ships"):
+			if s3.owner_id != int(d["owner"]) or s3.ship_type != str(d["type"]) or s3.docked or s3.warping or s3.global_position.distance_to(_p(d["pos"])) >= 1.0:
+				continue
+			if garrisoned:
+				var best: WarpGate = null
+				for g in tree.get_nodes_in_group("forts"):
+					if g is WarpGate and g.owner_id == s3.owner_id and (best == null or g.global_position.distance_to(s3.global_position) < best.global_position.distance_to(s3.global_position)):
+						best = g
+				if best:
+					best.admit(s3)
+			else:
+				s3.warping = true
+				s3.warp_target = _p(d["warp_to"])
+			break
 	# Ships that were inside a Weapons Depot go back in where they were.
 	for d in data.get("ships", []):
 		if not bool(d.get("docked", false)):

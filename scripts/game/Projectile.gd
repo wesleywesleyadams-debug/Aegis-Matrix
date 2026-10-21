@@ -126,7 +126,8 @@ func _physics_process(delta: float) -> void:
 				Game.instance.splash(x.global_position, splash_r, damage * splash, owner_pid, shooter if is_instance_valid(shooter) else null, profile, vs_class)
 				queue_free()
 				return
-		# ...or on an enemy world, depot or Mining Station it falls onto.
+		# ...or on an enemy world, depot or Mining Station it falls onto (forts
+		# are in hulls_near above).
 		for w in get_tree().get_nodes_in_group("planets") + get_tree().get_nodes_in_group("depots") + get_tree().get_nodes_in_group("mining_stations"):
 			if w.owner_id != owner_pid and w.is_enemy_of(owner_pid) and Geometry2D.get_closest_point_to_segment(w.global_position, global_position, nxt).distance_to(w.global_position) <= w.radius:
 				Game.instance.splash(global_position, splash_r, damage * splash, owner_pid, shooter if is_instance_valid(shooter) else null, profile, vs_class)

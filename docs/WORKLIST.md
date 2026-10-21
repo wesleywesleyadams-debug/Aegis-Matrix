@@ -18,12 +18,14 @@ code or art. Last updated 2026-10-21.
 ## AI
 
 - **[missing] The neural AI is blind to Mods and drones.** It can't toggle Mods, and drones aren't in the `entities` group it reads. `NeuralCommander.gd` research groups lack Mods, the Targeting row and Quantum Lenses; it also treats Spice Navigation as a speed tech (now nebula radiation resistance). Needs a model update and a version bump.
+- **[missing] No AI builds or uses Frontier Outposts or Warp Gates** (added 2026-10-21, Constructs > Expansion row). The scripted AI never researches toward them on purpose; the neural AI (RLAgent.gd) labels forts as "depot" in its observation and has no garrison/warp verbs.
 - **[cleanup] The neural AI keeps a "dock" verb** for the removed hangars (RLAgent.gd, tools/rl/model.py). Never allowed now; drop it at the next model version bump.
 - **[missing] Neural AI training is paused.** On resume: fix the closing-in reward loophole (count every warship, not the 8 closest); add the income reward at the expand stage; restart from the checkpoint.
 
 ## Features
 
 - **[missing] Munitions and reloading** (idea, 2026-09-22): limited ammo, restocked at a starbase.
+- **[balance] Warp Gate reach 1,000-10,000 px** is wider than the map (radius 1,750), so in practice the limit is the map edge. Warp lines are straight and can cross the star's radiation.
 - **[missing] "Claude plays a match via text"** (idea, 2026-10-17).
 
 ## Cleanup

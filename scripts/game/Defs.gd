@@ -200,6 +200,26 @@ const STARBASE := {
 ## Constructor. Harvesters unload here instead of flying home, which is what
 ## makes a distant belt worth working. It builds nothing, and losing one
 ## never loses the match.
+## Frontier Outpost: half a starbase's guns and layers on a cheaper site — a
+## laser fort for holding ground. Builds nothing, takes no deliveries, and is
+## not a starbase for winning or losing.
+const FRONTIER_OUTPOST := {
+	"name": "Frontier Outpost", "requires": "outposts", "hp": 1333.0, "armor": 1333.0, "shield": 1333.0, "radius": 20.0,
+	"weapon": "laser", "damage": 17.0, "cooldown": 0.6, "range": 260.0,
+	"cost": {"minerals": 450, "spice": 30}, "build_time": 30.0,
+	"upkeep": 1.65,
+}
+
+## Warp Gate: no gun. Ships garrison inside (no limit; still pay upkeep, and
+## die with the gate), then the gate flings them all at a point warp_min to
+## warp_max px away at warp_speed_mult x their speed, every warp_cooldown s.
+const WARP_GATE := {
+	"name": "Warp Gate", "requires": "warp_gates", "hp": 900.0, "armor": 300.0, "shield": 300.0, "radius": 24.0,
+	"cost": {"minerals": 2000, "spice": 200}, "build_time": 60.0,
+	"upkeep": 3.3,
+	"warp_min": 1000.0, "warp_max": 10000.0, "warp_cooldown": 30.0, "warp_speed_mult": 10.0,
+}
+
 ## Every construct keeps a clear ring around it, sized by how big it is:
 ## radius x PLACEMENT_RING. Two constructs may not overlap rings, so a
 ## starbase needs more room than a Mining Station without a special case,
@@ -228,6 +248,7 @@ static func rock_is_large(variant: String, scale: float) -> bool:
 ## most. E.g. 20 corvettes alone: 1.02^20 = x1.49.
 const UPKEEP_WEIGHT := {"starbase": 1.06, "carrier": 1.05, "cruiser": 1.04, "destroyer": 1.03}
 ## Everything else: corvettes, harvesters, support ships, depots, Mining Stations.
+## (Frontier Outposts weigh as a cruiser, Warp Gates as a starbase.)
 const UPKEEP_WEIGHT_SMALL := 1.02
 ## With no energy in the stockpile, ships move and fire at this fraction of
 ## normal speed, and starbases can't produce ships.
@@ -420,12 +441,12 @@ const TECHS := {
 		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls."},
 
 	# --- Constructs: tier 3 forks into a defensive posture or an industrial one.
-	"siege_platforms": {"name": "Siege Platforms", "group": "constructs", "tier": 2, "requires": ["depots"], "cost": {"energy": 165, "spice": 25}, "time": 90.0,
-		"effects": {"structure_range": 0.30}, "desc": "+30% starbase weapon range."},
+	"outposts": {"name": "Outposts", "group": "constructs", "tier": 2, "requires": ["depots"], "cost": {"energy": 165, "spice": 25}, "time": 90.0,
+		"effects": {"unlock_outpost": 1.0}, "desc": "Unlocks the Frontier Outpost."},
 	"rapid_assembly": {"name": "Rapid Assembly", "group": "constructs", "tier": 2, "requires": ["modular_frames"], "cost": {"energy": 155, "spice": 20}, "time": 85.0,
 		"effects": {"construct_start": 4.0}, "desc": "New constructs start at 50% hull instead of 10%."},
-	"fortress_doctrine": {"name": "Fortress Doctrine", "group": "constructs", "tier": 3, "requires": ["siege_platforms"], "cost": {"energy": 780, "spice": 170}, "time": 235.0,
-		"effects": {"structure": 0.50, "structure_damage": 0.25}, "desc": "+50% construct hull and armor, +25% construct damage."},
+	"warp_gates": {"name": "Warp Gates", "group": "constructs", "tier": 3, "requires": ["outposts"], "cost": {"energy": 780, "spice": 170}, "time": 235.0,
+		"effects": {"unlock_warp_gate": 1.0}, "desc": "Unlocks the Warp Gate."},
 	"shipyard_networks": {"name": "Shipyard Networks", "group": "constructs", "tier": 3, "requires": ["forward_bases"], "cost": {"energy": 780, "spice": 170}, "time": 235.0,
 		"effects": {"build_speed": 0.25}, "desc": "Starbases build ships 25% faster."},
 	"orbital_elevators": {"name": "Orbital Elevators", "group": "constructs", "tier": 3, "requires": ["rapid_assembly"], "cost": {"energy": 720, "spice": 120}, "time": 215.0,
@@ -831,11 +852,14 @@ static func action_for_key(k: Key) -> String:
 			return h[0]
 	return ""
 
-## The def for anything a Constructor builds ("starbase", "depot", "station").
+## The def for anything a Constructor builds ("starbase", "depot", "station",
+## "outpost", "gate").
 static func construct_def(kind: String) -> Dictionary:
 	match kind:
 		"depot": return WEAPONS_DEPOT
 		"station": return MINING_STATION
+		"outpost": return FRONTIER_OUTPOST
+		"gate": return WARP_GATE
 		_: return STARBASE
 
 ## How much open space this construct needs around itself (see PLACEMENT_RING).

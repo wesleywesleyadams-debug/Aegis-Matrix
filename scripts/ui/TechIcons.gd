@@ -176,6 +176,10 @@ static func _sprite_for(effect: String) -> String:
 	var what := effect.get_slice("_", 1)
 	if what == "depot":
 		return "ship_depot_plasma"
+	if what == "outpost":
+		return "ship_frontier_outpost"
+	if what == "warp":
+		return "ship_warp_gate"
 	return "ship_" + what
 
 static func _sprite(img: Image, tex_name: String) -> void:
