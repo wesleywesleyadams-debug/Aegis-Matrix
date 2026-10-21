@@ -1133,7 +1133,7 @@ func _section_matchups() -> void:
 			var v: int = int(mt[i][j])
 			r.append(["%d%%" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
 		mt_rows.append(r)
-	_table(["vs", "Corvettes", "Destroyers", "Cruisers", "Carriers"], mt_rows)
+	_table(["Row vs column", "Corvettes", "Destroyers", "Cruisers", "Carriers"], mt_rows)
 	_para("So every class has a prey and a predator: destroyers crush corvettes, corvettes swarm cruisers, cruisers outlast destroyers and carriers, and carriers grind down destroyers.")
 	_heading("Every weapon against every weapon")
 	_para("Each row is one side (a class's plain lasers, or one of its Mods); each figure is how hard it beats the column side at equal cost, averaged over %d duels: +1.00 means it destroys the other without taking any damage, -1.00 that it is destroyed without dealing any, 0 an even trade (a win scores the toughness the winner kept; a draw, the difference in toughness left). The codes are listed below the table." % int(mu.get("per_pair", 0)))
@@ -1143,7 +1143,7 @@ func _section_matchups() -> void:
 	var wm: Array = mu.get("weights", [])
 	var wrows2: Array = []
 	for i in 16:
-		var r: Array = [wcode[i]]
+		var r: Array = [[wname[i], TEXT]]
 		for j in 16:
 			var g = wm[i][j]
 			if g == null:
@@ -1152,7 +1152,8 @@ func _section_matchups() -> void:
 				var f := float(g)
 				r.append(["%+.2f" % f, Color("8fe060") if f >= 0.2 else (Color("ff6a4a") if f <= -0.2 else TEXT)])
 		wrows2.append(r)
-	_table(["vs"] + wcode, wrows2)
+	_para("Read it across: pick a weapon on the left, then follow its row; the column codes are the same weapons, listed below. Green means that weapon beats the one at the top of the column, red means it loses to it. (Reading down a column shows the same fights from the other side.)")
+	_table(["This weapon... vs:"] + wcode, wrows2)
 	var legend := PackedStringArray()
 	for i in 16:
 		legend.append("%s = %s" % [wcode[i], wname[i]])
