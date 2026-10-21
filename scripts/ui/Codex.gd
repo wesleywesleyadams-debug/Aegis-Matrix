@@ -36,7 +36,7 @@ const RESEARCH_TABS := [["warships", "Warships"], ["weapons", "Weapons"], ["mods
 static var SUBPAGES: Dictionary = _subpages()
 const _SUBPAGES_FIXED := {
 	"combat": [["layers", "Defense layers"], ["classes", "Classes"], ["variants", "Variants"],
-		["mods", "Weapon Mods"], ["matchups", "Matchups"], ["jobs", "Ship jobs"], ["engagement", "Engagement"]],
+		["mods", "Weapon Mods"], ["matchups", "Matchups"], ["jobs", "Ship jobs"], ["engagement", "Stance & Engagement"]],
 	"ships": [["overview", "Overview"], ["marks", "Marks"], ["colors", "Variant colors"], ["every", "Every ship"]],
 }
 
@@ -630,6 +630,14 @@ func _page_mods() -> void:
 
 
 func _page_engagement() -> void:
+	_heading("Stance")
+	_para("Each warship also has a Stance, set with the three buttons under Engagement (one or many warships at once; a mixed selection shows Mixed). Stance decides whether, and how far, the ship goes after enemies on its own; Engagement then shapes the fight within what the Stance allows. Orders you give are always followed. A tiny colored square beside the Engagement dot marks a non-Aggressive stance.")
+	_table(["Stance", "What it does"], [
+		["Aggressive", "Takes on any enemy that comes within about its weapon range (plus a little) and chases it as long as it can see it, then flies back to where it picked the fight. Every new ship, and every AI ship, uses it, and the game's balance is tuned for it."],
+		[["Defensive", Color("ffd24a")], "Takes on enemies the same way, but on a fight it picked itself it never goes more than about 1.5x its weapon range from its anchor (where it was last parked). A target it cannot shoot from inside that ring is let go, and the ship returns to its anchor."],
+		[["Stand Ground", Color("e070ff")], "Never moves on its own: it only turns (hull and turrets) and fires at enemies within weapon range, and Engagement movement (closing in, falling back, dodging) is switched off. A move order still moves it; an attack order on a target out of range flies in to about 80% of range, as Default does. Once the target is dead it holds the new spot."],
+	])
+	_para("Combined: a Defensive ship with Aggressive Engagement closes to 40% of range, but never past its 1.5x leash; a Defensive one with Evasive Engagement still dodges, inside the leash. Attack and attack-move orders are orders: the leash does not apply to them, and a Stand Ground ship on an attack-move chases what it meets (with no Engagement movement).")
 	_heading("Engagement")
 	_para("Each warship has an Engagement setting, chosen with the four buttons in its panel (one or many warships at once; a mixed selection shows Mixed). It shapes how the ship fights once it engages, automatically or on an attack order. A move order still goes exactly where it is sent; the ship takes up its Engagement again on arrival. A small colored dot under a warship's chevrons marks a non-Default setting.")
 	_table(["Engagement", "What it does"], [

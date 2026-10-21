@@ -45,6 +45,66 @@ var _dodge_start := -1.0
 var _dodge_shot: Node2D = null
 const DODGE_MAX := 1.5
 
+## Warship stances ("Stance") (player-set; every new and every AI ship is
+## AGGRESSIVE, which is the game's original behaviour and what balance is
+## tuned for). Stance decides whether / how far a ship goes after enemies on
+## its own; Engagement (above) shapes the fight within what it allows.
+##  AGGRESSIVE: unchanged idle behaviour - takes on an enemy that comes within
+##    weapon range + 60 and chases it while it can see it, then returns to
+##    where it picked the fight.
+##  DEFENSIVE: as Aggressive, but a fight it picked itself keeps the ship
+##    within STANCE_LEASH x weapon range of its anchor (where it last sat
+##    idle); it drops a target it cannot reach from there and flies back.
+##  STAND_GROUND: never moves on its own: turns (hull and turrets) and fires
+##    at enemies in weapon range, and no Engagement movement (closing,
+##    kiting, dodging) runs. Player orders still move it; once an attack
+##    order's target is dead it stays where it ended up.
+enum Stance { AGGRESSIVE, DEFENSIVE, STAND_GROUND }
+const STANCE_NAMES := ["Aggressive", "Defensive", "Stand Ground"]
+const STANCE_LEASH := 1.5
+var stance: Stance = Stance.AGGRESSIVE
+## Where a Defensive / Stand Ground ship returns to (its idle spot); INF
+## while it is off on an order, re-set on its first idle tick.
+var anchor := Vector2.INF
+## The current fight (or the trip back from it) was picked by the ship
+## itself from idle, not ordered; only such fights are leashed / held.
+var _guard := false
+## Map-glyph colors for the non-default stances (a tiny square beside the
+## Engagement dot).
+const STANCE_COLORS := [Color.TRANSPARENT, Color("ffd24a"), Color("e070ff")]
+
+## Sets the stance (warships only) and updates its map glyph.
+func set_stance(v: int) -> void:
+	if not is_warship():
+		return
+	stance = v as Stance
+	if state == State.IDLE:
+		anchor = global_position
+	if _mark_tag != null:
+		_mark_tag.stance = v
+		_mark_tag.queue_redraw()
+
+func _stance_leash() -> float:
+	return weapon_range() * STANCE_LEASH
+
+## Defensive, on a self-picked fight: keeps the wanted movement inside the
+## leash around the anchor (no outward component at the edge, a pull back
+## in past it).
+func _leash(desired: Vector2) -> Vector2:
+	if not _guard or stance != Stance.DEFENSIVE or anchor == Vector2.INF:
+		return desired
+	var off := global_position - anchor
+	var L := _stance_leash()
+	if off.length() < L - 12.0:
+		return desired
+	var out := off.normalized()
+	var radial := desired.dot(out)
+	if radial > 0.0:
+		desired -= out * radial
+	if off.length() > L:
+		desired -= out * max_speed() * 0.5
+	return desired
+
 func is_warship() -> bool:
 	return str(def.get("role", "")) == "warship"
 
@@ -1000,12 +1060,14 @@ func queued_points() -> PackedVector2Array:
 
 func order_move(pos: Vector2) -> void:
 	held = false
+	_guard = false
 	state = State.MOVE
 	move_goal = pos
 	target = null
 
 func order_attack_move(pos: Vector2) -> void:
 	held = false
+	_guard = false
 	if is_miner():
 		order_move(pos)
 		return
@@ -1020,8 +1082,9 @@ func order_attack(e: SpaceEntity) -> void:
 		return
 	# Not already attack-moving somewhere: once this target is dead, hold
 	# here (the old default goal was the map centre - into the star).
-	if state != State.ATTACK_MOVE:
+	if state != State.ATTACK_MOVE or _guard:
 		attack_move_goal = global_position
+	_guard = false
 	state = State.ATTACK
 	target = e
 	target_ordered = true
@@ -1081,6 +1144,8 @@ func order_stop() -> void:
 	state = State.IDLE
 	target = null
 	move_goal = global_position
+	_guard = false
+	anchor = global_position
 
 # ---------------------------------------------------------------- update
 
@@ -1121,6 +1186,11 @@ func _physics_process(delta: float) -> void:
 
 	if state != State.IDLE:
 		_idle_for = 0.0
+		# Off on an order: the anchor moves to wherever it next comes to rest.
+		if not _guard:
+			anchor = Vector2.INF
+	elif anchor == Vector2.INF:
+		anchor = global_position
 
 	match state:
 		State.IDLE:
@@ -1139,11 +1209,13 @@ func _physics_process(delta: float) -> void:
 						if job != null:
 							order_mine(job)
 			elif def["weapon"] != "" and _acquire_timer <= 0.0:
-				var e := Game.instance.nearest_enemy(self, weapon_range() + 60.0)
+				# Stand Ground only takes on what its guns already reach.
+				var e := Game.instance.nearest_enemy(self, weapon_range() if stance == Stance.STAND_GROUND else weapon_range() + 60.0)
 				if e:
-					attack_move_goal = global_position
+					attack_move_goal = global_position if stance == Stance.AGGRESSIVE else anchor
 					target = e
 					target_ordered = false
+					_guard = stance != Stance.AGGRESSIVE
 					state = State.ATTACK
 				else:
 					# Nothing flying nearby: an enemy colony already in range is
@@ -1161,7 +1233,15 @@ func _physics_process(delta: float) -> void:
 				state = State.IDLE
 		State.ATTACK_MOVE:
 			if _acquire_timer <= 0.0:
-				var e := Game.instance.nearest_enemy(self, weapon_range() + 120.0)
+				# Flying back to the anchor after a self-picked fight: only
+				# Defensive re-engages, and only what it can reach from there.
+				var e: SpaceEntity = null
+				if not _guard:
+					e = Game.instance.nearest_enemy(self, weapon_range() + 120.0)
+				elif stance == Stance.DEFENSIVE:
+					e = Game.instance.nearest_enemy(self, weapon_range() + 60.0)
+					if e and e.global_position.distance_to(anchor) > _stance_leash() + weapon_range():
+						e = null
 				if e:
 					target = e
 					target_ordered = false
@@ -1169,24 +1249,46 @@ func _physics_process(delta: float) -> void:
 				else:
 					# An enemy colony on the way counts as something to attack.
 					var ep := Game.instance.nearest_enemy_planet(owner_id, global_position, weapon_range())
-					if ep != null:
+					if ep != null and not _guard:
 						order_bombard(ep)
 			desired = _arrive(attack_move_goal, 1.0)
 			if global_position.distance_to(attack_move_goal) < 8.0:
 				state = State.IDLE
 				move_goal = global_position
+				_guard = false
 		State.ATTACK:
 			# A target that slips out of sight (into fog or a nebula) is lost.
 			if is_instance_valid(target) and target.is_alive() and not Game.instance.sees(owner_id, target):
 				target = null
+			# Defensive, self-picked: a target it could not reach from inside
+			# the leash is let go. Stand Ground lets go of one out of range.
+			if _guard and is_instance_valid(target) and target.is_alive():
+				if stance == Stance.DEFENSIVE and target.global_position.distance_to(anchor) > _stance_leash() + weapon_range():
+					target = null
+				elif stance == Stance.STAND_GROUND and global_position.distance_to(target.global_position) > weapon_range() + target.radius + 10.0:
+					target = null
 			if not is_instance_valid(target) or not target.is_alive():
 				target = null
-				# Resume the attack-move (or guard spot) we were on.
-				state = State.ATTACK_MOVE
+				# Resume the attack-move (or guard spot) we were on. Stand
+				# Ground: an ordered attack done, it stays where it is.
+				if stance == Stance.STAND_GROUND and (target_ordered or _guard):
+					state = State.IDLE
+					move_goal = global_position
+					_guard = false
+				else:
+					state = State.ATTACK_MOVE
 			else:
 				var d := global_position.distance_to(target.global_position)
 				var keep: float = weapon_range() * 0.8
-				if engagement == Engage.DEFAULT or engagement == Engage.EVASIVE:
+				if stance == Stance.STAND_GROUND:
+					# No Engagement movement: holds its spot on a fight it
+					# picked; an ordered one closes as Default does.
+					_kiting = false
+					if _guard:
+						desired = _arrive(anchor, 0.0)
+					elif d > keep:
+						desired = _arrive(target.global_position, 1.0)
+				elif engagement == Engage.DEFAULT or engagement == Engage.EVASIVE:
 					_kiting = false
 					if d > keep:
 						desired = _arrive(target.global_position, 1.0)
@@ -1394,10 +1496,11 @@ func _physics_process(delta: float) -> void:
 			and global_position.distance_to(_aim_at.global_position) <= weapon_range() + float(_aim_at.get("radius")) + 20.0:
 		face_target = _aim_at
 	# Evasive engagement: an incoming slow shot overrides the wanted movement.
-	if engagement == Engage.EVASIVE:
+	if engagement == Engage.EVASIVE and stance != Stance.STAND_GROUND:
 		var dv := _evade()
 		if dv != Vector2.ZERO:
 			desired = dv
+	desired = _leash(desired)
 	# Reverse Thrusters: a ship held by a tractor beam that is not trying to
 	# go anywhere backs off toward where it was when the pull began, nose
 	# still on whatever it is fighting.
@@ -1727,6 +1830,8 @@ class MarkTag extends Node2D:
 	var color := Color.YELLOW
 	## Engagement mode: non-default ones show a small colored dot below.
 	var engage := 0
+	## Stance: non-default ones show a tiny colored square beside the dot.
+	var stance := 0
 
 	func _process(_delta: float) -> void:
 		if not is_instance_valid(host):
@@ -1748,6 +1853,9 @@ class MarkTag extends Node2D:
 		if engage > 0 and engage < Ship.ENGAGE_COLORS.size():
 			draw_circle(Vector2(0, 5.0), 1.9, Color(0, 0, 0, 0.8))
 			draw_circle(Vector2(0, 5.0), 1.3, Ship.ENGAGE_COLORS[engage])
+		if stance > 0 and stance < Ship.STANCE_COLORS.size():
+			draw_rect(Rect2(Vector2(2.6, 3.0), Vector2(4.0, 4.0)), Color(0, 0, 0, 0.8))
+			draw_rect(Rect2(Vector2(3.1, 3.5), Vector2(3.0, 3.0)), Ship.STANCE_COLORS[stance])
 
 var _cargo_fx: CargoTank
 

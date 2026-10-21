@@ -98,7 +98,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		data["ships"].append({
 			"type": s.ship_type, "owner": s.owner_id, "pos": _v(s.global_position), "rot": s.rotation,
 			"hp": s.hp, "shield": s.shield, "armor": s.armor, "cargo": s.cargo, "cargo_type": s.cargo_type,
-			"held": s.held, "engagement": int(s.engagement),
+			"held": s.held, "engagement": int(s.engagement), "stance": int(s.stance),
 			"docked": s.docked and not is_instance_valid(s.warp_gate), "docked_variant": s.refit_depot.variant if s.docked and is_instance_valid(s.refit_depot) else "",
 			# Inside a Warp Gate (rebuilt at load), or mid-warp to a point.
 			"garrisoned": s.docked and is_instance_valid(s.warp_gate),
@@ -349,6 +349,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		s.cargo_type = str(d.get("cargo_type", "minerals"))
 		s.drones_saved = int(d.get("drones", 0))
 		s.set_engagement(int(d.get("engagement", 0)))
+		s.set_stance(int(d.get("stance", 0)))
 		# After the order below, which would otherwise release the hold.
 		var was_held: bool = bool(d.get("held", false))
 		var o: Dictionary = d.get("order", {})

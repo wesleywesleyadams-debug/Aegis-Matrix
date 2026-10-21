@@ -4078,7 +4078,9 @@ func _maneuver_test() -> void:
 ## from where it is. SL_ET_TECHS: comma list for side 1 (e.g.
 ## strafing_thrusters,reverse_thrusters). Both hulls get x50 toughness.
 ## Logs distance / range, heading and state every 0.25 s; SL_ET_SHOT=secs
-## saves user://shot.png centered on the pair.
+## saves user://shot.png centered on the pair. SL_ET_Y offsets the enemy
+## north/south. SL_ET_STANCE / SL_ET_IDLE: see below (Stance tests); the log's
+## anc= is our distance from the start spot, ehits= hits the enemy took.
 func _engage_test() -> void:
 	hud.visible = OS.get_environment("SL_ET_HUD") != ""
 	ai.process_mode = Node.PROCESS_MODE_DISABLED
@@ -4100,7 +4102,7 @@ func _engage_test() -> void:
 	var x0 := float(OS.get_environment("SL_ET_X")) if OS.get_environment("SL_ET_X") != "" else -200.0
 	var s := spawn_ship(typ, 1, Vector2(x0, 0))
 	s.rotation = 0.0
-	var e := spawn_ship(en[0], 2, Vector2(x0 + (float(OS.get_environment("SL_ET_D")) if OS.get_environment("SL_ET_D") != "" else 300.0), 0))
+	var e := spawn_ship(en[0], 2, Vector2(x0 + (float(OS.get_environment("SL_ET_D")) if OS.get_environment("SL_ET_D") != "" else 300.0), float(OS.get_environment("SL_ET_Y"))))
 	e.rotation = PI
 	for x in [s, e]:
 		x.max_hp *= 50.0; x.hp = x.max_hp; x.max_armor *= 50.0; x.armor = x.max_armor; x.max_shield *= 50.0; x.shield = x.max_shield
@@ -4110,7 +4112,15 @@ func _engage_test() -> void:
 		e.def["speed"] = 0.0
 	await get_tree().physics_frame
 	s.set_engagement(["default", "aggressive", "defensive", "evasive"].find(mode))
-	s.order_attack(e)
+	# SL_ET_STANCE=aggressive|defensive|ground sets our Stance; SL_ET_IDLE=1
+	# leaves ours idle (no attack order) so it picks the fight itself.
+	if OS.get_environment("SL_ET_STANCE") != "":
+		s.set_stance(["aggressive", "defensive", "ground"].find(OS.get_environment("SL_ET_STANCE")))
+	var anchor0 := s.global_position
+	if OS.get_environment("SL_ET_IDLE") != "":
+		s.order_stop()
+	else:
+		s.order_attack(e)
 	match scen:
 		"flee": e.order_move(e.global_position + Vector2(500, -350))
 		"chase":
@@ -4118,14 +4128,17 @@ func _engage_test() -> void:
 			e.order_attack(s)
 		_: e.order_stop()
 	# SL_ET_SELECT=1 selects our ship; =mixed adds an Aggressive corvette, a
-	# Default cruiser and a Mining Barge behind it and selects all four.
+	# Default (Stand Ground) cruiser and a Mining Barge behind it and selects
+	# all four.
 	if OS.get_environment("SL_ET_SELECT") != "":
 		var pick: Array = [s]
 		if OS.get_environment("SL_ET_SELECT") == "mixed":
 			var cv := spawn_ship("corvette", 1, s.global_position + Vector2(-60, -40))
 			cv.set_engagement(Ship.Engage.AGGRESSIVE)
 			pick.append(cv)
-			pick.append(spawn_ship("cruiser", 1, s.global_position + Vector2(-90, 40)))
+			var cr := spawn_ship("cruiser", 1, s.global_position + Vector2(-90, 40))
+			cr.set_stance(Ship.Stance.STAND_GROUND)
+			pick.append(cr)
 			pick.append(spawn_ship("miner", 1, s.global_position + Vector2(-120, 0)))
 			for x in pick:
 				x.order_stop()
@@ -4160,9 +4173,9 @@ func _engage_test() -> void:
 		last_head = s.rotation
 		var d := s.global_position.distance_to(e.global_position)
 		var fw := Vector2.from_angle(s.rotation)
-		print("ET t=%.2f e=(%.0f,%.0f) s=(%.0f,%.0f) d=%.0f d/R=%.2f head=%.0f tgtbrg=%.0f vf=%.0f vl=%.0f spd=%.0f kite=%s dodge=%s hits=%d dmg=%.0f st=%d" % [now() - t0, e.global_position.x, e.global_position.y, s.global_position.x, s.global_position.y, d, d / s.weapon_range(),
+		print("ET t=%.2f e=(%.0f,%.0f) s=(%.0f,%.0f) d=%.0f d/R=%.2f head=%.0f tgtbrg=%.0f vf=%.0f vl=%.0f spd=%.0f kite=%s dodge=%s hits=%d dmg=%.0f st=%d anc=%.0f leash=%.0f ehits=%d" % [now() - t0, e.global_position.x, e.global_position.y, s.global_position.x, s.global_position.y, d, d / s.weapon_range(),
 			rad_to_deg(wrapf(s.rotation, -PI, PI)), rad_to_deg((e.global_position - s.global_position).angle()), s.velocity.dot(fw), s.velocity.dot(fw.orthogonal()), s.actual_speed,
-			s._kiting, now() < s._dodge_until, s.dbg_hits, s.dbg_dmg, s.state])
+			s._kiting, now() < s._dodge_until, s.dbg_hits, s.dbg_dmg, s.state, s.global_position.distance_to(anchor0), s.weapon_range() * Ship.STANCE_LEASH, e.dbg_hits])
 	print("ET_DONE %s scen=%s techs=%s enemy=%s hits=%d dmg=%.0f flips=%d" % [mode, scen, OS.get_environment("SL_ET_TECHS"), ":".join(en), s.dbg_hits, s.dbg_dmg, flips])
 	get_tree().quit()
 

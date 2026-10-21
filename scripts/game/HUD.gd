@@ -1111,9 +1111,12 @@ func _rebuild_selection() -> void:
 		grid.add_child(box)
 	_sel_body.add_child(grid)
 	_add_fleet_tiles(sel)
-	_add_engagement_row(sel)
+	# Constructor buttons first so they keep a lone Constructor's keys; the
+	# warship rows (Engagement, Stance) take the keys after them.
 	if sel.any(func(e): return e is Ship and e.def["role"] == "constructor"):
 		_add_constructor_buttons()
+	_add_engagement_row(sel)
+	_add_stance_row(sel)
 	_add_refit_buttons(sel)
 
 ## How many ships of a selection get their own condition tile before the rest
@@ -1238,6 +1241,7 @@ func _entity_icon(e: SpaceEntity, px: int) -> Control:
 func _build_ship_controls(s: Ship) -> void:
 	_add_job_panel(s)
 	_add_engagement_row([s])
+	_add_stance_row([s])
 	_add_refit_buttons([s])
 	match s.def["role"]:
 		"colony":
@@ -2494,6 +2498,61 @@ func _refresh_engagement() -> void:
 	for i in _engage_buttons.size():
 		if is_instance_valid(_engage_buttons[i]):
 			_engage_buttons[i].set_pressed_no_signal(i == one)
+
+# ---------------------------------------------------------------- stance
+
+## The three stance buttons for the selected warships (see Ship.Stance), a
+## second row under Engagement; kept so a press can refresh them in place.
+var _stance_buttons: Array = []
+var _stance_label: Label
+const STANCE_TIPS := [
+	"Aggressive: attacks enemies that come near on its own and chases them wherever it can see them, then comes back. The standard behaviour, and what the game's balance is tuned for.",
+	"Defensive: attacks enemies that come near, but on fights it picks itself stays within about 1.5x its weapon range of where it was parked, then returns there. Orders still take it anywhere.",
+	"Stand Ground: never moves on its own - only turns and fires at enemies within weapon range (no closing, kiting or dodging). Move and attack orders still move it; it then holds the new spot.",
+]
+
+func _add_stance_row(sel: Array) -> void:
+	_stance_buttons.clear()
+	_stance_label = null
+	if _own_warships(sel).is_empty():
+		return
+	_stance_label = _label("", TEXT, 14)
+	_sel_body.add_child(_stance_label)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	for i in Ship.STANCE_NAMES.size():
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.toggle_mode = true
+		b.custom_minimum_size = Vector2(118, 32)
+		b.text = Ship.STANCE_NAMES[i]
+		b.tooltip_text = "Stance: " + STANCE_TIPS[i]
+		if i > 0:
+			b.add_theme_color_override("font_pressed_color", Ship.STANCE_COLORS[i])
+		b.pressed.connect(_set_stance.bind(i))
+		_register_action(b)
+		row.add_child(b)
+		_stance_buttons.append(b)
+	_sel_body.add_child(row)
+	_refresh_stance()
+
+func _set_stance(v: int) -> void:
+	for s in _own_warships(game.selection):
+		s.set_stance(v)
+	_refresh_stance()
+
+## Highlights the selection's stance, or none and "Mixed" when they differ.
+func _refresh_stance() -> void:
+	if _stance_label == null or not is_instance_valid(_stance_label):
+		return
+	var modes := {}
+	for s in _own_warships(game.selection):
+		modes[int(s.stance)] = true
+	var one: int = modes.keys()[0] if modes.size() == 1 else -1
+	_stance_label.text = "Stance: " + (Ship.STANCE_NAMES[one] if one >= 0 else "Mixed")
+	for i in _stance_buttons.size():
+		if is_instance_valid(_stance_buttons[i]):
+			_stance_buttons[i].set_pressed_no_signal(i == one)
 
 # ---------------------------------------------------------------- panel keys
 
