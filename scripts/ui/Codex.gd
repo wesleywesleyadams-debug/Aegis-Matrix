@@ -449,15 +449,25 @@ func _page_combat() -> void:
 			r.append(["%d%%" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
 		mt_rows.append(r)
 	_table(["vs", "Corvettes", "Destroyers", "Cruisers", "Carriers"], mt_rows)
-	_para("So every class has a prey and a predator: destroyers crush corvettes, corvettes swarm cruisers, cruisers outlast destroyers and carriers, and carriers grind down destroyers. Overall win rates of every side:")
-	var ow := [["Missile Barrage", "Carrier", 69], ["Lasers", "Destroyer", 61], ["Point-Defense Lattice", "Cruiser", 58], ["Lasers", "Cruiser", 56],
-		["Cluster Bombs", "Destroyer", 52], ["Interceptor Drones", "Carrier", 51], ["Ion Lance", "Cruiser", 49], ["Kinetic Repeaters", "Corvette", 48],
-		["Rail Cannons", "Cruiser", 48], ["Flak Cannons", "Destroyer", 47], ["Homing Missiles", "Destroyer", 47], ["Lasers", "Corvette", 45],
-		["Arc Emitters", "Corvette", 45], ["Lasers", "Carrier", 44], ["Proton Torpedoes", "Corvette", 41], ["Tractor Beams", "Carrier", 40]]
-	var ow_rows: Array = []
-	for e in ow:
-		ow_rows.append([e[0], e[1], "%d%%" % int(e[2])])
-	_table(["Weapon", "Class", "Wins"], ow_rows)
+	_para("So every class has a prey and a predator: destroyers crush corvettes, corvettes swarm cruisers, cruisers outlast destroyers and carriers, and carriers grind down destroyers.")
+	_heading("Every weapon against every weapon")
+	_para("Each row is one side (a class's plain lasers, or one of its Mods); each figure is its win rate against the column side at equal cost, over 12 duels. The codes are listed below the table.")
+	var wcode := ["CL", "Kin", "Arc", "Trp", "DL", "Flk", "Clu", "Hom", "RL", "Ion", "Rail", "PD", "VL", "Drn", "Trc", "Brg"]
+	var wname := ["Corvette lasers", "Kinetic Repeaters", "Arc Emitters", "Proton Torpedoes", "Destroyer lasers", "Flak Cannons", "Cluster Bombs", "Homing Missiles",
+		"Cruiser lasers", "Ion Lance", "Rail Cannons", "Point-Defense Lattice", "Carrier lasers", "Interceptor Drones", "Tractor Beams", "Missile Barrage"]
+	var wm := [[-1, 33, 42, 0, 0, 0, 0, 0, 100, 100, 100, 100, 100, 0, 100, 0], [67, -1, 33, 0, 17, 0, 0, 0, 100, 100, 100, 100, 100, 0, 100, 0], [58, 67, -1, 0, 8, 0, 0, 0, 42, 100, 100, 100, 0, 100, 100, 0], [100, 100, 100, -1, 100, 0, 0, 0, 17, 100, 25, 0, 0, 0, 67, 0], [100, 83, 92, 0, -1, 0, 0, 0, 100, 100, 100, 100, 100, 42, 100, 0], [100, 100, 100, 100, 100, -1, 75, 0, 0, 33, 0, 0, 0, 100, 0, 0], [100, 100, 100, 100, 100, 25, -1, 0, 25, 92, 0, 54, 0, 88, 0, 0], [100, 100, 100, 100, 100, 100, 100, -1, 0, 0, 0, 0, 0, 4, 0, 0], [0, 0, 58, 83, 0, 100, 75, 100, -1, 8, 100, 67, 100, 29, 100, 25], [0, 0, 0, 0, 0, 67, 8, 100, 92, -1, 83, 75, 100, 100, 100, 8], [0, 0, 0, 75, 0, 100, 100, 100, 0, 17, -1, 8, 100, 88, 58, 67], [0, 0, 0, 100, 0, 100, 46, 100, 33, 25, 92, -1, 100, 83, 92, 100], [0, 0, 100, 100, 0, 100, 100, 100, 0, 0, 0, 0, -1, 46, 17, 100], [100, 100, 0, 100, 58, 0, 13, 96, 71, 0, 13, 17, 54, -1, 71, 71], [0, 0, 0, 33, 0, 100, 100, 100, 0, 0, 42, 8, 83, 29, -1, 100], [100, 100, 100, 100, 100, 100, 100, 100, 75, 92, 33, 0, 0, 29, 0, -1]]
+	var wrows2: Array = []
+	for i in 16:
+		var r: Array = [wcode[i]]
+		for j in 16:
+			var v: int = wm[i][j]
+			r.append(["-", DIM] if v < 0 else ["%d" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
+		wrows2.append(r)
+	_table(["vs"] + wcode, wrows2)
+	var legend := PackedStringArray()
+	for i in 16:
+		legend.append("%s = %s" % [wcode[i], wname[i]])
+	_para(", ".join(legend) + ".")
 	_heading("Specialist variants")
 	_pic("variants", "Every variant costs the same as its generalist; its chevrons and shots share its color.", Vector2(460, 160))
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
