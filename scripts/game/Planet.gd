@@ -542,10 +542,17 @@ func _run_buildings(dt: float) -> void:
 		construction = {}
 
 ## What this world's population multiplies its buildings' output by: 1.0 with
-## nobody on it, levelling off toward 2.75 (x2.66 at 30,000 pops). A building you have built always runs;
+## nobody on it, levelling off toward a ceiling of 2.75 (x2.66 at 30,000
+## pops), which the population cap techs and this world's Habitats raise. A building you have built always runs;
 ## how much it produces is what the population decides.
 func pop_output_mult() -> float:
-	return 1.0 + Defs.OUTPUT_POP_BONUS * (1.0 - exp(-pop / Defs.OUTPUT_POP_SCALE))
+	var ceiling := Defs.OUTPUT_POP_BONUS
+	for b in buildings:
+		if b != "":
+			ceiling += float(Defs.BUILDINGS[b].get("pop_bonus", 0.0))
+	if owner_id != 0:
+		ceiling += Game.instance.mod(owner_id, "pop_bonus") - 1.0
+	return 1.0 + ceiling * (1.0 - exp(-pop / Defs.OUTPUT_POP_SCALE))
 
 ## Which buildings are producing. Everything built runs, except a Spice
 ## Extractor standing on an exhausted reserve.

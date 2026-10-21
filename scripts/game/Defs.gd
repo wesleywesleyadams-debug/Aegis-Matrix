@@ -284,6 +284,8 @@ const FOOD_PER_POP_PER_MIN := 0.01
 ## run at all, so this is the reason to grow a world rather than merely hold it.
 const OUTPUT_POP_BONUS := 1.75
 const OUTPUT_POP_SCALE := 10000.0
+## Raised by the population cap techs and by each Habitat on the world
+## ("pop_bonus" in their effects): see Planet.pop_output_mult.
 
 ## A shortage ends only once the world has been fed continuously for this
 ## long; until then it neither grows nor stops losing pops.
@@ -315,8 +317,8 @@ const BUILDINGS := {
 		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world."},
 	"mine": {"name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],
 		"desc": "+20 minerals/min at base, more with population."},
-	"habitat": {"name": "Habitat", "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "only": [],
-		"desc": "+1,500 population cap. Population raises every other building's output."},
+	"habitat": {"name": "Habitat", "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "pop_bonus": 0.1, "only": [],
+		"desc": "+1,500 population cap, and population's output bonus on this world can rise 0.1x higher."},
 	"battery": {"name": "Defense Battery", "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
 		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px)."},
 	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 20.0}, "only": [],
@@ -358,7 +360,7 @@ const TECHS := {
 	"gene_clinics": {"name": "Gene Clinics", "group": "worlds", "tier": 2, "requires": ["rationing"], "cost": {"energy": 100, "spice": 20}, "time": 75.0,
 		"effects": {"growth": 0.50}, "desc": "+50% population growth."},
 	"arcologies": {"name": "Arcologies", "group": "worlds", "tier": 2, "requires": ["habitat_modules"], "cost": {"energy": 110, "spice": 20}, "time": 80.0,
-		"effects": {"max_pop": 0.30}, "desc": "+30% population cap."},
+		"effects": {"max_pop": 0.30, "pop_bonus": 0.20}, "desc": "+30% population cap; population's output bonus can rise 0.20x higher."},
 	# --- Weapons: reach and rate of fire, alongside the damage line.
 	"targeting_arrays": {"name": "Quantum Lenses", "group": "weapons", "tier": 1, "requires": [], "cost": {"energy": 60}, "time": 50.0,
 		"effects": {"range": 0.15}, "desc": "+15% weapon range: ships and starbases."},
@@ -395,7 +397,7 @@ const TECHS := {
 	"terraforming": {"name": "Terraforming", "group": "worlds", "tier": 3, "requires": ["orbital_farms"], "cost": {"energy": 690, "spice": 140}, "time": 225.0,
 		"effects": {"food": 0.40, "max_pop": 0.20}, "desc": "+40% food production, +20% population cap."},
 	"deep_vaults": {"name": "Deep Vaults", "group": "worlds", "tier": 3, "requires": ["arcologies"], "cost": {"energy": 720, "spice": 150}, "time": 235.0,
-		"effects": {"max_pop": 0.40, "growth": 0.25}, "desc": "+40% population cap, +25% population growth."},
+		"effects": {"max_pop": 0.40, "growth": 0.25, "pop_bonus": 0.25}, "desc": "+40% population cap, +25% population growth; population's output bonus can rise 0.25x higher."},
 
 	# --- Weapons: every step up the line costs something. The two tier 3
 	# projects are a fork, not a sequence: heavy slow guns or light fast ones.
@@ -433,7 +435,7 @@ const TECHS := {
 	"rationing": {"name": "Rationing", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 45}, "time": 40.0,
 		"effects": {"growth": 0.10}, "desc": "+10% population growth."},
 	"habitat_modules": {"name": "Habitat Modules", "group": "worlds", "tier": 1, "requires": [], "cost": {"energy": 60}, "time": 45.0,
-		"effects": {"max_pop": 0.20}, "desc": "+20% population cap."},
+		"effects": {"max_pop": 0.20, "pop_bonus": 0.15}, "desc": "+20% population cap; population's output bonus can rise 0.15x higher."},
 	"gene_forges": {"name": "Gene Forges", "group": "worlds", "tier": 3, "requires": ["gene_clinics"], "cost": {"energy": 665, "spice": 130}, "time": 215.0,
 		"effects": {"growth": 0.80, "max_pop": 0.10}, "desc": "+80% population growth, +10% population cap."},
 	"planetary_citadels": {"name": "Planetary Citadels", "group": "worlds", "tier": 3, "requires": ["planetary_shields"], "cost": {"energy": 755, "spice": 160}, "time": 235.0,
