@@ -539,7 +539,7 @@ func _page_variants() -> void:
 		vrows.append([[vd["label"], vd["color"]], effect, "%d%%" % int(vd["damage"] * 100.0), [shots[v], vd["color"]], ["^ ^ ^", vd["color"]]])
 	_table(["Variant", "Effect", "Base damage", "Shots", "Chevrons"], vrows)
 	_heading("Which variant against what")
-	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is equal, lower kills faster. Worked out from each hull's layers - and confirmed by equal-cost fleet duels, which picked the same best variant for every class.")
+	_para("Base damage needed to destroy a target, compared with a generalist: 1.00 is equal, lower kills faster. Worked out from each hull's shield, armor and hull and each variant's damage against them - layer math, not battle results. Real fights also turn on range, speed, accuracy, marks and Mods, so treat it as a guide; Combat > Matchups has measured duel results for classes and Mods (not variants).")
 	var head: Array = ["Target"]
 	for v in Defs.VARIANTS:
 		head.append(Defs.VARIANTS[v]["label"])
@@ -562,11 +562,11 @@ func _page_variants() -> void:
 	vgrid.add_theme_constant_override("h_separation", 16)
 	vgrid.add_theme_constant_override("v_separation", 12)
 	for vu in [["generalist", "Generalist", "No weak matchup: the safe pick when you don't know the enemy. Against starbases every variant is about even."],
-			["plasma", "Plasma", "Cruiser- and carrier-heavy fleets of uncertain mix: loses less badly than Slip or Disruptor when the guess is wrong."],
-			["breacher", "Breacher", "Destroyers: the clear best pick against them."],
+			["plasma", "Plasma", "Cruiser- and carrier-heavy fleets of uncertain mix: by the layer math it gives up less than Slip or Disruptor when the guess is wrong."],
+			["breacher", "Breacher", "Destroyers: the best pick against them by the layer math."],
 			["reaver", "Ravager", "Corvette swarms, and bombarding worlds (it hits population hardest)."],
-			["slip", "Slip", "Cruisers. Badly outclassed by corvettes and destroyers."],
-			["disruptor", "Disruptor", "Carriers and cruisers. Crushed by corvettes and destroyers."]]:
+			["slip", "Slip", "Cruisers, then carriers. Weak against corvettes and destroyers, which need clearly more damage to kill."],
+			["disruptor", "Disruptor", "Carriers and cruisers. Weakest of all against corvettes, and poor against destroyers."]]:
 		var cell := VBoxContainer.new()
 		var vn := _label(vu[1], Defs.GENERALIST_SHOT if vu[0] == "generalist" else Defs.VARIANTS[vu[0]]["color"], 16)
 		cell.add_child(vn)
@@ -618,7 +618,7 @@ func _page_mods() -> void:
 	var ilb: Array = Defs.MOD_WEAPONS["mod_ion_lance"]["beam"]
 	var ild: float = float(Defs.MOD_WEAPONS["mod_ion_lance"]["dmg"])
 	_para("Ion Lance: each turret holds a continuous beam on its target once aimed (within 8 degrees), with no reload. Damage ramps the longer it stays on one target, from %d%% to %d%% of a laser's damage rate over %d s, and starts over on a new target: strong on one big hull, weak against swarms. Defensive Fire never pauses the beam." % [int(round(ilb[0] * ild * 100.0)), int(round(ilb[1] * ild * 100.0)), int(ilb[2])])
-	_para("Tractor Beams: the carrier's turrets fire no lasers. Each holds a beam on an enemy ship or drone up to %dx weapon range away, which burns it harder the closer it is: half a laser's damage rate at the beam's full reach, rising to one and a half times it once dragged in to where the pull stops (it doesn't ramp over time like the Ion Lance) and drags it toward the carrier at %d per second, until it is well inside the guns' range. The beam doesn't slow its target. Missile Barrage: a %d-missile salvo every %d s at +%d%% range." % [int(trb[1]), int(trb[0]), 4 * int(Defs.MOD_WEAPONS["mod_missile_barrage"]["count"]), int(Defs.MOD_WEAPONS["mod_missile_barrage"]["cd"]), int((Defs.MOD_WEAPONS["mod_missile_barrage"]["range"] - 1.0) * 100)])
+	_para("Tractor Beams: the carrier's turrets fire no lasers. Each holds a beam on an enemy ship or drone up to %dx weapon range away, which burns it harder the closer it is: x%.2f a laser's damage rate at the beam's full reach, rising to x%.2f once dragged in to where the pull stops (it doesn't ramp over time like the Ion Lance), and drags it toward the carrier at %d per second until it is at 60%% of the guns' range. The beam doesn't slow its target. Missile Barrage: a %d-missile salvo every %d s at +%d%% range." % [int(trb[1]), float(trb[2]) * float(Defs.MOD_WEAPONS["mod_tractor_beams"]["dmg"]), float(trb[3]) * float(Defs.MOD_WEAPONS["mod_tractor_beams"]["dmg"]), int(trb[0]), 4 * int(Defs.MOD_WEAPONS["mod_missile_barrage"]["count"]), int(Defs.MOD_WEAPONS["mod_missile_barrage"]["cd"]), int((Defs.MOD_WEAPONS["mod_missile_barrage"]["range"] - 1.0) * 100)])
 	var tb: float = float(Defs.MOD_WEAPONS["mod_proton_torpedoes"]["dmg"])
 	var tcd: float = float(Defs.MOD_WEAPONS["mod_proton_torpedoes"]["cd"])
 	_para("Proton Torpedoes are built to hunt big hulls. Each torpedo hits for %d%% of a laser shot, times the bonus below, and reloads %dx slower than a laser. They steer gently, so a ship that turns hard can shake one off." % [int(round(tb * 100.0)), int(tcd)])
@@ -644,7 +644,7 @@ func _page_engagement() -> void:
 		["Default", "Closes to about 80% of weapon range and holds there. New ships start here, and the game's balance is tuned for it."],
 		[["Aggressive", Color("ff5a4a")], "Closes to about 40% of weapon range and sticks to its target, following it if it runs."],
 		[["Defensive", Color("5aa8ff")], "Fights from about 90% of weapon range. An enemy closing inside 75% makes it fall back until the range is open again: backing off while firing with Reverse Thrusters, otherwise turning away, flying out and coming back about."],
-		[["Evasive", Color("6cf08a")], "Fights as Default but sidesteps (Strafing Thrusters) or backs off (Reverse Thrusters) from incoming slow shots. It works well against bomblets; missiles and torpedoes home in, and rail, kinetic and laser shots are too fast, so it rarely escapes those. Without either thruster it fights as Default."],
+		[["Evasive", Color("6cf08a")], "Fights as Default but sidesteps (Strafing Thrusters) or backs off (Reverse Thrusters) from incoming missiles, torpedoes, bomblets, rail and kinetic rounds; lasers are not dodged. It works best against bomblets: missiles and torpedoes home in and rail rounds are fast, so those often still hit. Without either thruster it fights as Default."],
 	])
 
 func _page_jobs() -> void:

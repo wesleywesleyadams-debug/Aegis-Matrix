@@ -11,8 +11,8 @@ enum State { IDLE, MOVE, ATTACK, ATTACK_MOVE, MINE_GO, MINING, RETURN, COLONIZE,
 ##  AGGRESSIVE: closes to ENGAGE_CLOSE of its range and sticks to the target.
 ##  DEFENSIVE: fights from ENGAGE_FAR of its range, kiting out to it when an
 ##    enemy comes inside ENGAGE_KITE.
-##  EVASIVE: as Default, but sidesteps / backs off from slow incoming shots
-##    (needs Strafing or Reverse Thrusters).
+##  EVASIVE: as Default, but sidesteps / backs off from incoming DODGE_WEAPONS
+##    shots - not lasers (needs Strafing or Reverse Thrusters).
 enum Engage { DEFAULT, AGGRESSIVE, DEFENSIVE, EVASIVE }
 const ENGAGE_NAMES := ["Default", "Aggressive", "Defensive", "Evasive"]
 const ENGAGE_CLOSE := 0.4
