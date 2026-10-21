@@ -437,37 +437,7 @@ func _page_combat() -> void:
 		var d: Dictionary = Defs.SHIPS[t]
 		wrows.append([d["name"], "%s every %s s" % [String.num(float(d["damage"]), 1), String.num(float(d["cooldown"]), 1)], "%d" % int(d["range"]), "%d" % int(d.get("guns", 1)), "%d" % int(d["speed"])])
 	_table(["Ship", "Laser damage", "Range", "Guns", "Speed"], wrows)
-	_heading("Matchups")
-	_para("How each class fares against each other class at equal cost, from the latest balance round robin: every class's plain lasers and all twelve Mods fought one another, 12 times per pairing. Each figure is the row class's win rate against the column class, across all its sides (lasers and Mods). The aim is a gentle size ladder: corvettes 47%, destroyers 49%, cruisers 51%, carriers 53% overall.")
-	var mk := ["Corvette", "Destroyer", "Cruiser", "Carrier"]
-	var mt := [[50, 8, 80, 42], [92, 50, 38, 27], [20, 62, 50, 78], [58, 73, 22, 50]]
-	var mt_rows: Array = []
-	for i in 4:
-		var r: Array = [mk[i]]
-		for j in 4:
-			var v: int = mt[i][j]
-			r.append(["%d%%" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
-		mt_rows.append(r)
-	_table(["vs", "Corvettes", "Destroyers", "Cruisers", "Carriers"], mt_rows)
-	_para("So every class has a prey and a predator: destroyers crush corvettes, corvettes swarm cruisers, cruisers outlast destroyers and carriers, and carriers grind down destroyers.")
-	_heading("Every weapon against every weapon")
-	_para("Each row is one side (a class's plain lasers, or one of its Mods); each figure is its win rate against the column side at equal cost, over 12 duels. The codes are listed below the table.")
-	var wcode := ["CL", "Kin", "Arc", "Trp", "DL", "Flk", "Clu", "Hom", "RL", "Ion", "Rail", "PD", "VL", "Drn", "Trc", "Brg"]
-	var wname := ["Corvette lasers", "Kinetic Repeaters", "Arc Emitters", "Proton Torpedoes", "Destroyer lasers", "Flak Cannons", "Cluster Bombs", "Homing Missiles",
-		"Cruiser lasers", "Ion Lance", "Rail Cannons", "Point-Defense Lattice", "Carrier lasers", "Interceptor Drones", "Tractor Beams", "Missile Barrage"]
-	var wm := [[-1, 33, 42, 0, 0, 0, 0, 0, 100, 100, 100, 100, 100, 0, 100, 0], [67, -1, 33, 0, 17, 0, 0, 0, 100, 100, 100, 100, 100, 0, 100, 0], [58, 67, -1, 0, 8, 0, 0, 0, 42, 100, 100, 100, 0, 100, 100, 0], [100, 100, 100, -1, 100, 0, 0, 0, 17, 100, 25, 0, 0, 0, 67, 0], [100, 83, 92, 0, -1, 0, 0, 0, 100, 100, 100, 100, 100, 42, 100, 0], [100, 100, 100, 100, 100, -1, 75, 0, 0, 33, 0, 0, 0, 100, 0, 0], [100, 100, 100, 100, 100, 25, -1, 0, 25, 92, 0, 54, 0, 88, 0, 0], [100, 100, 100, 100, 100, 100, 100, -1, 0, 0, 0, 0, 0, 4, 0, 0], [0, 0, 58, 83, 0, 100, 75, 100, -1, 8, 100, 67, 100, 29, 100, 25], [0, 0, 0, 0, 0, 67, 8, 100, 92, -1, 83, 75, 100, 100, 100, 8], [0, 0, 0, 75, 0, 100, 100, 100, 0, 17, -1, 8, 100, 88, 58, 67], [0, 0, 0, 100, 0, 100, 46, 100, 33, 25, 92, -1, 100, 83, 92, 100], [0, 0, 100, 100, 0, 100, 100, 100, 0, 0, 0, 0, -1, 46, 17, 100], [100, 100, 0, 100, 58, 0, 13, 96, 71, 0, 13, 17, 54, -1, 71, 71], [0, 0, 0, 33, 0, 100, 100, 100, 0, 0, 42, 8, 83, 29, -1, 100], [100, 100, 100, 100, 100, 100, 100, 100, 75, 92, 33, 0, 0, 29, 0, -1]]
-	var wrows2: Array = []
-	for i in 16:
-		var r: Array = [wcode[i]]
-		for j in 16:
-			var v: int = wm[i][j]
-			r.append(["-", DIM] if v < 0 else ["%d" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
-		wrows2.append(r)
-	_table(["vs"] + wcode, wrows2)
-	var legend := PackedStringArray()
-	for i in 16:
-		legend.append("%s = %s" % [wcode[i], wname[i]])
-	_para(", ".join(legend) + ".")
+	_section_matchups()
 	_heading("Specialist variants")
 	_pic("variants", "Every variant costs the same as its generalist; its chevrons and shots share its color.", Vector2(460, 160))
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
@@ -1137,3 +1107,49 @@ const SHIP_NOTES := {
 	"cruiser": "Heavy shields and three laser turrets that outrange everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",
 	"carrier": "The heaviest hull, armored and shielded far more than its hull, with four turrets that traverse on their own, so the hull never has to come about to fire. Turrets fire on the move at reduced accuracy (Gyro-Stabilizers remove that). Its Mods trade the turrets for drones, add tractor beams, or fire long-range missile salvos.",
 }
+
+## Combat page: the class-vs-class and every-weapon matchup tables, from
+## data/matchups.json (the latest merged balance round robin).
+func _section_matchups() -> void:
+	# Measured numbers come from data/matchups.json (tools/matchups_to_json.py
+	# writes it from the latest merged balance round robin).
+	var mu: Dictionary = {}
+	var mf := FileAccess.open("res://data/matchups.json", FileAccess.READ)
+	if mf != null:
+		var parsed = JSON.parse_string(mf.get_as_text())
+		if parsed is Dictionary:
+			mu = parsed
+	if mu.is_empty():
+		_para("(No matchup data yet.)")
+		return
+	_heading("Matchups")
+	_para("How each class fares against each other class at equal cost, from the latest balance round robin (%s): every class's plain lasers and all twelve Mods fought one another, %d times per pairing. Each figure is the row class's win rate against the column class, across all its sides (lasers and Mods). The aim is a gentle size ladder: corvettes 47%%, destroyers 49%%, cruisers 51%%, carriers 53%% overall." % [str(mu.get("label", "")), int(mu.get("per_pair", 0))])
+	var mk := ["Corvette", "Destroyer", "Cruiser", "Carrier"]
+	var mt: Array = mu["classes"]
+	var mt_rows: Array = []
+	for i in 4:
+		var r: Array = [mk[i]]
+		for j in 4:
+			var v: int = int(mt[i][j])
+			r.append(["%d%%" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
+		mt_rows.append(r)
+	_table(["vs", "Corvettes", "Destroyers", "Cruisers", "Carriers"], mt_rows)
+	_para("So every class has a prey and a predator: destroyers crush corvettes, corvettes swarm cruisers, cruisers outlast destroyers and carriers, and carriers grind down destroyers.")
+	_heading("Every weapon against every weapon")
+	_para("Each row is one side (a class's plain lasers, or one of its Mods); each figure is its win rate against the column side at equal cost, over %d duels. The codes are listed below the table." % int(mu.get("per_pair", 0)))
+	var wcode := ["CL", "Kin", "Arc", "Trp", "DL", "Flk", "Clu", "Hom", "RL", "Ion", "Rail", "PD", "VL", "Drn", "Trc", "Brg"]
+	var wname := ["Corvette lasers", "Kinetic Repeaters", "Arc Emitters", "Proton Torpedoes", "Destroyer lasers", "Flak Cannons", "Cluster Bombs", "Homing Missiles",
+		"Cruiser lasers", "Ion Lance", "Rail Cannons", "Point-Defense Lattice", "Carrier lasers", "Interceptor Drones", "Tractor Beams", "Missile Barrage"]
+	var wm: Array = mu["grid"]
+	var wrows2: Array = []
+	for i in 16:
+		var r: Array = [wcode[i]]
+		for j in 16:
+			var v: int = int(wm[i][j])
+			r.append(["-", DIM] if v < 0 else ["%d" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
+		wrows2.append(r)
+	_table(["vs"] + wcode, wrows2)
+	var legend := PackedStringArray()
+	for i in 16:
+		legend.append("%s = %s" % [wcode[i], wname[i]])
+	_para(", ".join(legend) + ".")
