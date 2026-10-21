@@ -25,7 +25,8 @@ var _globe: Control
 var _art: TextureRect
 var _title: Label
 var _subtitle: Label
-var _details: Label
+var _details: RichTextLabel
+var _details_right := true
 ## Draws the subtle ring around the planet, the leader line and the name bubble.
 var _deco: Control
 var _ring_color := Color(1, 1, 1, 0.5)
@@ -70,8 +71,17 @@ func _ready() -> void:
 	move_child(_deco, 0)
 	_title = _float_label(18, HORIZONTAL_ALIGNMENT_CENTER)
 	_subtitle = _float_label(12, HORIZONTAL_ALIGNMENT_CENTER)
-	_details = _float_label(14, HORIZONTAL_ALIGNMENT_RIGHT)
+	# Rich text, so resources show as their icons.
+	_details = RichTextLabel.new()
+	_details.bbcode_enabled = true
+	_details.fit_content = true
+	_details.scroll_active = false
 	_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_details.add_theme_font_size_override("normal_font_size", 14)
+	_details.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	_details.add_theme_constant_override("outline_size", 6)
+	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_details)
 
 	_picker = PopupPanel.new()
 	_picker_list = VBoxContainer.new()
@@ -198,10 +208,10 @@ func _place() -> void:
 	var dy := clampf(center.y - ring_r * 0.45, 90.0, vp.y - 260.0)
 	if center.x + ring_r + 24.0 + DETAILS_W < vp.x - 8.0:
 		_details.position = Vector2(center.x + ring_r + 24.0, dy)
-		_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		_details_right = false
 	else:
 		_details.position = Vector2(maxf(8.0, center.x - ring_r - 24.0 - DETAILS_W), dy)
-		_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_details_right = true
 	# Where the spice bar can go. A label's drawn width is not its box width
 	# (a long line overruns it), so rather than trust the gap, the two rects
 	# are compared and the bar is dropped below the text if they touch.
@@ -242,6 +252,10 @@ func _float_label(size: int, align: HorizontalAlignment) -> Label:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(l)
 	return l
+
+## A resource icon inline in the details text (icon_<name>.png).
+func _ic(name: String) -> String:
+	return "[img=16x16]%sicon_%s.png[/img]" % [Defs.PIXEL, name]
 
 ## Ring around the planet, a leader line out to a small name bubble.
 func _draw_deco() -> void:
@@ -351,25 +365,23 @@ func refresh() -> void:
 		s += "\nMine it with Gas Skimmers (research Gas Skimming)."
 		s += "\nSkimmers haul what they mine back to a starbase."
 	elif planet.owner_id != 0:
-		s += "\nPopulation %d / %d  (+%d/min)" % [int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min)]
-		s += "\nPlanetary shield %d / %d" % [int(planet.shield), int(planet.max_shield())]
+		s += "\n%s %d / %d  (+%d/min)" % [_ic("pop"), int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min)]
+		s += "\n%s Planetary shield %d / %d" % [_ic("layer_shield"), int(planet.shield), int(planet.max_shield())]
 		if planet.type_def().has("spice_reserve"):
-			s += "\nSpice reserve: %d%s" % [int(planet.spice_reserve), "  (exhausted)" if planet.spice_reserve <= 0.0 else ""]
+			s += "\n%s Reserve %d%s" % [_ic("spice"), int(planet.spice_reserve), "  (exhausted)" if planet.spice_reserve <= 0.0 else ""]
 		if planet.under_siege():
 			s += "\nUNDER BOMBARDMENT: growth halted, %d%% of pops left" % int(ceil(100.0 * planet.pop / maxf(planet.siege_start_pop, 1.0)))
 		# Population is the whole reason to grow a world now: it multiplies
 		# what every building on it produces.
-		s += "\nPopulation bonus: x%.2f on every building here" % planet.pop_output_mult()
-		s += "\nFood grown %.1f/min, eaten %.1f/min" % [planet.food_made_per_min, planet.food_eaten_per_min]
-		s += "\nEnergy %.0f/min" % planet.energy_out
-		if planet.spice_out > 0.0:
-			s += "   Spice %.1f/min" % planet.spice_out
+		s += "\n%s bonus x%.2f on every building here" % [_ic("pop"), planet.pop_output_mult()]
+		s += "\n%s +%.0f/min, eaten %.0f/min" % [_ic("food"), planet.food_made_per_min, planet.food_eaten_per_min]
+		s += "\n%s +%.0f/min   %s +%.0f/min   %s +%.1f/min" % [_ic("energy"), planet.energy_out, _ic("minerals"), planet.minerals_out, _ic("spice"), planet.spice_out]
 		if planet.starving:
 			s += "\nSTARVING: shrinking %d/min until food recovers" % int(-planet.growth_per_min)
 	else:
 		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
 		if planet.type_def().has("spice_reserve"):
-			s += "\nSpice reserve: %d (extract with Spice Extractors)" % int(planet.spice_reserve)
+			s += "\n%s Reserve %d (extract with Spice Extractors)" % [_ic("spice"), int(planet.spice_reserve)]
 		if planet.colonizing_owner != 0:
 			s += "\nBeing colonized: %d%%" % int(100.0 * planet.colonize_progress / Planet.COLONIZE_TIME)
 	if mine and planet.fields > 0:
@@ -379,7 +391,7 @@ func refresh() -> void:
 			var cd: Dictionary = Defs.BUILDINGS[planet.construction["id"]]
 			s += "\nBuilding %s: %d%%%s. %d more queued." % [cd["name"], int(100.0 * planet.construction["progress"] / cd["time"]), " (STALLED: insufficient funds)" if planet.construction_stalled else "", planet.construction_queue.size()]
 	stats = s
-	_details.text = s
+	_details.text = ("[right]%s[/right]" % s) if _details_right else s
 	for i in _field_buttons.size():
 		var b := _field_buttons[i]
 		var built: String = planet.buildings[i]

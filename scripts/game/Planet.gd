@@ -82,6 +82,7 @@ var food_made_per_min: float = 0.0
 var food_eaten_per_min: float = 0.0
 var energy_out: float = 0.0
 var spice_out: float = 0.0
+var minerals_out: float = 0.0
 var growth_per_min: float = 0.0
 
 ## Buildable fields (count set by planet size) and what occupies each ("" = empty).
@@ -248,6 +249,7 @@ func _economy(dt: float) -> void:
 	# barge on a spice rock, a skimmer in a nebula. Buildings add to this in
 	# _run_buildings.
 	spice_out = 0.0
+	minerals_out = 0.0
 	# Outputs are per minute; resources move per second.
 	g.add_resources(owner_id, {"food": food_made_per_min / Defs.PER_MIN * dt, "energy": energy_out / Defs.PER_MIN * dt})
 	_run_buildings(dt)
@@ -514,6 +516,8 @@ func _run_buildings(dt: float) -> void:
 				spice_out += v
 			elif k == "spice":
 				spice_out += v
+			elif k == "minerals":
+				minerals_out += v
 			out[k] = out.get(k, 0.0) + v / Defs.PER_MIN * dt
 	if not out.is_empty():
 		g.add_resources(owner_id, out)

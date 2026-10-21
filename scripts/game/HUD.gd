@@ -245,11 +245,16 @@ func _build_top_bar(root: Control) -> void:
 		_res_labels[key] = l
 		_res_boxes[key] = box
 		h.add_child(box)
-	_pop_label = _label("Pop 0", TEXT)
-	_pop_label.custom_minimum_size = Vector2(100, 0)   # "Pop 99.9k"
+	# Population: its icon, then the total.
+	var popbox := HBoxContainer.new()
+	popbox.add_theme_constant_override("separation", 6)
+	popbox.add_child(_icon("icon_pop"))
+	_pop_label = _label("0", TEXT)
+	_pop_label.custom_minimum_size = Vector2(70, 0)   # "99.9k"
 	_pop_label.clip_text = true
 	_pop_label.mouse_filter = Control.MOUSE_FILTER_STOP
-	h.add_child(_pop_label)
+	popbox.add_child(_pop_label)
+	h.add_child(popbox)
 	# Ships (all kinds), harvesters, and the empire-wide upkeep multiplier.
 	var fleet := HBoxContainer.new()
 	fleet.add_theme_constant_override("separation", 6)
@@ -1449,7 +1454,12 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 			var wname: String = Defs.TECHS[mid]["name"] if mid != "" else s.def["weapon"].capitalize()
 			var cd: float = s.def["cooldown"] * float(wm.get("cd", 1.0)) / game.mod(e.owner_id, "fire_rate")
 			if wm.has("beam"):
-				txt += "   %s (continuous beam)" % wname
+				# Ion Lance: its whole-ship damage per second, from the start of
+				# a beam to full ramp on one target.
+				var b: Array = wm["beam"]
+				var turrets: int = maxi(1, (s.def.get("turrets", []) as Array).size())
+				var dps: float = base_dmg * float(wm.get("dmg", 1.0)) / s.def["cooldown"] * game.mod(e.owner_id, "fire_rate") * turrets
+				txt += "   %s %.0f-%.0f DPS (ramps over %.0fs)" % [wname, dps * float(b[0]), dps * float(b[1]), float(b[2])]
 			elif wm.has("tractor"):
 				txt += "   Laser %.0f dmg / %.1fs + Tractor Beams" % [base_dmg * float(wm.get("dmg", 1.0)), cd]
 			else:
@@ -1595,7 +1605,7 @@ func _update_top_bar() -> void:
 	_res_boxes["spice"].tooltip_text += "\nSpice automatically covers shortfalls of food, minerals and energy (1:1)."
 	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/min for ships and starbases%s" % [game.upkeep(pid), "
 OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starved(pid) else ""]
-	_pop_label.text = "Pop %s" % _fmt(game.total_pop(pid))
+	_pop_label.text = _fmt(game.total_pop(pid))
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats %.2f food per minute." % Defs.FOOD_PER_POP_PER_MIN
 	_fleet_label.text = str(game.warship_count(pid))
 	_fleet_label.tooltip_text = "Warships: corvettes, destroyers, cruisers and carriers."
