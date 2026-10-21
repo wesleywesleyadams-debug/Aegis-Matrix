@@ -14,10 +14,10 @@ extends Node2D
 ## Planetary shields: bombardment must knock these down before pops die.
 ## They recharge exactly like ship and construct shields (Defs.SHIELD_REGEN_DELAY,
 ## Defs.SHIELD_REGEN_PER_SEC, a little energy). Boosted by shield research.
-const PLANET_SHIELD := 1000.0
+const PLANET_SHIELD := 670.0
 
-## Pops killed per point of damage, pegged so one base corvette shot = 1 pop.
-static var POP_PER_DAMAGE: float = 1.0 / float(Defs.BASE_SHIPS["corvette"]["damage"])
+## Pops killed per point of damage, pegged so one base corvette shot = 2 pops.
+static var POP_PER_DAMAGE: float = 2.0 / float(Defs.BASE_SHIPS["corvette"]["damage"])
 const COLONIZE_TIME := 60.0
 ## A planet counts as under siege for this long after its last hit.
 const SIEGE_TIME := 3.0
