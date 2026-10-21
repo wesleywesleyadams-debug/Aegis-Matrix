@@ -103,7 +103,7 @@ const BASE_SHIPS := {
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
-		"hp": 74.6, "armor": 49.7, "shield": 24.9, "speed": 125.0, "radius": 8.0,
+		"hp": 75.3, "armor": 50.2, "shield": 25.1, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
 		"weapon": "laser", "damage": 12.3, "cooldown": 0.97, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 8.0},
 	},
@@ -121,7 +121,7 @@ const BASE_SHIPS := {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
 		"hp": 385.7, "armor": 192.4, "shield": 577.1, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 350, "spice": 25}, "build_time": 80.0, "upkeep": 4.0,
-		"weapon": "laser", "damage": 13.9, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
+		"weapon": "laser", "damage": 14.05, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
 		"guns": 3, "turret_rate": 6.0, "turret_scale": 0.6, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
 	},
@@ -132,7 +132,7 @@ const BASE_SHIPS := {
 		# makes up for it with several mounts instead of one.
 		"hp": 911.6, "armor": 1367.4, "shield": 1367.4, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 700, "spice": 60}, "build_time": 153.0, "upkeep": 8.0,
-		"weapon": "laser", "damage": 14.5, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
+		"weapon": "laser", "damage": 14.8, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
@@ -756,16 +756,16 @@ const MOD_WEAPONS := {
 	#   tractor- Tractor Beams: [pull/s, reach x weapon range, damage at full reach, damage once pulled in to 60% of range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
-	"mod_flak_cannons": {"dmg": 0.50, "cd": 0.970, "weapon": "flak"},
+	"mod_flak_cannons": {"dmg": 0.485, "cd": 0.970, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
-	"mod_cluster_bombs": {"dmg": 0.285, "weapon": "bomblet", "cd": 2.912, "count": 3, "fan": [10.0, 20.0]},
-	"mod_ion_lance": {"weapon": "beam", "dmg": 0.66, "beam": [0.15, 1.85, 4.0]},
-	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.8, "cd": 4.0, "range": 1.4},
+	"mod_cluster_bombs": {"dmg": 0.277, "weapon": "bomblet", "cd": 2.912, "count": 3, "fan": [10.0, 20.0]},
+	"mod_ion_lance": {"weapon": "beam", "dmg": 0.70, "beam": [0.15, 1.85, 4.0]},
+	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.6, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
 	"mod_point_defense_lattice": {"dmg": 0.965, "pd": 220.0},
-	"mod_homing_missiles": {"weapon": "missile", "cd": 2.427, "dmg": 0.342, "count": 2, "range": 1.2},
+	"mod_homing_missiles": {"weapon": "missile", "cd": 2.427, "dmg": 0.332, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
 	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.25, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
