@@ -44,6 +44,21 @@ var _dodge_until := -1.0
 var _dodge_start := -1.0
 var _dodge_shot: Node2D = null
 const DODGE_MAX := 1.5
+## Evasive dodge burst: while a dodge runs, every movement cap (forward,
+## sideways, backward) and acceleration is x(1 + EVADE_BOOST); the moment it
+## ends the engines are spent for EVADE_PENALTY_TIME_MULT x as long as the burst lasted, caps
+## x(1 - EVADE_PENALTY) (the hull still turns and fires at full rate and
+## brakes at its base rate), and no new dodge starts until they recover.
+const EVADE_BOOST := 1.0
+const EVADE_PENALTY := 0.5
+const EVADE_PENALTY_TIME_MULT := 2.0
+## Without Strafing / Reverse Thrusters an Evasive ship can still dodge,
+## but only by burning straight ahead, and only if its nose already points
+## within this angle of square across the shot's line (it never turns to
+## dodge, so it stays stable).
+const DODGE_FWD_ARC := deg_to_rad(35.0)
+var _dodging := false
+var _evade_penalty_until := -1.0
 
 ## Warship stances ("Stance") (player-set; every new and every AI ship is
 ## AGGRESSIVE, which is the game's original behaviour and what balance is
@@ -118,6 +133,8 @@ func set_engagement(v: int) -> void:
 	engagement = v as Engage
 	_kiting = false
 	_dodge_until = -1.0
+	_dodging = false
+	_evade_penalty_until = -1.0
 	_threat = null
 	incoming.clear()
 	if _mark_tag != null:
@@ -982,7 +999,33 @@ func max_speed() -> float:
 	_speed_frame = f
 	var storm := IonStorm.SLOW if Game.instance.in_storm(global_position) else 1.0
 	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
+	return _speed_cache * _evade_mult()
+
+## Unmodified top speed (no Evasive burst / recovery).
+func base_speed() -> float:
+	max_speed()
 	return _speed_cache
+
+## Evasive burst / recovery speed factor right now.
+func _evade_mult() -> float:
+	if not _dodging and _evade_penalty_until < 0.0:
+		return 1.0
+	var now := Game.now()
+	if _dodging:
+		if now < _dodge_start + DODGE_MAX:
+			return 1.0 + EVADE_BOOST
+		_end_dodge(_dodge_start + DODGE_MAX)
+	if now < _evade_penalty_until:
+		return maxf(1.0 - EVADE_PENALTY, 0.0)
+	return 1.0
+
+## Ends a dodge burst at time `t`: recovery for EVADE_PENALTY_TIME_MULT x
+## as long as the burst ran.
+func _end_dodge(t: float) -> void:
+	if not _dodging:
+		return
+	_dodging = false
+	_evade_penalty_until = t + maxf(t - _dodge_start, 0.0) * EVADE_PENALTY_TIME_MULT
 
 ## How fast this ship fills its hold on `node`, per minute (Defs.PER_MIN).
 ## (Spice and nebula gas: Defs.HARVEST_SPICE_MULT / HARVEST_NEBULA_MULT, now 1.)
@@ -1564,16 +1607,21 @@ func _engage_move(d: float) -> Vector2:
 func _evade() -> Vector2:
 	var lat := lateral_thrust()
 	var rev := reverse_thrust()
-	if lat + rev <= 0.0 or state == State.MOVE:
+	var now := Game.now()
+	if state == State.MOVE:
 		incoming.clear()
 		_dodge_until = -1.0
+		_end_dodge(now)
 		return Vector2.ZERO
-	var now := Game.now()
 	# A dodge under way runs its minimum time, then on while the shot it
 	# dodges is still coming (up to DODGE_MAX), in the direction it chose.
 	if now < _dodge_until or (now < _dodge_start + DODGE_MAX and is_instance_valid(_dodge_shot) 			and _dodge_shot.target == self and (global_position - _dodge_shot.global_position).dot(_dodge_shot._vel) > 0.0):
 		return _dodge_dir * max_speed()
+	_end_dodge(now)
 	_dodge_shot = null
+	# Recovering from the last burst: no new dodge yet.
+	if now < _evade_penalty_until:
+		return Vector2.ZERO
 	# Nearest live threat that will arrive soon.
 	var best: Node2D = null
 	var best_t := DODGE_LOOK
@@ -1611,10 +1659,18 @@ func _evade() -> Vector2:
 		dir += side
 	if rev > 0.0:
 		dir += along
+	if lat + rev <= 0.0:
+		# No thrusters: burn straight ahead, only if the nose is already
+		# roughly square across the shot's line.
+		var fwd := Vector2.from_angle(rotation)
+		if absf(fwd.dot(along)) > sin(DODGE_FWD_ARC):
+			return Vector2.ZERO
+		dir = fwd
 	_dodge_dir = dir.normalized()
 	_dodge_start = now
 	_dodge_until = now + DODGE_TIME
 	_dodge_shot = best
+	_dodging = true
 	incoming.erase(best)
 	_threat = null
 	return _dodge_dir * max_speed()
@@ -1713,7 +1769,9 @@ func _body_thrust(heading: float, want: Vector2, lat: float, rev: float) -> Vect
 ## hull cannot thrust on is damped out at the same rate.
 func _steer(desired: Vector2, delta: float, face: Node2D) -> void:
 	var speed: float = max_speed()
-	var accel := speed * 2.2
+	# Acceleration follows the Evasive burst up, but never drops below the
+	# base rate, so a spent (zero-thrust) hull still brakes to a stop.
+	var accel := maxf(speed, base_speed()) * 2.2
 	var want := desired.limit_length(speed)
 	var lat := lateral_thrust()
 	var rev := reverse_thrust()

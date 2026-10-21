@@ -1170,12 +1170,23 @@ func _plan_gate(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Arr
 	c.order_build_fort(site, "gate")
 	_flog(pid, "gate ordered at (%d,%d)" % [site.x, site.y])
 
-## A landing point WARP_STANDOFF short of `target` on the gate's side, in
-## the gate's reach and clear of stars and debris; INF if none.
+## `q` pulled onto the gate's reach: a point beyond warp_max is stepped
+## back along the gate->q line to just inside it (the wave lands there and
+## flies the rest), one closer than warp_min pushed out to it.
+func _clamp_warp(g: WarpGate, q: Vector2) -> Vector2:
+	var d: Dictionary = Defs.WARP_GATE
+	var off := q - g.global_position
+	if off.length() < 1.0:
+		return q
+	return g.global_position + off.normalized() * clampf(off.length(), float(d["warp_min"]) + 50.0, float(d["warp_max"]) - 50.0)
+
+## A landing point WARP_STANDOFF short of `target` on the gate's side
+## (stepped in to the gate's reach if the target is further), clear of
+## stars and debris; INF if none.
 func _landing(target: Vector2, g: WarpGate, game: Game) -> Vector2:
 	var back := (g.global_position - target).normalized()
 	for ang in [0.0, 0.4, -0.4, 0.8, -0.8]:
-		var q: Vector2 = target + back.rotated(ang) * WARP_STANDOFF
+		var q: Vector2 = _clamp_warp(g, target + back.rotated(ang) * WARP_STANDOFF)
 		if q.length() > Game.MAP_RADIUS - 150.0 or game.is_blocked(q, 40.0):
 			continue
 		if game.stars_list.any(func(s): return s.global_position.distance_to(q) < s.radiation_radius + 80.0):
@@ -1245,7 +1256,7 @@ func _use_gates(pid: int, st: Dictionary, game: Game, forts: Array, war: Array, 
 					done = true
 					break
 				if g.cooldown_left <= 0.0:
-					var land: Vector2 = h + (g.global_position - h).normalized() * 250.0
+					var land: Vector2 = _clamp_warp(g, h + (g.global_position - h).normalized() * 250.0)
 					if g.warp_problem(land) == "" and _warp_wave(pid, st, g, land, h, "defend"):
 						done = true
 						break

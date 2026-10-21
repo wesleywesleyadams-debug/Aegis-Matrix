@@ -217,7 +217,7 @@ const WARP_GATE := {
 	"name": "Warp Gate", "requires": "warp_gates", "hp": 900.0, "armor": 300.0, "shield": 300.0, "radius": 24.0,
 	"cost": {"minerals": 2000, "spice": 200}, "build_time": 60.0,
 	"upkeep": 3.3,
-	"warp_min": 1000.0, "warp_max": 10000.0, "warp_cooldown": 30.0, "warp_speed_mult": 10.0,
+	"warp_min": 1000.0, "warp_max": 2000.0, "warp_cooldown": 30.0, "warp_speed_mult": 10.0,
 }
 
 ## Every construct keeps a clear ring around it, sized by how big it is:

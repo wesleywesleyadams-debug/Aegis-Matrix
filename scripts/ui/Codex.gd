@@ -644,7 +644,7 @@ func _page_engagement() -> void:
 		["Default", "Closes to about 80% of weapon range and holds there. New ships start here, and the game's balance is tuned for it."],
 		[["Aggressive", Color("ff5a4a")], "Closes to about 40% of weapon range and sticks to its target, following it if it runs."],
 		[["Defensive", Color("5aa8ff")], "Fights from about 90% of weapon range. An enemy closing inside 75% makes it fall back until the range is open again: backing off while firing with Reverse Thrusters, otherwise turning away, flying out and coming back about."],
-		[["Evasive", Color("6cf08a")], "Fights as Default but sidesteps (Strafing Thrusters) or backs off (Reverse Thrusters) from incoming missiles, torpedoes, bomblets, rail and kinetic rounds; lasers are not dodged. It works best against bomblets: missiles and torpedoes home in and rail rounds are fast, so those often still hit. Without either thruster it fights as Default."],
+		[["Evasive", Color("6cf08a")], "Fights as Default but dodges incoming slow shots: sideways (Strafing Thrusters) and/or backward (Reverse Thrusters). A dodge is a burst at %d%% speed on every axis; afterwards the engines run at %d%% for %s as long, and no new dodge starts until they recover. It roughly halves bomblet hits; missiles and torpedoes home in, and rail, kinetic and laser shots are too fast, so it barely helps against those. Without either thruster it can only burn straight ahead, and only when its nose already points roughly across the shot's path, so it seldom dodges at all." % [int(round((1.0 + Ship.EVADE_BOOST) * 100.0)), int(round((1.0 - Ship.EVADE_PENALTY) * 100.0)), "twice" if is_equal_approx(Ship.EVADE_PENALTY_TIME_MULT, 2.0) else "%.1fx" % Ship.EVADE_PENALTY_TIME_MULT]],
 	])
 
 func _page_jobs() -> void:
