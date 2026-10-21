@@ -1296,7 +1296,7 @@ func _steer(desired: Vector2, delta: float, face: Node2D) -> void:
 	velocity = velocity.move_toward(desired.limit_length(speed), accel * delta)
 	var step := velocity * delta
 	# Debris is solid: slide along it (try each axis), else stop.
-	if Game.instance.nav != null and Game.instance.is_blocked(global_position + step, radius * 0.5):
+	if Game.instance.nav != null and Game.instance.is_blocked(global_position + step, radius * 0.5) and not Game.instance.is_blocked(global_position, radius * 0.5):
 		if not Game.instance.is_blocked(global_position + Vector2(step.x, 0), radius * 0.5):
 			step = Vector2(step.x, 0)
 			velocity.y = 0.0
@@ -1534,6 +1534,11 @@ func _leave_nebula() -> void:
 			order_move(n.exit_from(global_position))
 			return
 
+## How far this hull's routes keep from debris: more than the margin at
+## which it is blocked (radius / 2), so a route never leads it into rubble.
+func _clearance() -> float:
+	return radius * 0.5 + 14.0
+
 ## Next point to fly at on the way to `final`, planning a path around debris
 ## when the straight line is blocked. Straight-line checks run every 0.3 s,
 ## re-plans at most every 0.5 s (chasing a moving target).
@@ -1542,13 +1547,13 @@ func _route(final: Vector2) -> Vector2:
 	var t := Game.now()
 	if t - _direct_time > 0.3 or final.distance_to(_path_final) > 60.0:
 		_direct_time = t
-		_direct = g.line_clear(global_position, final)
+		_direct = g.line_clear(global_position, final, _clearance())
 	if _direct:
 		_path = PackedVector2Array()
 		_path_final = final
 		return final
 	if _path.is_empty() or (final.distance_to(_path_final) > 60.0 and t - _path_time > 0.5):
-		_path = g.find_path(global_position, final)
+		_path = g.find_path(global_position, final, _clearance())
 		_path_final = final
 		_path_time = t
 	while _path.size() > 1 and global_position.distance_to(_path[0]) < 30.0:

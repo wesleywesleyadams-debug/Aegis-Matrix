@@ -556,39 +556,61 @@ func line_clear(a: Vector2, b: Vector2, margin: float = 12.0) -> bool:
 func _build_nav() -> void:
 	# Runs during setup, before the first tick has filled the cached lists.
 	ring_list = get_tree().get_nodes_in_group("debris_rings")
-	nav = AStarGrid2D.new()
-	nav.region = Rect2i(0, 0, int(ceil(MAP_RECT.size.x / NAV_CELL)), int(ceil(MAP_RECT.size.y / NAV_CELL)))
-	nav.cell_size = Vector2(NAV_CELL, NAV_CELL)
-	nav.offset = MAP_RECT.position + Vector2.ONE * NAV_CELL / 2.0
-	nav.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	nav.update()
-	for x in nav.region.size.x:
-		for y in nav.region.size.y:
-			if is_blocked(nav.offset + Vector2(x, y) * NAV_CELL, NAV_CELL * 0.45):
-				nav.set_point_solid(Vector2i(x, y), true)
+	nav = _make_nav(NAV_CELL * 0.45)
+	_navs[_nav_bucket(NAV_CELL * 0.45)] = nav
+
+## One route grid per hull size: cells within `clearance` of debris are
+## solid, so a big hull's route keeps it clear of the rubble it can't enter.
+var _navs := {}
+func _make_nav(clearance: float) -> AStarGrid2D:
+	var g := AStarGrid2D.new()
+	g.region = Rect2i(0, 0, int(ceil(MAP_RECT.size.x / NAV_CELL)), int(ceil(MAP_RECT.size.y / NAV_CELL)))
+	g.cell_size = Vector2(NAV_CELL, NAV_CELL)
+	g.offset = MAP_RECT.position + Vector2.ONE * NAV_CELL / 2.0
+	g.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	g.update()
+	for x in g.region.size.x:
+		for y in g.region.size.y:
+			if is_blocked(g.offset + Vector2(x, y) * NAV_CELL, maxf(clearance, NAV_CELL * 0.45)):
+				g.set_point_solid(Vector2i(x, y), true)
+	return g
+
+## Clearances are rounded up to 10 px, so a handful of grids serve every hull.
+func _nav_bucket(clearance: float) -> int:
+	return int(ceil(clearance / 10.0)) * 10
+
+func _nav_for(clearance: float) -> AStarGrid2D:
+	var b := _nav_bucket(clearance)
+	if not _navs.has(b):
+		_navs[b] = _make_nav(float(b))
+	return _navs[b]
 
 func _nav_cell(p: Vector2) -> Vector2i:
 	var c := ((p - MAP_RECT.position) / NAV_CELL).floor()
 	return Vector2i(clampi(int(c.x), 0, nav.region.size.x - 1), clampi(int(c.y), 0, nav.region.size.y - 1))
 
-## Nearest open cell to `c` (for starts / goals that sit on debris).
-func _open_cell(c: Vector2i) -> Vector2i:
-	if not nav.is_point_solid(c):
+## Nearest open cell of grid `g` to `c` (for starts / goals on debris).
+func _open_cell(c: Vector2i, g: AStarGrid2D = null) -> Vector2i:
+	if g == null:
+		g = nav
+	if not g.is_point_solid(c):
 		return c
-	for r in range(1, 6):
+	for r in range(1, 8):
 		for dx in range(-r, r + 1):
 			for dy in range(-r, r + 1):
 				var q := c + Vector2i(dx, dy)
-				if nav.is_in_boundsv(q) and not nav.is_point_solid(q):
+				if g.is_in_boundsv(q) and not g.is_point_solid(q):
 					return q
 	return c
 
 ## Waypoints from a to b around debris (b last), string-pulled so ships cut
 ## straight across open space instead of hugging grid cells.
-func find_path(a: Vector2, b: Vector2) -> PackedVector2Array:
-	if nav == null or line_clear(a, b):
+## `clearance`: how far the route keeps from debris (a ship's own size).
+func find_path(a: Vector2, b: Vector2, clearance: float = 12.0) -> PackedVector2Array:
+	if nav == null or line_clear(a, b, clearance):
 		return PackedVector2Array([b])
-	var raw := nav.get_point_path(_open_cell(_nav_cell(a)), _open_cell(_nav_cell(b)))
+	var g := _nav_for(clearance)
+	var raw := g.get_point_path(_open_cell(_nav_cell(a), g), _open_cell(_nav_cell(b), g))
 	if raw.is_empty():
 		return PackedVector2Array([b])
 	raw.append(b)
@@ -597,7 +619,7 @@ func find_path(a: Vector2, b: Vector2) -> PackedVector2Array:
 	var i := 0
 	while i < raw.size():
 		var j := raw.size() - 1
-		while j > i and not line_clear(anchor, raw[j]):
+		while j > i and not line_clear(anchor, raw[j], clearance):
 			j -= 1
 		out.append(raw[j])
 		anchor = raw[j]
@@ -3105,6 +3127,31 @@ func _enter_dev_capture() -> void:
 		await get_tree().process_frame
 		var tab_env := OS.get_environment("SL_RESEARCH_TAB")
 		hud._research_tabs[tab_env if tab_env != "" else "weapons"].pressed.emit()
+	if OS.get_environment("SL_SHOT_OPEN") == "ringtest":
+		# Dev: each warship class flies from outside every debris ring to a
+		# point inside it (through a gap) and back out; prints how close each
+		# got after SL_RING_T game seconds, so getting stuck shows as a number.
+		var tests: Array = []
+		var k := 0
+		for r in ring_list:
+			for a9 in [0.3, 1.9, 3.4, 4.9]:
+				var ang: float = a9 + r.rotation
+				if r.in_gap(ang):
+					continue
+				var outp: Vector2 = r.global_position + Vector2.from_angle(ang) * (r.radius + r.width + 160.0)
+				var inp: Vector2 = r.global_position + Vector2.from_angle(ang) * (r.radius - r.width - 160.0)
+				for cls in ["corvette", "destroyer", "cruiser", "carrier"]:
+					var sh := spawn_ship(cls, player_id, outp + Vector2(0, k % 4 * 4.0))
+					sh.order_move(inp)
+					tests.append([sh, inp, cls])
+					k += 1
+				break
+		for i in 8:
+			await get_tree().create_timer(float(OS.get_environment("SL_RING_T")) / 8.0 if OS.get_environment("SL_RING_T") != "" else 15.0).timeout
+		for tt in tests:
+			if is_instance_valid(tt[0]):
+				print("RINGTEST %s left %d" % [tt[2], int(tt[0].global_position.distance_to(tt[1]))])
+		get_tree().quit()
 	if OS.get_environment("SL_SHOT_OPEN") == "qtest":
 		# Dev: waypoints in a known square around the ship, with the screen
 		# position of each pip printed so a capture can be checked by pixel.
