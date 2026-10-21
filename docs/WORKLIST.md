@@ -19,6 +19,9 @@ code or art. Last updated 2026-10-21.
 
 - **[missing] The neural AI is blind to Mods and drones.** It can't toggle Mods, and drones aren't in the `entities` group it reads. `NeuralCommander.gd` research groups lack Mods, the Targeting row and Quantum Lenses; it also treats Spice Navigation as a speed tech (now nebula radiation resistance). Needs a model update and a version bump.
 - **[partial] Neural AI and forts** (scripted AI done 2026-10-21: researches Outposts/Warp Gates, builds outposts on exposed/front-line holdings, one gate near home (two late), garrisons idle warships and warps them at winnable seen targets or to its own worlds under attack; log with SL_AI_FORTS_LOG=1). Still open: the neural AI (RLAgent.gd) labels forts as "depot" in its observation (a new entity kind changes the observation width and breaks trained checkpoints) and has no garrison/warp verbs.
+- **[balance] Games resolve slowly** (sims 2026-10-21, after the spice fix): 2/5 decided within 60 min on seed set 5, 0/10 within 45 min on seed sets 3 and 7. The losing side often sits on 10k+ minerals with 0-5 warships (one starbase queue; ships die as they spawn) while the winner's upkeep multiplier hits x13-x20. Log spice in/out and stuck ships with SL_SPICE_LOG=1.
+- **[bug] AI ships hold forever at the edge of the star's radiation** when their goal is inside the zone and their hull is below SUN_RISK_HP (Ship._avoid_sun), seen with Tenders and a damaged Destroyer.
+- **[balance] Late spice piles up** (1-4k by 30-45 min) once extractors, barges and skimmers all run: the AI has nothing more to spend it on.
 - **[cleanup] The neural AI keeps a "dock" verb** for the removed hangars (RLAgent.gd, tools/rl/model.py). Never allowed now; drop it at the next model version bump.
 - **[missing] Neural AI training is paused.** On resume: fix the closing-in reward loophole (count every warship, not the 8 closest); add the income reward at the expand stage; restart from the checkpoint.
 

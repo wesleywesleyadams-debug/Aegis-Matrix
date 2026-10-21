@@ -132,7 +132,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game))
 		if miners.size() + base.queue.count("miner") < TARGET_MINERS:
 			base.enqueue("miner")
-		elif (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2:
+		# (Not while it can't pay the skimmer's spice, or just after one was
+		# cancelled for stalling: re-queueing it at once kept two unpayable
+		# skimmers at the head of the queue and blocked every other build.)
+		elif (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < 2 				and res["spice"] >= Defs.SHIPS["skimmer"]["cost"]["spice"] * 1.1 and Game.now() >= st.get("blocked", {}).get("skimmer", -1.0):
 			base.enqueue("skimmer")
 		# Jobs: a Scout for sensors, a Repair Tender once the fleet is sizable,
 		# a Radiation Sail Array where the system has radiation hazards to fight in.
@@ -185,6 +188,16 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				m.order_mine(rock)
 				if rock.resource == "spice":
 					on_spice += 1
+	# Miners rarely go idle (a rock lasts a long time), so the idle check alone
+	# left every miner on minerals while spice sat at zero. While spice is
+	# short, move one busy mineral miner a tick onto a known spice rock.
+	if res["spice"] < 150.0 and on_spice < 2:
+		var rock := game.nearest_asteroid(base.global_position, 1600.0, "spice", v)
+		if rock:
+			for m in miners:
+				if m.state in [Ship.State.MINE_GO, Ship.State.MINING] and is_instance_valid(m.mine_target) and m.mine_target.resource == "minerals":
+					m.order_mine(rock)
+					break
 
 	# Develop planets: farms when food is falling, otherwise a rotating mix.
 	var food_rate: float = game.rates[pid].get("food", 0.0)
@@ -204,8 +217,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			# Energy falling: power plants first.
 			if game.rates[pid].get("energy", 0.0) < 0.06 and res["energy"] < 35.0:
 				pick = "generator"
-			if res["spice"] < 150.0 and p.spice_reserve > 500.0 and p.count_building("spice_extractor") == 0:
-				pick = "spice_extractor"
+		# Spice short: an Extractor on a world with a real reserve, even while
+		# food dips, as long as the larder has some slack.
+		if (food_rate > 0.01 or res["food"] > 300.0) and res["spice"] < 150.0 and res["spice"] >= 15.0 and p.spice_reserve > 500.0 and p.count_building("spice_extractor") == 0:
+			pick = "spice_extractor"
 		if pick == "farm" and float(p.type_def().get("fertility", 1.0)) < best_soil * 0.6:
 			pick = "generator"
 		for i in p.fields:

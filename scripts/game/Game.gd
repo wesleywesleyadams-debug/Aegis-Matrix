@@ -623,6 +623,33 @@ func _open_cell(c: Vector2i, g: AStarGrid2D = null) -> Vector2i:
 					return q
 	return c
 
+## The open cell of `g` a ship at `p` should head for to join a route: the
+## nearest one it can fly to in a straight line (at the margin debris actually
+## blocks a hull). _open_cell's scan order could pick a cell across a thin
+## ring, and a ship pinned against the rubble then pushed into it forever.
+func _open_cell_from(p: Vector2, g: AStarGrid2D) -> Vector2i:
+	var c := _nav_cell(p)
+	if not g.is_point_solid(c):
+		return c
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	for r in range(1, 8):
+		for dx in range(-r, r + 1):
+			for dy in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var q := c + Vector2i(dx, dy)
+				if not g.is_in_boundsv(q) or g.is_point_solid(q):
+					continue
+				var at: Vector2 = g.offset + Vector2(q) * NAV_CELL
+				var d := p.distance_to(at)
+				if d < best_d and line_clear(p, at, 4.0):
+					best_d = d
+					best = q
+		if best.x >= 0 and best_d <= (r + 1) * NAV_CELL:
+			return best
+	return best if best.x >= 0 else _open_cell(c, g)
+
 ## Waypoints from a to b around debris (b last), string-pulled so ships cut
 ## straight across open space instead of hugging grid cells.
 ## `clearance`: how far the route keeps from debris (a ship's own size).
@@ -630,7 +657,7 @@ func find_path(a: Vector2, b: Vector2, clearance: float = 12.0) -> PackedVector2
 	if nav == null or line_clear(a, b, clearance):
 		return PackedVector2Array([b])
 	var g := _nav_for(clearance)
-	var raw := g.get_point_path(_open_cell(_nav_cell(a), g), _open_cell(_nav_cell(b), g))
+	var raw := g.get_point_path(_open_cell_from(a, g), _open_cell(_nav_cell(b), g))
 	if raw.is_empty():
 		return PackedVector2Array([b])
 	raw.append(b)
@@ -691,6 +718,17 @@ func add_resources(pid: int, amounts: Dictionary) -> void:
 		resources[pid][k] = resources[pid].get(k, 0.0) + amounts[k]
 		_rate_acc[pid][k] = _rate_acc[pid].get(k, 0.0) + amounts[k]
 
+## Dev (SL_SPICE_LOG): cumulative spice in/out per player by category,
+## written into the sim samples (MatchStats.sample).
+var spice_log: bool = OS.get_environment("SL_SPICE_LOG") != ""
+var spice_ledger := {}
+func ledger(pid: int, what: String, amount: float) -> void:
+	if not spice_log or amount == 0.0:
+		return
+	if not spice_ledger.has(pid):
+		spice_ledger[pid] = {}
+	spice_ledger[pid][what] = spice_ledger[pid].get(what, 0.0) + amount
+
 func _deduct(pid: int, k: String, amount: float) -> void:
 	resources[pid][k] -= amount
 	_rate_acc[pid][k] = _rate_acc[pid].get(k, 0.0) - amount
@@ -718,6 +756,12 @@ func pay_over_time(pid: int, per_sec: Dictionary, dt: float) -> float:
 		f = lo
 	if f <= 0.0:
 		return 0.0
+	var cat := "build"
+	if spice_log:
+		if need.size() == 1 and need.has("food"):
+			cat = "eat"
+		elif need.size() == 1 and need.has("energy"):
+			cat = "energy"
 	for k in need:
 		var take: float = need[k] * f
 		if k in SUBSTITUTABLE:
@@ -725,8 +769,11 @@ func pay_over_time(pid: int, per_sec: Dictionary, dt: float) -> float:
 			_deduct(pid, k, from_stock)
 			if take > from_stock:
 				_deduct(pid, "spice", take - from_stock)
+				ledger(pid, "out_sub_%s_%s" % [cat, k], take - from_stock)
 		else:
 			_deduct(pid, k, take)
+			if k == "spice":
+				ledger(pid, "out_direct_%s" % cat, take)
 	return f
 
 func _spice_needed(r: Dictionary, need: Dictionary, f: float) -> float:

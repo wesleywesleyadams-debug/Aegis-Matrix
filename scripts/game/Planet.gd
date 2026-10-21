@@ -530,6 +530,7 @@ func _run_buildings(dt: float) -> void:
 			out[k] = out.get(k, 0.0) + v / Defs.PER_MIN * dt
 	if not out.is_empty():
 		g.add_resources(owner_id, out)
+		g.ledger(owner_id, "in_extractor", out.get("spice", 0.0))
 
 	construction_stalled = false
 	if construction.is_empty():

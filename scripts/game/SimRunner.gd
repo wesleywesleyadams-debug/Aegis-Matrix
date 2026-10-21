@@ -13,6 +13,7 @@ var run_id: String = "0"
 var max_minutes: float = 40.0
 var samples: Array = []
 var _next_sample: float = 0.0
+var _next_stuck: float = 0.0
 var _done := false
 var _t0_ms: int = 0
 
@@ -36,6 +37,9 @@ func _process(_delta: float) -> void:
 	if _done:
 		return
 	var t := Game.now()
+	if Game.instance.spice_log and t >= _next_stuck:
+		MatchStats.stuck_report(Game.instance, t)
+		_next_stuck += 10.0
 	if t >= _next_sample:
 		samples.append(_sample(t))
 		_next_sample += SAMPLE

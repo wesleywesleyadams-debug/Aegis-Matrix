@@ -99,6 +99,34 @@ func peak(pid: int, field: String) -> int:
 		best = maxi(best, int(s[str(pid)].get(field, 0)))
 	return best
 
+## Dev (SL_SPICE_LOG): ships that have been in the same travelling state
+## with the same goal for over STUCK_AFTER seconds without reaching it.
+## ship instance id -> [state, goal, since, reported].
+static var _travel := {}
+const STUCK_AFTER := 120.0
+
+static func stuck_report(g: Game, t: float) -> void:
+	var now := {}
+	for s in g.get_tree().get_nodes_in_group("ships"):
+		if not s.is_alive() or s.warping or s.docked:
+			continue
+		if not s.state in [Ship.State.MOVE, Ship.State.MINE_GO, Ship.State.RETURN, Ship.State.COLONIZE, Ship.State.BUILD, Ship.State.REFIT, Ship.State.GARRISON]:
+			continue
+		var goal: Vector2 = s._nav_goal.snapped(Vector2(40, 40))
+		var d: float = s.global_position.distance_to(s._nav_goal)
+		var id: int = s.get_instance_id()
+		var rec: Array = _travel.get(id, [])
+		if rec.is_empty() or rec[0] != s.state or rec[1] != goal:
+			rec = [s.state, goal, t, false]
+		elif d > 80.0 and t - rec[2] > STUCK_AFTER and not rec[3]:
+			rec[3] = true
+			print("STUCK t=%d P%d %s state=%s for=%ds pos=(%d,%d) goal=(%d,%d) dist=%d spd=%d" % [int(t), s.owner_id, s.ship_type, Ship.State.keys()[s.state], int(t - rec[2]),
+				s.global_position.x, s.global_position.y, s._nav_goal.x, s._nav_goal.y, d, s.velocity.length()])
+			print("   blocked_here=%s blocked_r=%s clear_to_goal=%s path=%s direct=%s rot=%.2f move_goal=(%d,%d) nebula=%s storm=%s" % [g.is_blocked(s.global_position, s.radius * 0.5), g.is_blocked(s.global_position, s.radius),
+				g.line_clear(s.global_position, s._nav_goal, s._clearance()), str(s._path), s._direct, s.rotation, s.move_goal.x, s.move_goal.y, g.in_nebula(s.global_position), g.in_storm(s.global_position)])
+		now[id] = rec
+	_travel = now
+
 ## One snapshot per side: stockpiles, pop, worlds, fleet, starbases, tech.
 static func sample(t: float) -> Dictionary:
 	var g := Game.instance
@@ -129,4 +157,10 @@ static func sample(t: float) -> Dictionary:
 		out[str(pid)] = {"food": int(r["food"]), "minerals": int(r["minerals"]), "energy": int(r["energy"]), "spice": int(r["spice"]),
 			"pop": int(pop), "worlds": worlds, "warships": war, "power": int(power), "miners": miners, "starbases": bases,
 			"upkeep_mult": snappedf(g.upkeep_multiplier(pid), 0.01), "upkeep": snappedf(g.upkeep(pid), 0.1), "techs": g.researched[pid].size(), "score": g.stats.score(pid) if g.stats else 0, "mode": str(g.ai._state.get(pid, {}).get("mode", ""))}
+		if g.spice_log:
+			var led: Dictionary = g.spice_ledger.get(pid, {})
+			var ints := {}
+			for k in led:
+				ints[k] = int(led[k])
+			out[str(pid)]["spice_ledger"] = ints
 	return out

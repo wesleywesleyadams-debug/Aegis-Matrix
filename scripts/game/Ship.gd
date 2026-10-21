@@ -1463,6 +1463,7 @@ func _physics_process(delta: float) -> void:
 				var reach := base.radius + radius + 2.0
 				if global_position.distance_to(base.global_position) <= reach + 4.0:
 					Game.instance.add_resources(owner_id, {cargo_type: float(cargo)})
+					Game.instance.ledger(owner_id, "in_%s_%s" % [ship_type, cargo_type] if cargo_type != "spice" else "in_" + ship_type, float(cargo))
 					cargo = 0
 					dropoff = null
 					state = State.MINE_GO if is_instance_valid(mine_target) else State.IDLE
@@ -1479,8 +1480,8 @@ func _physics_process(delta: float) -> void:
 		_fire_turrets(delta)
 		# Strafing / Reverse Thrusters: a turreted hull on the move keeps its
 		# bow on what its lead turret is shooting (if it can fly that way).
-		if face_target == null and face_at == null and not _t_target.is_empty() and _t_target[0] is SpaceEntity \
-				and is_instance_valid(_t_target[0]) and lateral_thrust() + reverse_thrust() > 0.0:
+		if face_target == null and face_at == null and not _t_target.is_empty() and is_instance_valid(_t_target[0]) \
+				and _t_target[0] is SpaceEntity and lateral_thrust() + reverse_thrust() > 0.0:
 			face_target = _t_target[0]
 	# Fire at whatever is in range, even while moving.
 	elif def["weapon"] != "" and _cooldown <= 0.0:
@@ -2089,6 +2090,13 @@ func _route(final: Vector2) -> Vector2:
 	if t - _direct_time > 0.3 or final.distance_to(_path_final) > 60.0:
 		_direct_time = t
 		_direct = g.line_clear(global_position, final, _clearance())
+		# Swung off the planned line (a hull that only thrusts along its nose
+		# drifts wide on turns and slides along rubble) so the next waypoint
+		# is now behind debris: plan again from here, or it sits pinned
+		# against the rock forever.
+		if not _direct and not _path.is_empty() and t - _path_time > 0.5 \
+				and not g.line_clear(global_position, _path[0], _clearance() * 0.5):
+			_path = PackedVector2Array()
 	if _direct:
 		_path = PackedVector2Array()
 		_path_final = final
@@ -2097,7 +2105,9 @@ func _route(final: Vector2) -> Vector2:
 		_path = g.find_path(global_position, final, _clearance())
 		_path_final = final
 		_path_time = t
-	while _path.size() > 1 and global_position.distance_to(_path[0]) < 30.0:
+	# Drop a reached waypoint only once the next is in plain sight: cutting
+	# the corner early flew ships into the rubble at a ring's edge.
+	while _path.size() > 1 and global_position.distance_to(_path[0]) < 30.0 			and (global_position.distance_to(_path[0]) < 8.0 or g.line_clear(global_position, _path[1], radius * 0.5 + 2.0)):
 		_path.remove_at(0)
 	return _path[0] if not _path.is_empty() else final
 
