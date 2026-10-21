@@ -542,10 +542,10 @@ func _run_buildings(dt: float) -> void:
 		construction = {}
 
 ## What this world's population multiplies its buildings' output by: 1.0 with
-## nobody on it, 4.0 at 30,000 pops. A building you have built always runs;
+## nobody on it, levelling off toward 2.75 (x2.66 at 30,000 pops). A building you have built always runs;
 ## how much it produces is what the population decides.
 func pop_output_mult() -> float:
-	return 1.0 + pop * Defs.OUTPUT_PER_POP
+	return 1.0 + Defs.OUTPUT_POP_BONUS * (1.0 - exp(-pop / Defs.OUTPUT_POP_SCALE))
 
 ## Which buildings are producing. Everything built runs, except a Spice
 ## Extractor standing on an exhausted reserve.

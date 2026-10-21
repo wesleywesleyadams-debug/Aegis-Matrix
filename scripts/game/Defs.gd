@@ -276,17 +276,20 @@ const GROWTH_PER_PAIR_PER_MIN := 1.0
 ## Every pop eats FOOD_PER_POP_PER_MIN food a minute, from food or,
 ## failing that, spice. One Farm feeds 2,000 pops.
 const FOOD_PER_POP_PER_MIN := 0.01
-## Hands on the job: every pop raises what this world's Farms, Power Plants,
-## Mining Complexes and Spice Extractors produce by this fraction. 30,000
-## pops is +300%. A building needs no headcount to run at all, so this is the
-## whole reason to grow a world rather than merely hold it.
-const OUTPUT_PER_POP := 0.0001
+## Hands on the job: a world's population multiplies what its Farms, Power
+## Plants, Mining Complexes and Spice Extractors produce, with diminishing
+## returns: 1 + OUTPUT_POP_BONUS x (1 - e^(-pops / OUTPUT_POP_SCALE)). The
+## first pops count most; the bonus levels off toward +175% (about x2.1 at
+## 10,000, x2.5 at 20,000, x2.66 at 30,000). A building needs no headcount to
+## run at all, so this is the reason to grow a world rather than merely hold it.
+const OUTPUT_POP_BONUS := 1.75
+const OUTPUT_POP_SCALE := 10000.0
 
 ## A shortage ends only once the world has been fed continuously for this
 ## long; until then it neither grows nor stops losing pops.
 const REGROW_SECONDS := 5.0
 ## Food comes only from Farms (see BUILDINGS), scaled by planet fertility
-## (PLANET_TYPES) and by population (OUTPUT_PER_POP).
+## (PLANET_TYPES) and by population (OUTPUT_POP_BONUS).
 ## Planets and pops produce and consume no energy on their own; only Power
 ## Plants (and starbase reactors) make it.
 

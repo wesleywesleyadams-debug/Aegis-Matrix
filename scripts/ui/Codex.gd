@@ -884,6 +884,10 @@ func _page_economy() -> void:
 	_para("Every ship and construct costs energy per minute, and ALL of it is multiplied by one empire-wide factor (shown on the resource bar): each unit you own multiplies it - starbase x%.2f, carrier x%.2f, cruiser x%.2f, destroyer x%.2f, anything else x%.2f - so the more you own, the dearer every unit gets. Orbital Elevators and Jump Drives each shrink the multiplier by 10%%. With no energy in stock, starbases stop producing and your ships move and fire at %d%% speed." % [
 		Defs.UPKEEP_WEIGHT["starbase"], Defs.UPKEEP_WEIGHT["carrier"], Defs.UPKEEP_WEIGHT["cruiser"], Defs.UPKEEP_WEIGHT["destroyer"], Defs.UPKEEP_WEIGHT_SMALL, int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
 
+## The population output multiplier at this many pops (see Planet.pop_output_mult).
+func _popm(p: float) -> float:
+	return 1.0 + Defs.OUTPUT_POP_BONUS * (1.0 - exp(-p / Defs.OUTPUT_POP_SCALE))
+
 func _page_worlds() -> void:
 	_heading("Planets")
 	_para("A planet's size is its number of fields, one building each. Its population cap is size x %d. Colonies start at %d pops. Pops eat %s food per minute; an unfed world shrinks instead of growing. Barren worlds hide the most spice, lush ones almost none." % [Defs.POP_PER_SIZE, int(Defs.START_POP), str(Defs.FOOD_PER_POP_PER_MIN)])
@@ -911,7 +915,7 @@ func _page_worlds() -> void:
 		var bd: Dictionary = Defs.BUILDINGS[b]
 		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), bd["desc"]])
 	_table(["Building", "Cost", "Time", "Effect"], brows)
-	_para("A finished building always runs; no staffing needed. Population sets how MUCH a world produces: every pop adds %s%% to the output of every Farm, Power Plant, Mining Complex and Spice Extractor on it, so a world of 30,000 makes four times what the same buildings make on a bare colony. A Molten world's Power Plants make a further x%.2f, the one thing that barren rock is good for." % [str(Defs.OUTPUT_PER_POP * 100.0), Defs.PLANET_TYPES["planet_lava"]["energy_mult"]])
+	_para("A finished building always runs; no staffing needed. Population sets how MUCH a world produces: its pops multiply the output of every Farm, Power Plant, Mining Complex and Spice Extractor on it, with diminishing returns: the first pops count most, and the bonus levels off (x%.2f at 5,000 pops, x%.2f at 10,000, x%.2f at 20,000, x%.2f at 30,000). A Molten world's Power Plants make a further x%.2f, the one thing that barren rock is good for." % [_popm(5000.0), _popm(10000.0), _popm(20000.0), _popm(30000.0), Defs.PLANET_TYPES["planet_lava"]["energy_mult"]])
 	_heading("Food")
 	_para("Food is counted per minute, like every other resource. One Farm feeds exactly %d pops on a fully fertile world, and only a fraction of that on a poor one, since output scales with fertility. Past that, a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
 	_table(["", "Rate"], [
