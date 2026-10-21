@@ -726,22 +726,6 @@ func _build_research(root: Control) -> void:
 		for r in TECH_ROWS[group]:
 			named.append([_row_head(r[0], TechIcons.GROUP_COLORS[group], ""), r[1]])
 		pages[group] = _tech_page(v, named, group == "mods")
-	for group in ["general"]:
-		var rows: Array = []
-		var by_tier := {1: [], 2: [], 3: []}
-		for id in Defs.TECHS:
-			if Defs.TECHS[id].get("group", "general") == group:
-				by_tier[Defs.TECHS[id]["tier"]].append(id)
-		var deepest: int = maxi(by_tier[1].size(), maxi(by_tier[2].size(), by_tier[3].size()))
-		# A group has no natural row names, so the header cells are blank and
-		# the cards still line up with the named rows on the other tabs.
-		for r in deepest:
-			var row: Array = []
-			for tier in [1, 2, 3]:
-				row.append(by_tier[tier][r] if r < by_tier[tier].size() else "")
-			rows.append([null, row])
-		if deepest > 0:
-			pages[group] = _tech_page(v, rows)
 
 	# War Ships: the unlocks along the top, then one row per class.
 	# Depots lives on the Constructs page; a tech can only own one card, since
