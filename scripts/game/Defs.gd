@@ -457,7 +457,7 @@ const TECHS := {
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"energy": 80, "spice": 10}, "time": 60.0,
 		"effects": {"unlock_depot": 1.0}, "desc": "Unlocks the Weapons Depot (variant refits)."},
-	"carriers": {"name": "Carriers", "group": "warships", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 155, "spice": 40}, "time": 240.0,
+	"carriers": {"name": "Carriers", "group": "warships", "tier": 2, "requires": ["cruisers"], "cost": {"energy": 155, "spice": 40}, "time": 100.0,
 		"effects": {"unlock_carrier": 1.0}, "desc": "Unlocks the Carrier."},
 	"carrier_mk2": {"name": "Mk II Carrier", "group": "warships", "class": "carrier", "tier": 2, "requires": ["carriers"], "cost": {"energy": 145}, "time": 85.0,
 		"effects": {"mark_carrier": 1.0}, "desc": "+12% damage, hull, armor and shields over Mk I."},
@@ -467,7 +467,7 @@ const TECHS := {
 		"effects": {"mark_carrier": 1.0}, "desc": "+105% damage, hull, armor, shields over Mk I."},
 	"destroyers": {"name": "Destroyers", "group": "warships", "tier": 1, "requires": [], "cost": {"energy": 55}, "time": 60.0,
 		"effects": {"unlock_destroyer": 1.0}, "desc": "Unlocks the Destroyer."},
-	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 135, "spice": 30}, "time": 150.0,
+	"cruisers": {"name": "Cruisers", "group": "warships", "tier": 2, "requires": ["destroyers"], "cost": {"energy": 135, "spice": 30}, "time": 80.0,
 		"effects": {"unlock_cruiser": 1.0}, "desc": "Unlocks the Cruiser."},
 	# Hull mark lines: one per warship class, three upgrades each (the class
 	# starts Mk I). Each mark lifts only that class, so investing in
