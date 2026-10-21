@@ -97,7 +97,8 @@ func _fire_turrets(delta: float) -> void:
 				_t_rot[i] = (shot_down.global_position - global_position).angle()
 				_turret_sprites[i].rotation = _t_rot[i] - rotation
 				g.pd_intercept(self, shot_down, dmg * float(weapon_mod.get("dmg", 1.0)) * PD_DRONE_MULT * g.mod(owner_id, "damage"))
-				_t_cd[i] = def["cooldown"] * 0.4 / g.mod(owner_id, "fire_rate")
+				# The same reload as any other shot.
+				_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 				continue
 		var tgt: Node2D = null
 		# Point-Defense: after ordnance, enemy drones come before any ship.

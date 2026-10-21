@@ -1348,19 +1348,30 @@ func pd_intercept(from: Ship, first: Node2D, drone_dmg: float) -> void:
 		hits.append(nxt)
 		at = nxt.global_position
 		pts.append(at)
-	if not sim_mode:
-		var fx := ArcFx.new()
-		fx.setup(pts, true, Color("9ff0ff"))
-		fx_root.add_child(fx)
-		sfx.play_at("laser", from.global_position, -12.0)
-	for h in hits:
+	var profile := Defs.damage_profile(from.def)
+	# Each target is struck when the needle reaches it (at once in sims).
+	var strike := func(i: int) -> void:
+		var h = hits[i - 1]
 		if not is_instance_valid(h):
-			continue
+			return
 		if h is Drone:
-			h.take_damage(drone_dmg, from, Defs.damage_profile(from.def))
+			if h.is_alive():
+				h.take_damage(drone_dmg, from if is_instance_valid(from) else null, profile)
 		else:
 			spawn_explosion(h.global_position, 0.3)
 			h.queue_free()
+	for h in hits:
+		# Claimed now, so no other turret spends a shot on it meanwhile.
+		if is_instance_valid(h) and not (h is Drone):
+			h.remove_from_group("ordnance")
+	if sim_mode:
+		for i in range(1, pts.size()):
+			strike.call(i)
+		return
+	var fx := NeedleFx.new()
+	fx.setup(pts, Color("ffe14a"), strike)
+	fx_root.add_child(fx)
+	sfx.play_at("laser", from.global_position, -12.0)
 
 ## df_target around a point: the nearest enemy ordnance or drone within `r`
 ## of `at`, skipping those in `skip`.
@@ -3842,6 +3853,16 @@ func _duel() -> void:
 		get_tree().create_timer(float(OS.get_environment("SL_DUEL_SHOT"))).timeout.connect(func():
 			camera.zoom = Vector2.ONE * (get_viewport().get_visible_rect().size.y / (ARENA_RADIUS * 2.2))
 			center_on(Vector2.ZERO)
+			# SL_DUEL_ZOOM=k: k times closer, on the middle of all the ships.
+			if OS.get_environment("SL_DUEL_ZOOM") != "":
+				camera.zoom *= float(OS.get_environment("SL_DUEL_ZOOM"))
+				var mid := Vector2.ZERO
+				var cnt := 0
+				for sh in get_tree().get_nodes_in_group("ships"):
+					mid += sh.global_position
+					cnt += 1
+				if cnt > 0:
+					center_on(mid / cnt)
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png("user://shot.png"))
 	# Against a world, the fleet bombards it instead of attack-moving.
