@@ -186,10 +186,10 @@ func _fire_turrets(delta: float) -> void:
 
 ## Tractor Beams: each turret holds a beam on its own target (or, past laser
 ## range, the nearest enemy out to `reach` x attack range). The beam reels
-## the target in at tr[0] per second and burns it: the Mod's dmg x a laser's
-## damage per second when the target is in to the pull's stop (60% of attack
-## range), falling off to tr[2] of that at the beam's full reach. No ramp
-## over time. The turrets fire nothing.
+## the target in at tr[0] per second and burns it at a laser's damage per
+## second times a factor that grows as the target nears: tr[2] at the beam's
+## full reach, tr[3] at tr[4] px, straight-line in between (and the Mod's dmg
+## on top, for tuning). No ramp over time. The turrets fire nothing.
 func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 	var g := Game.instance
 	var tr: Array = weapon_mod["tractor"]
@@ -215,9 +215,8 @@ func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 			continue
 		held[t] = true
 		var dps: float = dmg / def["cooldown"] * float(weapon_mod.get("dmg", 1.0)) * g.mod(owner_id, "fire_rate") * g.mod(owner_id, "damage")
-		var near: float = rng * 0.6
-		var close: float = clampf((reach - d) / maxf(reach - near, 1.0), 0.0, 1.0)
-		dps *= lerpf(float(tr[2]), 1.0, close)
+		var close: float = clampf((reach - d) / maxf(reach - float(tr[4]), 1.0), 0.0, 1.0)
+		dps *= lerpf(float(tr[2]), float(tr[3]), close)
 		t.take_damage(dps * delta * g.ship_speed_factor(owner_id), self, Defs.damage_profile(def))
 		# No slow: the beam only drags its target toward the carrier, at a
 		# fixed pull, and only in to the guns' sweet spot.
