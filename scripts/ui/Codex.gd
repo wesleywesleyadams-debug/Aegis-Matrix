@@ -228,25 +228,40 @@ func _para(text: String) -> void:
 
 ## A table: `cols` are header strings, `rows` are arrays of [text, color]
 ## pairs or plain strings.
-func _table(cols: Array, rows: Array) -> void:
+## `striped`: every other row gets a lighter band, so a wide table reads
+## left to right.
+func _table(cols: Array, rows: Array, striped: bool = false) -> void:
 	var grid := GridContainer.new()
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	grid.columns = cols.size()
-	grid.add_theme_constant_override("h_separation", 22)
-	grid.add_theme_constant_override("v_separation", 4)
+	grid.add_theme_constant_override("h_separation", 0 if striped else 22)
+	grid.add_theme_constant_override("v_separation", 0 if striped else 4)
 	for c in cols:
-		grid.add_child(_label(str(c), EDGE_LIT, 16))
+		grid.add_child(_striped(_label(str(c), EDGE_LIT, 16), -1) if striped else _label(str(c), EDGE_LIT, 16))
+	var ri := 0
 	for row in rows:
 		for cell in row:
-			if cell is Array:
-				grid.add_child(_cell(str(cell[0]), cell[1]))
-			else:
-				grid.add_child(_cell(str(cell), TEXT))
+			var l: Label = _cell(str(cell[0]), cell[1]) if cell is Array else _cell(str(cell), TEXT)
+			grid.add_child(_striped(l, ri) if striped else l)
+		ri += 1
 	var frame := PanelContainer.new()
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	frame.add_theme_stylebox_override("panel", _table_style())
 	frame.add_child(grid)
 	_body.add_child(frame)
+
+## A striped table's cell: padded, with a band behind odd rows.
+func _striped(c: Control, row: int) -> Control:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.45, 0.55, 0.9, 0.12) if row >= 0 and row % 2 == 1 else Color(0, 0, 0, 0)
+	sb.content_margin_left = 11
+	sb.content_margin_right = 11
+	sb.content_margin_top = 3
+	sb.content_margin_bottom = 3
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.add_child(c)
+	return pc
 
 ## Tables get a thin border so a grid of numbers reads as a table.
 func _table_style() -> StyleBoxFlat:
@@ -1133,7 +1148,7 @@ func _section_matchups() -> void:
 			var v: int = int(mt[i][j])
 			r.append(["%d%%" % v, Color("8fe060") if v >= 60 else (Color("ff6a4a") if v <= 40 else TEXT)])
 		mt_rows.append(r)
-	_table(["Row vs column", "Corvettes", "Destroyers", "Cruisers", "Carriers"], mt_rows)
+	_table(["vs", "Corvettes", "Destroyers", "Cruisers", "Carriers"], mt_rows, true)
 	_para("So every class has a prey and a predator: destroyers crush corvettes, corvettes swarm cruisers, cruisers outlast destroyers and carriers, and carriers grind down destroyers.")
 	_heading("Every weapon against every weapon")
 	_para("Each row is one side (a class's plain lasers, or one of its Mods); each figure is how hard it beats the column side at equal cost, averaged over %d duels: +1.00 means it destroys the other without taking any damage, -1.00 that it is destroyed without dealing any, 0 an even trade (a win scores the toughness the winner kept; a draw, the difference in toughness left). The codes are listed below the table." % int(mu.get("per_pair", 0)))
@@ -1143,7 +1158,7 @@ func _section_matchups() -> void:
 	var wm: Array = mu.get("weights", [])
 	var wrows2: Array = []
 	for i in 16:
-		var r: Array = [[wname[i], TEXT]]
+		var r: Array = [[wcode[i], TEXT]]
 		for j in 16:
 			var g = wm[i][j]
 			if g == null:
@@ -1152,8 +1167,8 @@ func _section_matchups() -> void:
 				var f := float(g)
 				r.append(["%+.2f" % f, Color("8fe060") if f >= 0.2 else (Color("ff6a4a") if f <= -0.2 else TEXT)])
 		wrows2.append(r)
-	_para("Read it across: pick a weapon on the left, then follow its row; the column codes are the same weapons, listed below. Green means that weapon beats the one at the top of the column, red means it loses to it. (Reading down a column shows the same fights from the other side.)")
-	_table(["This weapon... vs:"] + wcode, wrows2)
+	_para("Read it across: pick a weapon on the left, then follow its row (the shaded bands help); the codes are listed below. Green means that weapon beats the one at the top of the column, red means it loses to it. (Reading down a column shows the same fights from the other side.)")
+	_table(["vs"] + wcode, wrows2, true)
 	var legend := PackedStringArray()
 	for i in 16:
 		legend.append("%s = %s" % [wcode[i], wname[i]])
