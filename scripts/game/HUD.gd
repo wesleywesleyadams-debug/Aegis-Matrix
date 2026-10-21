@@ -419,6 +419,8 @@ func _build_speed(root: Control) -> void:
 ## Play/pause: while paused the match is frozen (time scale 0) but input,
 ## the camera and menus keep working.
 var game_paused := false
+## Paused because the research panel is open (single player only).
+var _research_pause := false
 var _play_button: Button
 
 func toggle_play() -> void:
@@ -434,14 +436,14 @@ func speed_index() -> int:
 
 func _on_speed_changed(v: float) -> void:
 	var s: float = SPEEDS[int(v)]
-	Engine.time_scale = 0.0 if game_paused else s * TIME_RATE
+	Engine.time_scale = 0.0 if (game_paused or _research_pause) else s * TIME_RATE
 	if _play_button:
 		_play_button.text = "Play" if game_paused else "Pause"
 		_play_button.modulate = Color("ffd46b") if game_paused else Color.WHITE
 	_speed_label.text = "Speed %sx%s" % [str(s), " (normal)" if int(v) == NORMAL_SPEED else ""]
 	_speed_label.add_theme_color_override("font_color", TEXT if int(v) == NORMAL_SPEED else Color("ffd46b"))
-	if game_paused:
-		_speed_label.text = "PAUSED"
+	if game_paused or _research_pause:
+		_speed_label.text = "PAUSED" if game_paused else "PAUSED (research)"
 		_speed_label.add_theme_color_override("font_color", Color("ffd46b"))
 
 func _build_selection_panel(root: Control) -> void:
@@ -972,6 +974,9 @@ func open_research(tab: String) -> void:
 
 func toggle_research() -> void:
 	_research_modal.visible = not _research_modal.visible
+	# Single player: the match waits while the research panel is open.
+	_research_pause = _research_modal.visible and game.single_player()
+	_on_speed_changed(_speed_slider.value)
 	_refresh_research()
 
 func _refresh_research() -> void:

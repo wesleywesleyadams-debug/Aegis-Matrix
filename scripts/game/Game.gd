@@ -351,6 +351,14 @@ func _ready() -> void:
 		if hud.research_open():
 			hud.toggle_research()
 
+## True when at most one human is playing (no one else to keep waiting).
+func single_player() -> bool:
+	var humans := 0
+	for mp in GameState.match_players:
+		if str(mp.get("type", "")) == "human":
+			humans += 1
+	return humans <= 1
+
 ## Opens the research panel on `tab` when the human player has nothing being
 ## researched - not in sims, duels, demos or dev captures, and not for AIs.
 func _prompt_research(tab: String) -> void:
@@ -3404,7 +3412,7 @@ func _enter_dev_capture() -> void:
 	if OS.get_environment("SL_SHOT_OPEN") == "resbtn":
 		# Dev: the research button while a project is running (green glow).
 		queue_research(player_id, "ion_cannons")
-	await get_tree().create_timer(secs).timeout
+	await get_tree().create_timer(secs, true, false, OS.get_environment("SL_SHOT_OPEN") == "prompt").timeout   # prompt: real seconds (the panel pauses the match)
 	if OS.get_environment("SL_SHOT_OPEN") == "sbdps":
 		var tot := 0.0
 		var full: float = 3.0 * (Defs.SHIPS["corvette"]["hp"] + Defs.SHIPS["corvette"]["shield"] + Defs.SHIPS["corvette"]["armor"])
