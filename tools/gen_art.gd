@@ -1100,39 +1100,49 @@ func _gen_job_ships() -> void:
 			for t in 3:
 				_px(img, 70 + t, cy, A["monitor"][2])
 				_px(img, 70 + t, cy + 1, A["monitor"][1]), true)
-	# Carrier: long flat hull with an open launch deck down the middle (dark
-	# runway, amber guide lights, small fighters parked on it) and lit
-	# hangar bays down both sides.
+	# Carrier (F4 "Wing Struts"): a central arrowhead wedge with the bridge
+	# glass near the bow and a lit hangar mouth at the stern; two swept wing
+	# struts carrying lit hangar decks; and a long slim outrigger nacelle at
+	# each wingtip, carrying two turret mount pads apiece (the turrets
+	# themselves are separate sprites, seated on the pads by Defs).
 	_ship("carrier", 42, 27,
-		[[3, 38, 10.0, 7.0], [36, 42, 4.0, 1.0], [0, 5, 6.0, 6.0]],
-		func(x: int, dy: float) -> bool: return absf(dy) > 8.0,
-		[36, 2], [-4.0, -2.0, 0.0, 2.0, 4.0], [],
+		[[1, 28, 1.9, 1.9, 10.5], [28, 33, 1.9, 0.4, 10.5],
+		[6, 21, 1.4, 1.4, 9.4], [7, 20, 2.0, 2.0, 7.4], [8, 18, 1.6, 1.6, 5.6],
+		[2, 14, 6.0, 5.4], [14, 41, 5.4, 0.3]],
+		func(_x: int, dy: float) -> bool: return absf(dy) > 9.0 and not (_x >= 7 and _x <= 8) and not (_x >= 22 and _x <= 23),
+		[31, 2], [-11.0, -10.0, -5.0, 4.0, 9.0, 10.0], [],
 		func(img: Image, cy: float) -> void:
-			# Launch deck: a sunken runway with centreline lights, parked
-			# fighters and lit hangar bays down both sides.
-			for x in range(16, 74):
-				for dy in range(-5, 6):
-					_px(img, x, cy + dy, Color("1b1d30"))
-				if x % 6 == 0:
-					_px(img, x, cy, A["carrier"][0])
-					_px(img, x, cy + 1, A["carrier"][0])
-			for x in [24, 40, 56]:
-				# A parked fighter: a small chevron pointing forward, with a
-				# lit nose and swept wings.
-				for t in 2:
-					_px(img, x + 3 + t, cy, A["carrier"][2])
-					_px(img, x + 3 + t, cy + 1, A["carrier"][2])
-					_px(img, x + 1 + t, cy - 2, A["carrier"][1])
-					_px(img, x + 1 + t, cy + 3, A["carrier"][1])
-					_px(img, x - 1 + t, cy - 4, A["carrier"][1])
-					_px(img, x - 1 + t, cy + 5, A["carrier"][1])
-			for x in range(18, 70, 10):
-				for s in [-1, 1]:
-					for t in 4:
-						_px(img, x + t, cy + s * 10, Color("0e0d1c"))
-						_px(img, x + t, cy + s * 11, Color("0e0d1c"))
-					for t in 2:
-						_px(img, x + t, cy + s * 12, A["carrier"][1]), true)
+			var deck := Color("1b1d30")
+			var dark := Color("0e0d1c")
+			# Hangar mouth: a dark bay cut into the wedge's stern, notched in
+			# the middle, with a row of amber guide lights.
+			for x in range(5, 30):
+				var hw: int = 6 if x < 26 else 6 - (x - 25)
+				for dy in range(-hw, hw):
+					_px(img, x, cy + dy, deck)
+			for dy in range(-6, 6):
+				_px(img, 5, cy + dy, dark)
+			for x in range(8, 28, 5):
+				_px(img, x, cy - 1, A["carrier"][1])
+				_px(img, x + 1, cy - 1, A["carrier"][1])
+			# Hangar decks along both wing struts: a dark strip with lights.
+			for s in [-1, 1]:
+				var yc: float = cy + s * 15.0
+				for x in range(17, 39):
+					for t in range(-1, 2):
+						_px(img, x, yc + t - 1, deck)
+				for x in range(19, 38, 4):
+					_px(img, x, yc - 1, A["carrier"][1])
+			# Turret mount pads on the nacelles: a dark ring round a raised
+			# plate, two per nacelle.
+			for s in [-1, 1]:
+				for px in [16, 46]:
+					var c := Vector2(px, cy + s * 21.0)
+					for dx in range(-4, 5):
+						for dy in range(-4, 5):
+							var d: float = Vector2(dx + 0.5, dy + 0.5).length()
+							if d < 2.9:
+								_px(img, c.x + dx, c.y + dy, dark if d > 2.1 else (HULL[3] if dy < 0 else HULL[2])), true)
 	# Battleship: the biggest hull, stepped decks, gold command lights.
 	_ship("battleship", 52, 31,
 		[[3, 44, 9.0, 6.0], [42, 52, 4.5, 0.8], [8, 24, 14.0, 8.0], [0, 6, 7.0, 7.0], [26, 40, 2.0, 1.5, 8.0], [30, 46, 1.2, 0.8, 4.0]],
