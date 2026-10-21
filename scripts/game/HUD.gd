@@ -963,6 +963,13 @@ func _active_tech_on_page() -> bool:
 func research_open() -> bool:
 	return _research_modal.visible
 
+## Opens the research panel on one tab (e.g. "weapons"), if it isn't open.
+func open_research(tab: String) -> void:
+	if not _research_modal.visible:
+		toggle_research()
+	if _research_tabs.has(tab):
+		(_research_tabs[tab] as Button).pressed.emit()
+
 func toggle_research() -> void:
 	_research_modal.visible = not _research_modal.visible
 	_refresh_research()

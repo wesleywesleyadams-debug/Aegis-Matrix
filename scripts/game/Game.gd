@@ -342,6 +342,28 @@ func _ready() -> void:
 		message_long.emit(system_settings.get("arrival", "You arrive in uncharted space."), Color("e8d6a8"), ARRIVAL_LINGER)
 		message_long.emit("Grow your worlds, mine the belts, find spice. Win by taking every enemy world, or every enemy starbase and Constructor.", Color("c3cde4"), ARRIVAL_LINGER)
 	_enter_dev_capture()
+	# Nothing researching at the start: open the research panel.
+	_prompt_research("warships")
+	# Dev (SL_SHOT_OPEN=prompt, SL_PROMPT_TECH=id): start a tech and close the
+	# panel, so a capture shows it reopening when that tech finishes.
+	if OS.get_environment("SL_SHOT_OPEN") == "prompt" and OS.get_environment("SL_PROMPT_TECH") != "":
+		queue_research(player_id, OS.get_environment("SL_PROMPT_TECH"))
+		if hud.research_open():
+			hud.toggle_research()
+
+## Opens the research panel on `tab` when the human player has nothing being
+## researched - not in sims, duels, demos or dev captures, and not for AIs.
+func _prompt_research(tab: String) -> void:
+	if sim_mode or demo_mode or hud == null or is_ai(player_id):
+		return
+	# (Dev: SL_SHOT_OPEN=prompt lets a capture show it.)
+	if OS.get_environment("SL_SHOT_OPEN") != "prompt":
+		for env in ["SL_DUEL", "SL_SHOT", "SL_SHOT_OPEN", "SL_SIM"]:
+			if OS.get_environment(env) != "":
+				return
+	if not research[player_id].is_empty() or not research_queue[player_id].is_empty():
+		return
+	hud.open_research(tab)
 
 ## The title screen's background match (demo_mode): build the system, hand
 ## both sides to the AI and set the barges working, then let a DemoDirector
@@ -914,6 +936,8 @@ func _on_tech_done(pid: int, tech_id: String) -> void:
 			s.refresh_stats()
 	if pid == player_id:
 		notify("Research complete: %s." % Defs.TECHS[tech_id]["name"], "note_tech")
+		# Nothing researching now: reopen the panel on that tech's tab.
+		_prompt_research(str(Defs.TECHS[tech_id].get("group", "warships")))
 	tech_completed.emit(pid, tech_id)
 
 # ---------------------------------------------------------------- queries
