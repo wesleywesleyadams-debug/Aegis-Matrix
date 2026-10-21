@@ -86,7 +86,7 @@ func _fire_turrets(delta: float) -> void:
 	_beams.clear()
 	var pd: float = float(weapon_mod.get("pd", 0.0))
 	# Defensive Fire: a turret with nothing to shoot shoots down ordnance.
-	var screen: bool = pd <= 0.0 and g.has_tech(owner_id, "defensive_fire")
+	var screen: bool = pd <= 0.0 and not weapon_mod.has("tractor") and g.has_tech(owner_id, "defensive_fire")
 	var claimed := {}
 	for i in n:
 		# Point-Defense: a ready turret first swats incoming ordnance.
@@ -155,6 +155,9 @@ func _fire_turrets(delta: float) -> void:
 				tgt.take_damage(dps * ramp * delta * Game.instance.ship_speed_factor(owner_id), self, Defs.damage_profile(def))
 				_beams.append([_turret_sprites[i].global_position, tgt.global_position, ramp])
 			continue
+		# Tractor Beams: the turrets only aim; the beams (_tractor) do the damage.
+		if weapon_mod.has("tractor"):
+			continue
 		if _t_cd[i] > 0.0 or not on_target:
 			continue
 		var wpn: String = weapon_mod.get("weapon", def["weapon"])
@@ -174,7 +177,7 @@ func _fire_turrets(delta: float) -> void:
 		_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
 	if weapon_mod.has("tractor"):
-		_tractor(delta, rng, n)
+		_tractor(delta, rng, n, dmg)
 	elif not _tbeams.is_empty():
 		_tbeams.clear()
 		had_beams = true
@@ -182,9 +185,10 @@ func _fire_turrets(delta: float) -> void:
 		queue_redraw()
 
 ## Tractor Beams: each turret holds a beam on its own target (or, past laser
-## range, the nearest enemy out to `reach` x attack range). The beam slows
-## from tr[0] at the far edge to tr[1] up close and slowly reels the target in.
-func _tractor(delta: float, rng: float, n: int) -> void:
+## range, the nearest enemy out to `reach` x attack range). The beam reels
+## the target in at tr[0] per second and burns it at a fixed rate: the Mod's
+## dmg x a laser's damage per second, with no ramp. The turrets fire nothing.
+func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 	var g := Game.instance
 	var tr: Array = weapon_mod["tractor"]
 	var reach: float = rng * float(tr[1])
@@ -208,6 +212,8 @@ func _tractor(delta: float, rng: float, n: int) -> void:
 		if d > reach + t.radius:
 			continue
 		held[t] = true
+		var dps: float = dmg / def["cooldown"] * float(weapon_mod.get("dmg", 1.0)) * g.mod(owner_id, "fire_rate") * g.mod(owner_id, "damage")
+		t.take_damage(dps * delta * g.ship_speed_factor(owner_id), self, Defs.damage_profile(def))
 		# No slow: the beam only drags its target toward the carrier, at a
 		# fixed pull, and only in to the guns' sweet spot.
 		if d > rng * 0.6:

@@ -1482,7 +1482,9 @@ Your barges mining it: %d" % [Defs.RESOURCE_NAMES[a.resource], a.amount, a.max_a
 				var dps_now: float = base_dmg / s.def["cooldown"] * game.mod(e.owner_id, "fire_rate") * ramp_sum
 				txt += "   %s %.0f DPS" % [wname, dps_now]
 			elif wm.has("tractor"):
-				txt += "   Laser %.0f dmg / %.1fs + Tractor Beams" % [base_dmg * float(wm.get("dmg", 1.0)), cd]
+				# Fixed burn per beam: no lasers, no ramp.
+				var tdps: float = base_dmg / s.def["cooldown"] * float(wm.get("dmg", 1.0)) * game.mod(e.owner_id, "fire_rate")
+				txt += "   Tractor Beams %.1f DPS each" % tdps
 			else:
 				var cnt: int = int(wm.get("count", 1))
 				txt += "   %s %.0f dmg%s / %.1fs" % [wname, base_dmg * float(wm.get("dmg", 1.0)), (" x%d" % cnt) if cnt > 1 else "", cd]
