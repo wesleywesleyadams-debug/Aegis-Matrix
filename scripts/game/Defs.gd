@@ -731,7 +731,7 @@ const MOD_WEAPONS := {
 	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.54, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
-	"mod_point_defense_lattice": {"dmg": 1.0, "pd": 220.0},
+	"mod_point_defense_lattice": {"dmg": 0.9, "pd": 220.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.5, "dmg": 0.28, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
