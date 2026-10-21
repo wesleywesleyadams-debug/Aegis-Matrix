@@ -1045,6 +1045,12 @@ func ships_near(pos: Vector2, r: float) -> Array:
 					out.append(s)
 	return out
 
+## Whether player `pid` can see `e` right now (fog of war, spice nebulae).
+## Nothing may be targeted while hidden. True when that player has no fog.
+func sees(pid: int, e: Node2D) -> bool:
+	var v: Vision = visions.get(pid)
+	return v == null or v.can_see(e)
+
 func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
 	# Walks the coarse grid directly (no temporary arrays); compares squared
 	# distances until a candidate is close enough to matter.
@@ -1062,7 +1068,7 @@ func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
 				continue
 			for s in cell:
 				# Ships destroyed earlier this tick are still in the grid.
-				if not is_instance_valid(s) or s.owner_id == pid or not s.is_enemy_of(pid) or not s.is_alive():
+				if not is_instance_valid(s) or s.owner_id == pid or not s.is_enemy_of(pid) or not s.is_alive() or not sees(pid, s):
 					continue
 				var d: float = fp.distance_to(s.global_position) - s.radius
 				# Prefer warships over civilian hulls at similar range.
@@ -1072,7 +1078,7 @@ func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
 					best_d = d
 					best = s
 	for sb in starbase_list:
-		if is_instance_valid(sb) and sb.is_enemy_of(pid) and sb.is_alive():
+		if is_instance_valid(sb) and sb.is_enemy_of(pid) and sb.is_alive() and sees(pid, sb):
 			var d: float = fp.distance_to(sb.global_position) - sb.radius
 			if d < best_d:
 				best_d = d
@@ -1094,14 +1100,14 @@ func enemies_near(from: SpaceEntity, max_dist: float, count: int, around: Vector
 			if cell == null:
 				continue
 			for s in cell:
-				if not is_instance_valid(s) or s.owner_id == pid or not s.is_enemy_of(pid) or not s.is_alive():
+				if not is_instance_valid(s) or s.owner_id == pid or not s.is_enemy_of(pid) or not s.is_alive() or not sees(pid, s):
 					continue
 				var d: float = fp.distance_to(s.global_position) - s.radius
 				if d > max_dist:
 					continue
 				found.append([d + (40.0 if s.def["role"] != "warship" else 0.0), s])
 	for sb in starbase_list:
-		if is_instance_valid(sb) and sb.is_enemy_of(pid) and sb.is_alive():
+		if is_instance_valid(sb) and sb.is_enemy_of(pid) and sb.is_alive() and sees(pid, sb):
 			var d2: float = fp.distance_to(sb.global_position) - sb.radius
 			if d2 <= max_dist:
 				found.append([d2, sb])
@@ -3558,6 +3564,33 @@ func nebula_pocket_at(p: Vector2) -> NebulaPocket:
 	pk.position = p
 	fx_root.add_child(pk)
 	return pk
+
+## A harvest spot in the nearest spice nebula `pid` has explored, on the side
+## facing `from`, as a pocket skimmers can mine; null if none within max_dist.
+func nearest_nebula_pocket(pid: int, from: Vector2, max_dist: float) -> NebulaPocket:
+	var v: Vision = visions.get(pid)
+	var best := Vector2.INF
+	var best_d := max_dist
+	for n in get_tree().get_nodes_in_group("nebulae"):
+		var p: Vector2 = n.heart_toward(from)
+		if v != null and not v.is_explored_at(p):
+			continue
+		var d := from.distance_to(p)
+		if d < best_d:
+			best_d = d
+			best = p
+	if best == Vector2.INF:
+		return null
+	# Slide out toward `from` to just inside the edge: the skimmer works it
+	# from outside, clear of the nebula's radiation.
+	var dir := (from - best).normalized()
+	var edge := best
+	for k in 200:
+		var nxt := edge + dir * 4.0
+		if not in_nebula(nxt):
+			break
+		edge = nxt
+	return nebula_pocket_at(edge)
 
 func nearest_pocket(p: Vector2, max_dist: float) -> NebulaPocket:
 	var best: NebulaPocket = null

@@ -723,7 +723,11 @@ func can_mine(target: Node2D) -> bool:
 func _find_mine_target(resource: String) -> Node2D:
 	if def["role"] == "skimmer":
 		if resource == "spice":
-			return Game.instance.nearest_pocket(global_position, 3000.0)
+			var pk: Node2D = Game.instance.nearest_pocket(global_position, 3000.0)
+			var fresh: Node2D = Game.instance.nearest_nebula_pocket(owner_id, global_position, 3000.0)
+			if pk == null or (fresh != null and global_position.distance_to(fresh.global_position) < global_position.distance_to(pk.global_position)):
+				return fresh
+			return pk
 		return Game.instance.nearest_gas_giant(global_position, 3000.0)
 	return Game.instance.nearest_asteroid(global_position, 900.0, resource)
 
@@ -1021,6 +1025,9 @@ func _physics_process(delta: float) -> void:
 				state = State.IDLE
 				move_goal = global_position
 		State.ATTACK:
+			# A target that slips out of sight (into fog or a nebula) is lost.
+			if is_instance_valid(target) and target.is_alive() and not Game.instance.sees(owner_id, target):
+				target = null
 			if not is_instance_valid(target) or not target.is_alive():
 				target = null
 				# Resume the attack-move (or guard spot) we were on.

@@ -206,9 +206,14 @@ func _launch(ship_type: String) -> void:
 		ship.order_mine(rally_target)
 		return
 	if ship.def["role"] == "skimmer":
-		var giant := g.nearest_gas_giant(global_position, 4000.0)
-		if giant:
-			ship.order_mine(giant)
+		# Whichever is nearer: a gas giant, or the near side of a spice nebula.
+		var giant: Node2D = g.nearest_gas_giant(global_position, 4000.0)
+		var neb: Node2D = g.nearest_nebula_pocket(owner_id, global_position, 4000.0)
+		var job: Node2D = giant
+		if neb != null and (giant == null or global_position.distance_to(neb.global_position) < global_position.distance_to(giant.global_position)):
+			job = neb
+		if job:
+			ship.order_mine(job)
 			return
 	if ship.is_miner():
 		var rock := g.nearest_asteroid(has_rally_or(global_position), 900.0)
