@@ -1369,7 +1369,7 @@ func pd_intercept(from: Ship, first: Node2D, drone_dmg: float) -> void:
 			strike.call(i)
 		return
 	var fx := NeedleFx.new()
-	fx.setup(pts, Color("ffe14a"), strike)
+	fx.setup(pts, Color("ffe14a"), strike, hits)
 	fx_root.add_child(fx)
 	sfx.play_at("laser", from.global_position, -12.0)
 

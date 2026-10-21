@@ -4,7 +4,7 @@ extends Node2D
 ## bending at each point where it strikes something, and calls `on_hit(i)`
 ## as it reaches point i (point 0 is the muzzle).
 
-const SPEED := 650.0    # px/s along the path
+const SPEED := 1600.0   # px/s along the path
 const LENGTH := 60.0    # how long the needle is, measured along the path
 var _pts: PackedVector2Array
 var _cum: PackedFloat32Array   # distance along the path to each point
@@ -12,17 +12,31 @@ var _d := 0.0
 var _next := 1
 var _col := Color("ffe14a")
 var on_hit: Callable
+## What each point after the muzzle follows: the needle homes on where its
+## targets are now, so it always bends exactly on them.
+var _targets: Array = []
 
-func setup(points: PackedVector2Array, col: Color, hit: Callable) -> void:
+func setup(points: PackedVector2Array, col: Color, hit: Callable, targets: Array = []) -> void:
 	_pts = points
 	_col = col
 	on_hit = hit
+	_targets = targets
 	z_index = 5
-	_cum.append(0.0)
+	_cum.resize(_pts.size())
+	_measure()
+
+func _measure() -> void:
+	_cum[0] = 0.0
 	for i in range(1, _pts.size()):
-		_cum.append(_cum[i - 1] + _pts[i - 1].distance_to(_pts[i]))
+		_cum[i] = _cum[i - 1] + _pts[i - 1].distance_to(_pts[i])
 
 func _process(delta: float) -> void:
+	# Points not yet reached track their (still living) targets.
+	for i in range(_next, _pts.size()):
+		var t = _targets[i - 1] if i - 1 < _targets.size() else null
+		if t != null and is_instance_valid(t):
+			_pts[i] = t.global_position
+	_measure()
 	_d += SPEED * delta
 	while _next < _pts.size() and _d >= _cum[_next]:
 		if on_hit.is_valid():
