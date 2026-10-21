@@ -746,7 +746,7 @@ const MOD_WEAPONS := {
 	#   pd     - Point-Defense: radius in which each turret shoots down enemy
 	#            missiles, torpedoes and bomblets before firing at ships
 	#   drones - Interceptor Drones: [count, reach from the carrier]
-	#   tractor- Tractor Beams: [slow far, slow close, reach x weapon range]
+	#   tractor- Tractor Beams: [pull/s, reach x weapon range, damage at full reach, damage once pulled in to 60% of range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
 	"mod_flak_cannons": {"dmg": 0.52, "cd": 0.966, "weapon": "flak"},
@@ -762,9 +762,9 @@ const MOD_WEAPONS := {
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
 	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.03, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
-	# tractor: [slow at the far edge, slow up close, reach x attack range].
-	# The lasers are untouched; each turret adds a beam that slows its target.
-	"mod_tractor_beams": {"tractor": [60.0, 2.0], "dmg": 1.0},
+	# No lasers: each turret holds a beam that pulls and burns at dmg x a laser's DPS
+	# x a factor: [pull/s, reach x range, factor at full reach, factor once pulled in].
+	"mod_tractor_beams": {"tractor": [60.0, 2.0, 0.5, 1.5], "dmg": 1.0},
 	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.28, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
