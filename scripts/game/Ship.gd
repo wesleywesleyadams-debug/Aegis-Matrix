@@ -213,22 +213,6 @@ func _tractor(delta: float, rng: float, n: int) -> void:
 			t.global_position += (global_position - t.global_position).normalized() * float(tr[0]) * g.ship_speed_factor(owner_id) * delta
 		_tbeams.append([_turret_sprites[i].global_position, t.global_position, 0.5])
 
-## Another ship's tractor beam slows this one by `slow` (0..1).
-func tractor_hit(slow: float) -> void:
-	_tr_roll()
-	_tr_acc *= 1.0 - slow
-
-func _tr_roll() -> void:
-	var f := Engine.get_physics_frames()
-	if f != _tr_frame:
-		_tr_prev = _tr_acc if f == _tr_frame + 1 else 1.0
-		_tr_acc = 1.0
-		_tr_frame = f
-
-## How much of its speed tractor beams leave this ship (1 = free).
-func _tractor_keep() -> float:
-	_tr_roll()
-	return _tr_prev
 
 ## Interceptor Drones: they circle the carrier; any enemy within reach of
 ## the carrier draws a drone out, which closes to 40 and fires lasers.
@@ -516,11 +500,6 @@ var _beams: Array = []
 var _tbeams: Array = []
 var _t_far: Array = []
 var _t_far_scan := 0.0
-## Being tractored: the product of (1 - slow) of every beam on this ship,
-## gathered over one physics frame and used for the next (_tractor_keep).
-var _tr_frame := -1
-var _tr_acc := 1.0
-var _tr_prev := 1.0
 ## Interceptor Drones (Drone nodes, null while being rebuilt) and the
 ## seconds left on each rebuild.
 var _drones: Array = []
@@ -803,7 +782,7 @@ func max_speed() -> float:
 		return _speed_cache
 	_speed_frame = f
 	var storm := IonStorm.SLOW if Game.instance.in_storm(global_position) else 1.0
-	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm * _tractor_keep()
+	_speed_cache = def["speed"] * Game.instance.mod(owner_id, "speed") * Game.instance.ship_speed_factor(owner_id) * storm
 	return _speed_cache
 
 ## How fast this ship fills its hold on `node`, per minute (Defs.PER_MIN).

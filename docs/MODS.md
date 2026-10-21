@@ -1,4 +1,4 @@
-# Mods research tab (agreed 2026-10-18, updated 2026-10-19)
+# Mods research tab (agreed 2026-10-18, updated 2026-10-21)
 
 A research tab called **Mods**. Each Mod changes the weapon of one ship class.
 
@@ -9,32 +9,31 @@ A research tab called **Mods**. Each Mod changes the weapon of one ship class.
 - **Paused progress** works as for any tech: a half-researched Mod keeps its progress.
 - **Disable / enable.** Clicking an active Mod's card disables it, and that class goes back to its standard laser. The card turns yellow. A "Disabled Mods" line under the timer (top left) lists disabled Mods, and clicking it re-enables them. Toggling is free and instant.
 - **Requirements.** The corvette row needs nothing. The destroyer, cruiser and carrier rows each need their class unlocked first.
-- **Cost.** All three Mods in a row cost the same, so the choice is about play style: 150 energy / 25 spice for corvettes, 180 / 30 destroyers, 210 / 35 cruisers, 240 / 40 carriers. Equal costs are final: the round-robin keeps every Mod within about ±0.1 of the others.
+- **Cost.** All three Mods in a row cost the same, so the choice is about play style: 150 energy / 25 spice for corvettes, 180 / 30 destroyers, 210 / 35 cruisers, 240 / 40 carriers. Equal costs are final.
 - **Variants stack.** A Mod sets the weapon's shape and behaviour, and the Weapons Depot variant (Plasma, Breacher, Ravager, Slip, Disruptor) still sets its damage profile. For example, a Plasma corvette with Proton Torpedoes fires torpedoes that do ×3.0 damage to shields.
-- **Tuned in duels, not by formula.** Each Mod's damage is tuned so it trades about as well as the laser it replaces in its best matchup, then shaped by its strengths (see Trade). Exact numbers live in `Defs.MOD_WEAPONS`; this page describes behaviour.
+- **Tuned in a full round robin.** Every class's plain lasers and all twelve Mods fight each other at equal cost; class toughness, class laser damage and each Mod's damage are tuned toward a gentle size ladder: corvettes 47%, destroyers 49%, cruisers 51%, carriers 53% overall (classes within ±2, each side within ±5). Results: `docs/balance/`, and the Codex Combat page. Exact numbers live in `Defs.MOD_WEAPONS`; this page describes behaviour.
+- **No hit-and-run.** Every ship, ordnance Mods included, closes to weapon range and stands and fires (attack runs were removed 2026-10-20).
 
 ## The 12 Mods
 
 | Class | Mod | Behaviour | Trade |
 |---|---|---|---|
-| Corvette | **Proton Torpedoes** | Attack runs: fly in, launch, peel away while reloading (1/3 the fire rate). Torpedoes launch straight at the target, steer gently and lose lock past 50°, so a hard-turning target can shake them. Blast radius 30. Damage ×6.2 vs destroyers, ×6.6 vs cruisers, ×7.4 vs carriers. | Weak against corvettes; a big-ship hunter. |
-| Corvette | **Kinetic Repeaters** | Rapid slugs: 3× fire rate, 70% damage per slug, −25% range. | No wasted overkill, but it has to get close. |
-| Corvette | **Arc Emitters** | Chain lightning: the target takes 90%, then up to 2 enemies within 120 of it take 35% each. | Strong against swarms, weaker against one big ship. |
+| Corvette | **Proton Torpedoes** | Heavy torpedoes at 1/3 the fire rate. They steer gently (turn limit) and lose lock past 50°, so a hard-turning target can shake them. Blast radius 30. Damage ×2 vs destroyers, ×3 vs cruisers, ×4 vs carriers, starbases and worlds, ×2 vs other constructs. | Weak against corvettes; a big-ship and siege hunter. |
+| Corvette | **Kinetic Repeaters** | Rapid slugs: 3× fire rate, reduced damage per slug, −25% range. | No wasted overkill, but it has to get close. |
+| Corvette | **Arc Emitters** | Chain lightning: the target takes the main share, then up to 2 enemies within 120 of it take a smaller share each. | Strong against swarms, weaker against one big ship. |
 | Destroyer | **Flak Cannons** | Shells burst on the target and hit every enemy within 20 for full damage. | Shreds bunched corvettes; weaker against a single target. |
-| Destroyer | **Cluster Bombs** | Attack runs: releases 3 unguided bomblets in a random 10–20° fan; each bursts on the first enemy it touches (radius 25, full damage) and ignores allies. | Strong against big or bunched targets; small fast ships slip through the spread. |
-| Destroyer | **Homing Missiles** | Attack runs: 2-missile volleys that never miss, +20% range; blast radius 25. | Reliable at range, but the damage arrives late. |
+| Destroyer | **Cluster Bombs** | Releases 3 unguided bomblets in a random 10–20° fan; each bursts on the first enemy (ship, world, depot or Mining Station) it touches (radius 25, full damage) and ignores allies. | Strong against big or bunched targets; small fast ships slip through the spread. |
+| Destroyer | **Homing Missiles** | 2-missile homing volleys, +20% range; blast radius 25. Missiles have a real turn limit, so a ship that turns hard and late can slip them. | Reliable at range, but the damage arrives late. |
 | Cruiser | **Ion Lance** | A continuous beam whose damage ramps up over 4 s on the same target; the ramp resets when it switches. | Melts a single big target; weak against swarms. |
 | Cruiser | **Rail Cannons** | Fast slugs (900 px/s) with +40% range, fired every 4 s for heavy damage. | Out-ranges everything and hits big hulls hard; weak against swarms. |
-| Cruiser | **Point-Defense Lattice** | Each ready turret first shoots down an enemy missile, torpedo or bomblet within 220 (of itself or nearby allies), then an enemy drone in range (×2 damage to drones), then fires at ships. | Counters ordnance and drone Mods; −20% damage against ships. |
+| Cruiser | **Point-Defense Lattice** | Each ready turret first shoots down an enemy missile, torpedo or bomblet within 220 (of itself or nearby allies), then an enemy drone in range (×2 damage to drones), then fires at ships. Defensive Fire adds nothing to it. | Counters ordnance and drone Mods. |
 | Carrier | **Interceptor Drones** | The turrets become spiral launch doors. The carrier builds one drone every 5 s up to 4. Each drone (40 hull, 140 px/s, 10 px hit radius) flies nose-first, picks the enemy nearest to itself within 300 of the carrier, makes strafing passes, and patrols the edge of that radius when idle. Drones can be shot down, are rebuilt, and die with their carrier. Damage ×0.7 / ×0.6 / ×0.5 vs destroyers / cruisers / carriers. | Strong while the drones live; an enemy that kills them (Point-Defense, or ignoring them to focus the carrier) wins. |
-| Carrier | **Tractor Beams** | Adds a beam to each turret reaching 2× weapon range: it slows that turret's target from 10% (far) to 90% (close) and reels it in to 60% of weapon range. The lasers keep full damage. | Holds and pins targets for the fleet. |
+| Carrier | **Tractor Beams** | The turrets keep firing lasers; each also holds a beam on an enemy ship or drone up to 2× weapon range away. The beam deals no damage and does not slow: it drags its target toward the carrier at 40/s until it is within 60% of weapon range. | Drags long-range ships into the guns; pulling short-range corvettes in can help them. |
 | Carrier | **Missile Barrage** | Each of the 4 turrets fires 5 missiles (a 20-missile salvo) every 8 s at +60% range, the longest in the game. | Opens fights from afar; long gaps between salvos. |
 
-### Tractor Beams details
+### Defensive Fire (Targeting tier 3)
 
-- **Stacking:** slows from several beams stack with diminishing returns, multiplicatively. A target keeps the product of (1 − slow) for every beam on it, so two 50% beams make a 75% slow.
-- **No damage trade:** the lasers keep full damage (the user's call).
-- **Ships and drones:** beams grab enemy ships and drones. Starbases never move, so there is nothing to slow there.
+A gun or drone with no enemy ship, construct or world in its attack range shoots down enemy missiles, torpedoes, bombs and drones there instead, at its normal reload. The Ion Lance beam never pauses for it.
 
 ## Engine change: independent turrets (all ships)
 
@@ -42,4 +41,4 @@ Each turret on a destroyer (2), cruiser (3) or carrier (4) gets its own target a
 
 - **With an attack order,** every turret in range and in its arc fires at the ordered target. Focus fire is the same as today.
 - **A turret picks its own target** only when the ordered target is out of its reach or arc, or when the ship is attack-moving or idle.
-- **Tractor beams** follow each turret's own target, so a carrier can hold up to 4 ships at once and always prioritises the ordered one.
+- **Tractor beams** follow each turret's own target, so a carrier can pull up to 4 ships at once and always prioritises the ordered one.
