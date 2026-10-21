@@ -138,6 +138,18 @@ func can_see(e: Node2D) -> bool:
 		return false
 	return true
 
+## Whether the player can see what happens at `p` inside a spice nebula:
+## only within close range of their own sensors (deep sensors see far).
+## Outside a nebula, true.
+func sees_nebula_point(p: Vector2) -> bool:
+	if not enabled or not game.in_nebula(p):
+		return true
+	for s in _sources:
+		var spot: float = s[1] if s.size() > 2 and s[2] else NEBULA_SPOT
+		if p.distance_to(s[0]) <= spot:
+			return true
+	return false
+
 func sensor_range(e: Node2D) -> float:
 	var r := 0.0
 	if e is Starbase:

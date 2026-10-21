@@ -1330,8 +1330,13 @@ func hulls_near(pos: Vector2, r: float) -> Array:
 
 ## An area-of-effect burst drawn exactly `radius` across its middle: the
 ## explosion sprite sized to the blast, so what you see is what it hit.
+## Hits, shield flashes and explosions deep in a spice nebula stay hidden,
+## like the ships there, so they can't give a hidden enemy away.
+func fx_hidden(pos: Vector2) -> bool:
+	return vision != null and not vision.sees_nebula_point(pos)
+
 func spawn_blast(pos: Vector2, radius: float) -> void:
-	if sim_mode:
+	if sim_mode or fx_hidden(pos):
 		return
 	var e := Effect.new()
 	e.texture = Defs.tex("explosion")
@@ -1439,7 +1444,7 @@ func intercept(from: Node2D, p: Node2D) -> void:
 	p.queue_free()
 
 func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
-	if sim_mode:
+	if sim_mode or fx_hidden(pos):
 		return
 	var e := Effect.new()
 	e.texture = Defs.tex("explosion")
@@ -1458,7 +1463,7 @@ const SHIELD_HIT_SCALE := 0.75
 ## `prev` is the flash this target already shows: a new hit restarts it
 ## (facing the new shot) instead of stacking another on top.
 func spawn_shield_hit(pos: Vector2, r: float, from_pos: Vector2, col: Color = Color("7fd8ff"), prev: Effect = null) -> Effect:
-	if sim_mode:
+	if sim_mode or fx_hidden(pos):
 		return null
 	sfx.play_at("shield", pos, -12.0)
 	if is_instance_valid(prev) and not prev.is_queued_for_deletion():

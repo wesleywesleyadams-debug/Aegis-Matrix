@@ -42,8 +42,10 @@ static func _paint(id: String) -> Image:
 	if drawn:
 		_plaque(img, art, BORDER_COLORS.get(t.get("group", ""), GOLD), t.has("mod"))
 		if main_fx.begins_with("mark_"):
+			# As many chevrons as the ship itself shows at that mark (Mk I
+			# has one, so Mk II two ... Mk IV four).
 			var mk := int(id.get_slice("_mk", 1)) if "_mk" in id else 2
-			for k in mk - 1:
+			for k in mk:
 				_line(img, Vector2(7 + k * 7, 13) * K, Vector2(10 + k * 7, 9) * K, 2.0 * K, GOLD)
 				_line(img, Vector2(10 + k * 7, 9) * K, Vector2(13 + k * 7, 13) * K, 2.0 * K, GOLD)
 		for k in (0 if t.has("mod") else int(t.get("tier", 1))):
@@ -86,9 +88,10 @@ static func _paint(id: String) -> Image:
 		_ring(img, Vector2(51, 13), 10.0, 1.5, col)
 		_glyph(img, str(keys[1]), Vector2(51, 13), 0.36, col.lightened(0.4))
 	if main.begins_with("mark_"):
-		# Mk II-IV: as many chevrons as marks gained.
+		# Mk II-IV: as many chevrons as the ship itself shows at that mark
+		# (Mk I has one, so Mk II has two ... Mk IV four).
 		var mk := int(id.get_slice("_mk", 1)) if "_mk" in id else 2
-		for k in mk - 1:
+		for k in mk:
 			_line(img, Vector2(6 + k * 7, 12), Vector2(9 + k * 7, 8), 2.0, Color("ffd84a"))
 			_line(img, Vector2(9 + k * 7, 8), Vector2(12 + k * 7, 12), 2.0, Color("ffd84a"))
 	for k in (0 if t.has("mod") else int(t.get("tier", 1))):
