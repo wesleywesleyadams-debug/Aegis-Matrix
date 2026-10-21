@@ -2484,18 +2484,16 @@ func _add_engagement_row(sel: Array) -> void:
 	if _own_warships(sel).is_empty():
 		return
 	_engage_label = _label("", TEXT, 14)
-	_sel_body.add_child(_engage_label)
+	_sel_body.add_child(_mode_header("engage", _engage_label))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	for i in Ship.ENGAGE_NAMES.size():
 		var b := Button.new()
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(118, 32)
-		b.text = Ship.ENGAGE_NAMES[i]
+		b.custom_minimum_size = Vector2(58, 46)
 		b.tooltip_text = "Engagement: " + ENGAGE_TIPS[i]
-		if i > 0:
-			b.add_theme_color_override("font_pressed_color", Ship.ENGAGE_COLORS[i])
+		b.add_child(_mode_icon("engage", i))
 		b.pressed.connect(_set_engagement.bind(i))
 		_register_action(b)
 		row.add_child(b)
@@ -2539,18 +2537,17 @@ func _add_stance_row(sel: Array) -> void:
 	if _own_warships(sel).is_empty():
 		return
 	_stance_label = _label("", TEXT, 14)
-	_sel_body.add_child(_stance_label)
+	_sel_body.add_child(_mode_header("stance", _stance_label))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	for i in Ship.STANCE_NAMES.size():
 		var b := Button.new()
 		b.focus_mode = Control.FOCUS_NONE
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(118, 32)
-		b.text = Ship.STANCE_NAMES[i]
+		b.custom_minimum_size = Vector2(58, 46)
 		b.tooltip_text = "Stance: " + STANCE_TIPS[i]
-		if i > 0:
-			b.add_theme_color_override("font_pressed_color", Ship.STANCE_COLORS[i])
+		_stance_frame(b)
+		b.add_child(_mode_icon("stance", i))
 		b.pressed.connect(_set_stance.bind(i))
 		_register_action(b)
 		row.add_child(b)
@@ -2575,6 +2572,126 @@ func _refresh_stance() -> void:
 	for i in _stance_buttons.size():
 		if is_instance_valid(_stance_buttons[i]):
 			_stance_buttons[i].set_pressed_no_signal(i == one)
+
+# ---------------------------------------------------------------- mode icons
+
+const MODE_NEUTRAL := Color("d8dde6")
+
+## A procedural picture for an Engagement / Stance button: a little ship (a
+## right-pointing wedge) and what the mode does around it. Coloured like the
+## ship's map marker (Ship.ENGAGE_COLORS dots / STANCE_COLORS squares), the
+## default mode in neutral white. Fills the button, ignores the mouse.
+func _mode_icon(kind: String, i: int) -> Control:
+	var c := Control.new()
+	c.set_anchors_preset(Control.PRESET_FULL_RECT)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.draw.connect(_draw_mode_icon.bind(c, kind, i))
+	return c
+
+## Stance buttons get their own frame - square-cornered amber border on a
+## darker fill - so the two rows read as different kinds of order at a glance
+## (Engagement keeps the panel's standard button look).
+func _stance_frame(b: Button) -> void:
+	var amber := Color("c99a3a")
+	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var f := StyleBoxFlat.new()
+		f.bg_color = Color("0d0b08") if st == "normal" or st == "disabled" else Color("2a2110")
+		if st == "pressed" or st == "hover_pressed":
+			f.bg_color = Color("4a3a16")
+		f.border_color = amber if not st.begins_with("hover") and st != "pressed" else Color("ffd27a")
+		f.set_border_width_all(3 if st.contains("pressed") else 2)
+		f.set_corner_radius_all(0)
+		b.add_theme_stylebox_override(st, f)
+
+## The row header: a small glyph before the label - a crosshair for
+## Engagement (how it fights a target), a planted flag for Stance (where it
+## stays) - drawn in the row's frame colour.
+func _mode_header(kind: String, lbl: Label) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	var g := Control.new()
+	g.custom_minimum_size = Vector2(16, 16)
+	g.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	g.draw.connect(func():
+		var m := Vector2(8, 8)
+		if kind == "engage":
+			var cl := Color("7fb0ff")
+			g.draw_arc(m, 6.0, 0, TAU, 16, cl, 1.5)
+			for d in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+				g.draw_line(m + d * 3.0, m + d * 8.0, cl, 1.5)
+		else:
+			var cl := Color("e0b050")
+			g.draw_line(Vector2(4, 15), Vector2(4, 1), cl, 2.0)
+			g.draw_colored_polygon(PackedVector2Array([Vector2(5, 1), Vector2(14, 4), Vector2(5, 8)]), cl)
+			g.draw_line(Vector2(0, 15), Vector2(10, 15), cl, 2.0))
+	h.add_child(g)
+	h.add_child(lbl)
+	return h
+
+func _icon_ship(c: Control, p: Vector2, col: Color, dir := Vector2.RIGHT) -> void:
+	var n := dir.orthogonal()
+	c.draw_colored_polygon(PackedVector2Array([p + dir * 6, p - dir * 5 + n * 5, p - dir * 2, p - dir * 5 - n * 5]), col)
+
+func _icon_target(c: Control, p: Vector2, col: Color) -> void:
+	c.draw_arc(p, 4.5, 0, TAU, 16, col, 1.5)
+	c.draw_circle(p, 1.5, col)
+
+func _icon_arrow(c: Control, a: Vector2, b: Vector2, col: Color, w := 2.0) -> void:
+	c.draw_line(a, b, col, w)
+	var d := (b - a).normalized()
+	var n := d.orthogonal()
+	c.draw_colored_polygon(PackedVector2Array([b + d * 2, b - d * 4 + n * 3.5, b - d * 4 - n * 3.5]), col)
+
+func _draw_mode_icon(c: Control, kind: String, i: int) -> void:
+	# Drawn on a 40x32 design grid around the origin, scaled up a little and
+	# set slightly up-left of centre (the hotkey letter sits bottom-right).
+	c.draw_set_transform(c.size * 0.5 - Vector2(3, 3), 0.0, Vector2(1.25, 1.25))
+	var o := Vector2.ZERO
+	var tgt := Color("ff8a7a")
+	if kind == "engage":
+		var col: Color = MODE_NEUTRAL if i == 0 else Ship.ENGAGE_COLORS[i]
+		match i:
+			0:	# Default: ship, straight arrow, target at mid range
+				_icon_ship(c, o + Vector2(-13, 0), col)
+				_icon_arrow(c, o + Vector2(-5, 0), o + Vector2(5, 0), col, 1.5)
+				_icon_target(c, o + Vector2(14, 0), tgt)
+			1:	# Aggressive: ship right up on the target, chevrons pressing in
+				_icon_ship(c, o + Vector2(2, 0), col)
+				_icon_target(c, o + Vector2(14, 0), tgt)
+				for k in 2:
+					var x := -14.0 + k * 6.0
+					c.draw_polyline(PackedVector2Array([o + Vector2(x, -5), o + Vector2(x + 4, 0), o + Vector2(x, 5)]), col, 2.0)
+			2:	# Defensive: ship far back behind a range arc, backing off
+				_icon_ship(c, o + Vector2(-12, 0), col)
+				c.draw_arc(o + Vector2(16, 0), 20.0, PI * 0.78, PI * 1.22, 12, col, 1.5)
+				_icon_target(c, o + Vector2(16, 0), tgt)
+				_icon_arrow(c, o + Vector2(-8, 9), o + Vector2(-18, 9), col, 1.5)
+			3:	# Evasive: a shot streaks through where the ship was; it sidesteps up
+				c.draw_arc(o + Vector2(-8, 6), 4.5, 0, TAU, 12, Color(col, 0.5), 1.0)
+				_icon_ship(c, o + Vector2(-8, -7), col)
+				_icon_arrow(c, o + Vector2(-8, 2), o + Vector2(-8, -1), col, 1.5)
+				c.draw_line(o + Vector2(15, 6), o + Vector2(-2, 6), Color(tgt, 0.6), 1.5)
+				c.draw_circle(o + Vector2(-4, 6), 2.2, tgt)
+	else:
+		var col: Color = MODE_NEUTRAL if i == 0 else Ship.STANCE_COLORS[i]
+		match i:
+			0:	# Aggressive: ship racing off after enemies, long chase arrow
+				_icon_ship(c, o + Vector2(-12, 0), col)
+				_icon_arrow(c, o + Vector2(-4, 0), o + Vector2(14, 0), col, 2.0)
+				_icon_arrow(c, o + Vector2(-4, -1), o + Vector2(10, -10), Color(col, 0.6), 1.5)
+				_icon_arrow(c, o + Vector2(-4, 1), o + Vector2(10, 10), Color(col, 0.6), 1.5)
+			1:	# Defensive: ship inside a dashed leash circle
+				_icon_ship(c, o, col)
+				for k in 10:
+					var a0 := TAU * k / 10.0
+					c.draw_arc(o, 13.0, a0, a0 + TAU / 20.0, 4, col, 1.5)
+			2:	# Stand Ground: ship planted on a stake, turning in place
+				_icon_ship(c, o + Vector2(0, -2), col, Vector2.UP)
+				c.draw_line(o + Vector2(-9, 10), o + Vector2(9, 10), col, 2.0)
+				c.draw_line(o + Vector2(0, 4), o + Vector2(0, 10), col, 2.0)
+				c.draw_arc(o + Vector2(0, -2), 11.0, PI * 1.1, PI * 1.9, 10, col, 1.5)
+				var tip := o + Vector2(0, -2) + Vector2.from_angle(PI * 1.9) * 11.0
+				c.draw_colored_polygon(PackedVector2Array([tip + Vector2(3, 1), tip + Vector2(-3, -2), tip + Vector2(-1, 4)]), col)
 
 # ---------------------------------------------------------------- panel keys
 
