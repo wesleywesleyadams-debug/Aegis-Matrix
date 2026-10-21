@@ -98,7 +98,7 @@ const BASE_SHIPS := {
 	"constructor": {
 		"name": "Constructor", "role": "constructor",
 		"hp": 110.0, "armor": 40.0, "shield": 20.0, "speed": 65.0, "radius": 9.0,
-		"cost": {"minerals": 120, "spice": 5}, "build_time": 10.0, "upkeep": 0.7,
+		"cost": {"minerals": 60}, "build_time": 10.0, "upkeep": 0.7,
 		"weapon": "", "damage": 0.0, "cooldown": 1.0, "range": 0.0,
 	},
 	"corvette": {
