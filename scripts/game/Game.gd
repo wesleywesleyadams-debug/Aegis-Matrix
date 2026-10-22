@@ -729,12 +729,45 @@ func ledger(pid: int, what: String, amount: float) -> void:
 		spice_ledger[pid] = {}
 	spice_ledger[pid][what] = spice_ledger[pid].get(what, 0.0) + amount
 
+## Spice cover per player (default ON): whether spice automatically covers
+## food/minerals/energy shortfalls (Defs.SPICE_COVER_RATIO per spice). With it OFF, a shortfall is simply
+## not paid - food runs short (starvation), energy upkeep goes unpaid
+## (Blackout) and mineral payments stall. Saved in save games.
+var spice_cover := {}
+## Spice spent covering each resource this second / per minute recently.
+var _cover_acc := {}
+var _cover_hist := {}
+var _cover_alerted := {}
+
+func set_spice_cover(pid: int, on: bool) -> void:
+	spice_cover[pid] = on
+
+func spice_cover_on(pid: int) -> bool:
+	return spice_cover.get(pid, true)
+
+## SPICE per minute spent covering `k` (it covers SPICE_COVER_RATIO times that) (food/minerals/energy), averaged over
+## the last COVER_WINDOW seconds; with k == "" the total.
+const COVER_WINDOW := 5
+func spice_covering(pid: int, k: String = "") -> float:
+	var hist: Dictionary = _cover_hist.get(pid, {})
+	var t := 0.0
+	for key in SUBSTITUTABLE:
+		if k != "" and key != k:
+			continue
+		var h: Array = hist.get(key, [])
+		var n := 0.0
+		for v in h.slice(maxi(0, h.size() - COVER_WINDOW)):
+			n += v
+		t += n / maxf(1.0, minf(h.size(), COVER_WINDOW)) * Defs.PER_MIN
+	return t
+
 func _deduct(pid: int, k: String, amount: float) -> void:
 	resources[pid][k] -= amount
 	_rate_acc[pid][k] = _rate_acc[pid].get(k, 0.0) - amount
 
 ## Pays `per_sec` (resource -> amount per second) for `dt` seconds.
-## Any food/minerals/energy shortfall is covered 1:1 from spice. If even
+## Any food/minerals/energy shortfall is covered from spice, Defs.SPICE_COVER_RATIO
+## per spice (unless spice cover is off). If even
 ## spice can't cover it, pays the largest fraction it can. Returns that
 ## fraction (0..1), so callers advance progress by dt * fraction.
 func pay_over_time(pid: int, per_sec: Dictionary, dt: float) -> float:
@@ -743,7 +776,13 @@ func pay_over_time(pid: int, per_sec: Dictionary, dt: float) -> float:
 	for k in per_sec:
 		need[k] = per_sec[k] * dt
 	var f := 1.0
-	if _spice_needed(r, need, 1.0) > r["spice"] + 0.000001:
+	var cover := spice_cover_on(pid)
+	if not cover:
+		# No spice cover: pay only what the stockpiles themselves hold.
+		for k in need:
+			if need[k] > 0.0:
+				f = minf(f, maxf(r.get(k, 0.0), 0.0) / need[k])
+	elif _spice_needed(r, need, 1.0) > r["spice"] + 0.000001:
 		# Spice need is monotonic in the fraction; bisect for the max we can pay.
 		var lo := 0.0
 		var hi := 1.0
@@ -768,8 +807,12 @@ func pay_over_time(pid: int, per_sec: Dictionary, dt: float) -> float:
 			var from_stock := minf(maxf(r[k], 0.0), take)
 			_deduct(pid, k, from_stock)
 			if take > from_stock:
-				_deduct(pid, "spice", take - from_stock)
-				ledger(pid, "out_sub_%s_%s" % [cat, k], take - from_stock)
+				var sp: float = (take - from_stock) / Defs.SPICE_COVER_RATIO
+				_deduct(pid, "spice", sp)
+				if not _cover_acc.has(pid):
+					_cover_acc[pid] = {}
+				_cover_acc[pid][k] = _cover_acc[pid].get(k, 0.0) + sp
+				ledger(pid, "out_sub_%s_%s" % [cat, k], sp)
 		else:
 			_deduct(pid, k, take)
 			if k == "spice":
@@ -884,7 +927,7 @@ func _spice_needed(r: Dictionary, need: Dictionary, f: float) -> float:
 	var s: float = need.get("spice", 0.0) * f
 	for k in need:
 		if k in SUBSTITUTABLE:
-			s += maxf(0.0, need[k] * f - maxf(r[k], 0.0))
+			s += maxf(0.0, need[k] * f - maxf(r[k], 0.0)) / Defs.SPICE_COVER_RATIO
 	return s
 
 func ship_count(pid: int) -> int:
@@ -997,8 +1040,9 @@ func energy_starved(pid: int) -> bool:
 
 ## Blackout per player: the empire could not pay its buildings' energy
 ## upkeep (energy at 0 and no spice to cover it). Every building that draws
-## energy is unpowered (Planet._staff, max_shield, _batteries_fire) and
-## draws nothing until the energy stockpile has stayed above 0 for
+## energy runs on LOW POWER at Defs.ENERGY_STARVED_FACTOR (the same 25% as
+## starved ships: Planet.power_factor) and draws no upkeep (energy is 0 anyway,
+## so nothing can spiral) until the energy stockpile has stayed above 0 for
 ## Defs.BLACKOUT_RESUME_SECS in a row (blackout_restore). Power Plants draw no energy, so mineral
 ## deliveries restart them and the empire recovers.
 var blackout := {}
@@ -1042,7 +1086,7 @@ func _tick_building_power(pid: int, delta: float) -> void:
 			blackout[pid] = false
 			blackout_restore[pid] = 0.0
 			if pid == player_id:
-				notify("Power restored: your buildings are running again.", "note_building")
+				notify("Power restored: your buildings are back at full power.", "note_building")
 		return
 	if need <= 0.0:
 		return
@@ -1262,7 +1306,7 @@ func _physics_process(delta: float) -> void:
 	for pid in players:
 		# Upkeep is a per-minute figure (Defs.PER_MIN).
 		# Ships and constructs first, then buildings, from the same stock
-		# (spice covers either, 1:1). Buildings that can't be paid black out.
+		# (spice covers either, Defs.SPICE_COVER_RATIO per spice). Buildings that can't be paid black out.
 		pay_over_time(pid, {"energy": upkeep(pid) / Defs.PER_MIN}, delta)
 		_tick_building_power(pid, delta)
 		_tick_research(pid, delta)
@@ -1274,7 +1318,7 @@ func _physics_process(delta: float) -> void:
 		_was_empty[k] = empty
 	var bo := in_blackout(player_id)
 	if bo and not _was_blackout:
-		alert("BLACKOUT! Your buildings are offline. Deliver minerals to restart Power Plants.", "alert_energy", true)
+		alert("BLACKOUT! Your buildings are on low power (%d%%). Deliver minerals to restart Power Plants." % int(Defs.ENERGY_STARVED_FACTOR * 100.0), "alert_energy", true)
 	_was_blackout = bo
 	var starved := energy_starved(player_id)
 	if starved and not _was_starved:
@@ -1288,6 +1332,15 @@ func _physics_process(delta: float) -> void:
 				snap[k] = _rate_acc[pid].get(k, 0.0) / _rate_timer
 			rates[pid] = snap
 			_rate_acc[pid] = {}
+			if not _cover_hist.has(pid):
+				_cover_hist[pid] = {}
+			for k in SUBSTITUTABLE:
+				var ch: Array = _cover_hist[pid].get(k, [])
+				ch.append(float(_cover_acc.get(pid, {}).get(k, 0.0)) / _rate_timer)
+				if ch.size() > RATE_WINDOW:
+					ch.remove_at(0)
+				_cover_hist[pid][k] = ch
+			_cover_acc[pid] = {}
 			if not _rate_hist.has(pid):
 				_rate_hist[pid] = {}
 			for k in Defs.RESOURCES:
@@ -1296,7 +1349,26 @@ func _physics_process(delta: float) -> void:
 				if h.size() > RATE_WINDOW:
 					h.remove_at(0)
 				_rate_hist[pid][k] = h
+		_cover_alerts()
 		_rate_timer = 0.0
+
+## One alert per episode when spice starts covering a shortfall; an episode
+## ends once that resource has needed no cover for COVER_WINDOW seconds.
+func _cover_alerts() -> void:
+	var h: Dictionary = _cover_hist.get(player_id, {})
+	for k in SUBSTITUTABLE:
+		var arr: Array = h.get(k, [])
+		var last: Array = arr.slice(maxi(0, arr.size() - COVER_WINDOW))
+		var any := false
+		for v in last:
+			if v > 0.0001:
+				any = true
+		var now_cov: bool = not arr.is_empty() and arr[-1] > 0.0001
+		if now_cov and not _cover_alerted.get(k, false):
+			_cover_alerted[k] = true
+			alert("Spice is covering a %s shortfall!" % Defs.RESOURCE_NAMES[k].to_lower(), "alert_resource", true)
+		elif not any:
+			_cover_alerted[k] = false
 
 ## Average change per minute over the last RATE_WINDOW seconds. The HUD shows
 ## this as a rising or falling arrow, so a single delivery does not flip it.

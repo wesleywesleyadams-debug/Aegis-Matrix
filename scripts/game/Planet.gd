@@ -3,7 +3,7 @@ class_name Planet
 extends Node2D
 ## A world. Colonized planets hold population that eats food, grows, and
 ## produces food, energy and (some types) spice. Growth: 1 pop per minute
-## per pair of pop, while fed (spice covers food deficits 1:1), up to the
+## per pair of pop, while fed (spice covers food deficits, Defs.SPICE_COVER_RATIO per spice), up to the
 ## type's ceiling. Neutral planets are settled by a Colony Ship over
 ## COLONIZE_TIME seconds. Enemy planets are taken by bombarding them: a
 ## corvette shot kills 1 pop, and every shot scales with its damage (twice a
@@ -317,7 +317,7 @@ func _process(delta: float) -> void:
 	# Shield recharge once the bombardment has paused.
 	var ms := max_shield() if owner_id != 0 else 0.0
 	if shield > ms:
-		shield = ms # batteries went dark (Blackout) or were lost
+		shield = ms # batteries on low power (Blackout) or lost
 	if shield < ms and Game.now() - last_hit_time > Defs.SHIELD_REGEN_DELAY:
 		var gain := minf(ms - shield, ms * Defs.SHIELD_REGEN_PER_SEC * delta)
 		var paid := Game.instance.pay_over_time(owner_id, {"energy": gain * Defs.SHIELD_ENERGY_PER_POINT}, 1.0)
@@ -386,8 +386,8 @@ func max_shield() -> float:
 	if owner_id == 0:
 		return 0.0
 	# Each Defense Battery thickens the planetary shield.
-	# Unpowered in a Blackout: the batteries' shield and guns go dark.
-	var nb := 0 if Game.instance.in_blackout(owner_id) else count_building("battery")
+	# Low power in a Blackout: the batteries' shield bonus drops to 25%.
+	var nb := count_building("battery") * power_factor("battery")
 	return (PLANET_SHIELD + nb * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "shield") * Game.instance.mod(owner_id, "planet_shield")
 
 func is_alive() -> bool:
@@ -601,6 +601,17 @@ func free_fields() -> int:
 			n += 1
 	return n
 
+## This world's NET contribution per minute per resource: its buildings'
+## production minus its own continuous drains (food eaten, Power Plant fuel,
+## building energy upkeep - none is drawn during a Blackout). Construction
+## payments are one-off costs and not included.
+func net_per_min() -> Dictionary:
+	if owner_id == 0:
+		return {"food": 0.0, "energy": 0.0, "minerals": 0.0, "spice": 0.0}
+	var bu := 0.0 if Game.instance.in_blackout(owner_id) else energy_upkeep_per_min()
+	return {"food": food_made_per_min - food_eaten_per_min, "energy": energy_out - bu,
+		"minerals": minerals_out - fuel_per_min, "spice": spice_out}
+
 ## Per-tick building output and construction payments (called from _economy).
 func _run_buildings(dt: float) -> void:
 	var g := Game.instance
@@ -617,7 +628,7 @@ func _run_buildings(dt: float) -> void:
 		if b == "" or not operating[i]:
 			continue
 		for k in Defs.BUILDINGS[b]["output"]:
-			var v: float = Defs.BUILDINGS[b]["output"][k] * hands
+			var v: float = Defs.BUILDINGS[b]["output"][k] * hands * power_factor(b)
 			# Outputs are per minute (Defs.PER_MIN); this loop works per second.
 			if k == "food":
 				# How much a Farm grows depends on the soil it is built in.
@@ -693,24 +704,29 @@ func _run_buildings(dt: float) -> void:
 ## how much it produces is what the population decides.
 func pop_output_mult() -> float:
 	var ceiling := Defs.OUTPUT_POP_BONUS
-	# An unpowered Habitat still houses its pops (cap kept) but adds no
-	# output bonus during a Blackout.
-	var dark := owner_id != 0 and Game.instance.in_blackout(owner_id)
+	# Low-power buildings in a Blackout add only their power_factor share
+	# (Habitats draw no energy, so theirs is always whole).
 	for b in buildings:
-		if b != "" and not (dark and draws_power(b)):
-			ceiling += float(Defs.BUILDINGS[b].get("pop_bonus", 0.0))
+		if b != "":
+			ceiling += float(Defs.BUILDINGS[b].get("pop_bonus", 0.0)) * power_factor(b)
 	if owner_id != 0:
 		ceiling += Game.instance.mod(owner_id, "pop_bonus") - 1.0
 	return 1.0 + ceiling * (1.0 - exp(-pop / Defs.OUTPUT_POP_SCALE))
 
 ## Which buildings are producing. Everything built runs, except a Spice
 ## Extractor standing on an exhausted reserve.
-## In a Blackout (Game.blackout) every building that draws energy upkeep is
-## unpowered too; Power Plants (no upkeep) keep running on mineral fuel.
+## A Blackout does not stop them: see power_factor.
 func _staff() -> void:
-	var dark := owner_id != 0 and Game.instance.in_blackout(owner_id)
 	for i in fields:
-		operating[i] = buildings[i] != "" and not is_dry(i) and not is_paused(i) 			and not (dark and draws_power(buildings[i]))
+		operating[i] = buildings[i] != "" and not is_dry(i) and not is_paused(i)
+
+## Share of full strength a building of type `id` runs at: 1.0, or
+## Defs.ENERGY_STARVED_FACTOR (25%, the same as starved ships) for a
+## building that draws energy while its owner is in a Blackout (LOW POWER).
+func power_factor(id: String) -> float:
+	if owner_id != 0 and draws_power(id) and Game.instance.in_blackout(owner_id):
+		return Defs.ENERGY_STARVED_FACTOR
+	return 1.0
 
 ## A building switched off by its owner (Pause mining). Paused buildings
 ## produce nothing and draw no energy upkeep.
@@ -734,7 +750,7 @@ func energy_upkeep_per_min() -> float:
 			u += float(Defs.BUILDINGS[b].get("energy_upkeep", 0.0))
 	return u
 
-## Unpowered by the owner's Blackout (and has buildings that need power).
+## On LOW POWER from the owner's Blackout (has buildings that need power).
 func blacked_out() -> bool:
 	return owner_id != 0 and Game.instance.in_blackout(owner_id) and energy_upkeep_per_min() > 0.0
 
@@ -748,7 +764,7 @@ var _battery_cd: float = 0.0
 
 func _batteries_fire(delta: float) -> void:
 	var n := count_building("battery")
-	if n == 0 or owner_id == 0 or Game.instance.in_blackout(owner_id):
+	if n == 0 or owner_id == 0:
 		return
 	_battery_cd -= delta
 	if _battery_cd > 0.0:
@@ -765,6 +781,8 @@ func _batteries_fire(delta: float) -> void:
 			best = s
 	if best:
 		g.fire(self, best, Defs.BATTERY["weapon"], Defs.BATTERY["damage"] * n * g.mod(owner_id, "planet_damage"))
-		_battery_cd = Defs.BATTERY["cooldown"]
+		# Low power (Blackout): full damage per shot but 1/0.25 = 4x the
+		# reload, so 25% fire rate - the same as a starved ship's guns.
+		_battery_cd = Defs.BATTERY["cooldown"] / power_factor("battery")
 	else:
 		_battery_cd = 0.4

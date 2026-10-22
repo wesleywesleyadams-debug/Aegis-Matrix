@@ -613,19 +613,26 @@ func refresh() -> void:
 	elif planet.owner_id != 0:
 		# Population and what it multiplies output by, on one line.
 		s += "\n[hint=%s]%s %d / %d  (+%d/min)  ·  x%.2f output[/hint]" % [_hint("Population / cap (growth per minute). Pops multiply the output of every Farm, Power Plant, Mining Complex and Spice Extractor on this world: x%.2f here." % planet.pop_output_mult()), _ic("pop"), int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min), planet.pop_output_mult()]
-		s += "\n%s +%.0f/min, eaten %.0f/min" % [_ic("food"), planet.food_made_per_min, planet.food_eaten_per_min]
 		if planet.under_siege():
 			s += "\nUNDER BOMBARDMENT: %s, %d%% of pops left" % ["growth halted" if planet.growth_halted() else "shield holding", int(ceil(100.0 * planet.pop / maxf(planet.siege_start_pop, 1.0)))]
 		# Population is the whole reason to grow a world now: it multiplies
 		# what every building on it produces.
-		s += "\n%s +%.0f/min   %s +%.0f/min   %s +%.1f/min" % [_ic("energy"), planet.energy_out, _ic("minerals"), planet.minerals_out, _ic("spice"), planet.spice_out]
-		if planet.count_building("generator") > 0:
-			s += "\n%s Power Plant fuel: %.1f/min%s" % [_ic("minerals"), planet.fuel_per_min, "  (NO FUEL: plants stopped)" if planet.fuel_frac < 0.999 else ""]
-		var bu := planet.energy_upkeep_per_min()
-		if bu > 0.0:
-			s += "\n[hint=%s]%s Building upkeep: %.0f/min[/hint]" % [_hint("Flat energy upkeep of this world's finished, unpaused buildings (per minute: Farm 2, Habitat 1, Mining Complex 4, Defense Battery 3, Spice Extractor 5; Power Plants none). Not affected by the empire upkeep multiplier."), _ic("energy"), bu]
+		# NET per minute this world adds to (or takes from) the stockpiles:
+		# its buildings' output minus food eaten, Power Plant fuel and
+		# building upkeep (Planet.net_per_min). Breakdown in the hint.
+		var net := planet.net_per_min()
+		var nets := ""
+		for k in ["food", "energy", "minerals", "spice"]:
+			var v: float = net[k]
+			var c := "6fe07a" if v > 0.05 else ("ff6a5a" if v < -0.05 else "c3cde4")
+			nets += "%s [color=#%s]%s[/color]   " % [_ic(k), c, HUD._signed(v)]
+		var tip := "Net per minute from this world: what its buildings make minus what it uses.\nFood: grown %.1f, eaten %.1f\nEnergy: made %.1f, building upkeep %.1f%s (Farm 2, Mining Complex 4, Defense Battery 3, Spice Extractor 5; Habitats and Power Plants none)\nMinerals: dug %.1f, Power Plant fuel %.1f\nSpice: extracted %.1f\nConstruction costs are not included." % [
+			planet.food_made_per_min, planet.food_eaten_per_min, planet.energy_out, planet.energy_upkeep_per_min(), " (not drawn in a Blackout)" if planet.blacked_out() else "", planet.minerals_out, planet.fuel_per_min, planet.spice_out]
+		s += "\n[hint=%s]%s /min[/hint]" % [_hint(tip), nets.strip_edges()]
+		if planet.count_building("generator") > 0 and planet.fuel_frac < 0.999:
+			s += "\n[color=#ff6a5a]NO FUEL: Power Plants stopped (no minerals to burn)[/color]"
 		if planet.blacked_out():
-			s += "\n[color=#ff6a5a]BLACKOUT: buildings OFFLINE (no output, batteries down). Deliver minerals to restart Power Plants. Restoring power: %d s[/color]" % int(ceil(Game.instance.blackout_restore_left(planet.owner_id)))
+			s += "\n[color=#ff6a5a]BLACKOUT: buildings on LOW POWER (%d%% output, battery shield and fire rate). Deliver minerals to restart Power Plants. Restoring power: %d s[/color]" % [int(Defs.ENERGY_STARVED_FACTOR * 100.0), int(ceil(Game.instance.blackout_restore_left(planet.owner_id)))]
 		if planet.doom_timer >= 0.0:
 			s += "\nUNSTABLE: IMPLODES IN %d s (%d damage, %d px)" % [int(ceil(planet.doom_timer)), int(Defs.BLAST_DAMAGE * planet.blast_scale()), int(planet.blast_radius())]
 		elif planet.unstable():
@@ -655,12 +662,12 @@ func refresh() -> void:
 			# A finished building always runs; only an extractor whose reserve
 			# is gone goes dark.
 			var dry: bool = planet.is_dry(i) or planet.is_paused(i)
-			var offline: bool = not dry and Game.instance.in_blackout(planet.owner_id) and Planet.draws_power(built)
-			b.text = ("PAUSED" if built == "mine" else "DRY") if dry else ("OFFLINE" if offline else "")
-			b.modulate = Color(1, 1, 1, 0.4) if dry or offline else Color.WHITE
+			var offline: bool = not dry and planet.power_factor(built) < 1.0
+			b.text = ("PAUSED" if built == "mine" else "DRY") if dry else ("25%" if offline else "")
+			b.modulate = Color(1, 1, 1, 0.4) if dry else (Color(1, 0.7, 0.45) if offline else Color.WHITE)
 			(b.get_node("Art") as TextureRect).modulate = Color.WHITE
-			_progress_text(b, Color("ff6a5a") if offline else (Color("ffd46b") if dry else Color.WHITE), 13)
-			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], " (dry: the reserve is gone)" if planet.is_dry(i) else (" (OFFLINE: Blackout)" if offline else ""), Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
+			_progress_text(b, Color("ffa040") if offline else (Color("ffd46b") if dry else Color.WHITE), 13)
+			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], " (dry: the reserve is gone)" if planet.is_dry(i) else (" (LOW POWER: Blackout, 25%)" if offline else ""), Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
 		elif job != "":
 			var art := b.get_node("Art") as TextureRect
 			art.texture = Defs.tex("bld_" + job)

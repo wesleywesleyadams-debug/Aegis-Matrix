@@ -209,6 +209,13 @@ func _run(which: String) -> void:
 			await _finite_nebula()
 		"blackout":
 			await _blackout()
+		"spicecover":
+			await _spicecover()
+		"spicecover_verify":
+			await _secs(1.0)
+			log_("LOADED spice_cover_on(player)=%s dict=%s" % [str(game.spice_cover_on(game.player_id)), str(game.spice_cover)])
+			game.hud._update_top_bar()
+			log_("LOADED button text=%s" % hud._cover_btn.text)
 		"finite_save":
 			await _finite_save()
 		"finite_verify":
@@ -738,11 +745,11 @@ func _blackout() -> void:
 		if s.owner_id == pid and s.is_harvester():
 			s.order_stop()
 	log_("UPKEEP world %s fields %d: %s" % [hp.planet_name, hp.fields, str(hp.buildings.slice(0, 6))])
-	log_("UPKEEP all running: world %.1f/min, empire building %.1f/min (expect 15), ship upkeep %.2f/min, multiplier x%.2f" % [hp.energy_upkeep_per_min(), game.building_upkeep(pid), game.upkeep(pid), game.upkeep_multiplier(pid)])
+	log_("UPKEEP all running: world %.1f/min, empire building %.1f/min (expect 14: habitat now 0), ship upkeep %.2f/min, multiplier x%.2f" % [hp.energy_upkeep_per_min(), game.building_upkeep(pid), game.upkeep(pid), game.upkeep_multiplier(pid)])
 	hp.mining_paused = true
-	log_("UPKEEP mining paused: %.1f/min (expect 11)" % hp.energy_upkeep_per_min())
+	log_("UPKEEP mining paused: %.1f/min (expect 10)" % hp.energy_upkeep_per_min())
 	hp.order_build(6, "battery")
-	log_("UPKEEP + battery under construction: %.1f/min (expect 11), job=%s" % [hp.energy_upkeep_per_min(), hp.field_job(6)])
+	log_("UPKEEP + battery under construction: %.1f/min (expect 10), job=%s" % [hp.energy_upkeep_per_min(), hp.field_job(6)])
 	hp.cancel_build(6)
 	hp.mining_paused = false
 	await _frames(2)
@@ -751,6 +758,8 @@ func _blackout() -> void:
 	await _secs(1.5)
 	await shot("blackout_normal")
 	log_("PANEL normal: %s" % hud.planet_view.stats.replace("\n", " | ") if "planet_view" in hud else "")
+	_full = _outs(hp)
+	log_("FULL power outputs: %s" % str(_full))
 	# Measured drain: mining paused + no minerals (plants off), no spice.
 	hp.mining_paused = true
 	Engine.time_scale = 4.0
@@ -764,7 +773,7 @@ func _blackout() -> void:
 	await _secs(6.0)
 	var dt := Game.now() - t0
 	_drain_end = game.resources[pid]["energy"]
-	log_("PAID building upkeep %.3f over %.2fs = %.2f/min (expect 11.00); time_scale-check real ms %d" % [game.building_upkeep_paid.get(pid, 0.0) - bp0, dt, (game.building_upkeep_paid.get(pid, 0.0) - bp0) / dt * 60.0, Time.get_ticks_msec()])
+	log_("PAID building upkeep %.3f over %.2fs = %.2f/min (expect 10.00); time_scale-check real ms %d" % [game.building_upkeep_paid.get(pid, 0.0) - bp0, dt, (game.building_upkeep_paid.get(pid, 0.0) - bp0) / dt * 60.0, Time.get_ticks_msec()])
 	log_("DRAIN %.1fs: energy %.2f -> %.2f = %.2f/min; expected ships %.2f + buildings %.2f = %.2f/min (shield regen may add)" % [dt, e0, game.resources[pid]["energy"], (e0 - game.resources[pid]["energy"]) / dt * 60.0, game.upkeep(pid), game.building_upkeep(pid), game.upkeep(pid) + game.building_upkeep(pid)])
 	# Same window with the world's buildings removed: the difference is the
 	# building upkeep alone (other drains - shield regen etc. - cancel out).
@@ -778,7 +787,7 @@ func _blackout() -> void:
 	await _secs(6.0)
 	var dt1 := Game.now() - t1
 	var without: float = (e1 - game.resources[pid]["energy"]) / dt1 * 60.0
-	log_("DRAIN without buildings %.2f/min -> building share = %.2f/min (expect 11.00)" % [without, (e0 - _drain_end) / dt * 60.0 - without])
+	log_("DRAIN without buildings %.2f/min -> building share = %.2f/min (expect 10.00)" % [without, (e0 - _drain_end) / dt * 60.0 - without])
 	for i in hp.fields:
 		hp.buildings[i] = saved[i]
 	# Run dry -> Blackout.
@@ -790,6 +799,14 @@ func _blackout() -> void:
 	log_("BLACKOUT entered=%s at t=%.1f energy %.2f" % [str(game.in_blackout(pid)), Game.now(), game.resources[pid]["energy"]])
 	await _secs(4.0)
 	_bo_line(hp, "in blackout, no minerals")
+	hp.mining_paused = false
+	await _secs(1.0)
+	var lo := _outs(hp)
+	log_("LOW power outputs: %s" % str(lo))
+	for k in lo:
+		if float(_full.get(k, 0.0)) > 0.0:
+			log_("RATIO %s low/full = %.3f (expect 0.250 for farm/mine/extractor/battery shield bonus/battery fire rate; 1.000 for habitat output bonus)" % [k, float(lo[k]) / float(_full[k])])
+	log_("BLACKOUT upkeep drawn during blackout: paid stays %.3f (expect unchanged)" % float(game.building_upkeep_paid.get(pid, 0.0)))
 	Engine.time_scale = 1.0
 	await _secs(0.5)
 	game.selection_changed.emit()
@@ -819,6 +836,111 @@ func _blackout() -> void:
 	Engine.time_scale = 1.0
 
 var _drain_end := 0.0
+var _full := {}
+
+## Per-building outputs used by the Blackout ratio checks (pop held fixed).
+func _outs(hp: Planet) -> Dictionary:
+	hp.pop = 8000.0
+	var g := game
+	var hands := hp.pop_output_mult()
+	var ceiling_bonus := hands - (1.0 + Defs.OUTPUT_POP_BONUS * (1.0 - exp(-hp.pop / Defs.OUTPUT_POP_SCALE)))
+	return {
+		"farm_food": Defs.BUILDINGS["farm"]["output"]["food"] * hands * hp.power_factor("farm"),
+		"mine_minerals": Defs.BUILDINGS["mine"]["output"]["minerals"] * hands * hp.power_factor("mine"),
+		"extractor_spice": Defs.BUILDINGS["spice_extractor"]["output"]["spice"] * hands * hp.power_factor("spice_extractor"),
+		"battery_shield_bonus": hp.max_shield() / (g.mod(hp.owner_id, "shield") * g.mod(hp.owner_id, "planet_shield")) - Planet.PLANET_SHIELD,
+		"battery_fire_rate": Defs.BATTERY["cooldown"] / (Defs.BATTERY["cooldown"] / hp.power_factor("battery")),
+		"habitat_output_bonus": ceiling_bonus,
+		"live_food_made": hp.food_made_per_min, "live_minerals_out": hp.minerals_out, "live_spice_out": hp.spice_out}
+
+## Spice cover: warning + alert while spice covers a shortfall, the AUTO/OFF
+## toggle (clicked for real), consequences with cover OFF, net-per-minute
+## figures vs measured stockpile change, and a save carrying the toggle.
+func _spicecover() -> void:
+	var pid := game.player_id
+	var msgs: Array = []
+	game.message.connect(func(t, _c): msgs.append(t))
+	var hp: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == pid).reduce(func(a, b): return a if a.fields >= b.fields else b)
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid and p != hp:
+			p.buildings.fill("")
+	hp.buildings.fill("")
+	hp.buildings[0] = "generator"
+	hp.buildings[1] = "mine"
+	hp.pop = 9000.0
+	for sh in get_tree().get_nodes_in_group("ships"):
+		if sh.owner_id == pid and sh.is_harvester():
+			sh.order_stop()
+	game.center_on(hp.global_position)
+	game._focus_planet(hp)
+	game.selection_changed.emit()
+	# --- B1: food shortfall covered by spice (no farms).
+	game.resources[pid]["food"] = 0.0
+	game.resources[pid]["spice"] = 500.0
+	game.resources[pid]["energy"] = 500.0
+	game.resources[pid]["minerals"] = 500.0
+	await _secs(4.0)
+	log_("COVER food: covering food %.1f/min (eaten %.1f/min), total %.1f/min; spice %.1f" % [game.spice_covering(pid, "food"), hp.food_eaten_per_min, game.spice_covering(pid), game.resources[pid]["spice"]])
+	log_("COVER alerts so far: %s" % str(msgs.filter(func(m): return "Spice is covering" in m)))
+	log_("COVER label='%s' tooltip: %s" % [hud._res_labels["spice"].text, hud._res_boxes["spice"].tooltip_text.replace("\n", " | ")])
+	await shot("cover_warn")
+	await _secs(3.0)
+	log_("COVER alerts after 7 s (expect exactly 1 food alert): %s" % str(msgs.filter(func(m): return "Spice is covering" in m)))
+	# --- B2: click the toggle OFF.
+	var r := hud._cover_btn.get_global_rect()
+	await click(r.get_center())
+	await _frames(3)
+	log_("TOGGLE clicked: cover_on=%s button=%s" % [str(game.spice_cover_on(pid)), hud._cover_btn.text])
+	var sp0: float = game.resources[pid]["spice"]
+	await _secs(4.0)
+	log_("OFF food: spice %.2f -> %.2f (expect same), starving=%s growth %.0f/min, covering %.2f/min" % [sp0, game.resources[pid]["spice"], str(hp.starving), hp.growth_per_min, game.spice_covering(pid, "food")])
+	await shot("cover_off")
+	# Energy with cover OFF -> Blackout even with spice in stock.
+	game.resources[pid]["energy"] = 0.0
+	game.resources[pid]["minerals"] = 0.0
+	hp.buildings[2] = "battery"
+	await _secs(2.0)
+	log_("OFF energy: blackout=%s spice %.2f (expect still ~%.2f)" % [str(game.in_blackout(pid)), game.resources[pid]["spice"], sp0])
+	# Minerals with cover OFF -> construction stalls.
+	hp.order_build(3, "farm")
+	await _secs(2.0)
+	log_("OFF minerals: construction stalled=%s progress %.2f spice %.2f" % [str(hp.construction_stalled), float(hp.construction.get("progress", -1.0)), game.resources[pid]["spice"]])
+	hp.cancel_build(3)
+	# --- C: back ON, steady state, measure net.
+	await click(r.get_center())
+	await _frames(2)
+	log_("TOGGLE clicked again: cover_on=%s" % str(game.spice_cover_on(pid)))
+	hp.buildings[2] = ""
+	hp.buildings[3] = "farm"
+	hp.buildings[4] = "farm"
+	hp.buildings[5] = "farm"
+	for k in ["food", "energy", "minerals", "spice"]:
+		game.resources[pid][k] = 3000.0
+	hp.pop = hp.max_pop() # steady: no growth during the window
+	await _secs(62.0) # blackout clears, the 60 s rate window refills
+	var st := {}
+	for k in ["food", "energy", "minerals", "spice"]:
+		st[k] = game.resources[pid][k]
+	var t0 := Game.now()
+	await _secs(60.0)
+	var dt := Game.now() - t0
+	log_("NET spice hist tail: %s" % str(game._rate_hist[pid]["spice"].slice(-8)))
+	var net := hp.net_per_min()
+	for k in ["food", "energy", "minerals", "spice"]:
+		var measured: float = (game.resources[pid][k] - st[k]) / dt * 60.0
+		log_("NET %s: top bar %+.2f/min | measured stock change %+.2f/min over %.1fs | world net %+.2f/min | other drains (ships upkeep %.2f, research) diff %+.2f" % [k, game.avg_rate(pid, k), measured, dt, net[k], game.upkeep(pid), measured - net[k]])
+	log_("NET world breakdown: food %.1f-%.1f energy %.1f-%.1f(bldg) minerals %.1f-%.1f(fuel) spice %.1f; blackout=%s" % [hp.food_made_per_min, hp.food_eaten_per_min, hp.energy_out, hp.energy_upkeep_per_min(), hp.minerals_out, hp.fuel_per_min, hp.spice_out, str(game.in_blackout(pid))])
+	game.selection_changed.emit()
+	await _secs(1.0)
+	log_("PANEL: %s" % hud.planet_view.stats.replace("\n", " | ") if "planet_view" in hud else "")
+	log_("TOPBAR: %s" % " ".join(["food", "energy", "minerals", "spice"].map(func(k): return hud._res_labels[k].text)))
+	await shot("net_normal")
+	# Save with cover OFF.
+	game.set_spice_cover(pid, false)
+	var path := SaveGame.write(game, "cover test")
+	DirAccess.copy_absolute(path, "user://pt_cover.json")
+	DirAccess.remove_absolute(path)
+	log_("saved cover OFF -> %s" % ProjectSettings.globalize_path("user://pt_cover.json"))
 
 func _bo_line(hp: Planet, tag: String) -> void:
 	var pid := game.player_id

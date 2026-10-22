@@ -39,6 +39,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"blackout": game.blackout,
 		"blackout_time": game.blackout_time,
 		"blackout_restore": game.blackout_restore,
+		"spice_cover": game.spice_cover,
 		"mods_disabled": game.mods_disabled,
 		"ai": game.ai._state.duplicate(true),
 		"planets": {},
@@ -227,6 +228,9 @@ static func apply(game: Game, data: Dictionary) -> bool:
 	game.blackout_restore = {}
 	for pid_s in data.get("blackout_restore", {}):
 		game.blackout_restore[int(pid_s)] = float(data["blackout_restore"][pid_s])
+	game.spice_cover = {}
+	for pid_s in data.get("spice_cover", {}):
+		game.spice_cover[int(pid_s)] = bool(data["spice_cover"][pid_s])
 	for pid_s in data.get("researched", {}):
 		var done := {}
 		for t in data["researched"][pid_s]:

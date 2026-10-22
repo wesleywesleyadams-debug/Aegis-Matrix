@@ -5,7 +5,8 @@ class_name Defs
 ## Economy rules (see Game.pay_over_time): ship/starbase construction and
 ## research costs are paid gradually over their build/research time.
 ## Progress only advances while the resources are there; any shortfall in
-## food, minerals or energy is covered 1:1 from spice automatically.
+## food, minerals or energy is covered from spice automatically, SPICE_COVER_RATIO
+## of the missing resource per spice (Game.spice_cover can switch it off).
 
 const PIXEL := "res://assets/pixel/"
 
@@ -283,8 +284,11 @@ const UPKEEP_WEIGHT := {"starbase": 1.06, "carrier": 1.05, "cruiser": 1.04, "des
 ## (Frontier Outposts weigh as a cruiser, Warp Gates as a starbase.)
 const UPKEEP_WEIGHT_SMALL := 1.02
 ## With no energy in the stockpile, ships move and fire at this fraction of
-## normal speed, and starbases can't produce ships.
+## normal speed, and starbases can't produce ships. In a Blackout, buildings
+## that draw energy run at this same fraction (Planet.power_factor).
 const ENERGY_STARVED_FACTOR := 0.25
+## Spice cover: one spice pays this much of a food/minerals/energy shortfall.
+const SPICE_COVER_RATIO := 2.0
 
 ## Planet types. A planet's size = its number of fields, and its base
 ## population cap is size * POP_PER_SIZE (a size 19 world: 19 fields, 19k pops).
@@ -366,22 +370,23 @@ static func field_count(planet_diameter_px: float) -> int:
 ## only: planet kinds it can be built on (empty = any).
 const BUILDINGS := {
 	"farm": {"energy_upkeep": 2, "name": "Farm", "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
-		"desc": "+20 food/min at base on a fertile world (x0.15 to x1.0 by world type), more with population. Feeds 2,000 pops at full fertility (boosted by Hydroponics). Upkeep: 2 energy/min (none while paused; offline in a Blackout)."},
+		"desc": "+20 food/min at base on a fertile world (x0.15 to x1.0 by world type), more with population. Feeds 2,000 pops at full fertility (boosted by Hydroponics). Upkeep: 2 energy/min (25% output in a Blackout)."},
 	"generator": {"energy_upkeep": 0, "name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 20.0}, "only": [],
 		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world. Burns 1 mineral per 10 energy it makes (from the mineral stockpile only; with no minerals to burn it makes nothing). Needs no energy upkeep."},
 	"mine": {"energy_upkeep": 4, "name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],
-		"desc": "+20 minerals/min at base, more with population. Digs out the world's finite crust (300 per size): at 0 the world implodes. Pause mining in the world panel. Upkeep: 4 energy/min (none while paused; offline in a Blackout)."},
-	"habitat": {"energy_upkeep": 1, "name": "Habitat", "cost": {"minerals": 110}, "time": 40.0, "output": {}, "max_pop": 1500, "pop_bonus": 0.1, "only": [],
-		"desc": "+1,500 population cap, and population's output bonus on this world can rise 0.1x higher. Upkeep: 1 energy/min (none while paused; offline in a Blackout)."},
+		"desc": "+20 minerals/min at base, more with population. Digs out the world's finite crust (300 per size): at 0 the world implodes. Pause mining in the world panel. Upkeep: 4 energy/min (none while paused; 25% output in a Blackout)."},
+	"habitat": {"energy_upkeep": 0, "name": "Habitat", "cost": {"minerals": 110}, "time": 40.0, "output": {}, "max_pop": 1500, "pop_bonus": 0.1, "only": [],
+		"desc": "+1,500 population cap, and population's output bonus on this world can rise 0.1x higher. Needs no energy upkeep, and a Blackout does not affect it."},
 	"battery": {"energy_upkeep": 3, "name": "Defense Battery", "cost": {"minerals": 140}, "time": 45.0, "output": {}, "only": [],
-		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px). Upkeep: 3 energy/min (none while paused; offline in a Blackout)."},
+		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px). Upkeep: 3 energy/min (shield bonus and gun at 25% in a Blackout)."},
 	"spice_extractor": {"energy_upkeep": 5, "name": "Spice Extractor", "cost": {"minerals": 150}, "time": 60.0, "output": {"spice": 20.0}, "only": [],
-		"desc": "+20 spice/min at base, more with population. Drains the planet's spice reserve (large on barren worlds, tiny on lush ones). Upkeep: 5 energy/min (none while paused; offline in a Blackout)."},
+		"desc": "+20 spice/min at base, more with population. Drains the planet's spice reserve (large on barren worlds, tiny on lush ones). Upkeep: 5 energy/min (25% output in a Blackout)."},
 }
 ## energy_upkeep: flat energy per MINUTE each finished, unpaused building
 ## draws (never scaled by the empire upkeep multiplier). Power Plants draw
 ## none: they burn minerals instead. If the empire cannot pay it, a Blackout
-## (Game.blackout) takes every building that draws energy offline until the
+## (Game.blackout) puts every building that draws energy on LOW POWER
+## (ENERGY_STARVED_FACTOR of its output/shield/gun, no upkeep drawn) until the
 ## energy stockpile has stayed above 0 for BLACKOUT_RESUME_SECS (game time)
 ## in a row; any return to 0 restarts the count.
 const BLACKOUT_RESUME_SECS := 5.0
