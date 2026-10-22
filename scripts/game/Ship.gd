@@ -376,6 +376,7 @@ func _fire_turrets(delta: float) -> void:
 		var shot: float = dmg * float(weapon_mod.get("dmg", 1.0))
 		if pd > 0.0 and tgt is Drone:
 			shot *= PD_DRONE_MULT
+		dbg_shots += 1
 		for k in per:
 			if randf() < acc or wpn == "missile":   # missiles never miss
 				for j in n_proj:
@@ -1078,6 +1079,8 @@ func cargo_cap() -> int:
 
 ## Dev tests (SL_ENGAGE_TEST): hits taken and raw damage.
 var dbg_hits := 0
+## Volleys fired (each turret / fixed-gun salvo counts once).
+var dbg_shots := 0
 var dbg_dmg := 0.0
 
 func take_damage(amount: float, from: SpaceEntity = null, profile: Dictionary = {}) -> void:
@@ -1557,6 +1560,7 @@ func _physics_process(delta: float) -> void:
 					acc = 1.0
 				var wpn: String = weapon_mod.get("weapon", def["weapon"])
 				dmg *= float(weapon_mod.get("dmg", 1.0))
+				dbg_shots += 1
 				for g in int(def.get("guns", 1)):
 					if randf() >= acc:
 						continue
@@ -1613,11 +1617,7 @@ func _engage_move(d: float) -> Vector2:
 	var tv: Vector2 = target.get("velocity") if target.get("velocity") is Vector2 else Vector2.ZERO
 	if engagement == Engage.AGGRESSIVE:
 		_kiting = false
-		if d > rng * ENGAGE_CLOSE:
-			# Close in, at full speed until near, and match the target's run.
-			return to.normalized() * max_speed() * clampf((d - rng * ENGAGE_CLOSE) / 40.0, 0.35, 1.0) + tv
-		# On it: keep pace with it.
-		return tv
+		return _aggressive_move(d, to, tv, rng)
 	# Defensive.
 	var now := Game.now()
 	if d < rng * ENGAGE_KITE and not _kiting and now >= _kite_pause_until:
@@ -1637,6 +1637,46 @@ func _engage_move(d: float) -> Vector2:
 	if d > rng * ENGAGE_FAR + 10.0:
 		return _arrive(target.global_position, 1.0, rng * ENGAGE_FAR)
 	return Vector2.ZERO
+
+## Aggressive: fly to a station ENGAGE_CLOSE of range from the target, on our
+## side of it and (when it is running) swung round toward its tail, so a
+## forward-firing hull that matches its run ends up flying the way its nose
+## points - at the target. The target's own velocity is fed forward (we keep
+## pace with it) and the closing speed is capped by what the hull can brake
+## from, so it settles on the station instead of overshooting it. Inside the
+## station (but not on top of it) it only keeps pace: no backing off.
+func _aggressive_move(d: float, to: Vector2, tv: Vector2, rng: float) -> Vector2:
+	var speed := max_speed()
+	var stand := rng * ENGAGE_CLOSE
+	var away := -to / d if d > 0.5 else Vector2.from_angle(rotation + PI)
+	# Keep pace with the target, but never run from it: of a target coming
+	# at us, only the sideways part of its run is matched (we hold, it comes).
+	var ff := tv - away * maxf(0.0, tv.dot(away))
+	var dir := away
+	var ts := tv.length()
+	# A target running from us, less so one crossing, not one coming at us
+	# (two Aggressive ships would chase each other's tails round in a ring).
+	var run := clampf(0.5 - tv.dot(away) / ts, 0.0, 1.0) if ts > 5.0 else 0.0
+	if run > 0.0:
+		var w := clampf(ts / (speed * 0.3), 0.0, 1.0) * 0.8 * run
+		var blend := away - tv / ts * w
+		if blend.length() > 0.1:
+			dir = blend.normalized()
+	var err := target.global_position + dir * stand - global_position
+	if d < stand:
+		# Already close: no backing off, easing in only right on top of it
+		# (fading, so the hull does not hunt about a threshold).
+		var out := err.dot(away)
+		if out > 0.0:
+			err -= away * out * smoothstep(rng * 0.15, rng * 0.3, d)
+	var e := err.length()
+	if e < 4.0:
+		return ff
+	# Closing speed the hull can still brake from (half its acceleration, to
+	# spare some for turning), and gentle near the station so it does not hunt.
+	var brake := maxf(speed, base_speed()) * 2.2 * 0.5
+	var close := minf(speed, minf(sqrt(2.0 * brake * e), e * 2.0))
+	return ff + err / e * close
 
 ## Evasive: the dodge velocity this tick, or zero. One dodge at a time,
 ## a short reaction delay on a new threat, and a committed direction until

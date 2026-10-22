@@ -4458,6 +4458,10 @@ func _engage_test() -> void:
 	for x in [s, e]:
 		x.max_hp *= 50.0; x.hp = x.max_hp; x.max_armor *= 50.0; x.armor = x.max_armor; x.max_shield *= 50.0; x.shield = x.max_shield
 	# SL_ET_ANCHOR: the enemy cannot move (its guns and beams still work).
+	# SL_ET_ESPEED: scales the enemy's top speed (a slower runner to chase).
+	if OS.get_environment("SL_ET_ESPEED") != "":
+		e.def = e.def.duplicate()
+		e.def["speed"] = float(e.def["speed"]) * float(OS.get_environment("SL_ET_ESPEED"))
 	if OS.get_environment("SL_ET_ANCHOR") != "":
 		e.def = e.def.duplicate()
 		e.def["speed"] = 0.0
@@ -4474,6 +4478,10 @@ func _engage_test() -> void:
 		s.order_attack(e)
 	match scen:
 		"flee": e.order_move(e.global_position + Vector2(500, -350))
+		# "weave": the enemy laps a 400 px circle round the arena center
+		# (waypoints 45 deg apart) for SL_ET_RUN s - a target that keeps moving
+		# and turning.
+		"weave": e.order_move(Vector2.from_angle(-PI / 4.0) * 400.0)
 		"chase":
 			e.set_engagement(Ship.Engage.AGGRESSIVE)
 			e.order_attack(s)
@@ -4515,6 +4523,8 @@ func _engage_test() -> void:
 			e.velocity = Vector2.ZERO
 			e.set_physics_process(false)
 			print("ET enemy stops at t=%.2f" % (now() - t0))
+		if scen == "weave" and not stopped and (e.state != Ship.State.MOVE or e.global_position.distance_to(e.move_goal) < 60.0):
+			e.order_move(Vector2.from_angle(e.global_position.angle() - PI / 4.0) * 400.0)
 		var turn := angle_difference(last_head, s.rotation)
 		# Heading jitter: the turn direction flipping between samples while turning.
 		if absf(turn) > 0.05 and absf(last_turn) > 0.05 and signf(turn) != signf(last_turn):
@@ -4524,10 +4534,10 @@ func _engage_test() -> void:
 		last_head = s.rotation
 		var d := s.global_position.distance_to(e.global_position)
 		var fw := Vector2.from_angle(s.rotation)
-		print("ET t=%.2f e=(%.0f,%.0f) s=(%.0f,%.0f) d=%.0f d/R=%.2f head=%.0f tgtbrg=%.0f vf=%.0f vl=%.0f spd=%.0f kite=%s dodge=%s hits=%d dmg=%.0f st=%d anc=%.0f leash=%.0f ehits=%d" % [now() - t0, e.global_position.x, e.global_position.y, s.global_position.x, s.global_position.y, d, d / s.weapon_range(),
+		print("ET t=%.2f e=(%.0f,%.0f) s=(%.0f,%.0f) d=%.0f d/R=%.2f head=%.0f tgtbrg=%.0f vf=%.0f vl=%.0f spd=%.0f kite=%s dodge=%s hits=%d dmg=%.0f st=%d anc=%.0f leash=%.0f ehits=%d shots=%d ahead=%d" % [now() - t0, e.global_position.x, e.global_position.y, s.global_position.x, s.global_position.y, d, d / s.weapon_range(),
 			rad_to_deg(wrapf(s.rotation, -PI, PI)), rad_to_deg((e.global_position - s.global_position).angle()), s.velocity.dot(fw), s.velocity.dot(fw.orthogonal()), s.actual_speed,
-			s._kiting, now() < s._dodge_until, s.dbg_hits, s.dbg_dmg, s.state, s.global_position.distance_to(anchor0), s.weapon_range() * Ship.STANCE_LEASH, e.dbg_hits])
-	print("ET_DONE %s scen=%s techs=%s enemy=%s hits=%d dmg=%.0f flips=%d ehits=%d edmg=%.0f" % [mode, scen, OS.get_environment("SL_ET_TECHS"), ":".join(en), s.dbg_hits, s.dbg_dmg, flips, e.dbg_hits if is_instance_valid(e) else -1, e.dbg_dmg if is_instance_valid(e) else -1.0])
+			s._kiting, now() < s._dodge_until, s.dbg_hits, s.dbg_dmg, s.state, s.global_position.distance_to(anchor0), s.weapon_range() * Ship.STANCE_LEASH, e.dbg_hits, s.dbg_shots, 1 if e.velocity.length() > 5.0 and (s.global_position - e.global_position).dot(e.velocity) > 0.0 else 0])
+	print("ET_DONE %s scen=%s techs=%s enemy=%s hits=%d dmg=%.0f flips=%d ehits=%d edmg=%.0f shots=%d" % [mode, scen, OS.get_environment("SL_ET_TECHS"), ":".join(en), s.dbg_hits, s.dbg_dmg, flips, e.dbg_hits if is_instance_valid(e) else -1, e.dbg_dmg if is_instance_valid(e) else -1.0, s.dbg_shots])
 	get_tree().quit()
 
 ## Dev duel (SL_DUEL): two fleets of the same mineral cost, side 1 left and
