@@ -201,7 +201,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				s.order_move(base.global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
 			_flog(pid, "skimmer pulled off unstable %s" % mt.planet_name)
 	for s in skimmers:
-		if neb_spot != Vector2.INF and on_neb == 0 and res["spice"] < 150.0 and not (s.mine_target is NebulaPocket):
+		if neb_spot != Vector2.INF and on_neb == 0 and _spice_short(pid, game) and not (s.mine_target is NebulaPocket):
 			s.order_mine(game.nebula_pocket_at(neb_spot))
 			on_neb += 1
 		elif s.state == Ship.State.IDLE:
@@ -216,7 +216,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		if m.state == Ship.State.IDLE:
 			# Spice gates colonies and bigger hulls: keep up to two miners on it
 			# while it's short.
-			var want := "spice" if res["spice"] < 150.0 and on_spice < 2 else "minerals"
+			var want := "spice" if _spice_short(pid, game) and on_spice < 2 else "minerals"
 			var rock := game.nearest_asteroid(m.global_position, 1600.0, want, v)
 			if rock == null:
 				rock = game.nearest_asteroid(m.global_position, 1600.0, "minerals", v)
@@ -231,7 +231,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# Miners rarely go idle (a rock lasts a long time), so the idle check alone
 	# left every miner on minerals while spice sat at zero. While spice is
 	# short, move one busy mineral miner a tick onto a known spice rock.
-	if res["spice"] < 150.0 and on_spice < 2:
+	if _spice_short(pid, game) and on_spice < 2:
 		var rock := game.nearest_asteroid(base.global_position, 1600.0, "spice", v)
 		if rock:
 			for m in miners:
@@ -286,7 +286,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				pick = "generator"
 		# Spice short: an Extractor on a world with a real reserve, even while
 		# food dips, as long as the larder has some slack.
-		if (food_rate > 0.01 or res["food"] > 300.0) and res["spice"] < 150.0 and p.spice_reserve > 200.0 and p.count_building("spice_extractor") == 0:
+		if (food_rate > 0.01 or res["food"] > 300.0) and _spice_short(pid, game) and p.spice_reserve > 200.0 and p.count_building("spice_extractor") == 0:
 			pick = "spice_extractor"
 		if pick == "farm" and float(p.type_def().get("fertility", 1.0)) < best_soil * 0.6:
 			pick = "generator"
@@ -1465,6 +1465,13 @@ func _toggle_mining(pid: int, st: Dictionary, game: Game) -> void:
 		worlds[0].mining_paused = true
 		_flog(pid, "pause mining on %s (mineral glut: spare %d; crust %d kept)" % [worlds[0].planet_name, int(spare), int(worlds[0].mineral_reserve)])
 
+## Spice pays for all research: worth more harvesters, Extractors and
+## skimming while the stock is under SPICE_LOW or income is thin.
+const SPICE_LOW := 400.0
+const SPICE_INCOME_MIN := 40.0
+func _spice_short(pid: int, game: Game) -> bool:
+	return float(game.resources[pid]["spice"]) < SPICE_LOW or game.rates[pid].get("spice", 0.0) * Defs.PER_MIN < SPICE_INCOME_MIN
+
 ## Energy per minute this side's Power Plants are making now.
 func _plant_income(pid: int, game: Game) -> float:
 	var t := 0.0
@@ -1476,11 +1483,12 @@ func _plant_income(pid: int, game: Game) -> float:
 ## Energy per minute the side needs: upkeep plus research (the running
 ## project's rate, or a typical one) plus a little for shields.
 func _energy_need(pid: int, game: Game) -> float:
-	var r := 150.0
+	# Research costs spice now; any energy a project still costs counts.
+	var r := 0.0
 	var cur: Dictionary = game.research[pid]
 	if not cur.is_empty():
 		var t: Dictionary = Defs.TECHS[cur["id"]]
-		r = maxf(r, float(t["cost"].get("energy", 0.0)) / float(t["time"]) * Defs.PER_MIN)
+		r = float(t["cost"].get("energy", 0.0)) / float(t["time"]) * Defs.PER_MIN
 	# Everything else that draws energy (shield regen, and any building
 	# upkeep the rules charge) shows in the measured flow: what the plants
 	# make minus the net rate is what is being spent.
