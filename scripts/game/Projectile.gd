@@ -35,7 +35,21 @@ var trail_on := false
 var torp_wake := false
 var _trail: PackedVector2Array = []
 
-func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float = 0.0) -> void:
+## Damage this shot has booked against its target in Game's in-flight
+## registry (taken back off exactly once: hit, expiry or free).
+var _booked := 0.0
+var _booked_tid := 0
+
+func _unbook() -> void:
+	if _booked > 0.0 and Game.instance:
+		Game.instance.inflight_sub(owner_pid, _booked_tid, _booked)
+	_booked = 0.0
+
+func _exit_tree() -> void:
+	_unbook()
+
+func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float = 0.0, origin: Vector2 = Vector2.INF) -> void:
+	var src: Vector2 = from.global_position if origin == Vector2.INF else origin
 	shooter = from
 	target = to
 	damage = dmg
@@ -66,7 +80,7 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	# Kinetic Repeater slugs: fast and small.
 	speed = (110.0 if weak_lock else (150.0 if weapon == "missile" else 85.0)) if homing else {"kinetic": 320.0, "bomblet": 150.0, "flak": 240.0, "rail": 900.0}.get(weapon, 210.0)
 	# Misses expire just past weapon range instead of crossing the map.
-	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
+	var reach: float = src.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
 	texture = Defs.tex("bolt_" + {"kinetic": "laser", "flak": "laser", "rail": "laser", "proton": "torpedo", "missile": "torpedo", "bomblet": "torpedo"}.get(weapon, weapon))
 	# Bolt art is drawn at Defs.ART_SCALE like the rest of the sprites.
@@ -98,14 +112,14 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 					modulate = Defs.VARIANTS["disruptor"]["color"].lightened(0.1)
 				else:
 					modulate = SLIP_SHOT
-	global_position = from.global_position
+	global_position = src
 	# Target Prediction: aim where a moving target will be when the shot gets
 	# there; without it, at where it is now. Guided shots steer for
 	# themselves and launch straight at the target: led far ahead, a slow
 	# torpedo would start beyond its lock cone and fly off the wrong way.
 	var lead := to.global_position
 	if not homing and Game.instance.has_tech(owner_pid, "target_prediction") and to.get("velocity") is Vector2:
-		lead += to.get("velocity") * (from.global_position.distance_to(to.global_position) / speed)
+		lead += to.get("velocity") * (src.distance_to(to.global_position) / speed)
 	_vel = (lead - global_position).normalized().rotated(spread) * speed
 	# Evasive warships start jinking when fast rounds come at them.
 	if jink_at != null:
@@ -114,7 +128,13 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	if DuelStats.on:
 		DuelStats.launched(self, from, to)
 	if free_flight:
-		life = from.global_position.distance_to(to.global_position) * 1.3 / speed
+		life = src.distance_to(to.global_position) * 1.3 / speed
+	# Book the shot against its target so other guns of this side can see it
+	# is already covered (Game.is_doomed). Area shots are left out.
+	elif splash <= 0.0:
+		_booked = damage * Game.vs_mult(vs_class, to)
+		_booked_tid = to.get_instance_id()
+		Game.instance.inflight_add(owner_pid, to, _booked)
 
 func _physics_process(delta: float) -> void:
 	if trail_on:
@@ -124,6 +144,7 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 	life -= delta
 	if life <= 0.0:
+		_unbook()
 		if DuelStats.on:
 			DuelStats.expired(self, is_instance_valid(target) and target.is_alive())
 		queue_free()
@@ -178,6 +199,7 @@ func _physics_process(delta: float) -> void:
 			hit *= Game.vs_mult(vs_class, target)
 			if DuelStats.on:
 				DuelStats.hit(self, hit, target.hp + target.armor + target.shield)
+			_unbook()
 			target.take_damage(hit, shooter if is_instance_valid(shooter) and shooter is SpaceEntity else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)

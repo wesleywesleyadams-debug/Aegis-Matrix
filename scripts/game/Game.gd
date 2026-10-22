@@ -1420,7 +1420,12 @@ func sees(pid: int, e: Node2D) -> bool:
 	var v: Vision = visions.get(pid)
 	return v == null or v.can_see(e)
 
-func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
+## `avoid_doomed`: pass over enemies this side already has enough shots in
+## the air to kill (is_doomed), unless every one in reach is.
+func nearest_enemy(from: SpaceEntity, max_dist: float, avoid_doomed: bool = false) -> SpaceEntity:
+	if avoid_doomed:
+		var c := enemies_near(from, max_dist, 1, Vector2.INF, true)
+		return c[0] if not c.is_empty() else null
 	# Walks the coarse grid directly (no temporary arrays); compares squared
 	# distances until a candidate is close enough to matter.
 	var best: SpaceEntity = null
@@ -1456,7 +1461,8 @@ func nearest_enemy(from: SpaceEntity, max_dist: float) -> SpaceEntity:
 
 ## Up to `count` enemies of `from` within `max_dist`, nearest first, scored
 ## like nearest_enemy (warships before civilian hulls at similar range).
-func enemies_near(from: SpaceEntity, max_dist: float, count: int, around: Vector2 = Vector2.INF) -> Array:
+## `avoid_doomed`: doomed enemies (is_doomed) sort after all the others.
+func enemies_near(from: SpaceEntity, max_dist: float, count: int, around: Vector2 = Vector2.INF, avoid_doomed: bool = false) -> Array:
 	var found: Array = []   # [score, entity]
 	var fp := from.global_position if around == Vector2.INF else around
 	var pid := from.owner_id
@@ -1480,6 +1486,10 @@ func enemies_near(from: SpaceEntity, max_dist: float, count: int, around: Vector
 			var d2: float = fp.distance_to(sb.global_position) - sb.radius
 			if d2 <= max_dist:
 				found.append([d2, sb])
+	if avoid_doomed:
+		for f in found:
+			if is_doomed(pid, f[1]):
+				f[0] += 100000.0
 	found.sort_custom(func(a, b): return a[0] < b[0])
 	return found.slice(0, count).map(func(f): return f[1])
 
@@ -1622,12 +1632,56 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 		notify("Starbase construction started.", "note_starbase", pos)
 	return sb
 
-func fire(from: Node2D, to: Node2D, weapon: String, damage: float, spread: float = 0.0) -> void:
+## `origin`: where the shot leaves (a turret's muzzle, a corvette's nose);
+## the shooter's centre when left out.
+func fire(from: Node2D, to: Node2D, weapon: String, damage: float, spread: float = 0.0, origin: Vector2 = Vector2.INF) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
-	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"), spread)
+	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"), spread, origin)
 	if not sim_mode:
-		sfx.play_at("laser" if weapon in ["laser", "kinetic", "flak"] else "torpedo", from.global_position, -8.0)   # proton / missile / bomblet: torpedo sound
+		sfx.play_at("laser" if weapon in ["laser", "kinetic", "flak"] else "torpedo", p.global_position, -8.0)
+
+# ------------------------------------------------- overkill-aware targeting
+## Damage already flying at each target, per firing side:
+## pid -> {target instance id: damage en route}. Projectiles add on launch
+## and take it back off when they hit, expire or are freed.
+var _inflight := {}
+
+func inflight_add(pid: int, t: Node2D, amount: float) -> void:
+	var d: Dictionary = _inflight.get(pid, {})
+	if d.is_empty():
+		_inflight[pid] = d
+	var k := t.get_instance_id()
+	d[k] = float(d.get(k, 0.0)) + amount
+
+func inflight_sub(pid: int, tid: int, amount: float) -> void:
+	var d: Dictionary = _inflight.get(pid, {})
+	if not d.has(tid):
+		return
+	var v: float = float(d[tid]) - amount
+	if v <= 0.01:
+		d.erase(tid)
+	else:
+		d[tid] = v
+
+## True when the shots `pid` already has in the air at `t` add up to at least
+## what is left of it (hull + armor + shields): more guns on it are wasted.
+func is_doomed(pid: int, t: Node) -> bool:
+	if t == null or not is_instance_valid(t):
+		return false
+	var d: Dictionary = _inflight.get(pid, {})
+	if d.is_empty():
+		return false
+	var inc: float = float(d.get(t.get_instance_id(), 0.0))
+	if inc <= 0.0:
+		return false
+	var h = t.get("hp")
+	if h == null:
+		return false
+	var a = t.get("armor")
+	var sh = t.get("shield")
+	var rem: float = float(h) + (float(a) if a != null else 0.0) + (float(sh) if sh != null else 0.0)
+	return inc >= rem   # proton / missile / bomblet: torpedo sound
 
 ## Arc Emitters: the target takes chain[0] of the damage at once, then the
 ## arc jumps to the nearest other enemies within `jump` of it for the rest.

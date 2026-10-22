@@ -27,7 +27,7 @@ func _operate(delta: float) -> void:
 	_cooldown -= delta * g.ship_speed_factor(owner_id)
 	if _cooldown > 0.0:
 		return
-	var e := g.nearest_enemy(self, weapon_range() + radius)
+	var e := g.nearest_enemy(self, weapon_range() + radius, true)
 	if e == null:
 		return
 	_cooldown = def()["cooldown"]
