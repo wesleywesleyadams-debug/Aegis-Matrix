@@ -197,8 +197,8 @@ const STARBASE := {
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 1250, "spice": 75}, "build_time": 40.0,
 	"upkeep": 3.3,
-	# Station reactors and ore refineries.
-	"energy_per_sec": 0.22, "minerals_per_sec": 0.5,
+	# Station reactors (no refinery: minerals come only from harvesters and worlds).
+	"energy_per_sec": 0.22,
 }
 
 ## Mining Station: a cheap, lightly armed drop-off built on site by a

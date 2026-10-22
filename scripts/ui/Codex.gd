@@ -476,7 +476,7 @@ func _page_overview() -> void:
 	_heading("Resources", EDGE_LIT)
 	_table(["Resource", "Comes from", "Pays for"], [
 		[["Food", Color("8fe060")], "Farms only", "%.2f per pop per minute (spice covers a shortfall); an unfed world shrinks as fast as it would grow" % Defs.FOOD_PER_POP_PER_MIN],
-		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes, starbase refineries", "Ships, buildings, starbases"],
+		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes", "Ships, buildings, starbases"],
 		[["Energy", Color("ffd84a")], "Power plants, starbase reactors", "Research, fleet and starbase upkeep, shield regeneration"],
 		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1"],
 	])
@@ -1162,7 +1162,7 @@ func _page_constructs() -> void:
 		crows.append([c["name"], Defs.cost_text(c["cost"]), "%ds" % int(c["build_time"]), "%d / %d / %d" % [int(c["shield"]), int(c["armor"]), int(c["hp"])], gun, "%.1f/min" % float(c["upkeep"])])
 	_table(["Construct", "Cost", "Build", "Shield / armor / hull", "Gun", "Upkeep"], crows)
 	_heading("Starbase")
-	_para("Your production station: it builds every ship, takes in harvesters' cargo, and defends itself. Its reactors and refineries add %d energy and %d minerals a minute. Lose every starbase and Constructor and you lose the match. Starbases cost the most upkeep of anything (x%.2f to the empire multiplier each)." % [int(round(Defs.STARBASE["energy_per_sec"] * 60.0)), int(round(Defs.STARBASE["minerals_per_sec"] * 60.0)), Defs.UPKEEP_WEIGHT["starbase"]])
+	_para("Your production station: it builds every ship, takes in harvesters' cargo, and defends itself. Its reactors add %d energy a minute. Lose every starbase and Constructor and you lose the match. Starbases cost the most upkeep of anything (x%.2f to the empire multiplier each)." % [int(round(Defs.STARBASE["energy_per_sec"] * 60.0)), Defs.UPKEEP_WEIGHT["starbase"]])
 	_heading("Mining Station")
 	_para("A forward drop-off: harvesters unload here instead of flying home, so a station beside a far belt or nebula shortens every trip. It has a light gun for raiders.")
 	_heading("Frontier Outpost")

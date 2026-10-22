@@ -2,7 +2,7 @@
 class_name Starbase
 extends SpaceEntity
 ## Station: builds ships, receives mined cargo, defends itself, and runs
-## reactors/refineries for a little energy and minerals. Ship costs are
+## reactors for a little energy. Ship costs are
 ## paid over the build time; a stalled build waits for resources (spice
 ## fills gaps automatically). A Constructor founds a new starbase as an
 ## under_construction site that is likewise paid over time.
@@ -120,7 +120,6 @@ func _physics_process(delta: float) -> void:
 	_regen_shields(delta)
 	g.add_resources(owner_id, {
 		"energy": Defs.STARBASE["energy_per_sec"] * g.mod(owner_id, "energy") * delta,
-		"minerals": Defs.STARBASE["minerals_per_sec"] * delta,
 	})
 
 	build_stalled = false
