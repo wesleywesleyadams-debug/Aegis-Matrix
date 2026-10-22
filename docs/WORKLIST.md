@@ -16,6 +16,7 @@ code or art. Last updated 2026-10-21.
 - **[balance] Plasma has no matchup of its own** (left as-is by choice, 2026-10-20): best used against cruiser/carrier-heavy fleets of uncertain mix.
 
 ## AI
+- **[ai] Queued after the economy diagnostic (user-approved):** (1) economy planner for the finite economy (fuel, claim deposits before depletion, protect harvesters, pause/rebuild mining), (2) counter-picking classes/Mods/variants from what the AI has seen, using data/matchups.json, (3) finishing games: target by cost-to-kill, coordinated siege waves, sustained pressure. Verify with same-seed sims.
 
 - **[missing] The neural AI is blind to Mods and drones.** It can't toggle Mods, and drones aren't in the `entities` group it reads. `NeuralCommander.gd` research groups lack Mods, the Targeting row and Quantum Lenses; it also treats Spice Navigation as a speed tech (now nebula radiation resistance). Needs a model update and a version bump.
 - **[partial] Neural AI and forts** (scripted AI done 2026-10-21: researches Outposts/Warp Gates, builds outposts on exposed/front-line holdings, one gate near home (two late), garrisons idle warships and warps them at winnable seen targets or to its own worlds under attack; log with SL_AI_FORTS_LOG=1). Still open: the neural AI (RLAgent.gd) labels forts as "depot" in its observation (a new entity kind changes the observation width and breaks trained checkpoints) and has no garrison/warp verbs.
