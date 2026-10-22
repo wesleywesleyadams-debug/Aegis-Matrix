@@ -118,7 +118,7 @@ const BASE_SHIPS := {
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
-		"hp": 121.0, "armor": 162.0, "shield": 47.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
+		"hp": 113.0, "armor": 151.0, "shield": 44.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
 		"cost": {"minerals": 150}, "build_time": 38.0, "upkeep": 1.7,
 		"weapon": "laser", "damage": 12.5, "cooldown": 0.97, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
 		# Two light turrets on the prongs: they track a circling corvette
@@ -128,7 +128,7 @@ const BASE_SHIPS := {
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 233.0, "armor": 117.0, "shield": 350.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
+		"hp": 262.0, "armor": 131.0, "shield": 392.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 300}, "build_time": 80.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 12.5, "cooldown": 0.97, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
@@ -139,7 +139,7 @@ const BASE_SHIPS := {
 		# About twice a cruiser in every dimension: slower across the map and
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one.
-		"hp": 588.0, "armor": 881.0, "shield": 881.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
+		"hp": 608.0, "armor": 911.0, "shield": 911.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 600}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": 12.5, "cooldown": 0.97, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
