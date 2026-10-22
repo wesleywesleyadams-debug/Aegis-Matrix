@@ -798,7 +798,7 @@ const MOD_WEAPONS := {
 	#   pd     - Point-Defense: radius in which each turret shoots down enemy
 	#            missiles, torpedoes and bomblets before firing at ships
 	#   drones - Interceptor Drones: [count, reach from the carrier]
-	#   tractor- Tractor Beams: [pull/s, reach x weapon range, damage at full reach, damage once pulled in to 60% of range]
+	#   tractor- Tractor Beams: [pull/s, reach x weapon range, damage at full reach, damage once pulled in to 52% of range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
 	"mod_flak_cannons": {"dmg": 0.485, "cd": 1.030, "weapon": "flak"},
