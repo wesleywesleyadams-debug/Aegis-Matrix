@@ -345,6 +345,8 @@ func _fire_turrets(delta: float) -> void:
 				_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 				continue
 		if tgt == null:
+			if DuelStats.on:
+				DuelStats.tick(self, "none")
 			continue
 		taken[tgt] = true
 		# Traverse this turret toward its own target.
@@ -366,6 +368,8 @@ func _fire_turrets(delta: float) -> void:
 		if weapon_mod.has("tractor"):
 			continue
 		if _t_cd[i] > 0.0 or not on_target:
+			if DuelStats.on:
+				DuelStats.tick(self, "reload" if _t_cd[i] > 0.0 else "slew")
 			continue
 		var wpn: String = weapon_mod.get("weapon", def["weapon"])
 		var n_proj: int = int(weapon_mod.get("count", 1))
@@ -377,11 +381,16 @@ func _fire_turrets(delta: float) -> void:
 		if pd > 0.0 and tgt is Drone:
 			shot *= PD_DRONE_MULT
 		dbg_shots += 1
+		var n_hit := 0
 		for k in per:
 			if randf() < acc or wpn == "missile":   # missiles never miss
+				n_hit += 1
 				for j in n_proj:
 					var off := 0.0 if n_proj == 1 else lerpf(-spread, spread, float(j) / (n_proj - 1)) + randf_range(-0.06, 0.06)
 					g.fire(self, tgt, wpn, shot, off)
+		if DuelStats.on:
+			DuelStats.tick(self, "fire")
+			DuelStats.pull(self, tgt, acc, per, n_hit, moving_frac())
 		_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
 	if weapon_mod.has("tractor"):
@@ -1521,6 +1530,8 @@ func _physics_process(delta: float) -> void:
 				and _t_target[0] is SpaceEntity and lateral_thrust() + reverse_thrust() > 0.0:
 			face_target = _t_target[0]
 	# Fire at whatever is in range, even while moving.
+	elif def["weapon"] != "" and _cooldown > 0.0 and DuelStats.on:
+		DuelStats.tick(self, "reload")
 	elif def["weapon"] != "" and _cooldown <= 0.0:
 		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
 		if state == State.BOMBARD and is_instance_valid(bombard_target):
@@ -1536,6 +1547,8 @@ func _physics_process(delta: float) -> void:
 		# Defensive Fire: nothing else in range, so shoot down ordnance or drones.
 		if shoot == null:
 			_defensive_fire(weapon_range())
+		if DuelStats.on and not (shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius):
+			DuelStats.tick(self, "none")
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
 			_aim_at = shoot
 			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))
@@ -1552,6 +1565,8 @@ func _physics_process(delta: float) -> void:
 				elif face_target == null and face_at == null:
 					face_at = shoot
 				ready = bears_on(shoot.global_position)
+			if not ready and DuelStats.on:
+				DuelStats.tick(self, "slew")
 			if ready:
 				# Every gun aims the same: a shooter on the move is a worse one,
 				# and at full speed roughly a third of its shots go wide.
@@ -1561,13 +1576,18 @@ func _physics_process(delta: float) -> void:
 				var wpn: String = weapon_mod.get("weapon", def["weapon"])
 				dmg *= float(weapon_mod.get("dmg", 1.0))
 				dbg_shots += 1
+				var n_hit := 0
 				for g in int(def.get("guns", 1)):
 					if randf() >= acc:
 						continue
+					n_hit += 1
 					if wpn == "arc":
 						Game.instance.arc_strike(self, shoot, dmg, weapon_mod["chain"], weapon_mod["jump"])
 					else:
 						Game.instance.fire(self, shoot, wpn, dmg)
+				if DuelStats.on:
+					DuelStats.tick(self, "fire")
+					DuelStats.pull(self, shoot, acc, int(def.get("guns", 1)), n_hit, moving_frac())
 				_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
 	# Strafing / Reverse Thrusters: fixed guns stay on what they last shot at

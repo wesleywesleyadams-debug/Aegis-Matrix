@@ -111,6 +111,8 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	if jink_at != null:
 		jink_at.note_fast_shot(self)
 	rotation = _vel.angle()
+	if DuelStats.on:
+		DuelStats.launched(self, from, to)
 	if free_flight:
 		life = from.global_position.distance_to(to.global_position) * 1.3 / speed
 
@@ -122,6 +124,8 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 	life -= delta
 	if life <= 0.0:
+		if DuelStats.on:
+			DuelStats.expired(self, is_instance_valid(target) and target.is_alive())
 		queue_free()
 		return
 	if free_flight:
@@ -172,6 +176,8 @@ func _physics_process(delta: float) -> void:
 				return
 			var hit := damage
 			hit *= Game.vs_mult(vs_class, target)
+			if DuelStats.on:
+				DuelStats.hit(self, hit, target.hp + target.armor + target.shield)
 			target.take_damage(hit, shooter if is_instance_valid(shooter) and shooter is SpaceEntity else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)

@@ -177,6 +177,8 @@ func _regen_shields(delta: float) -> void:
 		var f := Game.instance.pay_over_time(owner_id, {"energy": gain * Defs.SHIELD_ENERGY_PER_POINT}, 1.0)
 		if f > 0.0:
 			shield += gain * f
+			if DuelStats.on:
+				DuelStats.regen(self, gain * f)
 			queue_redraw()
 
 ## The selection ring and the three curved layer gauges. They are NOT drawn by
