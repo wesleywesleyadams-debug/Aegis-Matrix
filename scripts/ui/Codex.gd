@@ -477,8 +477,8 @@ func _page_overview() -> void:
 	_table(["Resource", "Comes from", "Pays for"], [
 		[["Food", Color("8fe060")], "Farms only", "%.2f per pop per minute (spice covers a shortfall); an unfed world shrinks as fast as it would grow" % Defs.FOOD_PER_POP_PER_MIN],
 		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes - all finite", "Ships, buildings, starbases, Power Plant fuel"],
-		[["Energy", Color("ffd84a")], "Power plants (burning 1 mineral per 10 energy), Radiation Sail Arrays. Starbases make none", "Research, fleet and starbase upkeep, building upkeep, shield regeneration"],
-		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1 (not Power Plant fuel)"],
+		[["Energy", Color("ffd84a")], "Power plants (burning 1 mineral per 10 energy), Radiation Sail Arrays. Starbases make none", "Fleet and starbase upkeep, building upkeep, shield regeneration"],
+		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "All research; covers shortfalls of food, minerals and energy (1 spice covers 2; not Power Plant fuel)"],
 	])
 	_heading("A finite galaxy", EDGE_LIT)
 	_para("Nothing refills. Rocks, gas giants, worlds' crusts and spice nebulae all run out, so a long match becomes a fight over what is left. Gas giants and mined-out worlds glow when nearly empty and blow up 10 seconds after they run out - see Economy.")
@@ -749,7 +749,7 @@ func _page_every() -> void:
 ## Research > Overview: how research works.
 func _page_research() -> void:
 	_heading("Research")
-	_para("Research spends energy, and spice for the later tiers, over time. Open the research screen with R. Only one project runs at a time: click a tech to start it. Picking another tech pauses the current one; a paused tech keeps its progress and resumes where it left off. Click the active one to pause it.")
+	_para("Research costs spice only, paid over time. Open the research screen with R. Only one project runs at a time: click a tech to start it. Picking another tech pauses the current one; a paused tech keeps its progress and resumes where it left off. Click the active one to pause it.")
 	_para("The cost is paid gradually while the project runs, not up front. If you can't pay, progress stalls until you can; spice covers an energy shortfall 1:1.")
 	_para("In single player the match waits while the research screen is open. It opens by itself at the start of a match (on Warships) and whenever a project finishes with nothing else running (on that tech's tab), so research never sits idle unnoticed.")
 	_heading("Tiers and requirements", EDGE_LIT)
