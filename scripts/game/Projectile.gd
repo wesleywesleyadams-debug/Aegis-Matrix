@@ -53,6 +53,48 @@ func _unbook() -> void:
 func _exit_tree() -> void:
 	_unbook()
 
+## Target Prediction's lead: where `to` will have moved by the time a shot
+## from `src` at `spd` arrives. Ships are led on their smoothed velocity
+## (Ship.lead_vel); a ship braking hard is assumed to stop rather than keep
+## going, and one coming mostly straight at the shooter (which tends to
+## brake or break off at firing range) is led less.
+static func lead_offset(to: Node2D, src: Vector2, spd: float) -> Vector2:
+	var v: Vector2 = to.get("velocity")
+	var acc := Vector2.ZERO
+	if to is Ship:
+		v = (to as Ship).lead_vel
+		acc = (to as Ship).lead_acc
+	var sp := v.length()
+	if sp < 1.0:
+		return Vector2.ZERO
+	var t := src.distance_to(to.global_position) / spd
+	var vd := v / sp
+	# Deceleration along the direction of travel: the ship covers v*t - a*t^2/2
+	# but never backs up past where it would stop.
+	var dec := maxf(0.0, -acc.dot(vd))
+	var travel := sp * t
+	if dec > 1.0:
+		var t_stop := sp / dec
+		travel = sp * minf(t, t_stop) - 0.5 * dec * minf(t, t_stop) * minf(t, t_stop)
+	var off := v * (travel / sp)
+	# Split into the part along the line to the shooter and the part across
+	# it (only the crossing part really moves the aim point off the target).
+	var dist := src.distance_to(to.global_position)
+	var n := (src - to.global_position) / maxf(dist, 1.0)
+	var along := n * off.dot(n)
+	var across := off - along
+	var closing := maxf(0.0, vd.dot(n))
+	if closing > 0.3 and to is Ship and (to as Ship).weapon_range() > 0.0:
+		# A warship charging the shooter stops once in its own weapon range:
+		# it is led in only as far as it has left to come, and while still
+		# on the run-in (rarely straight) its sideways drift is led less.
+		var left := maxf(0.0, dist - (to as Ship).weapon_range())
+		if off.dot(n) > 0.0:
+			along = along.limit_length(left)
+		if left > 0.0:
+			across *= 1.0 - 0.67 * closing
+	return along + across
+
 func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float = 0.0, origin: Vector2 = Vector2.INF) -> void:
 	var src: Vector2 = from.global_position if origin == Vector2.INF else origin
 	shooter = from
@@ -124,7 +166,7 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	# torpedo would start beyond its lock cone and fly off the wrong way.
 	var lead := to.global_position
 	if not homing and Game.instance.has_tech(owner_pid, "target_prediction") and to.get("velocity") is Vector2:
-		lead += to.get("velocity") * (src.distance_to(to.global_position) / speed)
+		lead += lead_offset(to, src, speed)
 	_vel = (lead - global_position).normalized().rotated(spread) * speed
 	# Evasive warships start jinking when fast rounds come at them.
 	if jink_at != null:

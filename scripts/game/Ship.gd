@@ -184,6 +184,13 @@ func set_engagement(v: int) -> void:
 var def: Dictionary
 var state: State = State.IDLE
 var velocity: Vector2 = Vector2.ZERO
+## Target Prediction reads these instead of the instantaneous velocity:
+## velocity and acceleration averaged over about LEAD_SMOOTH seconds, so a
+## ship that brakes or swerves is not led along a straight line it left.
+var lead_vel: Vector2 = Vector2.ZERO
+var lead_acc: Vector2 = Vector2.ZERO
+var _lead_prev: Vector2 = Vector2.ZERO
+const LEAD_SMOOTH := 0.2
 var move_goal: Vector2
 var attack_move_goal: Vector2
 ## Seconds until an idle weapon may scan for targets again (empty scans only).
@@ -1255,6 +1262,11 @@ func order_stop() -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	if delta > 0.0:
+		var k := 1.0 - exp(-delta / LEAD_SMOOTH)
+		lead_vel = lead_vel.lerp(velocity, k)
+		lead_acc = lead_acc.lerp((velocity - _lead_prev) / delta, k)
+		_lead_prev = velocity
 	if docked:
 		_last_pos = Vector2.INF
 		return
@@ -1282,6 +1294,7 @@ func _physics_process(delta: float) -> void:
 	_scan_cd -= delta
 
 	var desired := Vector2.ZERO
+	_orbiting = false
 	var face_target: SpaceEntity = null
 	# What the hull should come about to point at, for things that are not
 	# entities (a rock, a gas giant, a patch of nebula).
@@ -1393,7 +1406,9 @@ func _physics_process(delta: float) -> void:
 						desired = _arrive(target.global_position, 1.0)
 				elif engagement == Engage.DEFAULT or engagement == Engage.EVASIVE:
 					_kiting = false
-					if d > keep:
+					if engagement == Engage.DEFAULT and def.get("base", ship_type) == "corvette" and d <= weapon_range() and target is Ship:
+						desired = _orbit_move(d)
+					elif d > keep:
 						desired = _arrive(target.global_position, 1.0)
 				else:
 					desired = _engage_move(d)
@@ -1939,6 +1954,26 @@ func turn_rate() -> float:
 	return clampf(6.0 * 8.0 / radius, 1.2, 6.0) * Game.instance.ship_speed_factor(owner_id) * Game.instance.mod(owner_id, "turn_rate")
 
 ## Top sideways / backward thrust (Strafing / Reverse Thrusters), px/s.
+## Default-engagement corvettes in reach of a warship do not park: they
+## circle it at ORBIT_FRAC of top speed, holding about 0.8 of their weapon
+## range with the nose (and guns) on it, and now and then reverse the turn.
+## Slow turreted hulls that do not lead (Target Prediction) miss them more.
+const ORBIT_FRAC := 0.08
+var _orbiting := false
+var _orbit_sign := 0.0
+var _orbit_flip := 0.0
+
+func _orbit_move(d: float) -> Vector2:
+	_orbiting = true
+	_orbit_flip -= get_physics_process_delta_time()
+	if _orbit_sign == 0.0 or _orbit_flip <= 0.0:
+		_orbit_sign = -_orbit_sign if _orbit_sign != 0.0 else (1.0 if randf() < 0.5 else -1.0)
+		_orbit_flip = randf_range(5.0, 9.0)
+	var to_t := (target.global_position - global_position) / maxf(d, 1.0)
+	var sp := max_speed() * ORBIT_FRAC
+	var radial := to_t * clampf((d - weapon_range() * 0.8) * 1.0, -sp, sp)
+	return to_t.orthogonal() * _orbit_sign * sp + radial
+
 func lateral_thrust() -> float:
 	return max_speed() * LATERAL_THRUST if Game.instance.has_tech(owner_id, "strafing_thrusters") else 0.0
 
@@ -1968,6 +2003,11 @@ func _steer(desired: Vector2, delta: float, face: Node2D) -> void:
 	var lat := lateral_thrust()
 	var rev := reverse_thrust()
 	var parked := _parked()
+	if _orbiting:
+		# The orbit's sidestep and its range keeping fly with the nose on
+		# the target, as Strafing / Reverse Thrusters would at this pace.
+		lat = maxf(lat, speed * ORBIT_FRAC * 1.1)
+		rev = maxf(rev, speed * ORBIT_FRAC * 1.1)
 	if parked:
 		# Station keeping: a parked hull shuffles a few pixels for crowding
 		# or a nudge back onto its spot without swinging round.
