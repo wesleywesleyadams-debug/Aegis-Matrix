@@ -35,8 +35,13 @@ var trail_on := false
 var torp_wake := false
 var _trail: PackedVector2Array = []
 
-## Damage this shot has booked against its target in Game's in-flight
-## registry (taken back off exactly once: hit, expiry or free).
+## Dev duel stats: per side, shots launched and shots that expired with
+## their target already gone (overkill).
+static var fired := {}
+static var fizzled := {}
+
+## Overkill Awareness: damage this shot has booked against its target in
+## Game's in-flight registry (taken back off exactly once: hit, expiry or free).
 var _booked := 0.0
 var _booked_tid := 0
 
@@ -127,11 +132,12 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	rotation = _vel.angle()
 	if DuelStats.on:
 		DuelStats.launched(self, from, to)
+	fired[owner_pid] = int(fired.get(owner_pid, 0)) + 1
 	if free_flight:
 		life = src.distance_to(to.global_position) * 1.3 / speed
 	# Book the shot against its target so other guns of this side can see it
 	# is already covered (Game.is_doomed). Area shots are left out.
-	elif splash <= 0.0:
+	elif splash <= 0.0 and Game.instance.has_tech(owner_pid, "overkill_awareness"):
 		_booked = damage * Game.vs_mult(vs_class, to)
 		_booked_tid = to.get_instance_id()
 		Game.instance.inflight_add(owner_pid, to, _booked)
@@ -147,6 +153,8 @@ func _physics_process(delta: float) -> void:
 		_unbook()
 		if DuelStats.on:
 			DuelStats.expired(self, is_instance_valid(target) and target.is_alive())
+		if not free_flight and not (is_instance_valid(target) and target.has_method("is_alive") and target.is_alive()):
+			fizzled[owner_pid] = int(fizzled.get(owner_pid, 0)) + 1
 		queue_free()
 		return
 	if free_flight:

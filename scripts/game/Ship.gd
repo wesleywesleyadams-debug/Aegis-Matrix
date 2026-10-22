@@ -297,8 +297,6 @@ func _fire_turrets(delta: float) -> void:
 	var had_beams := not _beams.is_empty()
 	_beams.clear()
 	var pd: float = float(weapon_mod.get("pd", 0.0))
-	# Defensive Fire: a turret with nothing to shoot shoots down ordnance.
-	var screen: bool = pd <= 0.0 and not weapon_mod.has("tractor") and g.has_tech(owner_id, "defensive_fire")
 	var claimed := {}
 	for i in n:
 		# Point-Defense: a ready turret first swats incoming ordnance.
@@ -354,18 +352,6 @@ func _fire_turrets(delta: float) -> void:
 		if _t_target[i] != tgt:
 			_t_beam_time[i] = 0.0   # the lance's ramp starts over on a new target
 		_t_target[i] = tgt
-		# Defensive Fire: a ready turret with no ship, construct or world in
-		# range shoots down enemy ordnance or drones instead.
-		if tgt == null and screen and _t_cd[i] <= 0.0:
-			var sd := g.df_target(self, owner_id, rng, claimed)
-			if sd:
-				claimed[sd] = true
-				_t_rot[i] = (sd.global_position - global_position).angle()
-				_turret_sprites[i].rotation = _t_rot[i] - rotation
-				g.intercept(self, sd)
-				# The same reload as a shot at a ship.
-				_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
-				continue
 		if tgt == null:
 			if DuelStats.on:
 				DuelStats.tick(self, "none")
@@ -644,19 +630,6 @@ func _exit_tree() -> void:
 			if is_instance_valid(d) and d.is_alive():
 				d._die()
 	_clear_drones()
-
-## Defensive Fire for fixed-gun ships: when ready, shoot down one enemy
-## missile, torpedo, bomblet or drone within `r` (the weapon range), then reload as
-## from a normal shot. (Drone carriers get none: their doors don't fire.)
-func _defensive_fire(r: float) -> bool:
-	if not Game.instance.has_tech(owner_id, "defensive_fire") or weapon_mod.has("pd") or weapon_mod.has("drones"):
-		return false
-	var sd := Game.instance.df_target(self, owner_id, r)
-	if sd == null:
-		return false
-	Game.instance.intercept(self, sd)
-	_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
-	return true
 
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
@@ -1577,8 +1550,8 @@ func _physics_process(delta: float) -> void:
 		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
 		if state == State.BOMBARD and is_instance_valid(bombard_target):
 			shoot = bombard_target
-		# Overkill: when the side's shots already in the air will kill the
-		# target, shoot at the nearest enemy in reach that is not doomed
+		# Overkill Awareness: when the side's shots already in the air will
+		# kill the target, shoot the nearest enemy in reach that is not doomed
 		# (an order stands; the guns come back to it if those shots miss).
 		if shoot != null and Game.instance.is_doomed(owner_id, shoot):
 			var alt := Game.instance.nearest_enemy(self, weapon_range(), true)
@@ -1594,9 +1567,6 @@ func _physics_process(delta: float) -> void:
 				shoot = Game.instance.nearest_enemy(self, weapon_range(), true)
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
-		# Defensive Fire: nothing else in range, so shoot down ordnance or drones.
-		if shoot == null:
-			_defensive_fire(weapon_range())
 		if DuelStats.on and not (shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius):
 			DuelStats.tick(self, "none")
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:

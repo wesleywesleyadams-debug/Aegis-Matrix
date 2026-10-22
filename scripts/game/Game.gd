@@ -1420,10 +1420,11 @@ func sees(pid: int, e: Node2D) -> bool:
 	var v: Vision = visions.get(pid)
 	return v == null or v.can_see(e)
 
-## `avoid_doomed`: pass over enemies this side already has enough shots in
-## the air to kill (is_doomed), unless every one in reach is.
+## `avoid_doomed` (Overkill Awareness, only when `from`'s side has it): pass
+## over enemies the side already has enough shots in the air to kill
+## (is_doomed), unless every one in reach is.
 func nearest_enemy(from: SpaceEntity, max_dist: float, avoid_doomed: bool = false) -> SpaceEntity:
-	if avoid_doomed:
+	if avoid_doomed and has_tech(from.owner_id, "overkill_awareness"):
 		var c := enemies_near(from, max_dist, 1, Vector2.INF, true)
 		return c[0] if not c.is_empty() else null
 	# Walks the coarse grid directly (no temporary arrays); compares squared
@@ -1639,12 +1640,13 @@ func fire(from: Node2D, to: Node2D, weapon: String, damage: float, spread: float
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"), spread, origin)
 	if not sim_mode:
-		sfx.play_at("laser" if weapon in ["laser", "kinetic", "flak"] else "torpedo", p.global_position, -8.0)
+		sfx.play_at("laser" if weapon in ["laser", "kinetic", "flak"] else "torpedo", p.global_position, -8.0)   # proton / missile / bomblet: torpedo sound
 
-# ------------------------------------------------- overkill-aware targeting
+# ------------------------------------------------- Overkill Awareness
 ## Damage already flying at each target, per firing side:
-## pid -> {target instance id: damage en route}. Projectiles add on launch
-## and take it back off when they hit, expire or are freed.
+## pid -> {target instance id: damage en route}. Projectiles of a side with
+## Overkill Awareness add on launch and take it back off when they hit,
+## expire or are freed.
 var _inflight := {}
 
 func inflight_add(pid: int, t: Node2D, amount: float) -> void:
@@ -1664,13 +1666,14 @@ func inflight_sub(pid: int, tid: int, amount: float) -> void:
 	else:
 		d[tid] = v
 
-## True when the shots `pid` already has in the air at `t` add up to at least
-## what is left of it (hull + armor + shields): more guns on it are wasted.
+## True when `pid` has Overkill Awareness and the shots it already has in the
+## air at `t` add up to at least what is left of it (hull + armor + shields):
+## more guns on it are wasted.
 func is_doomed(pid: int, t: Node) -> bool:
 	if t == null or not is_instance_valid(t):
 		return false
 	var d: Dictionary = _inflight.get(pid, {})
-	if d.is_empty():
+	if d.is_empty() or not has_tech(pid, "overkill_awareness"):
 		return false
 	var inc: float = float(d.get(t.get_instance_id(), 0.0))
 	if inc <= 0.0:
@@ -1681,7 +1684,7 @@ func is_doomed(pid: int, t: Node) -> bool:
 	var a = t.get("armor")
 	var sh = t.get("shield")
 	var rem: float = float(h) + (float(a) if a != null else 0.0) + (float(sh) if sh != null else 0.0)
-	return inc >= rem   # proton / missile / bomblet: torpedo sound
+	return inc >= rem
 
 ## Arc Emitters: the target takes chain[0] of the damage at once, then the
 ## arc jumps to the nearest other enemies within `jump` of it for the rest.
@@ -1780,25 +1783,6 @@ func spawn_blast(pos: Vector2, radius: float) -> void:
 	sfx.play_at("boom", pos, -8.0)
 
 ## Point-Defense: `from` zaps an enemy projectile out of the sky.
-## Defensive Fire: the nearest enemy missile, torpedo, bomblet or drone
-## within `r` of `from` (owned by `pid`), skipping any in `claimed`.
-func df_target(from: Node2D, pid: int, r: float, claimed: Dictionary = {}) -> Node2D:
-	var best: Node2D = null
-	var best_d := r
-	for p in get_tree().get_nodes_in_group("ordnance"):
-		if is_instance_valid(p) and not claimed.has(p) and p.owner_pid != pid and is_hostile(pid, p.owner_pid):
-			var d := from.global_position.distance_to(p.global_position)
-			if d < best_d:
-				best_d = d
-				best = p
-	for p in get_tree().get_nodes_in_group("drones"):
-		if is_instance_valid(p) and p != from and not claimed.has(p) and p.is_alive() and p.is_enemy_of(pid):
-			var d := from.global_position.distance_to(p.global_position)
-			if d < best_d:
-				best_d = d
-				best = p
-	return best
-
 ## Point-Defense Lattice: a needle laser that destroys ordnance `first`, then
 ## bounces on to up to PD_BOUNCES more enemy missiles, torpedoes, bomblets or
 ## drones, each within PD_BOUNCE_R of the last. Ordnance is destroyed
@@ -1811,7 +1795,7 @@ func pd_intercept(from: Ship, first: Node2D, drone_dmg: float) -> void:
 	var pts := PackedVector2Array([from.global_position, first.global_position])
 	var at: Vector2 = first.global_position
 	for k in PD_BOUNCES:
-		var nxt := df_target_at(at, pid, PD_BOUNCE_R, hits)
+		var nxt := ordnance_near(at, pid, PD_BOUNCE_R, hits)
 		if nxt == null:
 			break
 		hits.append(nxt)
@@ -1842,9 +1826,9 @@ func pd_intercept(from: Ship, first: Node2D, drone_dmg: float) -> void:
 	fx_root.add_child(fx)
 	sfx.play_at("laser", from.global_position, -12.0)
 
-## df_target around a point: the nearest enemy ordnance or drone within `r`
+## Around a point: the nearest enemy ordnance or drone within `r`
 ## of `at`, skipping those in `skip`.
-func df_target_at(at: Vector2, pid: int, r: float, skip: Array) -> Node2D:
+func ordnance_near(at: Vector2, pid: int, r: float, skip: Array) -> Node2D:
 	var best: Node2D = null
 	var best_d := r
 	for grp in ["ordnance", "drones"]:
@@ -1859,19 +1843,6 @@ func df_target_at(at: Vector2, pid: int, r: float, skip: Array) -> Node2D:
 				best_d = d
 				best = p
 	return best
-
-func intercept(from: Node2D, p: Node2D) -> void:
-	if not sim_mode:
-		var arc := ArcFx.new()
-		arc.setup(PackedVector2Array([from.global_position, p.global_position]), false, Color("ffd84a"))
-		fx_root.add_child(arc)
-		spawn_explosion(p.global_position, 0.3)
-		sfx.play_at("laser", from.global_position, -12.0)
-	if p is Drone:
-		p._killer = int(from.get("owner_id"))
-		p._die()
-		return
-	p.queue_free()
 
 func spawn_explosion(pos: Vector2, scale_mult: float = 1.0) -> void:
 	if sim_mode or fx_hidden(pos):
@@ -4807,6 +4778,9 @@ func _duel() -> void:
 			print(line)
 			if DuelStats.on:
 				DuelStats.report()
+			# Shots that ran out of life with their target already dead
+			# (overkill), per side.
+			print("DUEL_FIZZLE %s %d/%d | %s %d/%d" % [specs[0], Projectile.fizzled.get(1, 0), Projectile.fired.get(1, 0), specs[1], Projectile.fizzled.get(2, 0), Projectile.fired.get(2, 0)])
 			get_tree().quit()
 			return
 

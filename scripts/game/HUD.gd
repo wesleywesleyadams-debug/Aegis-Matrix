@@ -2258,7 +2258,7 @@ const TECH_ROWS := {
 		["RANGE", ["targeting_arrays", "beam_focusing", "capital_batteries"]],
 		["FIRE RATE", ["autoloaders", "heavy_mounts", "scatter_arrays"]],
 		["PENETRATION", ["overcharged_coils", "burst_cyclers", "hullbreaker_rounds"]],
-		["TARGETING", ["target_prediction", "gyro_stabilizers", "defensive_fire"]],
+		["TARGETING", ["target_prediction", "gyro_stabilizers", "overkill_awareness"]],
 	],
 	"constructs": [
 		["FORTIFICATION", ["garrison_guns", "reinforced_docks", "citadel_protocols"]],

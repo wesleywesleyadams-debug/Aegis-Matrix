@@ -26,14 +26,14 @@ A research tab called **Mods**. Each Mod changes the weapon of one ship class.
 | Destroyer | **Homing Missiles** | 2-missile homing volleys, +20% range; blast radius 25. Missiles have a real turn limit, so a ship that turns hard and late can slip them. | Reliable at range, but the damage arrives late. |
 | Cruiser | **Ion Lance** | A continuous beam whose damage ramps up over 4 s on the same target; the ramp resets when it switches. | Melts a single big target; weak against swarms. |
 | Cruiser | **Rail Cannons** | Fast slugs (900 px/s) with +40% range, fired every 4 s for heavy damage. | Out-ranges everything and hits big hulls hard; weak against swarms. |
-| Cruiser | **Point-Defense Lattice** | Needle-thin lasers at the normal reload. Each ready turret first fires at an enemy missile, torpedo or bomblet within 220: the needle destroys it, then bends and bounces to up to 3 more ordnance or drones, each within 90 of the last. Then enemy drones in range (×2 damage), then ships. Defensive Fire adds nothing to it. | Hard counter to ordnance and drone Mods, including Cluster Bomb fans. |
+| Cruiser | **Point-Defense Lattice** | Needle-thin lasers at the normal reload. Each ready turret first fires at an enemy missile, torpedo or bomblet within 220: the needle destroys it, then bends and bounces to up to 3 more ordnance or drones, each within 90 of the last. Then enemy drones in range (×2 damage), then ships. | Hard counter to ordnance and drone Mods, including Cluster Bomb fans. |
 | Carrier | **Interceptor Drones** | The turrets become spiral launch doors. The carrier builds one drone every 5 s up to 4. Each drone (40 hull, 140 px/s, 10 px hit radius) flies nose-first, picks the enemy nearest to itself within 300 of the carrier, makes strafing passes, and patrols the edge of that radius when idle. Drones can be shot down, are rebuilt, and die with their carrier. Damage ×0.7 / ×0.6 / ×0.5 vs destroyers / cruisers / carriers. | Strong while the drones live; an enemy that kills them (Point-Defense, or ignoring them to focus the carrier) wins. |
 | Carrier | **Tractor Beams** | The turrets fire no lasers. Each holds a beam on an enemy ship or drone up to 2× weapon range away that burns it harder the closer it is (0.5× a laser's damage rate at full reach, 1.5× once pulled in to 60% of weapon range; no ramp over time) and drags it toward the carrier at 60/s until it is within 60% of weapon range. The beam does not slow. | Drags long-range ships in; steady damage on whatever it holds. |
 | Carrier | **Missile Barrage** | Each of the 4 turrets fires 5 missiles (a 20-missile salvo) every 8 s at +60% range, the longest in the game. | Opens fights from afar; long gaps between salvos. |
 
-### Defensive Fire (Targeting tier 3)
+### Overkill Awareness (Targeting tier 3)
 
-A gun or drone with no enemy ship, construct or world in its attack range shoots down enemy missiles, torpedoes, bombs and drones there instead, at its normal reload. The Ion Lance beam never pauses for it.
+Each side's shots in flight are booked against their target. With the tech, turrets, corvette fixed guns, target acquisition, starbases, outposts and Mining Stations pass over enemies already doomed by shots in the air (in-flight damage >= hull + armor + shields) and pick the nearest one that is not; if all in reach are doomed they fire anyway. Area shots are not booked.
 
 ## Engine change: independent turrets (all ships)
 
