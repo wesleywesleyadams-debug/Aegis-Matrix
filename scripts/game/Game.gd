@@ -929,6 +929,7 @@ func remove_planet(p: Planet) -> void:
 		if v:
 			v.seen_planet_owner.erase(p)
 			v.seen_planet_pop.erase(p)
+			v.seen_planet_def.erase(p)
 	removed_planets.append(String(p.name))
 	if old > 0:
 		stats.count(old, "planets_lost")

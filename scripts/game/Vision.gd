@@ -46,9 +46,20 @@ var render := true
 ## (instance id -> [time, power, position]).
 var seen_planet_owner := {}
 var seen_planet_pop := {}
+## Planet defences last seen: planet -> [batteries, max shield, time seen, free fields].
+var seen_planet_def := {}
+## Enemy starbases seen: instance id -> [position, hull fraction, owner, time]
+## as last seen. Kept (even if it has since died out of sight) until the spot
+## is in sight again without it.
 var seen_bases := {}
-## Enemy Frontier Outposts seen: fort -> position (the AI weighs them as defences).
+## Enemy Frontier Outposts seen, the same way: instance id -> [position,
+## hull fraction, owner, time] (the AI weighs them as defences).
 var seen_forts := {}
+## Remembered planet defences older than this may have grown: assume one more
+## battery (up to DEF_GUESS_MAX). Never-seen ones: DEF_GUESS batteries.
+const DEF_STALE := 300.0
+const DEF_GUESS := 1
+const DEF_GUESS_MAX := 3
 var sightings := {}
 ## How long a sighted enemy warship still counts toward its fleet estimate.
 const SIGHTING_MEMORY := 120.0
@@ -269,6 +280,43 @@ func _ready() -> void:
 		_fog_test.call_deferred()
 	if OS.get_environment("SL_FOG_SAVE") != "":
 		_fog_save_test.call_deferred(OS.get_environment("SL_FOG_SAVE"))
+	if OS.get_environment("SL_FOG_BELIEF") != "":
+		_fog_belief_test.call_deferred(float(OS.get_environment("SL_FOG_BELIEF")))
+
+## Dev check (SL_FOG_BELIEF=<game seconds>, with SL_SIM): at that time, for
+## P1's sensors, prints what it believes defends an enemy world out of sight
+## against the truth, then fortifies that world out of sight and prints again
+## (the belief must not move until P1 sees it).
+func _fog_belief_test(at: float) -> void:
+	if pid != 1:
+		return
+	while Game.now() < at:
+		await get_tree().process_frame
+	var cands: Array = get_tree().get_nodes_in_group("planets").filter(func(q): return q.owner_id > 0 and game.is_hostile(pid, q.owner_id) and not is_visible_at(q.global_position))
+	cands.sort_custom(func(a, b): return int(seen_planet_def.has(a)) > int(seen_planet_def.has(b)))
+	if cands.is_empty():
+		print("FOGBELIEF no fogged enemy world")
+		get_tree().quit()
+		return
+	var p: Planet = cands[0]
+	_belief_line("before", p)
+	for i in p.fields:
+		if p.buildings[i] == "":
+			p.buildings[i] = "battery"
+	await get_tree().create_timer(2.0).timeout
+	var t0 := Game.now()
+	while Game.now() < t0 + 20.0:
+		await get_tree().process_frame
+	_belief_line("fortified" + (" (now in sight)" if is_visible_at(p.global_position) else " (still fogged)"), p)
+	get_tree().quit()
+
+func _belief_line(tag: String, p: Planet) -> void:
+	var d: Vector2 = game.ai._defence_at(pid, p.global_position, game)
+	var mem: Array = seen_planet_def.get(p, [])
+	print("FOGBELIEF t=%d %s %s: TRUTH owner=%d batteries=%d shield=%d/%d pop=%d | BELIEF owner=%d batteries=%d shield=%d pop=%d (memory %s) defence_at dps=%.1f tough=%d" % [
+		int(Game.now()), tag, p.planet_name, p.owner_id, p.count_building("battery"), int(p.shield), int(p.max_shield()), int(p.pop),
+		known_owner(p), int(planet_defence(p).x), int(planet_defence(p).y), int(seen_planet_pop.get(p, -1.0)),
+		("seen %ds ago" % int(Game.now() - float(mem[2]))) if not mem.is_empty() else "none: guess", d.x, int(d.y)])
 
 func _fog_test() -> void:
 	await get_tree().create_timer(3.0).timeout
@@ -366,20 +414,48 @@ func _update_intel() -> void:
 			sightings.erase(id)
 	for sb in tree.get_nodes_in_group("starbases"):
 		if game.is_hostile(pid, sb.owner_id) and sb.is_alive() and can_see(sb):
-			seen_bases[sb] = [sb.global_position, (sb.hp + sb.armor + sb.shield) / maxf(sb.max_hp + sb.max_armor + sb.max_shield, 1.0)]
-	for sb in seen_bases.keys():
-		if not is_instance_valid(sb) or not sb.is_alive():
-			seen_bases.erase(sb)
+			seen_bases[sb.get_instance_id()] = [sb.global_position, (sb.hp + sb.armor + sb.shield) / maxf(sb.max_hp + sb.max_armor + sb.max_shield, 1.0), sb.owner_id, now]
+	_forget_gone(seen_bases)
 	for f in tree.get_nodes_in_group("forts"):
 		if f is FrontierOutpost and game.is_hostile(pid, f.owner_id) and f.is_alive() and can_see(f):
-			seen_forts[f] = f.global_position
-	for f in seen_forts.keys():
-		if not is_instance_valid(f) or not f.is_alive():
-			seen_forts.erase(f)
+			seen_forts[f.get_instance_id()] = [f.global_position, (f.hp + f.armor + f.shield) / maxf(f.max_hp + f.max_armor + f.max_shield, 1.0), f.owner_id, now]
+	_forget_gone(seen_forts)
 	for p in tree.get_nodes_in_group("planets"):
 		if p.owner_id == pid or is_visible_at(p.global_position):
 			seen_planet_owner[p] = p.owner_id
 			seen_planet_pop[p] = p.pop
+			seen_planet_def[p] = [p.count_building("battery"), p.max_shield() if p.owner_id != 0 else 0.0, now, p.free_fields()]
+
+## Drops remembered constructs whose spot is in sight again without them
+## (destroyed or gone); one that died out of sight stays remembered.
+func _forget_gone(mem: Dictionary) -> void:
+	for id in mem.keys():
+		if not is_visible_at(mem[id][0]):
+			continue
+		var e = instance_from_id(id) if is_instance_id_valid(id) else null
+		if e == null or not e.is_alive() or not can_see(e):
+			mem.erase(id)
+
+## What this player believes defends planet p: Vector2(batteries, shield).
+## In sight: as it is now. Out of sight: as last seen (a stale memory allows
+## for one more battery); never seen while held by its known owner: a guess.
+func planet_defence(p: Planet) -> Vector2:
+	if p.owner_id == pid or is_visible_at(p.global_position):
+		return Vector2(p.count_building("battery"), p.shield)
+	if known_owner(p) <= 0:
+		return Vector2.ZERO
+	var d: Array = seen_planet_def.get(p, [])
+	var b: int = DEF_GUESS
+	var sh: float = -1.0
+	if not d.is_empty() and int(seen_planet_owner.get(p, -1)) > 0 and d[1] > 0.0:
+		b = int(d[0])
+		sh = float(d[1])
+		if Game.now() - float(d[2]) > DEF_STALE and b < DEF_GUESS_MAX:
+			b += 1
+			sh += Defs.BATTERY_SHIELD
+	if sh < 0.0:
+		sh = Planet.PLANET_SHIELD + b * Defs.BATTERY_SHIELD
+	return Vector2(b, sh)
 
 ## Owner last seen on planet p; -1 if it has never been seen.
 func known_owner(p: Planet) -> int:

@@ -126,10 +126,18 @@ func features(game: Game, base: Starbase) -> PackedFloat32Array:
 	# nearest living enemy.
 	var foe := 0
 	var foe_d := INF
+	var v0: Vision = game.visions.get(pid)
 	for o in game.living_players():
 		if game.is_hostile(pid, o):
-			var ob := game.nearest_starbase(o, base.global_position if base else Vector2.ZERO)
-			var d: float = base.global_position.distance_to(ob.global_position) if base and ob else 0.0
+			# (With fog: its nearest starbase this side has seen, else unknown.)
+			var d: float = INF
+			if v0 and base:
+				for id in v0.seen_bases:
+					if int(v0.seen_bases[id][2]) == o:
+						d = minf(d, base.global_position.distance_to(v0.seen_bases[id][0]))
+			else:
+				var ob := game.nearest_starbase(o, base.global_position if base else Vector2.ZERO)
+				d = base.global_position.distance_to(ob.global_position) if base and ob else 0.0
 			if foe == 0 or d < foe_d:
 				foe = o
 				foe_d = d
