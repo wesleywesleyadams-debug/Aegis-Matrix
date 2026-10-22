@@ -308,20 +308,33 @@ func _draw_deco() -> void:
 	_deco.draw_line(_ring["from"], _ring["to"], c, 1.5, true)
 	_deco.draw_circle(_ring["bubble"], _ring["br"], Color(0.02, 0.03, 0.08, 0.55 * _ring["alpha"]))
 	_deco.draw_arc(_ring["bubble"], _ring["br"], 0.0, TAU, 64, c, 1.5, true)
-	# Spice reserve bar under the name bubble, in the spice color.
-	if is_instance_valid(planet) and planet.max_spice_reserve > 0.0:
-		var sc: Color = Defs.RESOURCE_COLORS["spice"]
-		var w: float = _ring["br"] * 2.0
-		var tl := Vector2(_ring["bubble"].x - _ring["br"], _ring.get("spice_y", _ring["bubble"].y + _ring["br"] + SPICE_BAR_TOP))
-		var frac := clampf(planet.spice_reserve / planet.max_spice_reserve, 0.0, 1.0)
-		_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(0, 0, 0, 0.7 * _ring["alpha"]))
-		_deco.draw_rect(Rect2(tl, Vector2(w * frac, 8)), Color(sc, _ring["alpha"]))
-		_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(sc, 0.8 * _ring["alpha"]), false, 1.0)
-		# Centred under the bar but never clipped to its width (big reserves
-		# such as 5000 / 5000 run wider than the bar).
-		var sp_txt := "Spice %s / %s" % [Defs.short_num(planet.spice_reserve), Defs.short_num(planet.max_spice_reserve)]
-		var sp_w: float = get_theme_default_font().get_string_size(sp_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-		_deco.draw_string(get_theme_default_font(), tl + Vector2((w - sp_w) / 2.0, 24), sp_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(sc, _ring["alpha"]))
+	# Reserve bars under the name bubble: the mineral crust, then the spice
+	# reserve below it (deserts only), each in its resource color.
+	if not is_instance_valid(planet):
+		return
+	var w: float = _ring["br"] * 2.0
+	var tl := Vector2(_ring["bubble"].x - _ring["br"], _ring.get("spice_y", _ring["bubble"].y + _ring["br"] + SPICE_BAR_TOP))
+	var rows: Array = []
+	if planet.max_mineral_reserve > 0.0:
+		rows.append(["Crust", planet.mineral_reserve, planet.max_mineral_reserve, Defs.RESOURCE_COLORS["minerals"]])
+	if planet.max_spice_reserve > 0.0:
+		rows.append(["Spice", planet.spice_reserve, planet.max_spice_reserve, Defs.RESOURCE_COLORS["spice"]])
+	for i in rows.size():
+		_reserve_bar(tl + Vector2(0, 30 * i), w, rows[i][0], rows[i][1], rows[i][2], rows[i][3])
+
+## One reserve bar with its "Name now / max" caption centred below it.
+func _reserve_bar(tl: Vector2, w: float, name: String, now: float, cap: float, sc: Color) -> void:
+	var frac := clampf(now / cap, 0.0, 1.0)
+	_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(0, 0, 0, 0.7 * _ring["alpha"]))
+	_deco.draw_rect(Rect2(tl, Vector2(w * frac, 8)), Color(sc, _ring["alpha"]))
+	_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(sc, 0.8 * _ring["alpha"]), false, 1.0)
+	# Centred under the bar but never clipped to its width (big reserves
+	# such as 30k / 30k run wider than the bar).
+	var txt := "%s %s / %s" % [name, Defs.short_num(now), Defs.short_num(cap)]
+	var tw: float = get_theme_default_font().get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	# A thin black outline keeps it legible over rocks and nebulae.
+	_deco.draw_string_outline(get_theme_default_font(), tl + Vector2((w - tw) / 2.0, 24), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 3, Color(0, 0, 0, 0.9 * _ring["alpha"]))
+	_deco.draw_string(get_theme_default_font(), tl + Vector2((w - tw) / 2.0, 24), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(sc, _ring["alpha"]))
 
 func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
 	var st := StyleBoxFlat.new()
@@ -390,8 +403,7 @@ func refresh() -> void:
 	var used0 := planet.fields - planet.buildings.count("")
 	_title.text = planet.planet_name
 	_title.add_theme_color_override("font_color", Defs.team_color(planet.owner_id) if planet.owner_id != 0 else Color(0.85, 0.9, 1.0))
-	_subtitle.text = ("%s · Size %d
-%d/%d built" % [t["label"], planet.fields, used0, planet.fields]) if planet.fields > 0 else t["label"]
+	_subtitle.text = ("%s · Size %d" % [t["label"], planet.fields]) if planet.fields > 0 else t["label"]
 	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else ("Allied world" if game.are_allies(planet.owner_id, game.player_id) else "Enemy world"))
 	var s := owner_text
 	# The planetary shield sits under the owner label, at the right.
@@ -417,7 +429,6 @@ func refresh() -> void:
 		# Population is the whole reason to grow a world now: it multiplies
 		# what every building on it produces.
 		s += "\n%s +%.0f/min   %s +%.0f/min   %s +%.1f/min" % [_ic("energy"), planet.energy_out, _ic("minerals"), planet.minerals_out, _ic("spice"), planet.spice_out]
-		s += "\n" + _reserves_line()
 		if planet.count_building("generator") > 0:
 			s += "\n%s Power Plant fuel: %.1f/min%s" % [_ic("minerals"), planet.fuel_per_min, "  (SHORT: plants at %d%%)" % int(planet.fuel_frac * 100.0) if planet.fuel_frac < 0.999 else ""]
 		if planet.doom_timer >= 0.0:
@@ -428,7 +439,6 @@ func refresh() -> void:
 			s += "\nSTARVING: shrinking %d/min until food recovers" % int(-planet.growth_per_min)
 	else:
 		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
-		s += "\n" + _reserves_line()
 		if planet.colonizing_owner != 0:
 			s += "\nBeing colonized: %d%%" % int(100.0 * planet.colonize_progress / Planet.COLONIZE_TIME)
 	if mine and planet.fields > 0:
