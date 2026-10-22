@@ -776,6 +776,109 @@ func pay_over_time(pid: int, per_sec: Dictionary, dt: float) -> float:
 				ledger(pid, "out_direct_%s" % cat, take)
 	return f
 
+## Power-plant fuel: takes `minerals` from the mineral stockpile ONLY (spice
+## never covers it - fuel must deplete minerals) and returns the share of it
+## that could be paid (0..1); the plants run at that share of full output.
+func pay_fuel(pid: int, minerals: float) -> float:
+	if minerals <= 0.0 or not resources.has(pid):
+		return 1.0
+	var have := maxf(float(resources[pid]["minerals"]), 0.0)
+	var f := clampf(have / minerals, 0.0, 1.0)
+	_deduct(pid, "minerals", minerals * f)
+	fuel_paid[pid] = fuel_paid.get(pid, 0.0) + minerals * f
+	return f
+
+## Minerals burnt as Power Plant fuel so far, per player (dev logs / sims).
+var fuel_paid := {}
+
+## Minerals per minute the empire's Power Plants are burning right now.
+func fuel_per_min(pid: int) -> float:
+	var t := 0.0
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid:
+			t += p.fuel_per_min
+	return t
+
+## Exploding gas giants and imploding worlds this match (dev logs / sims).
+var blasts := 0
+
+## A body blowing up: `damage` at its centre falling linearly to 0 at
+## `radius`, to every ship and construct of every owner and every inhabited
+## world nearby (planetary shields soak it first). Measured to the edge of
+## each target, so a big starbase or world near the rim still gets caught.
+func body_blast(pos: Vector2, damage: float, radius: float, source: Node2D, what: String) -> void:
+	blasts += 1
+	var hits := 0
+	var dealt := 0.0
+	var lines: Array[String] = []
+	for e in get_tree().get_nodes_in_group("entities"):
+		if not is_instance_valid(e) or not e.is_alive():
+			continue
+		var d := maxf(0.0, pos.distance_to(e.global_position) - float(e.radius))
+		if d >= radius:
+			continue
+		var dmg := damage * (1.0 - d / radius)
+		var before := float(e.hp) + float(e.shield) + float(e.get("armor") if e.get("armor") != null else 0.0)
+		e.take_damage(dmg, null, {})
+		hits += 1
+		dealt += dmg
+		if blast_log:
+			lines.append("  %s P%d d=%.0f dmg=%.0f hp+sh+ar %.0f -> %s" % [e.get("display_name") if e.get("display_name") else e.name, e.owner_id, d, dmg, before,
+				"DEAD" if not e.is_alive() else "%.0f" % (float(e.hp) + float(e.shield) + float(e.get("armor") if e.get("armor") != null else 0.0))])
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p == source or p.owner_id == 0:
+			continue
+		var d2 := maxf(0.0, pos.distance_to(p.global_position) - p.radius)
+		if d2 >= radius:
+			continue
+		var dmg2 := damage * (1.0 - d2 / radius)
+		var b_sh: float = p.shield
+		var b_pop: float = p.pop
+		p.take_damage(dmg2, null, {})
+		hits += 1
+		dealt += dmg2
+		if blast_log:
+			lines.append("  world %s P%d d=%.0f dmg=%.0f shield %.0f -> %.0f pop %.0f -> %.0f" % [p.planet_name, p.owner_id, d2, dmg2, b_sh, p.shield, b_pop, p.pop])
+	print("BLAST %s at (%d,%d) t=%.1fmin dmg=%.0f r=%.0f hits=%d total=%.0f" % [what, pos.x, pos.y, now() / 60.0, damage, radius, hits, dealt])
+	for l in lines:
+		print(l)
+	if sim_mode or fx_hidden(pos):
+		return
+	var w := Shockwave.new()
+	w.radius = radius
+	w.global_position = pos
+	fx_root.add_child(w)
+	spawn_blast(pos, radius * 0.45)
+	for i in 6:
+		spawn_explosion(pos + Vector2.from_angle(TAU * i / 6.0 + randf()) * radius * randf_range(0.15, 0.45), 3.0)
+	sfx.play_at("boom_big", pos, 0.0)
+
+var blast_log: bool = OS.get_environment("SL_BLAST_LOG") != ""
+
+## A gas giant or world is gone for good (exploded or imploded): out of every
+## list now, freed at the end of the frame. An owned world counts as lost.
+func remove_planet(p: Planet) -> void:
+	var old := p.owner_id
+	p.remove_from_group("planets")
+	for pid in visions:
+		var v: Vision = visions[pid]
+		if v:
+			v.seen_planet_owner.erase(p)
+			v.seen_planet_pop.erase(p)
+	removed_planets.append(String(p.name))
+	if old > 0:
+		stats.count(old, "planets_lost")
+		if old == player_id:
+			alert("%s has imploded and is lost!" % p.planet_name, "alert_planet_lost", true, p.global_position)
+	if focused_planet == p:
+		clear_planet_focus()
+	p.queue_free()
+	selection_changed.emit()
+	_next_defeat_check = 0.0
+
+## Names of planets destroyed this match (SaveGame removes them on load).
+var removed_planets: Array[String] = []
+
 func _spice_needed(r: Dictionary, need: Dictionary, f: float) -> float:
 	var s: float = need.get("spice", 0.0) * f
 	for k in need:
@@ -3797,7 +3900,7 @@ func use_abilities() -> void:
 ## A spice-gas harvest spot in a nebula at p (reusing one within 60 px).
 func nebula_pocket_at(p: Vector2) -> NebulaPocket:
 	for n in get_tree().get_nodes_in_group("nebula_pockets"):
-		if n.global_position.distance_to(p) < 60.0:
+		if n.amount > 0 and not n.is_queued_for_deletion() and n.global_position.distance_to(p) < 60.0:
 			return n
 	var pk := NebulaPocket.new()
 	pk.position = p
@@ -3811,6 +3914,8 @@ func nearest_nebula_pocket(pid: int, from: Vector2, max_dist: float) -> NebulaPo
 	var best := Vector2.INF
 	var best_d := max_dist
 	for n in get_tree().get_nodes_in_group("nebulae"):
+		if n.depleted():
+			continue
 		var p: Vector2 = n.heart_toward(from)
 		if v != null and not v.is_explored_at(p):
 			continue
@@ -3835,6 +3940,8 @@ func nearest_pocket(p: Vector2, max_dist: float) -> NebulaPocket:
 	var best: NebulaPocket = null
 	var best_d := max_dist
 	for n in get_tree().get_nodes_in_group("nebula_pockets"):
+		if n.amount <= 0 or n.is_queued_for_deletion():
+			continue
 		var d: float = n.global_position.distance_to(p)
 		if d < best_d:
 			best_d = d

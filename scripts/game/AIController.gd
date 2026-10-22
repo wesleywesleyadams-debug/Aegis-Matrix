@@ -70,6 +70,7 @@ func _process(delta: float) -> void:
 			continue
 		st["timer"] = 1.0
 		_think(pid, st, game)
+		_flee_blasts(pid, game)
 
 func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# The learning agent runs its whole side itself: nothing scripted (unless
@@ -86,7 +87,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	var skimmers := ships.filter(func(s): return s.def["role"] == "skimmer")
 	# Fog of war: this player's own sensors and memory (null without fog).
 	var v: Vision = game.visions.get(pid)
-	var giant := game.nearest_gas_giant(base.global_position, 4000.0, v)
+	var giant := _safe_giant(pid, base.global_position, game, v)
 	# The closest explored point inside a spice nebula (INF if none known).
 	var neb_spot := _nebula_spot(base.global_position, game, v)
 	var war := ships.filter(func(s): return s.def["role"] == "warship")
@@ -182,8 +183,20 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				c.order_colonize(p)
 
 	# Skimmers: gas giants for minerals; one harvests spice gas in a known
-	# spice nebula while spice is short (slow, but it never runs out).
+	# spice nebula while spice is short (nebulae are finite: depleted ones are skipped).
 	var on_neb := skimmers.filter(func(s): return s.mine_target is NebulaPocket).size()
+	# A gas giant about to blow with our own worlds or stations in its blast:
+	# stop skimming it (next to only enemies, draining it is fair game).
+	for s in skimmers:
+		var mt = s.mine_target
+		if is_instance_valid(mt) and mt is Planet and not _giant_safe(pid, mt, game):
+			if giant:
+				s.order_mine(giant)
+			elif neb_spot != Vector2.INF:
+				s.order_mine(game.nebula_pocket_at(neb_spot))
+			else:
+				s.order_move(base.global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
+			_flog(pid, "skimmer pulled off unstable %s" % mt.planet_name)
 	for s in skimmers:
 		if neb_spot != Vector2.INF and on_neb == 0 and res["spice"] < 150.0 and not (s.mine_target is NebulaPocket):
 			s.order_mine(game.nebula_pocket_at(neb_spot))
@@ -227,6 +240,21 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	for p0 in game.get_tree().get_nodes_in_group("planets"):
 		if p0.owner_id == pid and p0.free_fields() > 0:
 			best_soil = maxf(best_soil, float(p0.type_def().get("fertility", 1.0)))
+	# Finite crusts: never mine our own worlds to death. Pause a world's
+	# Mining Complexes once its crust is low, then turn them into something
+	# useful (one at a time).
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.owner_id != pid or not p.is_habitable():
+			continue
+		if not p.mining_paused and p.mineral_reserve <= AI_PAUSE_MINING and p.count_building("mine") > 0:
+			p.mining_paused = true
+			_flog(pid, "pause mining on %s (crust %d)" % [p.planet_name, int(p.mineral_reserve)])
+		if p.mining_paused and p.construction.is_empty() and p.construction_queue.is_empty() and Game.now() >= st.get("next_mine_swap", 0.0):
+			var at: int = p.buildings.find("mine")
+			if at >= 0:
+				p.demolish(at)
+				p.order_build(at, "farm" if game.rates[pid].get("food", 0.0) < 0.0 else "generator")
+				st["next_mine_swap"] = Game.now() + 30.0
 	for p in game.get_tree().get_nodes_in_group("planets"):
 		if p.owner_id != pid or not p.construction.is_empty() or not p.construction_queue.is_empty() or p.free_fields() == 0:
 			continue
@@ -252,6 +280,9 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			if _spare(pid, st, game, "minerals") > 600.0 and _spare(pid, st, game, "spice") > 40.0 \
 					and p.count_building("battery") < (3 if st.get("upkeep_capped", false) else 2) and _frontier_world(pid, p, game, v):
 				pick = "battery"
+		# No new Mining Complexes on a world with little crust left.
+		if pick == "mine" and (p.mining_paused or p.mineral_reserve < AI_PAUSE_MINING * 3.0):
+			pick = "generator"
 		for i in p.fields:
 			if p.order_build(i, pick) == "":
 				break
@@ -766,6 +797,9 @@ func _nebula_spot(from: Vector2, game: Game, v: Vision) -> Vector2:
 	var best := Vector2.INF
 	var best_d := INF
 	for n in game.get_tree().get_nodes_in_group("nebulae"):
+		# Nebulae run dry (SpiceNebula.CELL): a harvested-out one is no use.
+		if n.depleted():
+			continue
 		var p: Vector2 = n.heart_toward(from)
 		if v != null and not v.is_explored_at(p):
 			continue
@@ -970,9 +1004,64 @@ func _upkeep_fits(pid: int, game: Game, u: float, w: float, income: float = 0.0)
 	var margin := _energy_margin(pid, game)
 	return margin - add > 1.0 or float(game.resources[pid]["energy"]) > maxf(add - margin, 0.0) * 10.0 + 80.0
 
-## What is left of resource `k` after the reserve for the next big purchase.
+## What is left of resource `k` after the reserve for the next big purchase
+## (and, for minerals, a couple of minutes of Power Plant fuel: minerals now
+## pay for energy, and spice never covers fuel).
 func _spare(pid: int, st: Dictionary, game: Game, k: String) -> float:
-	return float(game.resources[pid].get(k, 0.0)) - float(st.get("reserve", {}).get(k, 0.0))
+	var fuel := game.fuel_per_min(pid) * FUEL_MINUTES if k == "minerals" else 0.0
+	return float(game.resources[pid].get(k, 0.0)) - float(st.get("reserve", {}).get(k, 0.0)) - fuel
+
+## A gas giant or world counting down to its blast: every ship of ours inside
+## it (plus a margin) runs straight out, whatever it was doing. Called after
+## the rest of the AI's orders so nothing sends it back in. Stations can't move.
+func _flee_blasts(pid: int, game: Game) -> void:
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.doom_timer < 0.0:
+			continue
+		var r: float = p.blast_radius() + 120.0
+		for s in game.get_tree().get_nodes_in_group("ships"):
+			if s.owner_id != pid or not s.is_alive() or s.docked or s.warping:
+				continue
+			var off: Vector2 = s.global_position - p.global_position
+			if off.length() < r:
+				var out: Vector2 = p.global_position + (off.normalized() if off.length() > 1.0 else Vector2.RIGHT) * (r + 60.0)
+				if s.move_goal.distance_to(out) > 40.0 or s.state != Ship.State.MOVE:
+					s.order_move(out)
+
+## Minutes of Power Plant fuel the AI keeps back from spending.
+const FUEL_MINUTES := 2.0
+## The AI pauses a world's Mining Complexes at this much crust left.
+const AI_PAUSE_MINING := 1500.0
+## A gas giant this close to empty is treated as about to blow.
+const AI_GIANT_DANGER := 1500
+
+## False when gas giant `p` is nearly drained and something of ours that
+## cannot just fly off (a world or a construct) sits inside its blast.
+func _giant_safe(pid: int, p: Planet, game: Game) -> bool:
+	if p.amount > AI_GIANT_DANGER:
+		return true
+	var r := p.blast_radius() + 150.0
+	for w in game.get_tree().get_nodes_in_group("planets"):
+		if w != p and w.owner_id == pid and w.global_position.distance_to(p.global_position) < r + w.radius:
+			return false
+	for grp in ["starbases", "forts", "depots", "mining_stations"]:
+		for e in game.get_tree().get_nodes_in_group(grp):
+			if e.owner_id == pid and e.is_alive() and e.global_position.distance_to(p.global_position) < r:
+				return false
+	return true
+
+## The nearest known gas giant worth skimming (see _giant_safe).
+func _safe_giant(pid: int, from: Vector2, game: Game, v: Vision) -> Planet:
+	var best: Planet = null
+	var best_d := 4000.0
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.is_habitable() or p.amount <= 0 or (v and v.known_owner(p) < 0) or not _giant_safe(pid, p, game):
+			continue
+		var d := from.distance_to(p.global_position)
+		if d < best_d:
+			best_d = d
+			best = p
+	return best
 
 ## Picks the next big purchase to save toward (st["reserve_for"]) and how
 ## much of each resource to hold back for it (st["reserve"]). A Warp Gate
@@ -992,7 +1081,7 @@ func _update_reserve(pid: int, st: Dictionary, game: Game, fleet: int) -> void:
 		pick = "gate"
 	elif mode != "recover" and bases.size() < MAX_YARDS \
 			and (st.get("reserve_for", "") == "starbase" or (float(res["minerals"]) > SPARE_MINERALS and game.rates[pid].get("minerals", 0.0) > 0.0)) \
-			and _upkeep_fits(pid, game, Defs.STARBASE["upkeep"], Defs.UPKEEP_WEIGHT["starbase"], Defs.STARBASE["energy_per_sec"] * Defs.PER_MIN) \
+			and _upkeep_fits(pid, game, Defs.STARBASE["upkeep"], Defs.UPKEEP_WEIGHT["starbase"]) \
 			and _yard_site(pid, game, bases.map(func(b): return b.global_position)) != Vector2.INF:
 		pick = "starbase"
 	st["reserve_for"] = pick

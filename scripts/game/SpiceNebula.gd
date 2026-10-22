@@ -16,6 +16,18 @@ extends Node2D
 ## same wobble, so what you see is exactly where Radiation starts.
 ## Everything else in the game asks a nebula the same questions (contains,
 ## heart_toward, exit_from, draw_on_map) and never looks at its shape.
+##
+## Finite: the gas is cut into an invisible grid of CELL px squares, each
+## holding CELL_SPICE spice. A skimmer's harvest spot (NebulaPocket) drains
+## the cell it sits in; the cloud thins there as it is drained, and an empty
+## cell fades out and is gone - contains() is false there, so it no longer
+## hides ships, irradiates them, or counts as nebula for anything. 40 px: a
+## bit wider than a harvest spot (36 px across) and 10 paint pixels, so holes
+## line up with the pixel art and a skimmer works one cell at a time.
+const CELL := 40.0
+const CELL_SPICE := 100.0
+## Seconds an emptied cell takes to erode out of the picture.
+const CELL_FADE := 1.5
 
 ## Low-level radiation: about a Red Dwarf's outer zone (Star.dps_at).
 const RADIATION_DPS := 4.0
@@ -36,14 +48,243 @@ var seed_value: int = 7
 
 var _edge_noise: FastNoiseLite
 
+## Spice left per cell (Vector2i grid key -> amount); every cell with gas in
+## it is listed, empty ones at 0.
+var cells := {}
+var _total := 0.0
+var _img: Image
+var _orig: Image
+var _tex: ImageTexture
+## Presence (0..1) of cells that have changed, easing toward 1 (gas) or 0
+## (harvested out); cells not listed are as they started.
+var _shown := {}
+var _animating := {}
+
 func _ready() -> void:
 	add_to_group("nebulae")
 	z_index = -1
+	_img = _paint()
+	_orig = _img.duplicate()
+	_tex = ImageTexture.create_from_image(_img)
 	var sprite := Sprite2D.new()
-	sprite.texture = ImageTexture.create_from_image(_paint())
+	sprite.texture = _tex
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.scale = Vector2.ONE * PIXEL
 	add_child(sprite)
+	set_process(false)
+
+## Dev (SL_NEB_GRID): draws the cell grid with each cell's spice left.
+var _grid_debug: bool = OS.get_environment("SL_NEB_GRID") != ""
+
+func _draw() -> void:
+	if not _grid_debug:
+		return
+	var f := ThemeDB.fallback_font
+	for k in cells:
+		var r := Rect2(Vector2(k) * CELL, Vector2(CELL, CELL))
+		var left: float = cells[k]
+		var col := Color(1, 1, 1, 0.35) if left > 0.0 else Color(1, 0.3, 0.3, 0.6)
+		draw_rect(r, col, false, 1.0)
+		draw_string(f, r.position + Vector2(3, CELL * 0.6), str(int(round(left))), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, col)
+
+## The grid cell a world point falls in.
+func cell_of(p: Vector2) -> Vector2i:
+	var v := (p - global_position) / CELL
+	return Vector2i(floori(v.x), floori(v.y))
+
+func cell_center(k: Vector2i) -> Vector2:
+	return global_position + (Vector2(k) + Vector2(0.5, 0.5)) * CELL
+
+## Spice left in the whole nebula.
+func remaining() -> float:
+	return _total
+
+func depleted() -> bool:
+	return _total <= 0.0
+
+## The live cell nearest p (Vector2i(INT_MAX...) sentinel via has check).
+func nearest_live_cell(p: Vector2) -> Variant:
+	var best: Variant = null
+	var best_d := INF
+	for k in cells:
+		if cells[k] <= 0.0:
+			continue
+		var d := cell_center(k).distance_squared_to(p)
+		if d < best_d:
+			best_d = d
+			best = k
+	return best
+
+## Takes up to n spice from the cell at p; returns how much it got.
+func drain_at(p: Vector2, n: float) -> float:
+	var k := cell_of(p)
+	var left: float = cells.get(k, 0.0)
+	if left <= 0.0:
+		return 0.0
+	var got := minf(n, left)
+	cells[k] = left - got
+	_total = maxf(0.0, _total - got)
+	_restyle(k)
+	return got
+
+## Save / load: only the cells that have been touched.
+func export_cells() -> Dictionary:
+	var out := {}
+	for k in cells:
+		if cells[k] < CELL_SPICE - 0.001:
+			out["%d,%d" % [k.x, k.y]] = cells[k]
+	return out
+
+func import_cells(d: Dictionary) -> void:
+	for key in d:
+		var parts := str(key).split(",")
+		var k := Vector2i(int(parts[0]), int(parts[1]))
+		if cells.has(k):
+			_total -= cells[k] - float(d[key])
+			cells[k] = float(d[key])
+			_shown[k] = _presence_target(k)
+			_dirty[k] = true
+	_total = maxf(_total, 0.0)
+	if _img != null:
+		_repaint_dirty()
+
+## The cloud is a density field over the cells: each cell's presence (1 = gas,
+## 0 = harvested out, easing between the two over CELL_FADE) is blended
+## smoothly between cell centres, and a pixel is gas where that density beats
+## a noisy threshold - so a harvested patch erodes from its edges inward and
+## the cloud re-forms a soft, wispy outline, never a square hole. contains()
+## asks the same field, so what you see is where the gas is.
+## Cells outside the original outline count as present: the outline itself
+## comes from the shape (_shape_contains), the field only carves holes.
+func _presence_target(k: Vector2i) -> float:
+	if not cells.has(k):
+		return 1.0
+	return 1.0 if cells[k] > 0.0 else 0.0
+
+func _presence(k: Vector2i) -> float:
+	return _shown.get(k, _presence_target(k))
+
+## How thin a cell's gas looks: down to 55% opacity as it is drained.
+func _thin(k: Vector2i) -> float:
+	if not cells.has(k):
+		return 1.0
+	return 0.55 + 0.45 * clampf(cells[k] / CELL_SPICE, 0.0, 1.0)
+
+## Field value (presence, thinness) at local point q, blended between the
+## four nearest cell centres.
+func _field(q: Vector2) -> Vector2:
+	var u := q / CELL - Vector2(0.5, 0.5)
+	var i0 := Vector2i(floori(u.x), floori(u.y))
+	var fx := u.x - i0.x
+	var fy := u.y - i0.y
+	var k00 := i0
+	var k10 := i0 + Vector2i(1, 0)
+	var k01 := i0 + Vector2i(0, 1)
+	var k11 := i0 + Vector2i(1, 1)
+	var p := lerpf(lerpf(_presence(k00), _presence(k10), fx), lerpf(_presence(k01), _presence(k11), fx), fy)
+	if p >= 0.999:
+		return Vector2(1.0, lerpf(lerpf(_thin(k00), _thin(k10), fx), lerpf(_thin(k01), _thin(k11), fx), fy))
+	return Vector2(p, lerpf(lerpf(_thin(k00), _thin(k10), fx), lerpf(_thin(k01), _thin(k11), fx), fy))
+
+var _hole_noise: FastNoiseLite
+## The noisy threshold the presence field must beat (wispy, not round).
+func _threshold(q: Vector2) -> float:
+	if _hole_noise == null:
+		_hole_noise = FastNoiseLite.new()
+		_hole_noise.seed = seed_value * 13 + 3
+		_hole_noise.frequency = 0.06
+		_hole_noise.fractal_octaves = 3
+	# Strong enough that an edge wanders well over half a cell either way.
+	return clampf(0.5 + _hole_noise.get_noise_2d(q.x / PIXEL, q.y / PIXEL) * 1.1, 0.1, 0.9)
+
+## Gas at local point q per the field (true wherever nothing was harvested).
+func _field_has(q: Vector2) -> bool:
+	var f := _field(q)
+	return f.x >= 0.999 or f.x >= _threshold(q)
+
+func _restyle(k: Vector2i) -> void:
+	if _grid_debug:
+		queue_redraw()
+	if Game.instance and Game.instance.sim_mode:
+		# No picture to animate: the gameplay boundary moves at once.
+		if _presence_target(k) <= 0.0:
+			_shown[k] = 0.0
+		return
+	if not _shown.has(k):
+		_shown[k] = 1.0
+	_animating[k] = true
+	_dirty[k] = true
+	set_process(true)
+
+var _dirty := {}
+
+func _process(delta: float) -> void:
+	var done: Array = []
+	for k in _animating:
+		var target := _presence_target(k)
+		var cur: float = _shown.get(k, 1.0)
+		cur = move_toward(cur, target, delta / CELL_FADE)
+		_shown[k] = cur
+		_dirty[k] = true
+		if is_equal_approx(cur, target):
+			done.append(k)
+	for k in done:
+		_animating.erase(k)
+	_repaint_dirty()
+	if _grid_debug:
+		queue_redraw()
+	if _animating.is_empty():
+		set_process(false)
+
+## Repaints every pixel the changed cells' presence reaches (the cell and its
+## neighbours, since the field blends across cell centres).
+func _repaint_dirty() -> void:
+	if _dirty.is_empty():
+		return
+	var area := {}
+	for k in _dirty:
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				area[k + Vector2i(dx, dy)] = true
+	_dirty.clear()
+	for k in area:
+		_paint_cell(k)
+	_tex.update(_img)
+
+const RIM := Color("ffcf7a")
+
+## Repaints one cell's pixels from the original art through the field: gone
+## where the field says no gas, a soft fade and a warm rim glow at the new
+## edge, thinner where the cell has been drained.
+func _paint_cell(k: Vector2i) -> void:
+	var n := _img.get_width()
+	var c := n / 2.0
+	var x0 := maxi(0, int(ceil(k.x * CELL / PIXEL + c)))
+	var x1 := mini(n, int(ceil((k.x + 1) * CELL / PIXEL + c)))
+	var y0 := maxi(0, int(ceil(k.y * CELL / PIXEL + c)))
+	var y1 := mini(n, int(ceil((k.y + 1) * CELL / PIXEL + c)))
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			var o := _orig.get_pixel(x, y)
+			if o.a <= 0.0:
+				continue
+			var q := Vector2(x - c, y - c) * PIXEL
+			var f := _field(q)
+			if f.x >= 0.999:
+				o.a *= f.y
+				_img.set_pixel(x, y, o)
+				continue
+			var th := _threshold(q)
+			var over := f.x - th
+			if over <= -0.06:
+				_img.set_pixel(x, y, Color(0, 0, 0, 0))
+				continue
+			# A soft edge, glowing like the cloud's own rim.
+			var a := smoothstep(-0.06, 0.06, over)
+			var glow := clampf(1.0 - over / 0.18, 0.0, 1.0)
+			var col := o.lerp(Color(RIM, 0.5), glow * glow * 0.7)
+			col.a = maxf(o.a, col.a) * a * f.y
+			_img.set_pixel(x, y, col)
 
 ## Builds one from a SystemGen feature dict.
 static func from_feature(ft: Dictionary) -> SpiceNebula:
@@ -90,6 +331,14 @@ func _faces(a: float) -> Vector2:
 	return Vector2(i, maxf(o, i + 60.0))
 
 func contains(p: Vector2) -> bool:
+	# Harvested-out gas is no longer nebula at all (the same field the
+	# picture is drawn from, so the boundary is the visible edge).
+	if not _shown.is_empty() and not _field_has(p - global_position):
+		return false
+	return _shape_contains(p)
+
+## The original outline, ignoring what has been harvested.
+func _shape_contains(p: Vector2) -> bool:
 	var v := p - global_position
 	var a := v.angle()
 	var f := _faces(a)
@@ -97,8 +346,16 @@ func contains(p: Vector2) -> bool:
 	return d >= f.x and d <= f.y and (shape == "cloud" or _in_arc(a))
 
 ## A point well inside the nebula, on the part nearest `from`: where a
-## skimmer goes to work, or where the AI sends one.
+## skimmer goes to work, or where the AI sends one. Once part of it has been
+## harvested away, the nearest gas still left to that point instead.
 func heart_toward(from: Vector2) -> Vector2:
+	var h := _heart_toward(from)
+	if contains(h):
+		return h
+	var k = nearest_live_cell(h)
+	return h if k == null else cell_center(k)
+
+func _heart_toward(from: Vector2) -> Vector2:
 	if shape == "cloud":
 		return global_position + (from - global_position).limit_length(radius * 0.4)
 	var a := (from - global_position).angle()
@@ -179,6 +436,12 @@ func _paint() -> Image:
 			var f := _faces(a)
 			var dither: float = (bayer[y % 4][x % 4] + 0.5) / 16.0 - 0.5
 			var inside := d >= f.x and d <= f.y and (shape == "cloud" or _in_arc(a))
+			if inside:
+				# Every cell with gas in it holds CELL_SPICE.
+				var ck := Vector2i(floori(off.x / CELL), floori(off.y / CELL))
+				if not cells.has(ck):
+					cells[ck] = CELL_SPICE
+					_total += CELL_SPICE
 			if not inside:
 				# Outside: a thin, fading haze so the edge doesn't look cut.
 				var gap := minf(absf(d - f.y), absf(d - f.x) if f.x > 0.0 else INF)

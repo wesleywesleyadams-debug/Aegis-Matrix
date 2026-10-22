@@ -27,6 +27,7 @@ var _title: Label
 var _subtitle: Label
 var _details: RichTextLabel
 var _details_right := true
+var _pause_btn: Button
 ## Draws the subtle ring around the planet, the leader line and the name bubble.
 var _deco: Control
 var _ring_color := Color(1, 1, 1, 0.5)
@@ -80,8 +81,21 @@ func _ready() -> void:
 	_details.add_theme_font_size_override("normal_font_size", 14)
 	_details.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_details.add_theme_constant_override("outline_size", 6)
-	_details.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# PASS so its [hint] tooltips show (the pop and reserve lines).
+	_details.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(_details)
+
+	# Switch for this world's Mining Complexes (they dig its finite crust).
+	_pause_btn = Button.new()
+	_pause_btn.focus_mode = Control.FOCUS_NONE
+	_pause_btn.add_theme_font_size_override("font_size", 14)
+	_pause_btn.tooltip_text = "Switch this world's Mining Complexes off or on. Paused, they produce nothing and dig nothing. A world whose crust is mined out implodes."
+	_pause_btn.pressed.connect(func():
+		if is_instance_valid(planet) and planet.owner_id == game.player_id:
+			planet.mining_paused = not planet.mining_paused
+			game.sfx.play_ui("click")
+			refresh())
+	add_child(_pause_btn)
 
 	_picker = PopupPanel.new()
 	_picker_list = VBoxContainer.new()
@@ -191,7 +205,7 @@ func _place() -> void:
 	_ring_color = Defs.team_color(planet.owner_id) if planet.owner_id != 0 else Color(0.8, 0.85, 1.0)
 	_ring_color.a = 0.55
 	_deco.queue_redraw()
-	for l in [_title, _subtitle, _details]:
+	for l in [_title, _subtitle, _details, _pause_btn]:
 		l.modulate.a = a
 	# The build picker opens beside the globe too: the details step aside.
 	_details.visible = not (_picker != null and _picker.visible)
@@ -212,6 +226,11 @@ func _place() -> void:
 	else:
 		_details.position = Vector2(maxf(8.0, center.x - ring_r - 24.0 - DETAILS_W), dy)
 		_details_right = true
+	# The mining switch sits under the details text.
+	var dsz := _details.get_combined_minimum_size()
+	_pause_btn.size = _pause_btn.get_combined_minimum_size()
+	_pause_btn.position = _details.position + Vector2(maxf(_details.size.x, dsz.x) - _pause_btn.size.x if _details_right else 0.0, maxf(_details.size.y, dsz.y) + 8.0)
+	_pause_btn.visible = _pause_btn.visible and _details.visible
 	# Where the spice bar can go. A label's drawn width is not its box width
 	# (a long line overruns it), so rather than trust the gap, the two rects
 	# are compared and the bar is dropped below the text if they touch.
@@ -252,6 +271,28 @@ func _float_label(size: int, align: HorizontalAlignment) -> Label:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(l)
 	return l
+
+## Spice reserve and mineral crust on one line, with a tooltip on both.
+func _reserves_line() -> String:
+	var parts: Array[String] = []
+	if planet.type_def().has("spice_reserve"):
+		parts.append("%s Reserve %s%s" % [_ic("spice"), _num(planet.spice_reserve), " (exhausted)" if planet.spice_reserve <= 0.0 else ""])
+	parts.append("%s Crust %s / %s%s" % [_ic("minerals"), _num(planet.mineral_reserve), _num(planet.max_mineral_reserve), " (paused)" if planet.mining_paused else ""])
+	var tip := "Reserve: spice stored in this world; Spice Extractors draw it down and it never refills.\nCrust: this world's remaining minerals (%s per size); Mining Complexes dig it out. At 0 crust the world implodes, %d s later, destroying everything on it and hitting everything nearby. Pause mining to stop." % [_num(Defs.WORLD_RESERVE_PER_SIZE), int(Defs.DOOM_SECONDS)]
+	return "[hint=%s]%s[/hint]" % [_hint(tip), "  ·  ".join(parts)]
+
+## Thousands separators: 24,500.
+func _num(v: float) -> String:
+	var s := str(int(round(v)))
+	var out := ""
+	while s.length() > 3:
+		out = "," + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return s + out
+
+## A [hint] tooltip text, with the characters that would break the tag escaped.
+func _hint(t: String) -> String:
+	return "\"" + t.replace("\n", " ").replace("\"", "'").replace("]", ")").replace("[", "(") + "\""
 
 ## A resource icon inline in the details text (icon_<name>.png).
 func _ic(name: String) -> String:
@@ -353,35 +394,41 @@ func refresh() -> void:
 %d/%d built" % [t["label"], planet.fields, used0, planet.fields]) if planet.fields > 0 else t["label"]
 	var owner_text := "Unclaimed" if planet.owner_id == 0 else ("Your world" if mine else ("Allied world" if game.are_allies(planet.owner_id, game.player_id) else "Enemy world"))
 	var s := owner_text
+	# The planetary shield sits under the owner label, at the right.
+	if planet.owner_id != 0 and planet.is_habitable():
+		s += "\n[right]%s Planetary shield %d / %d[/right]" % [_ic("layer_shield"), int(planet.shield), int(planet.max_shield())]
 	for tr in Defs.planet_traits(planet.kind):
 		s += "\n" + tr
 	if not planet.is_habitable():
 		s = "Uninhabitable. No regions to build on; cannot be colonized."
-		if planet.depleted_timer > 0.0:
-			var left := int(planet.depleted_timer)
-			s += "\nDEPLETED: reserve refills in %d:%02d" % [left / 60, left % 60]
-		else:
-			s += "\nMineral reserve: %d" % planet.amount
+		s += "\nMineral reserve: %d / %d (never refills)" % [planet.amount, Defs.GAS_RESERVE]
+		if planet.doom_timer >= 0.0:
+			s += "\nUNSTABLE: EXPLODES IN %d s (%d damage at the centre, out to %d px)" % [int(ceil(planet.doom_timer)), int(Defs.BLAST_DAMAGE), int(Defs.BLAST_RADIUS)]
+		elif planet.unstable():
+			s += "\nUNSTABLE: explodes %d s after it is drained (%d damage at the centre, out to %d px)" % [int(Defs.DOOM_SECONDS), int(Defs.BLAST_DAMAGE), int(Defs.BLAST_RADIUS)]
 		s += "\nMine it with Gas Skimmers (research Gas Skimming)."
 		s += "\nSkimmers haul what they mine back to a starbase."
 	elif planet.owner_id != 0:
-		s += "\n%s %d / %d  (+%d/min)" % [_ic("pop"), int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min)]
-		s += "\n%s Planetary shield %d / %d" % [_ic("layer_shield"), int(planet.shield), int(planet.max_shield())]
-		if planet.type_def().has("spice_reserve"):
-			s += "\n%s Reserve %d%s" % [_ic("spice"), int(planet.spice_reserve), "  (exhausted)" if planet.spice_reserve <= 0.0 else ""]
+		# Population and what it multiplies output by, on one line.
+		s += "\n[hint=%s]%s %d / %d  (+%d/min)  ·  x%.2f output[/hint]" % [_hint("Population / cap (growth per minute). Pops multiply the output of every Farm, Power Plant, Mining Complex and Spice Extractor on this world: x%.2f here." % planet.pop_output_mult()), _ic("pop"), int(planet.pop), int(planet.max_pop()), int(planet.growth_per_min), planet.pop_output_mult()]
+		s += "\n%s +%.0f/min, eaten %.0f/min" % [_ic("food"), planet.food_made_per_min, planet.food_eaten_per_min]
 		if planet.under_siege():
 			s += "\nUNDER BOMBARDMENT: %s, %d%% of pops left" % ["growth halted" if planet.growth_halted() else "shield holding", int(ceil(100.0 * planet.pop / maxf(planet.siege_start_pop, 1.0)))]
 		# Population is the whole reason to grow a world now: it multiplies
 		# what every building on it produces.
-		s += "\n%s bonus x%.2f on every building here" % [_ic("pop"), planet.pop_output_mult()]
-		s += "\n%s +%.0f/min, eaten %.0f/min" % [_ic("food"), planet.food_made_per_min, planet.food_eaten_per_min]
 		s += "\n%s +%.0f/min   %s +%.0f/min   %s +%.1f/min" % [_ic("energy"), planet.energy_out, _ic("minerals"), planet.minerals_out, _ic("spice"), planet.spice_out]
+		s += "\n" + _reserves_line()
+		if planet.count_building("generator") > 0:
+			s += "\n%s Power Plant fuel: %.1f/min%s" % [_ic("minerals"), planet.fuel_per_min, "  (SHORT: plants at %d%%)" % int(planet.fuel_frac * 100.0) if planet.fuel_frac < 0.999 else ""]
+		if planet.doom_timer >= 0.0:
+			s += "\nUNSTABLE: IMPLODES IN %d s (%d damage, %d px)" % [int(ceil(planet.doom_timer)), int(Defs.BLAST_DAMAGE * planet.blast_scale()), int(planet.blast_radius())]
+		elif planet.unstable():
+			s += "\nUNSTABLE: implodes %d s after the crust runs out (%d damage, %d px)" % [int(Defs.DOOM_SECONDS), int(Defs.BLAST_DAMAGE * planet.blast_scale()), int(planet.blast_radius())]
 		if planet.starving:
 			s += "\nSTARVING: shrinking %d/min until food recovers" % int(-planet.growth_per_min)
 	else:
 		s += "\nPop cap %d\nSend a Colony Ship to settle it." % int(planet.max_pop())
-		if planet.type_def().has("spice_reserve"):
-			s += "\n%s Reserve %d (extract with Spice Extractors)" % [_ic("spice"), int(planet.spice_reserve)]
+		s += "\n" + _reserves_line()
 		if planet.colonizing_owner != 0:
 			s += "\nBeing colonized: %d%%" % int(100.0 * planet.colonize_progress / Planet.COLONIZE_TIME)
 	if mine and planet.fields > 0:
@@ -390,6 +437,8 @@ func refresh() -> void:
 		else:
 			var cd: Dictionary = Defs.BUILDINGS[planet.construction["id"]]
 			s += "\nBuilding %s: %d%%%s. %d more queued." % [cd["name"], int(100.0 * planet.construction["progress"] / cd["time"]), " (STALLED: insufficient funds)" if planet.construction_stalled else "", planet.construction_queue.size()]
+	_pause_btn.visible = mine and planet.is_habitable()
+	_pause_btn.text = "Resume mining" if planet.mining_paused else "Pause mining"
 	stats = s
 	_details.text = ("[right]%s[/right]" % s) if _details_right else s
 	for i in _field_buttons.size():
@@ -400,8 +449,8 @@ func refresh() -> void:
 			(b.get_node("Art") as TextureRect).texture = Defs.tex("bld_" + built)
 			# A finished building always runs; only an extractor whose reserve
 			# is gone goes dark.
-			var dry: bool = planet.is_dry(i)
-			b.text = "DRY" if dry else ""
+			var dry: bool = planet.is_dry(i) or (built == "mine" and planet.mining_paused)
+			b.text = ("PAUSED" if built == "mine" else "DRY") if dry else ""
 			b.modulate = Color(1, 1, 1, 0.4) if dry else Color.WHITE
 			(b.get_node("Art") as TextureRect).modulate = Color.WHITE
 			_progress_text(b, Color("ffd46b") if dry else Color.WHITE, 13)

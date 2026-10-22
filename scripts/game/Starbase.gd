@@ -118,9 +118,7 @@ func _physics_process(delta: float) -> void:
 	if selected and is_instance_valid(rally_target):
 		queue_redraw()
 	_regen_shields(delta)
-	g.add_resources(owner_id, {
-		"energy": Defs.STARBASE["energy_per_sec"] * g.mod(owner_id, "energy") * delta,
-	})
+	# (A starbase generates nothing: no reactor, no refinery.)
 
 	build_stalled = false
 	if not queue.is_empty() and g.energy_starved(owner_id):

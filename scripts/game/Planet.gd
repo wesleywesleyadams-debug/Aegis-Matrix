@@ -97,12 +97,28 @@ var construction_stalled: bool = false
 ## Whether each field's building has enough pop to run, and pop left unassigned.
 var operating: Array[bool] = []
 
-## Gas giants: mined by Gas Skimmers (duck-types like an Asteroid).
+## Gas giants: mined by Gas Skimmers (duck-types like an Asteroid). They hold
+## Defs.GAS_RESERVE minerals, never refill, shrink as they are drained, glow
+## below Defs.UNSTABLE_RESERVE and explode when empty (see _blow_up).
 var resource: String = ""
 var amount: int = 0
-## Seconds (game time) until a depleted gas giant refills its reserve.
-const REPLENISH_SECONDS := 600.0
-var depleted_timer: float = 0.0
+## Habitable worlds: minerals in the crust (Defs.WORLD_RESERVE_PER_SIZE per
+## field), dug out by Mining Complexes. At 0 the world implodes.
+var mineral_reserve: float = 0.0
+var max_mineral_reserve: float = 0.0
+## The owner switched this world's Mining Complexes off: they produce
+## nothing and dig nothing.
+var mining_paused: bool = false
+## Power-plant fuel burnt here (minerals/min) and the share of full output
+## the plants ran at last tick (1 = fully fuelled).
+var fuel_per_min: float = 0.0
+var fuel_frac: float = 1.0
+## Full-size world radius (a gas giant shrinks from it as it is drained).
+var _base_radius: float = 24.0
+var _warned := false
+var _gone := false
+## Seconds until this emptied body blows (-1: not counting down).
+var doom_timer: float = -1.0
 ## Desert worlds: spice stored underground, drawn down by Spice Extractors.
 var spice_reserve: float = 0.0
 ## The reserve this world started with (the spice bar's full length).
@@ -126,6 +142,7 @@ func _ready() -> void:
 	# texture divided by that, so worlds keep the size they always had.
 	$Sprite.scale = Vector2.ONE / Defs.ART_SCALE
 	radius = $Sprite.texture.get_width() / Defs.ART_SCALE / 2.0
+	_base_radius = radius
 	if Engine.is_editor_hint():
 		return
 	add_to_group("planets")
@@ -134,7 +151,9 @@ func _ready() -> void:
 	max_spice_reserve = spice_reserve
 	if not is_habitable():
 		resource = "minerals"
-		amount = int(type_def().get("gas_reserve", 0) * reserve_scale())
+		amount = Defs.GAS_RESERVE
+	mineral_reserve = float(fields) * Defs.WORLD_RESERVE_PER_SIZE
+	max_mineral_reserve = mineral_reserve
 	buildings.resize(fields)
 	buildings.fill("")
 	operating.resize(fields)
@@ -159,15 +178,81 @@ func type_def() -> Dictionary:
 func is_habitable() -> bool:
 	return type_def().get("habitable", true)
 
-## Gas giant skimming; returns how much was actually taken.
+## Gas giant skimming; returns how much was actually taken. The giant
+## shrinks as it is drained and explodes once empty.
 func extract(n: int) -> int:
+	if _gone:
+		return 0
 	var got := mini(n, amount)
 	amount -= got
-	if amount <= 0 and depleted_timer <= 0.0:
-		depleted_timer = REPLENISH_SECONDS
-		$Sprite.modulate = Color(0.45, 0.45, 0.5)
-		queue_redraw()
+	update_gas_size()
+	_check_unstable()
+	if amount <= 0:
+		start_doom()
 	return got
+
+## Remaining share of a gas giant's reserve (1 = untouched).
+func gas_frac() -> float:
+	return clampf(float(amount) / float(Defs.GAS_RESERVE), 0.0, 1.0)
+
+## A gas giant's size follows what is left in it, down to Defs.GAS_MIN_SCALE;
+## its radius (orbits, harvest reach, picking) shrinks with the sprite.
+func update_gas_size() -> void:
+	if is_habitable() or not has_node("Sprite"):
+		return
+	var s := lerpf(Defs.GAS_MIN_SCALE, 1.0, gas_frac())
+	$Sprite.scale = Vector2.ONE / Defs.ART_SCALE * s
+	radius = _base_radius * s
+	queue_redraw()
+
+## Close to empty: a gas giant below Defs.UNSTABLE_RESERVE, or a mined world
+## whose crust is nearly gone. It glows, and blows when it hits 0.
+func unstable() -> bool:
+	if _gone:
+		return false
+	if doom_timer >= 0.0:
+		return true
+	if not is_habitable():
+		return amount < Defs.UNSTABLE_RESERVE
+	return mineral_reserve < Defs.UNSTABLE_RESERVE
+
+## Marks a body as having turned unstable (its glow starts; no alert).
+func _check_unstable() -> void:
+	if _warned or not unstable():
+		return
+	# No alert: the only cue is the glow (and the panel / tooltip text).
+	_warned = true
+	queue_redraw()
+
+## Blast strength for this body: a gas giant's full Defs.BLAST_DAMAGE /
+## BLAST_RADIUS, a world's scaled by size / Defs.BLAST_REF_SIZE.
+func blast_scale() -> float:
+	return 1.0 if not is_habitable() else float(fields) / Defs.BLAST_REF_SIZE
+
+func blast_radius() -> float:
+	return Defs.BLAST_RADIUS * blast_scale()
+
+## Empty: the countdown starts (Defs.DOOM_SECONDS) and nothing stops it.
+func start_doom() -> void:
+	if _gone or doom_timer >= 0.0:
+		return
+	doom_timer = Defs.DOOM_SECONDS
+	_warned = true
+	# No alert and no on-map countdown: the glow pulses faster and hotter,
+	# and the panel / tooltip show the seconds left.
+	print("DOOM %s %s (P%d) at t=%.1fmin" % ["world" if is_habitable() else "gas giant", planet_name, owner_id, Game.now() / 60.0])
+	queue_redraw()
+
+## The countdown ran out: the gas giant explodes / the world implodes. It is removed from the
+## map and its blast hits everything around it.
+func _blow_up() -> void:
+	if _gone:
+		return
+	_gone = true
+	var k := blast_scale()
+	var g := Game.instance
+	g.body_blast(global_position, Defs.BLAST_DAMAGE * k, Defs.BLAST_RADIUS * k, self, ("gas giant %s exploded" % planet_name) if not is_habitable() else ("world %s (size %d, P%d) imploded" % [planet_name, fields, owner_id]))
+	g.remove_planet(self)
 
 func max_pop() -> float:
 	var extra := 0.0
@@ -205,14 +290,19 @@ func colonize(pid: int) -> void:
 func _process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	if _gone:
+		return
+	if doom_timer >= 0.0:
+		doom_timer -= delta
+		queue_redraw()
+		if doom_timer <= 0.0:
+			doom_timer = 0.0
+			_blow_up()
+			return
 	_batteries_fire(delta)
-	if depleted_timer > 0.0:
-		depleted_timer -= delta
-		if depleted_timer <= 0.0:
-			depleted_timer = 0.0
-			amount = int(type_def().get("gas_reserve", 0) * reserve_scale())
-			$Sprite.modulate = Color.WHITE
-			queue_redraw()
+	# Unstable bodies pulse.
+	if unstable():
+		queue_redraw()
 	_econ_timer += delta
 	if _econ_timer >= ECON_TICK:
 		_economy(_econ_timer)
@@ -397,10 +487,24 @@ func progress_colonize(ship: Node2D, dt: float) -> bool:
 func _draw() -> void:
 	if Engine.is_editor_hint():
 		return
-	if depleted_timer > 0.0:
+	# Unstable: a pulsing orange-red glow, quicker and hotter the closer it is
+	# to going off.
+	if unstable() and in_sight:
+		var left := clampf((float(amount) if not is_habitable() else mineral_reserve) / Defs.UNSTABLE_RESERVE, 0.0, 1.0)
+		var hz := lerpf(3.0, 0.8, left) if doom_timer < 0.0 else lerpf(7.0, 3.0, doom_timer / Defs.DOOM_SECONDS)
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU * hz)
+		var hot := Color(1.0, lerpf(0.25, 0.55, left), 0.1)
+		# The final countdown: the same glow, but brighter, wider and redder.
+		var boost := 1.0 if doom_timer < 0.0 else 2.2
+		if doom_timer >= 0.0:
+			hot = Color(1.0, 0.18, 0.05)
+		for i in 4:
+			var rr := radius * (1.0 + 0.12 * boost * (i + 1) * (0.6 + 0.4 * pulse))
+			draw_circle(Vector2.ZERO, rr, Color(hot, minf(0.6, (0.16 - i * 0.03) * (0.5 + 0.5 * pulse) * boost)))
+		draw_arc(Vector2.ZERO, radius + 2.0, 0.0, TAU, 64, Color(hot, 0.5 + 0.4 * pulse), 2.0)
 		var f := ThemeDB.fallback_font
-		var dw: float = f.get_string_size("DEPLETED", HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-		draw_string(f, Vector2(-dw / 2.0, radius + 12.0), "DEPLETED", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 0.55, 0.45))
+		# (No text, no countdown: players have to notice the glow. The
+		# panel and tooltip say how long is left.)
 	var r := radius + 5.0
 	var so := shown_owner()
 	if so != 0 or focused:
@@ -498,6 +602,9 @@ func _run_buildings(dt: float) -> void:
 	var g := Game.instance
 	var t := type_def()
 	var out := {}
+	var energy_made := 0.0
+	var dug := 0.0
+	var digging := false
 	_staff()
 	# Every pop works, not just the ones that switch a building on.
 	var hands := pop_output_mult()
@@ -515,7 +622,9 @@ func _run_buildings(dt: float) -> void:
 			elif k == "energy":
 				# A Molten world's plants run hotter than anyone else's.
 				v *= g.mod(owner_id, "energy") * float(t.get("energy_mult", 1.0))
-				energy_out += v
+				# Paid for (and added) below, once the fuel is known.
+				energy_made += v
+				continue
 			elif k == "spice" and b == "spice_extractor":
 				# Extractors draw from the planet's stored spice until it runs dry.
 				v = minf(v, spice_reserve * Defs.PER_MIN / maxf(dt, 0.0001))
@@ -525,12 +634,33 @@ func _run_buildings(dt: float) -> void:
 				spice_out += v
 			elif k == "spice":
 				spice_out += v
+			elif k == "minerals" and b == "mine":
+				# Mining Complexes dig out this world's own crust.
+				digging = true
+				v = minf(v, mineral_reserve * Defs.PER_MIN / maxf(dt, 0.0001))
+				mineral_reserve = maxf(0.0, mineral_reserve - v / Defs.PER_MIN * dt)
+				dug += v
+				minerals_out += v
 			elif k == "minerals":
 				minerals_out += v
 			out[k] = out.get(k, 0.0) + v / Defs.PER_MIN * dt
 	if not out.is_empty():
 		g.add_resources(owner_id, out)
 		g.ledger(owner_id, "in_extractor", out.get("spice", 0.0))
+	# Power Plants burn minerals (Defs.FUEL_PER_ENERGY per energy made, from
+	# the mineral stockpile only): short of fuel, they make that much less.
+	fuel_frac = 1.0
+	fuel_per_min = 0.0
+	if energy_made > 0.0:
+		fuel_frac = g.pay_fuel(owner_id, energy_made * Defs.FUEL_PER_ENERGY / Defs.PER_MIN * dt)
+		energy_out = energy_made * fuel_frac
+		fuel_per_min = energy_out * Defs.FUEL_PER_ENERGY
+		g.add_resources(owner_id, {"energy": energy_out / Defs.PER_MIN * dt})
+	if digging:
+		_check_unstable()
+		if mineral_reserve <= 0.0:
+			start_doom()
+			return
 
 	construction_stalled = false
 	if construction.is_empty():
@@ -568,7 +698,7 @@ func pop_output_mult() -> float:
 ## Extractor standing on an exhausted reserve.
 func _staff() -> void:
 	for i in fields:
-		operating[i] = buildings[i] != "" and not is_dry(i)
+		operating[i] = buildings[i] != "" and not is_dry(i) and not (mining_paused and buildings[i] == "mine")
 
 ## A Spice Extractor on a world whose reserve is gone: it shuts down and
 ## produces nothing until... nothing. The reserve does not come back.

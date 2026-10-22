@@ -197,9 +197,36 @@ const STARBASE := {
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 1250, "spice": 75}, "build_time": 40.0,
 	"upkeep": 3.3,
-	# Station reactors (no refinery: minerals come only from harvesters and worlds).
-	"energy_per_sec": 0.22,
+	# No reactor and no refinery: a starbase generates nothing. Energy comes
+	# only from Power Plants (and Radiation Sail Arrays), minerals only from
+	# harvesters and worlds.
 }
+
+## Finite economy. Power Plants burn minerals as fuel: FUEL_PER_ENERGY
+## minerals for every energy they actually produce (after every energy
+## multiplier: population, research, a Molten world). Fuel comes from the
+## mineral stockpile only - spice never covers it - and plants run at
+## whatever share of full output the stockpile can fuel.
+const FUEL_PER_ENERGY := 0.1
+## Gas giants hold GAS_RESERVE minerals each and never refill. They shrink as
+## they are drained (down to GAS_MIN_SCALE of full size), start to glow when
+## below UNSTABLE_RESERVE, and explode when empty.
+const GAS_RESERVE := 10000
+const GAS_MIN_SCALE := 0.4
+const UNSTABLE_RESERVE := 1000.0
+## A habitable world holds WORLD_RESERVE_PER_SIZE minerals per field. Its
+## Mining Complexes draw it down; at 0 the world implodes.
+const WORLD_RESERVE_PER_SIZE := 1000.0
+## Blast of an exploding gas giant: BLAST_DAMAGE at the centre falling
+## linearly to 0 at BLAST_RADIUS. A world's implosion scales both linearly by
+## size / BLAST_REF_SIZE (a size-30 world matches a gas giant; size 20:
+## 2,000 damage over 300 px; size 10: 1,000 over 150 px).
+const BLAST_DAMAGE := 3000.0
+const BLAST_RADIUS := 450.0
+const BLAST_REF_SIZE := 30.0
+## Seconds between a body running empty and its blast: a countdown nothing
+## can stop, so ships get the chance to flee.
+const DOOM_SECONDS := 10.0
 
 ## Mining Station: a cheap, lightly armed drop-off built on site by a
 ## Constructor. Harvesters unload here instead of flying home, which is what
@@ -273,7 +300,7 @@ const PLANET_TYPES := {
 	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy_mult": 1.0, "spice_reserve": 5000},
 	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy_mult": 1.0, "spice_reserve": 1200},
 	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy_mult": 1.15, "spice_reserve": 2000},
-	"planet_gas": {"label": "Gas Giant", "habitable": false, "gas_reserve": 8000, "fertility": 0.0, "energy_mult": 1.0},
+	"planet_gas": {"label": "Gas Giant", "habitable": false, "fertility": 0.0, "energy_mult": 1.0},
 	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy_mult": 1.0, "spice_reserve": 3000},
 }
 ## What a planet type does differently from the rest, as short lines for
@@ -340,9 +367,9 @@ const BUILDINGS := {
 	"farm": {"name": "Farm", "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
 		"desc": "+20 food/min at base on a fertile world (x0.15 to x1.0 by world type), more with population. Feeds 2,000 pops at full fertility (boosted by Hydroponics)."},
 	"generator": {"name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 20.0}, "only": [],
-		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world."},
+		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world. Burns 1 mineral per 10 energy it makes (from the mineral stockpile only; short of minerals, it makes less)."},
 	"mine": {"name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],
-		"desc": "+20 minerals/min at base, more with population."},
+		"desc": "+20 minerals/min at base, more with population. Digs out the world's finite reserve (1,000 per size): at 0 the world implodes. Pause mining in the world panel."},
 	"habitat": {"name": "Habitat", "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "pop_bonus": 0.1, "only": [],
 		"desc": "+1,500 population cap, and population's output bonus on this world can rise 0.1x higher."},
 	"battery": {"name": "Defense Battery", "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],

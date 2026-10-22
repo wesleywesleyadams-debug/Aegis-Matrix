@@ -476,10 +476,12 @@ func _page_overview() -> void:
 	_heading("Resources", EDGE_LIT)
 	_table(["Resource", "Comes from", "Pays for"], [
 		[["Food", Color("8fe060")], "Farms only", "%.2f per pop per minute (spice covers a shortfall); an unfed world shrinks as fast as it would grow" % Defs.FOOD_PER_POP_PER_MIN],
-		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes", "Ships, buildings, starbases"],
-		[["Energy", Color("ffd84a")], "Power plants, starbase reactors", "Research, fleet and starbase upkeep, shield regeneration"],
-		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1"],
+		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes - all finite", "Ships, buildings, starbases, Power Plant fuel"],
+		[["Energy", Color("ffd84a")], "Power plants (burning 1 mineral per 10 energy), Radiation Sail Arrays. Starbases make none", "Research, fleet and starbase upkeep, shield regeneration"],
+		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1 (not Power Plant fuel)"],
 	])
+	_heading("A finite galaxy", EDGE_LIT)
+	_para("Nothing refills. Rocks, gas giants, worlds' crusts and spice nebulae all run out, so a long match becomes a fight over what is left. Gas giants and mined-out worlds glow when nearly empty and blow up 10 seconds after they run out - see Economy.")
 
 ## The layer(s) a hull leans on: the biggest, two tied, or "even".
 func _lean_cell(d: Dictionary) -> Variant:
@@ -892,7 +894,7 @@ func _tech_caption(id: String) -> String:
 		"solar_collectors", "plasma_reactors", "dark_matter":
 			var why5: String = {"solar_collectors": "Strong early, when every project is energy-bound.", "plasma_reactors": "Worth it once upkeep from a growing fleet starts eating your income.", "dark_matter": "Costs only spice, no energy: a way to turn spare spice into permanent energy."}[id]
 			var mid5 := " Energy pays for research, upkeep and shield regeneration, so this speeds up everything." if int(t["tier"]) == 1 else ""
-			return "+%d%% energy from Power Plants, starbase reactors and Radiation Sail Arrays%s.%s %s" % [_pct(id, "energy"), _cum_text(id, "energy"), mid5, why5]
+			return "+%d%% energy from Power Plants and Radiation Sail Arrays%s (boosted plants burn fuel for the extra energy too).%s %s" % [_pct(id, "energy"), _cum_text(id, "energy"), mid5, why5]
 		# --- Logistics
 		"deep_drills", "bulk_holds":
 			return "Harvesters (Mining Barges and Gas Skimmers) carry +%d%% per load. Fewer trips per load hauled: worth most when belts are far from your drop-off." % _pct(id, "cargo")
@@ -905,7 +907,7 @@ func _tech_caption(id: String) -> String:
 		"strafing_thrusters": return "Ships can also thrust sideways at up to %d%% of their speed, on top of full forward thrust. Used automatically: a ship slides toward its destination while still turning, and in a fight it keeps its nose on its target while sidestepping. Helps fixed-gun corvettes most." % int(round(Ship.LATERAL_THRUST * 100.0))
 		"reverse_thrusters": return "Ships can also thrust backward at up to %d%% of their speed. Used automatically: a ship ordered away from a fight backs off still facing and firing, and one being dragged by Tractor Beams backs against the pull. Without it, a ship must turn its back to retreat." % int(round(Ship.REVERSE_THRUST * 100.0))
 		"jump_drives": return "+%d%% speed for every ship, and the empire upkeep multiplier shrinks by %d%% (with Orbital Elevators, %d%%)." % [_pct(id, "speed"), -_pct(id, "upkeep"), -int(round(_tot("upkeep") * 100.0))]
-		"gas_skimming": return "Unlocks the " + _ship_line("skimmer") + ". It works gas giants (they refill after a pause) and spice nebulae (endless spice, but low Radiation inside). Worth it on maps with gas near your base."
+		"gas_skimming": return "Unlocks the " + _ship_line("skimmer") + ". It works gas giants (finite: they explode when drained) and spice nebulae (finite spice, low Radiation inside). Worth it on maps with gas near your base."
 		"convoy_protocols": return "Every harvester gains extra shields and extra armor, each equal to its hull, so it takes about three times the damage to kill. Get it when the enemy hunts your harvesters."
 		"spice_navigation": return "Your ships take %d%% less radiation inside a spice nebula (not from a star). Needs Gas Skimming or Convoy Protocols. Worth it if skimmers or fleets spend time in nebulae." % int(round((1.0 - Abilities.SPICE_NAV_RADIATION) * 100.0))
 	return t["desc"]
@@ -1099,7 +1101,14 @@ func _page_economy() -> void:
 		_pct("cutting_lasers", "harvest"), _pct("resonance_drills", "harvest"), _pct("mass_drivers", "harvest"),
 		_pct("deep_drills", "cargo"), _pct("bulk_holds", "cargo"), _pct("logistics_command", "harvest"), int(Defs.SHIPS["heatshield"]["solar_sail"])])
 	_heading("Asteroid sizes")
-	_para("A small rock holds the same amount whether it is minerals or spice, and so does a large one, on every map. Spice is rare instead: about one rock in seven. Belts differ in their mix: a rich belt has more big rocks, a poor one mostly small. Rocks run dry and vanish; gas giants refill after a pause, and a spice nebula never runs out.")
+	_para("A small rock holds the same amount whether it is minerals or spice, and so does a large one, on every map. Spice is rare instead: about one rock in seven. Belts differ in their mix: a rich belt has more big rocks, a poor one mostly small. Rocks run dry and vanish. Nothing refills.")
+	_heading("Gas giants")
+	_para("Each gas giant holds %s minerals and never refills. It shrinks as it is drained (down to %d%% of its size) and below %s it turns unstable: it glows and pulses orange-red - there is no alert, so watch for it. Empty, it starts a %d-second countdown that nothing can stop (the glow turns red and pulses faster; its panel and tooltip show the seconds left), then EXPLODES and is gone: %s damage at its centre, falling evenly to 0 at %d px, to every ship, construct and world nearby, whoever owns them (planetary shields soak it first). Pull your skimmers and keep your stations clear - or drain one beside the enemy." % [
+		Defs.short_num(Defs.GAS_RESERVE), int(Defs.GAS_MIN_SCALE * 100.0), Defs.short_num(Defs.UNSTABLE_RESERVE), int(Defs.DOOM_SECONDS), Defs.short_num(Defs.BLAST_DAMAGE), int(Defs.BLAST_RADIUS)])
+	_heading("Spice nebulae")
+	_para("A spice nebula is finite too: its gas is an invisible grid of %d px cells, %d spice each. A Gas Skimmer drains the cell its harvest spot is in; the cloud thins there, and an empty cell fades away for good - that patch no longer hides ships, irradiates them or counts as nebula at all. The skimmer then moves on to the nearest cell with gas left, until the whole nebula is gone." % [int(SpiceNebula.CELL), int(SpiceNebula.CELL_SPICE)])
+	_heading("Power Plant fuel")
+	_para("Power Plants burn minerals: 1 mineral for every 10 energy they make, counted after every bonus (population, research, a Molten world). Fuel comes only from the mineral stockpile - spice never pays it - and with too few minerals the plants make only what they can fuel. Starbases make no energy and no minerals. The world panel and the resource bar tooltips show fuel per minute.")
 	_rock_sizes()
 	_heading("Upkeep")
 	_para("Every ship and construct costs energy per minute, and ALL of it is multiplied by one empire-wide factor (shown on the resource bar): each unit you own multiplies it - starbase x%.2f, carrier x%.2f, cruiser x%.2f, destroyer x%.2f, anything else x%.2f - so the more you own, the dearer every unit gets. Orbital Elevators and Jump Drives each shrink the multiplier by 10%%. With no energy in stock, starbases stop producing and your ships move and fire at %d%% speed." % [
@@ -1116,8 +1125,13 @@ func _page_worlds() -> void:
 	for p in Defs.PLANET_TYPES:
 		var pd: Dictionary = Defs.PLANET_TYPES[p]
 		prows.append([pd["label"], "yes" if pd.get("habitable", true) else "no (gas giant)",
-			", ".join(Defs.planet_traits(p)) if not Defs.planet_traits(p).is_empty() else "-", str(pd.get("spice_reserve", pd.get("gas_reserve", 0)))])
+			", ".join(Defs.planet_traits(p)) if not Defs.planet_traits(p).is_empty() else "-", str(pd.get("spice_reserve", Defs.GAS_RESERVE if not pd.get("habitable", true) else 0))])
 	_table(["Type", "Habitable", "Effects", "Spice / gas reserve"], prows)
+	_heading("Mineral crust")
+	_para("Every world holds %s minerals per size in its crust (a size-30 world: %s), and its Mining Complexes dig it out. Below %s the world turns unstable and glows (no alert: watch for it). At 0 a %d-second countdown starts that nothing can stop - the glow turns red and pulses faster, and its panel shows the seconds left - then it IMPLODES: the world, its pops and its buildings are gone, it counts as a world lost, and the blast hits everything around it - scaled by size: a size-%d world matches a gas giant (%s damage, %d px), a size-20 world %s damage over %d px, a size-10 world %s over %d px. Pause mining (the button in the world's panel) stops its Mining Complexes: they produce nothing and dig nothing until resumed." % [
+		Defs.short_num(Defs.WORLD_RESERVE_PER_SIZE), Defs.short_num(Defs.WORLD_RESERVE_PER_SIZE * 30.0), Defs.short_num(Defs.UNSTABLE_RESERVE), int(Defs.DOOM_SECONDS), int(Defs.BLAST_REF_SIZE),
+		Defs.short_num(Defs.BLAST_DAMAGE), int(Defs.BLAST_RADIUS), Defs.short_num(Defs.BLAST_DAMAGE * 20.0 / Defs.BLAST_REF_SIZE), int(Defs.BLAST_RADIUS * 20.0 / Defs.BLAST_REF_SIZE),
+		Defs.short_num(Defs.BLAST_DAMAGE * 10.0 / Defs.BLAST_REF_SIZE), int(Defs.BLAST_RADIUS * 10.0 / Defs.BLAST_REF_SIZE)])
 	var wplate: Array = []
 	for p2 in Defs.PLANET_TYPES:
 		wplate.append([p2 + "_s", Defs.PLANET_TYPES[p2]["label"]])
@@ -1162,7 +1176,7 @@ func _page_constructs() -> void:
 		crows.append([c["name"], Defs.cost_text(c["cost"]), "%ds" % int(c["build_time"]), "%d / %d / %d" % [int(c["shield"]), int(c["armor"]), int(c["hp"])], gun, "%.1f/min" % float(c["upkeep"])])
 	_table(["Construct", "Cost", "Build", "Shield / armor / hull", "Gun", "Upkeep"], crows)
 	_heading("Starbase")
-	_para("Your production station: it builds every ship, takes in harvesters' cargo, and defends itself. Its reactors add %d energy a minute. Lose every starbase and Constructor and you lose the match. Starbases cost the most upkeep of anything (x%.2f to the empire multiplier each)." % [int(round(Defs.STARBASE["energy_per_sec"] * 60.0)), Defs.UPKEEP_WEIGHT["starbase"]])
+	_para("Your production station: it builds every ship, takes in harvesters' cargo, and defends itself. It generates nothing itself - no energy, no minerals: those come from your worlds and harvesters. Lose every starbase and Constructor and you lose the match. Starbases cost the most upkeep of anything (x%.2f to the empire multiplier each). Keep them clear of nearly drained gas giants: their explosion wrecks anything close." % Defs.UPKEEP_WEIGHT["starbase"])
 	_heading("Mining Station")
 	_para("A forward drop-off: harvesters unload here instead of flying home, so a station beside a far belt or nebula shortens every trip. It has a light gun for raiders.")
 	_heading("Frontier Outpost")
@@ -1185,7 +1199,7 @@ func _page_constructs() -> void:
 
 func _page_systems() -> void:
 	_heading("Systems")
-	_para("A match is fought in one star system, chosen in the lobby. Every system is symmetric: each player starts with the same worlds, rocks and distances, arranged evenly around the star. Every system but the Silent Void has spice nebulae: endless spice for Gas Skimmers, at the price of constant low Radiation inside. Systems differ in star, signature feature and gas placement, and these decide how the match is fought.")
+	_para("A match is fought in one star system, chosen in the lobby. Every system is symmetric: each player starts with the same worlds, rocks and distances, arranged evenly around the star. Every system but the Silent Void has spice nebulae: finite spice for Gas Skimmers, at the price of constant low Radiation inside. Systems differ in star, signature feature and gas placement, and these decide how the match is fought.")
 	_heading("Belts")
 	_para("Every player starts with three belts of their own:")
 	_table(["Belt", "Where", "Holds"], [
@@ -1422,7 +1436,7 @@ func _page_controls() -> void:
 ## are covered in Combat, so they aren't repeated here.
 const SHIP_NOTES := {
 	"miner": "Hauls ore. Right-click an asteroid to mine it and it shuttles loads back to a starbase on its own; orange-flecked rocks carry spice. Asteroids run dry, so miners keep moving outward as a belt empties.",
-	"skimmer": "Mines minerals from gas giants, which never run out but refill slowly after being drained, and harvests spice gas inside a spice nebula: right-click a spot in the cloud and it works there, slowly and indefinitely.",
+	"skimmer": "Mines minerals from gas giants (10,000 each, no refill: they shrink, glow when nearly empty and explode when drained) and harvests spice gas inside a spice nebula: right-click a spot in the cloud and it drains the gas there cell by cell, moving on to the nearest gas left until the nebula is gone.",
 	"colony": "Settles a free world, and is used up doing it. Colonizing takes a minute in orbit and the new colony starts small, so send it early and guard it: an unescorted colony ship is the cheapest kill on the map.",
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, a Mining Station as a forward drop-off, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",

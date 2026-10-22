@@ -185,7 +185,7 @@ func modes(ships: Array) -> String:
 
 func _run(which: String) -> void:
 	await _secs(0.5)
-	if which != "verify":
+	if not which.ends_with("verify"):
 		setup()
 	await _frames(3)
 	match which:
@@ -199,6 +199,20 @@ func _run(which: String) -> void:
 			await _save()
 		"verify":
 			await _verify()
+		"finite_gas":
+			await _finite_gas()
+		"finite_world":
+			await _finite_world()
+		"finite_fuel":
+			await _finite_fuel()
+		"finite_nebula":
+			await _finite_nebula()
+		"finite_save":
+			await _finite_save()
+		"finite_verify":
+			await _finite_dump("after load")
+			await _secs(8.0)
+			await _finite_dump("8 s after load")
 		_:
 			log_("unknown scenario '%s'" % which)
 	await shot(which)
@@ -424,3 +438,282 @@ func _dump() -> void:
 		log_("  constructor state=%s build_kind=%s site=%s" % [Ship.State.keys()[s.state], s.build_kind, str(s.build_site.round())])
 	var hb := home()
 	log_("  home starbase queue=%s build_progress=%.1f" % [str(hb.queue), hb.build_progress])
+
+# ------------------------------------------------------------ finite economy
+
+func _zoom(i: int) -> void:
+	game._zoom_index = i
+	game.camera.zoom = Vector2.ONE * Game.ZOOM_LEVELS[i]
+
+func _starbase_at(pid: int, pos: Vector2) -> Starbase:
+	var sb: Starbase = Game.STARBASE_SCENE.instantiate()
+	sb.owner_id = pid
+	sb.position = pos
+	game.starbases_root.add_child(sb)
+	sb.died.connect(game._on_starbase_died)
+	return sb
+
+func _hp(e) -> String:
+	if not is_instance_valid(e) or not e.is_alive():
+		return "DEAD"
+	return "%d" % int(e.hp + e.shield + e.armor)
+
+func _gas() -> Planet:
+	var gs: Array = get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable())
+	var c := home().global_position
+	gs.sort_custom(func(a, b): return a.global_position.distance_to(c) < b.global_position.distance_to(c))
+	return gs[0]
+
+## Drains a gas giant to nothing with ships, a starbase and a world in the
+## blast; screenshots full size, shrunk, glowing, the blast, and after.
+func _finite_gas() -> void:
+	var g := _gas()
+	var at := g.global_position
+	log_("gas giant %s at (%d,%d) amount %d radius %.1f" % [g.planet_name, at.x, at.y, g.amount, g.radius])
+	game.center_on(at)
+	_zoom(1)
+	await shot("gas_0_full")
+	g.amount = 5000
+	g.update_gas_size()
+	log_("amount 5000 -> radius %.1f (base %.1f)" % [g.radius, g._base_radius])
+	await shot("gas_1_half")
+	g.amount = 1100
+	g.update_gas_size()
+	var pid := game.player_id
+	var foe := 2 if pid == 1 else 1
+	var c1: Ship = game.spawn_ship("corvette", pid, at + Vector2(110, 0))
+	var c2: Ship = game.spawn_ship("cruiser", foe, at + Vector2(-230, 40))
+	var c3: Ship = game.spawn_ship("destroyer", pid, at + Vector2(0, 380))
+	var c4: Ship = game.spawn_ship("corvette", foe, at + Vector2(560, 0))
+	var sb := _starbase_at(pid, at + Vector2(200, -230))
+	var worlds: Array = get_tree().get_nodes_in_group("planets").filter(func(p): return p.is_habitable() and p.owner_id == 0)
+	var w1: Planet = worlds[0]
+	w1.colonize(foe)
+	w1.pop = 4000.0
+	w1.global_position = at + Vector2(-300, -260)
+	var sk: Ship = game.spawn_ship("skimmer", pid, at + Vector2(-150, 160))
+	sk.order_mine(g)
+	for s in [c1, c2, c3, c4]:
+		s.order_stop()
+		s.held = true
+	await _secs(0.5)
+	var victims := {"own corvette @110": c1, "enemy cruiser @235": c2, "own destroyer @380": c3, "enemy corvette @560": c4, "own starbase @305": sb, "own skimmer": sk}
+	for k in victims:
+		log_("before %s: %s" % [k, _hp(victims[k])])
+	log_("before world %s P%d shield %d pop %d" % [w1.planet_name, w1.owner_id, int(w1.shield), int(w1.pop)])
+	g.amount = 900
+	g.update_gas_size()
+	g._check_unstable()
+	await _secs(0.4)
+	await shot("gas_2_glow")
+	log_("glow: unstable=%s radius %.1f" % [str(g.unstable()), g.radius])
+	g.amount = 1
+	var got := g.extract(5)
+	log_("drained: doom_timer %.1f, giant still there" % g.doom_timer)
+	await _secs(4.0)
+	await shot("gas_2b_countdown")
+	await _secs(6.5)
+	log_("extract returned %d; blasts=%d; gas giants left %d" % [got, game.blasts, get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable()).size()])
+	await _secs(0.25)
+	await shot("gas_3_blast")
+	await _secs(1.5)
+	for k in victims:
+		log_("after %s: %s" % [k, _hp(victims[k])])
+	log_("after world %s P%d shield %d pop %d" % [w1.planet_name, w1.owner_id, int(w1.shield), int(w1.pop)])
+	if is_instance_valid(sk) and sk.is_alive():
+		log_("skimmer state %s" % Ship.State.keys()[sk.state])
+	await shot("gas_4_after")
+
+## A world mined to its end: glow, implosion, blast scaled by size.
+func _finite_world() -> void:
+	var pid := game.player_id
+	var foe := 2 if pid == 1 else 1
+	var worlds: Array = get_tree().get_nodes_in_group("planets").filter(func(p): return p.is_habitable() and p.owner_id == 0)
+	worlds.sort_custom(func(a, b): return a.fields > b.fields)
+	var w: Planet = worlds[0]
+	w.colonize(foe)
+	w.pop = 6000.0
+	w.buildings[0] = "mine"
+	w.buildings[1] = "mine"
+	var at := w.global_position
+	var r := w.blast_radius()
+	log_("world %s size %d crust %d / %d, blast %.0f dmg over %.0f px" % [w.planet_name, w.fields, int(w.mineral_reserve), int(w.max_mineral_reserve), Defs.BLAST_DAMAGE * w.blast_scale(), r])
+	var near: Planet = worlds[1]
+	near.colonize(pid)
+	near.pop = 3000.0
+	near.global_position = at + Vector2(r * 0.5 + near.radius, 0)
+	var s1: Ship = game.spawn_ship("corvette", pid, at + Vector2(0, w.radius + 40))
+	var s2: Ship = game.spawn_ship("cruiser", pid, at + Vector2(0, -r * 0.6))
+	var s3: Ship = game.spawn_ship("corvette", foe, at + Vector2(-r * 0.9, 0))
+	for s in [s1, s2, s3]:
+		s.order_stop()
+		s.held = true
+	game.center_on(at)
+	_zoom(1 if r > 250.0 else 2)
+	w.mineral_reserve = 1100.0
+	await _secs(1.0)
+	w.mineral_reserve = 800.0
+	await _secs(1.0)
+	log_("unstable=%s crust %.0f" % [str(w.unstable()), w.mineral_reserve])
+	await shot("world_0_glow")
+	log_("before: corvette %s cruiser %s enemy corvette %s; world %s shield %d pop %d" % [_hp(s1), _hp(s2), _hp(s3), near.planet_name, int(near.shield), int(near.pop)])
+	var b0 := game.blasts
+	w.mineral_reserve = 0.5
+	var t0 := Game.now()
+	# (The owner's AI pauses mining near the end: keep it digging.)
+	var shot_doom := false
+	while game.blasts == b0 and Game.now() - t0 < 25.0:
+		w.mining_paused = false
+		if w.doom_timer >= 0.0 and w.doom_timer < 7.0 and not shot_doom:
+			shot_doom = true
+			log_("countdown %.1f s left" % w.doom_timer)
+			await shot("world_0b_countdown")
+		await _frames(1)
+	log_("imploded after %.2fs; removed %s" % [Game.now() - t0, str(game.removed_planets)])
+	await _secs(0.25)
+	await shot("world_1_blast")
+	await _secs(1.5)
+	log_("after: corvette %s cruiser %s enemy corvette %s; world %s shield %d pop %d" % [_hp(s1), _hp(s2), _hp(s3), near.planet_name, int(near.shield), int(near.pop)])
+	log_("P%d planets_lost=%s defeated=%s" % [foe, str(game.stats.counters.get(foe, {}).get("planets_lost", "?")), str(game.is_defeated(foe))])
+
+## Power-plant fuel: a minute of logs, then a mineral-less spell.
+func _finite_fuel() -> void:
+	var pid := game.player_id
+	Engine.time_scale = 4.0
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid:
+			log_("world %s plants %d mines %d" % [p.planet_name, p.count_building("generator"), p.count_building("mine")])
+	var f0: float = game.fuel_paid.get(pid, 0.0)
+	var t0 := Game.now()
+	var e_sum := 0.0
+	var n := 0
+	while Game.now() - t0 < 60.0:
+		await _secs(0.5)
+		var e := 0.0
+		for p in get_tree().get_nodes_in_group("planets"):
+			if p.owner_id == pid:
+				e += p.energy_out
+		e_sum += e
+		n += 1
+	var paid: float = game.fuel_paid.get(pid, 0.0) - f0
+	var dt := Game.now() - t0
+	log_("FUEL %.1fs: avg plant energy %.2f/min -> expected fuel %.3f/min; burnt %.3f minerals = %.3f/min; fuel_per_min now %.3f" % [dt, e_sum / n, e_sum / n * Defs.FUEL_PER_ENERGY, paid, paid / dt * 60.0, game.fuel_per_min(pid)])
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid:
+			p.mining_paused = true
+	for s in get_tree().get_nodes_in_group("ships"):
+		if s.owner_id == pid and s.is_harvester():
+			s.order_stop()
+	game.resources[pid]["minerals"] = 0.0
+	game.resources[pid]["spice"] = 5000.0
+	await _secs(1.0)
+	var sp0: float = game.resources[pid]["spice"]
+	var en0: float = game.resources[pid]["energy"]
+	await _secs(20.0)
+	var hp: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == pid)[0]
+	log_("FUEL no minerals: minerals %.1f, fuel_frac %.2f, plant energy %.1f/min, spice %.1f -> %.1f, energy %.1f -> %.1f" % [game.resources[pid]["minerals"], hp.fuel_frac, hp.energy_out, sp0, game.resources[pid]["spice"], en0, game.resources[pid]["energy"]])
+	Engine.time_scale = 1.0
+	game.resources[pid]["minerals"] = 500.0
+	await _secs(1.0)
+	game._focus_planet(hp)
+	game.selection_changed.emit()
+	await _secs(0.5)
+
+## A skimmer drains a spice nebula; frames over time (SL_NEB_GRID adds the
+## cell overlay). SL_NEB_FAST=<n> multiplies its harvest rate for the test.
+func _finite_nebula() -> void:
+	var pid := game.player_id
+	var c := home().global_position
+	var nebs: Array = get_tree().get_nodes_in_group("nebulae")
+	nebs.sort_custom(func(a, b): return a.heart_toward(c).distance_to(c) < b.heart_toward(c).distance_to(c))
+	var neb: SpiceNebula = nebs[0]
+	# The edge spot facing home, as nearest_nebula_pocket picks it.
+	var h: Vector2 = neb.heart_toward(c)
+	var dir := (c - h).normalized()
+	while neb.contains(h + dir * 4.0):
+		h += dir * 4.0
+	var pk := game.nebula_pocket_at(h)
+	log_("nebula cells %d, spice %.0f" % [neb.cells.size(), neb.remaining()])
+	var sk: Ship = game.spawn_ship("skimmer", pid, pk.global_position + (c - pk.global_position).normalized() * 70.0)
+	var fast := float(OS.get_environment("SL_NEB_FAST")) if OS.get_environment("SL_NEB_FAST") != "" else 100.0
+	sk.def = sk.def.duplicate()
+	sk.def["harvest"] = float(sk.def["harvest"]) * fast
+	sk.def["cargo"] = 100000
+	sk.order_mine(pk)
+	var foe := 2 if pid == 1 else 1
+	var hid: Ship = game.spawn_ship("scout", foe, neb.cell_center(neb.cell_of(pk.global_position)))
+	hid.order_stop()
+	hid.held = true
+	game.center_on(pk.global_position)
+	_zoom(int(OS.get_environment("SL_NEB_ZOOM")) if OS.get_environment("SL_NEB_ZOOM") != "" else 2)
+	await _secs(0.3)
+	await shot("neb_before")
+	log_("enemy in first cell: in_nebula=%s visible=%s" % [str(game.in_nebula(hid.global_position)), str(game.vision.can_see(hid) if game.vision else true)])
+	var frames := int(OS.get_environment("SL_NEB_FRAMES")) if OS.get_environment("SL_NEB_FRAMES") != "" else 8
+	var gap := float(OS.get_environment("SL_NEB_GAP")) if OS.get_environment("SL_NEB_GAP") != "" else 2.5
+	var cam := pk.global_position
+	for i in frames:
+		await _secs(gap)
+		var empty: int = neb.cells.values().filter(func(v): return v <= 0.0).size()
+		var pv := is_instance_valid(pk)
+		log_("frame %d t=%.1f: spice left %.0f, empty cells %d, pocket (%d,%d) amount %d, skimmer %s (%d,%d) cargo %d" % [i, Game.now(), neb.remaining(), empty,
+			pk.global_position.x if pv else 0, pk.global_position.y if pv else 0, pk.amount if pv else 0,
+			Ship.State.keys()[sk.state], sk.global_position.x, sk.global_position.y, sk.cargo])
+		game.center_on(pk.global_position if is_instance_valid(pk) else cam)
+		await shot("neb_%d" % i)
+	log_("enemy cell now: in_nebula=%s visible=%s" % [str(game.in_nebula(hid.global_position)), str(game.vision.can_see(hid) if game.vision else true)])
+
+## Pause mining by real clicks, drain things, then save to user://pt_finite.json.
+func _finite_save() -> void:
+	var pid := game.player_id
+	var hp: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == pid)[0]
+	game.center_on(hp.global_position)
+	await _frames(3)
+	await click_world(hp.global_position)
+	await _secs(0.3)
+	log_("focused %s; paused before click=%s" % [game.focused_planet.planet_name if is_instance_valid(game.focused_planet) else "-", str(hp.mining_paused)])
+	await click_button("Pause mining")
+	await _frames(2)
+	log_("after click: paused=%s, button 'Resume mining' shown=%s" % [str(hp.mining_paused), str(find_button("Resume mining") != null)])
+	var m0: float = hp.mineral_reserve
+	await _secs(5.0)
+	log_("paused 5s: crust %.1f -> %.1f, minerals_out %.1f" % [m0, hp.mineral_reserve, hp.minerals_out])
+	await shot("finite_pause")
+	hp.mineral_reserve = 12345.0
+	var g := _gas()
+	g.amount = 4321
+	g.update_gas_size()
+	var gs: Array = get_tree().get_nodes_in_group("planets").filter(func(p): return not p.is_habitable() and p != g)
+	gs[-1].amount = 1
+	gs[-1].extract(5)
+	await _secs(11.0)
+	# The other one is counting down when the game is saved.
+	g.amount = 1
+	g.extract(5)
+	await _secs(3.0)
+	var neb: SpiceNebula = get_tree().get_nodes_in_group("nebulae")[0]
+	var keys: Array = neb.cells.keys()
+	for k in keys.slice(0, 20):
+		neb.drain_at(neb.cell_center(k), 100.0)
+	neb.drain_at(neb.cell_center(keys[25]), 40.0)
+	await _frames(3)
+	await _finite_dump("before save")
+	var path := SaveGame.write(game, "finite test")
+	DirAccess.copy_absolute(path, "user://pt_finite.json")
+	DirAccess.remove_absolute(path)
+	log_("saved -> %s" % ProjectSettings.globalize_path("user://pt_finite.json"))
+
+func _finite_dump(when: String) -> void:
+	await _secs(0.5)
+	var pid := game.player_id
+	var hp: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == pid)[0]
+	log_("%s: home %s crust %.0f paused %s" % [when, hp.planet_name, hp.mineral_reserve, str(hp.mining_paused)])
+	var gs := []
+	for p in get_tree().get_nodes_in_group("planets"):
+		if not p.is_habitable():
+			gs.append("%s=%d(r%.0f doom %.1f)" % [p.name, p.amount, p.radius, p.doom_timer])
+	log_("%s: gas giants %s; removed %s" % [when, ", ".join(gs), str(game.removed_planets)])
+	var nebs := []
+	for n in get_tree().get_nodes_in_group("nebulae"):
+		nebs.append("%.0f in %d cells, %d empty" % [n.remaining(), n.cells.size(), n.cells.values().filter(func(v): return v <= 0.0).size()])
+	log_("%s: nebulae %s" % [when, " | ".join(nebs)])

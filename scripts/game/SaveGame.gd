@@ -61,10 +61,17 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		data["planets"][p.name] = {
 			"owner": p.owner_id, "pop": p.pop, "buildings": Array(p.buildings),
 			"construction": p.construction, "construction_queue": p.construction_queue,
-			"amount": p.amount, "depleted_timer": p.depleted_timer,
+			"amount": p.amount, "mineral_reserve": p.mineral_reserve, "max_mineral_reserve": p.max_mineral_reserve, "mining_paused": p.mining_paused, "doom_timer": p.doom_timer,
 					"hungry": p.hungry, "fed_timer": p.fed_timer,
 			"siege_start_pop": p.siege_start_pop, "since_hit": Game.now() - p.last_hit_time, "shield": p.shield, "spice_reserve": p.spice_reserve, "max_spice_reserve": p.max_spice_reserve,
 		}
+	# Gas giants that exploded and worlds that imploded are gone for good.
+	data["removed_planets"] = Array(game.removed_planets)
+	# Spice nebulae: what is left in every harvested cell, in group order (the
+	# system builds them in the same order every time).
+	data["nebulae"] = []
+	for n in tree.get_nodes_in_group("nebulae"):
+		data["nebulae"].append(n.export_cells() if n is SpiceNebula else {})
 	for a in tree.get_nodes_in_group("asteroids"):
 		if not a.is_queued_for_deletion():
 			data["asteroids"][a.name] = a.amount
@@ -238,6 +245,15 @@ static func apply(game: Game, data: Dictionary) -> bool:
 
 	# Planets and asteroids: update in place by node name.
 	var planets := {}
+	# Bodies destroyed before the save: off the map again.
+	game.removed_planets.clear()
+	for nm in data.get("removed_planets", []):
+		for p0 in tree.get_nodes_in_group("planets"):
+			if String(p0.name) == str(nm):
+				p0._gone = true
+				p0.remove_from_group("planets")
+				p0.queue_free()
+		game.removed_planets.append(str(nm))
 	for p in tree.get_nodes_in_group("planets"):
 		planets[String(p.name)] = p
 		var d: Dictionary = data["planets"].get(String(p.name), {})
@@ -253,9 +269,13 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		for j in d.get("construction_queue", []):
 			p.construction_queue.append({"field": int(j["field"]), "id": str(j["id"])})
 		p.amount = int(d.get("amount", p.amount))
-		p.depleted_timer = float(d.get("depleted_timer", 0.0))
-		if p.depleted_timer > 0.0:
-			(p.get_node("Sprite") as Sprite2D).modulate = Color(0.45, 0.45, 0.5)
+		p.update_gas_size()
+		p.mineral_reserve = float(d.get("mineral_reserve", p.mineral_reserve))
+		p.max_mineral_reserve = float(d.get("max_mineral_reserve", p.max_mineral_reserve))
+		p.mining_paused = bool(d.get("mining_paused", false))
+		p.doom_timer = float(d.get("doom_timer", -1.0))
+		# Already unstable when saved: no second warning.
+		p._warned = p.unstable()
 		p.hungry = float(d.get("hungry", 0.0))
 		p.fed_timer = float(d.get("fed_timer", Defs.REGROW_SECONDS))
 		p.siege_start_pop = float(d.get("siege_start_pop", 0.0))
@@ -264,6 +284,11 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		p.max_spice_reserve = float(d.get("max_spice_reserve", p.max_spice_reserve))
 		p.last_hit_time = Game.now() - float(d.get("since_hit", 1000.0))
 		p.queue_redraw()
+	var nebs: Array = tree.get_nodes_in_group("nebulae")
+	var saved_nebs: Array = data.get("nebulae", [])
+	for i in mini(nebs.size(), saved_nebs.size()):
+		if nebs[i] is SpiceNebula:
+			nebs[i].import_cells(saved_nebs[i])
 	var rocks := {}
 	for a in tree.get_nodes_in_group("asteroids"):
 		var key := String(a.name)

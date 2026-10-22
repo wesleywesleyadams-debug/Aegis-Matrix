@@ -1266,7 +1266,7 @@ func _build_ship_controls(s: Ship) -> void:
 		"miner":
 			_sel_body.add_child(_label("Right-click an asteroid to mine it. Orange-flecked rocks hold spice.", DIM, 13))
 		"skimmer":
-			_sel_body.add_child(_label("Right-click a gas giant to mine minerals, or a spot inside a spice nebula to slowly harvest spice gas (never runs out).", DIM, 13))
+			_sel_body.add_child(_label("Right-click a gas giant to mine minerals, or a spot inside a spice nebula to harvest spice gas (finite: the cloud thins and vanishes as it is drained).", DIM, 13))
 
 
 ## The panel's standard build button, as the starbase has always drawn one:
@@ -1420,6 +1420,18 @@ func _build_planet_panel(p: Planet) -> void:
 	col.add_child(_label(owner_text, DIM, 14))
 	head.add_child(col)
 	_sel_body.add_child(head)
+	# Mining Complexes dig the world's finite crust: one switch for them all.
+	if p.owner_id == game.player_id and p.is_habitable():
+		var pb := Button.new()
+		pb.name = "PauseMining"
+		pb.focus_mode = Control.FOCUS_NONE
+		pb.text = "Resume mining" if p.mining_paused else "Pause mining"
+		pb.tooltip_text = "Switch this world's Mining Complexes off or on. Paused, they produce nothing and dig nothing; a world whose crust is mined out implodes."
+		pb.pressed.connect(func():
+			p.mining_paused = not p.mining_paused
+			pb.text = "Resume mining" if p.mining_paused else "Pause mining"
+			game.sfx.play_ui("click"))
+		_sel_body.add_child(pb)
 	_info_label = _label("")
 	_sel_body.add_child(_info_label)
 
@@ -1567,16 +1579,23 @@ Starbases %d · upkeep %.2f/min each (empire x%.2f)" % [game.starbase_count(sb.o
 			first.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 			first.add_theme_constant_override("outline_size", 6)
 
+## "Unstable" (nearly empty) / the seconds left before it blows.
+func _doom_text(p: Planet) -> String:
+	if p.doom_timer >= 0.0:
+		return "  UNSTABLE: %s in %d s!" % ["implodes" if p.is_habitable() else "explodes", int(ceil(p.doom_timer))]
+	return "  UNSTABLE" if p.unstable() else ""
+
 func _planet_text(p: Planet) -> String:
 	if not p.is_habitable():
-		return "Uninhabitable gas giant · %s\nGas Skimmers mine it and haul the minerals to a starbase." % [("DEPLETED, refills in %ds" % int(p.depleted_timer)) if p.depleted_timer > 0.0 else "Mineral reserve %d" % p.amount]
+		return "Uninhabitable gas giant · Mineral reserve %d / %d%s\nGas Skimmers mine it and haul the minerals to a starbase. It never refills: it shrinks as it is drained and explodes when empty." % [p.amount, Defs.GAS_RESERVE, _doom_text(p)]
 	# What this world's type does differently (e.g. a Molten world's plants).
 	var traits := "" if Defs.planet_traits(p.kind).is_empty() else "\n" + "  ·  ".join(Defs.planet_traits(p.kind))
 	if p.owner_id == 0:
 		return "Size %d · Pop cap %s · Spice reserve %d%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), int(p.spice_reserve), traits]
 	var lines := "Population %s / %s   (+%s/min)%s" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min), traits]
 	lines += "\nFood: grown %.1f/min · eaten %.1f/min · net %+.1f/min" % [p.food_made_per_min, p.food_eaten_per_min, p.food_made_per_min - p.food_eaten_per_min]
-	lines += "\nEnergy %.0f/min%s" % [p.energy_out, ("   Spice %.1f/min" % p.spice_out) if p.spice_out > 0.0 else ""]
+	lines += "\nEnergy %.0f/min (burning %.1f minerals/min)%s" % [p.energy_out, p.fuel_per_min, ("   Spice %.1f/min" % p.spice_out) if p.spice_out > 0.0 else ""]
+	lines += "\nMineral reserve %s / %s%s%s" % [_fmt(p.mineral_reserve), _fmt(p.max_mineral_reserve), "  (mining paused)" if p.mining_paused else "", _doom_text(p)]
 	if p.starving:
 		lines += "\nSTARVING: shrinking %d/min until food recovers" % int(-p.growth_per_min)
 	return lines
@@ -1645,7 +1664,10 @@ func _update_top_bar() -> void:
 	if game.energy_starved(pid):
 		_res_labels["energy"].add_theme_color_override("font_color", BAD)
 		_res_labels["energy"].text += "  NO ENERGY"
-	_res_boxes["spice"].tooltip_text += "\nSpice automatically covers shortfalls of food, minerals and energy (1:1)."
+	_res_boxes["spice"].tooltip_text += "\nSpice automatically covers shortfalls of food, minerals and energy (1:1) - but never Power Plant fuel."
+	var fuel := game.fuel_per_min(pid)
+	_res_boxes["minerals"].tooltip_text += "\nPower Plant fuel: %.1f/min (1 mineral per 10 energy; included above)." % fuel
+	_res_boxes["energy"].tooltip_text += "\nPower Plants burn %.1f minerals/min as fuel (1 per 10 energy). Starbases make no energy." % fuel
 	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/min for ships and starbases%s" % [game.upkeep(pid), "
 OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starved(pid) else ""]
 	_pop_label.text = _fmt(game.total_pop(pid))
