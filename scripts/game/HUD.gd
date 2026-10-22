@@ -461,7 +461,7 @@ func _build_speed(root: Control) -> void:
 		sb.content_margin_bottom = 2
 		_play_button.add_theme_stylebox_override(st, sb)
 	_play_button.focus_mode = Control.FOCUS_NONE
-	_play_button.tooltip_text = "Pause / resume the game (Pause key). You can still give orders while paused."
+	_play_button.tooltip_text = "Pause / resume the game (P). You can still give orders while paused."
 	_play_button.pressed.connect(toggle_play)
 	v.add_child(_play_button)
 	_speed_label = _label("1x", TEXT, 11)

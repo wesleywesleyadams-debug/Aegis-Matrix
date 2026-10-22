@@ -877,7 +877,7 @@ const HOTKEYS := [
 	["panel10", "Panel button 10", KEY_V], ["panel11", "Panel button 11", KEY_G], ["panel12", "Panel button 12", KEY_H],
 	["stop", "Stop", KEY_T], ["warships", "Select all warships", KEY_TAB], ["corvettes", "Select all corvettes", KEY_QUOTELEFT], ["home", "Go to starbase", KEY_B],
 	["next_world", "Next world", KEY_SPACE], ["build_here", "Build on this world", KEY_F], ["research", "Research", KEY_R],
-	["pause", "Pause / play", KEY_PAUSE], ["speed_down", "Slower", KEY_MINUS], ["speed_up", "Faster", KEY_EQUAL],
+	["pause", "Pause / play", KEY_P], ["speed_down", "Slower", KEY_MINUS], ["speed_up", "Faster", KEY_EQUAL],
 	["speed_normal", "Normal speed", KEY_BACKSPACE],
 ]
 
@@ -895,6 +895,10 @@ static func key_for(id: String) -> Key:
 			if h[0] == id:
 				return h[2]
 		return KEY_NONE
+	# Pause used to default to the Pause/Break key, missing on most laptops;
+	# a binding saved with that old default moves to P.
+	if id == "pause" and int(v) == KEY_PAUSE:
+		return KEY_P
 	return v as Key
 
 ## Which action a pressed key runs ("" if none).
