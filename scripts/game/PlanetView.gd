@@ -228,7 +228,7 @@ func _place() -> void:
 	# Where the bubble and the details go is picked to keep stationary
 	# things on the map (rocks, stations, other worlds, the star) visible:
 	# see _choose_layout. Re-chosen only when the view changes.
-	var key := [Vector2i((center / 8.0).round()), int(_target_d), snappedf(game.camera.zoom.x, 0.001), Vector2i(vp), int(br), int(dsz0.y + _pause_btn.size.y) / 8, _obstacle_count()]
+	var key := [Vector2i((center / 8.0).round()), int(_target_d), snappedf(game.camera.zoom.x, 0.001), Vector2i(vp), int(br), int(dsz0.y + _pause_btn.size.y) / 8, _obstacle_count(), _message_rects().size()]
 	# A camera jump re-lays out from scratch rather than sliding across.
 	if _lay_center.distance_to(center) > 200.0:
 		_lay_snap = true
@@ -334,6 +334,20 @@ func _obstacles(vp: Vector2) -> Array[Rect2]:
 			var box := Rect2((xf * (n as Node2D).global_position) - Vector2(r, r), Vector2(r, r) * 2.0)
 			if box.intersects(screen):
 				out.append(box)
+	# The briefing / message lines under the top bar count too.
+	for r in _message_rects():
+		out.append(r)
+	return out
+
+## On-screen boxes of the HUD's visible message lines (briefing, notices).
+func _message_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var hud = game.hud
+	if hud == null or not ("_messages" in hud) or hud._messages == null or not hud._messages.visible:
+		return out
+	for c in hud._messages.get_children():
+		if c is Control and c.visible and c.modulate.a > 0.05:
+			out.append((c as Control).get_global_rect())
 	return out
 
 static func _cover(r: Rect2, obs: Array[Rect2]) -> float:
