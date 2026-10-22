@@ -184,6 +184,12 @@ func _entity_row(e: Node2D, home: Vector2, game: Game, v: Vision) -> Array:
 	if e is Planet:
 		var p: Planet = e
 		var o: int = v.known_owner(p) if v else p.owner_id
+		# Out of sight (fog): pop, shield and free fields as last seen.
+		if v and p.owner_id != pid and not v.is_visible_at(p.global_position):
+			var pop: float = v.seen_planet_pop.get(p, 0.0)
+			var mem: Array = v.seen_planet_def.get(p, [])
+			var ff: int = int(mem[3]) if mem.size() > 3 else 0
+			return _row("planet", o, p.global_position, home, pop, 0.0, v.planet_defence(p).y, pop / maxf(p.max_pop(), 1.0), 0.0, 0.0, 0.0, p.radius, float(ff) / 30.0, game)
 		return _row("planet", o, p.global_position, home, p.pop, 0.0, p.shield, p.pop / maxf(p.max_pop(), 1.0), 0.0, 0.0, 0.0, p.radius, float(p.free_fields()) / 30.0, game)
 	if e is Asteroid:
 		return _row("asteroid", 0, e.global_position, home, float(e.amount), 0.0, 0.0, 1.0 if e.resource == "spice" else 0.0, 0.0, 0.0, 0.0, e.radius, 0.0, game)

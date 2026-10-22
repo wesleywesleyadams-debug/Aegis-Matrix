@@ -801,7 +801,7 @@ const MOD_WEAPONS := {
 	#   pd     - Point-Defense: radius in which each turret shoots down enemy
 	#            missiles, torpedoes and bomblets before firing at ships
 	#   drones - Interceptor Drones: [count, reach from the carrier]
-	#   tractor- Tractor Beams: [pull/s, reach x weapon range, damage at full reach, damage once pulled in to 60% of range]
+	#   tractor- Tractor Beams: [pull/s, reach x weapon range, damage at full reach, damage once pulled in to 52% of range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
 	"mod_flak_cannons": {"dmg": 0.485, "cd": 1.030, "weapon": "flak"},
@@ -812,7 +812,7 @@ const MOD_WEAPONS := {
 	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.85, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
-	"mod_point_defense_lattice": {"dmg": 1.0, "pd": 220.0},
+	"mod_point_defense_lattice": {"dmg": 1.03, "pd": 220.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.577, "dmg": 0.332, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).

@@ -467,11 +467,6 @@ func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	var counter := _class_order(pid, game, st)
 	if not counter.is_empty():
 		options = counter
-	# Far ahead with only worlds left to take: no more drone carriers (they
-	# can't bombard).
-	if st.get("overwhelm", false) and game.has_tech(pid, "mod_interceptor_drones"):
-		while options.has("carrier") and options.size() > 1:
-			options.erase("carrier")
 	var sb := game.nearest_starbase(pid, Vector2.ZERO)
 	var res: Dictionary = game.resources[pid]
 	var capped := true
@@ -639,7 +634,7 @@ func _scout(pid: int, st: Dictionary, game: Game, war: Array) -> void:
 		# Then patrol for good: round the system world by world, skipping
 		# ours, allies' and any already in sight, so news of the enemy
 		# (fleets, new colonies) stays current.
-		var worlds: Array = game.get_tree().get_nodes_in_group("planets").filter(func(p): return not (p.owner_id != 0 and game.are_allies(pid, p.owner_id)))
+		var worlds: Array = game.get_tree().get_nodes_in_group("planets").filter(func(p): return not (v.known_owner(p) > 0 and game.are_allies(pid, v.known_owner(p))))
 		worlds.sort_custom(func(a, b): return a.global_position.angle() < b.global_position.angle())
 		if worlds.is_empty():
 			return
@@ -1805,8 +1800,7 @@ func _known_constructs(pid: int, game: Game, v: Vision) -> float:
 		for sb in v.seen_bases:
 			t += sbt * float(v.seen_bases[sb][1])
 		for f in v.seen_forts:
-			if is_instance_valid(f):
-				t += Defs.FRONTIER_OUTPOST["hp"] + Defs.FRONTIER_OUTPOST["armor"] + Defs.FRONTIER_OUTPOST["shield"]
+			t += (Defs.FRONTIER_OUTPOST["hp"] + Defs.FRONTIER_OUTPOST["armor"] + Defs.FRONTIER_OUTPOST["shield"]) * float(v.seen_forts[f][1])
 	else:
 		for sb in game.get_tree().get_nodes_in_group("starbases"):
 			if game.is_hostile(pid, sb.owner_id):
@@ -2022,11 +2016,6 @@ func _press_attack(pid: int, st: Dictionary, game: Game, base: Starbase, war: Ar
 				s.order_attack(prey)
 	var home_idle: Array = []
 	for s in war:
-		# Drone carriers can't hurt a world (their drones fight ships and
-		# constructs only): off a bombardment, onto whatever defends it.
-		if s.state == Ship.State.BOMBARD and not _hurts_worlds(s):
-			s.order_attack_move(goal + Vector2(randf_range(-150, 150), randf_range(-150, 150)))
-			continue
 		# Still bombarding an old world target: on to the new one.
 		if s.state == Ship.State.BOMBARD and not world_goal:
 			s.order_attack_move(goal + Vector2(randf_range(-50, 50), randf_range(-50, 50)))
@@ -2211,10 +2200,10 @@ const SUPPORT_RANGE := 450.0
 ## their size (fog of war): about the fleet average across the classes.
 const DPS_PER_TOUGH := 0.04
 
-## False for hulls whose weapon can't touch a world's shield or population
-## (an Interceptor Drones carrier: its drones fight ships and constructs).
+## False for unarmed hulls (every weapon, Interceptor Drones included, can
+## bombard a world).
 func _hurts_worlds(s: Ship) -> bool:
-	return s.def.get("weapon", "") != "" and not s.weapon_mod.has("drones")
+	return s.def.get("weapon", "") != ""
 
 func _ship_dps(s: Ship, game: Game) -> float:
 	if s.def.get("weapon", "") == "":
@@ -2245,15 +2234,35 @@ func _defence_at(pid: int, at: Vector2, game: Game) -> Vector2:
 			if game.is_hostile(pid, sb.owner_id) and sb.global_position.distance_to(at) < SUPPORT_RANGE:
 				dps += Defs.STARBASE["damage"] / Defs.STARBASE["cooldown"]
 				tough += sb.hp + sb.armor + sb.shield
+	# Enemy worlds' batteries and shields: with fog, as this player knows
+	# them (in sight: as they are; else as last seen, or a guess).
 	for p in game.get_tree().get_nodes_in_group("planets"):
-		if p.is_enemy_of(pid) and p.global_position.distance_to(at) < SUPPORT_RANGE - 100.0:
+		if p.global_position.distance_to(at) >= SUPPORT_RANGE - 100.0:
+			continue
+		if v:
+			var ko: int = v.known_owner(p)
+			if ko <= 0 or ko == pid or not game.is_hostile(pid, ko):
+				continue
+			var pd := v.planet_defence(p)
+			dps += pd.x * Defs.BATTERY["damage"] / Defs.BATTERY["cooldown"]
+			tough += pd.y
+		elif p.is_enemy_of(pid):
 			dps += p.count_building("battery") * Defs.BATTERY["damage"] / Defs.BATTERY["cooldown"]
 			tough += p.shield
-	# Enemy Frontier Outposts covering the target (only ones we have seen).
-	for f in (v.seen_forts.keys() if v else game.get_tree().get_nodes_in_group("forts")):
-		if is_instance_valid(f) and f is FrontierOutpost and game.is_hostile(pid, f.owner_id) and f.global_position.distance_to(at) < SUPPORT_RANGE:
-			dps += Defs.FRONTIER_OUTPOST["damage"] / Defs.FRONTIER_OUTPOST["cooldown"]
-			tough += f.hp + f.armor + f.shield
+	# Enemy Frontier Outposts covering the target (only ones we have seen,
+	# as last seen).
+	var ft: float = Defs.FRONTIER_OUTPOST["hp"] + Defs.FRONTIER_OUTPOST["armor"] + Defs.FRONTIER_OUTPOST["shield"]
+	if v:
+		for id in v.seen_forts:
+			var fm: Array = v.seen_forts[id]
+			if game.is_hostile(pid, int(fm[2])) and fm[0].distance_to(at) < SUPPORT_RANGE:
+				dps += Defs.FRONTIER_OUTPOST["damage"] / Defs.FRONTIER_OUTPOST["cooldown"]
+				tough += ft * float(fm[1])
+	else:
+		for f in game.get_tree().get_nodes_in_group("forts"):
+			if f is FrontierOutpost and f.is_alive() and game.is_hostile(pid, f.owner_id) and f.global_position.distance_to(at) < SUPPORT_RANGE:
+				dps += Defs.FRONTIER_OUTPOST["damage"] / Defs.FRONTIER_OUTPOST["cooldown"]
+				tough += f.hp + f.armor + f.shield
 	if v:
 		# Only what we have seen recently.
 		for id in v.sightings:

@@ -439,9 +439,17 @@ func _nose() -> Vector2:
 ## range, the nearest enemy out to `reach` x attack range). The beam reels
 ## the target in at tr[0] per second and burns it at a laser's damage per
 ## second times a factor that grows as the target nears: tr[2] at the beam's
-## full reach, tr[3] where the pull stops (60% of attack range) and closer,
+## full reach, tr[3] where the pull stops (TRACTOR_STOP of attack range) and closer,
 ## straight-line in between (and the Mod's dmg
 ## on top, for tuning). No ramp over time. The turrets fire nothing.
+## Pull by target: x4 drones, x3 corvettes, x2 destroyers, x0.5 carriers.
+const TRACTOR_PULL_MULT := {"corvette": 3.0, "destroyer": 2.0}
+const TRACTOR_PULL_DRONE := 4.0
+const TRACTOR_PULL_CARRIER := 0.5
+## The pull stops this fraction of attack range out (centre to centre): two
+## Mk I carriers then sit ~7 px apart by radius; their art (<=49 px from
+## centre) never overlaps.
+const TRACTOR_STOP := 0.52
 func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 	var g := Game.instance
 	var tr: Array = weapon_mod["tractor"]
@@ -467,13 +475,17 @@ func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 			continue
 		held[t] = true
 		var dps: float = dmg / def["cooldown"] * float(weapon_mod.get("dmg", 1.0)) * g.mod(owner_id, "fire_rate") * g.mod(owner_id, "damage")
-		var close: float = clampf((reach - d) / maxf(reach - rng * 0.6, 1.0), 0.0, 1.0)
+		var close: float = clampf((reach - d) / maxf(reach - rng * TRACTOR_STOP, 1.0), 0.0, 1.0)
 		dps *= lerpf(float(tr[2]), float(tr[3]), close)
 		t.take_damage(dps * delta * g.ship_speed_factor(owner_id), self, Defs.damage_profile(def))
 		# No slow: the beam only drags its target toward the carrier, at a
 		# fixed pull, and only in to the guns' sweet spot.
-		if d > rng * 0.6:
-			t.global_position += (global_position - t.global_position).normalized() * float(tr[0]) * g.ship_speed_factor(owner_id) * delta
+		if d > rng * TRACTOR_STOP:
+			var pm: float = TRACTOR_PULL_DRONE
+			if t is Ship:
+				pm = TRACTOR_PULL_CARRIER if (t as Ship).is_carrier() else float(TRACTOR_PULL_MULT.get(t.ship_type, 1.0))
+			var pull: float = float(tr[0]) * pm
+			t.global_position += (global_position - t.global_position).normalized() * pull * g.ship_speed_factor(owner_id) * delta
 			if t is Ship:
 				(t as Ship)._tractored_at = Game.now()
 		_tbeams.append([_turret_sprites[i].global_position, t.global_position, 0.5])
@@ -1294,7 +1306,6 @@ func _physics_process(delta: float) -> void:
 	_scan_cd -= delta
 
 	var desired := Vector2.ZERO
-	_orbiting = false
 	var face_target: SpaceEntity = null
 	# What the hull should come about to point at, for things that are not
 	# entities (a rock, a gas giant, a patch of nebula).
@@ -1952,26 +1963,6 @@ func turn_rate() -> float:
 	return clampf(6.0 * 8.0 / radius, 1.2, 6.0) * Game.instance.ship_speed_factor(owner_id) * Game.instance.mod(owner_id, "turn_rate")
 
 ## Top sideways / backward thrust (Strafing / Reverse Thrusters), px/s.
-## Default-engagement corvettes in reach of a warship do not park: they
-## circle it at ORBIT_FRAC of top speed, holding about 0.8 of their weapon
-## range with the nose (and guns) on it, and now and then reverse the turn.
-## Slow turreted hulls that do not lead (Target Prediction) miss them more.
-const ORBIT_FRAC := 0.08
-var _orbiting := false
-var _orbit_sign := 0.0
-var _orbit_flip := 0.0
-
-func _orbit_move(d: float) -> Vector2:
-	_orbiting = true
-	_orbit_flip -= get_physics_process_delta_time()
-	if _orbit_sign == 0.0 or _orbit_flip <= 0.0:
-		_orbit_sign = -_orbit_sign if _orbit_sign != 0.0 else (1.0 if randf() < 0.5 else -1.0)
-		_orbit_flip = randf_range(5.0, 9.0)
-	var to_t := (target.global_position - global_position) / maxf(d, 1.0)
-	var sp := max_speed() * ORBIT_FRAC
-	var radial := to_t * clampf((d - weapon_range() * 0.8) * 1.0, -sp, sp)
-	return to_t.orthogonal() * _orbit_sign * sp + radial
-
 func lateral_thrust() -> float:
 	return max_speed() * LATERAL_THRUST if Game.instance.has_tech(owner_id, "strafing_thrusters") else 0.0
 
@@ -2001,11 +1992,6 @@ func _steer(desired: Vector2, delta: float, face: Node2D) -> void:
 	var lat := lateral_thrust()
 	var rev := reverse_thrust()
 	var parked := _parked()
-	if _orbiting:
-		# The orbit's sidestep and its range keeping fly with the nose on
-		# the target, as Strafing / Reverse Thrusters would at this pace.
-		lat = maxf(lat, speed * ORBIT_FRAC * 1.1)
-		rev = maxf(rev, speed * ORBIT_FRAC * 1.1)
 	if parked:
 		# Station keeping: a parked hull shuffles a few pixels for crowding
 		# or a nudge back onto its spot without swinging round.
