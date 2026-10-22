@@ -103,6 +103,15 @@ func _physics_process(delta: float) -> void:
 					if d < best_d:
 						best_d = d
 						tgt = e
+			# No ship or construct to fight: bombard. The carrier's bombard
+			# target first, else the nearest enemy world in reach.
+			if tgt == null:
+				if carrier.state == Ship.State.BOMBARD and _ok(carrier.bombard_target, home, reach):
+					tgt = carrier.bombard_target
+				else:
+					var w: Planet = g.nearest_enemy_planet(owner_id, home, reach)
+					if w != null and g.sees(owner_id, w):
+						tgt = w
 	var goal: Vector2
 	if tgt != null:
 		goal = tgt.global_position   # fly at it; the turn limit makes passes
