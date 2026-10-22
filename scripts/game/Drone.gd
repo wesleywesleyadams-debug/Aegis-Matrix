@@ -133,15 +133,6 @@ func _physics_process(delta: float) -> void:
 	global_position += velocity * delta
 	rotation = heading
 	cd -= delta * sf
-	# Defensive Fire: a ready drone with no ship, construct or world in its
-	# attack range shoots down enemy ordnance or drones instead.
-	var tgt_in: bool = tgt != null and global_position.distance_to(tgt.global_position) <= tgt.radius + FIRE_REACH
-	if cd <= 0.0 and not tgt_in and Game.instance.has_tech(owner_id, "defensive_fire"):
-		var ord := Game.instance.df_target(self, owner_id, FIRE_REACH)
-		if ord != null:
-			cd = carrier.drone_cooldown() * randf_range(0.9, 1.1)
-			Game.instance.intercept(self, ord)
-			return
 	if tgt != null and cd <= 0.0:
 		var to := tgt.global_position - global_position
 		if to.length() <= tgt.radius + FIRE_REACH and absf(angle_difference(heading, to.angle())) <= FIRE_CONE:

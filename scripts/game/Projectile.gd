@@ -35,6 +35,24 @@ var trail_on := false
 var torp_wake := false
 var _trail: PackedVector2Array = []
 
+## Dev duel stats: per side, shots launched and shots that expired with
+## their target already gone (overkill).
+static var fired := {}
+static var fizzled := {}
+
+## Overkill Awareness: damage this shot has booked against its target in
+## Game's in-flight registry (taken back off exactly once: hit, expiry or free).
+var _booked := 0.0
+var _booked_tid := 0
+
+func _unbook() -> void:
+	if _booked > 0.0 and Game.instance:
+		Game.instance.inflight_sub(owner_pid, _booked_tid, _booked)
+	_booked = 0.0
+
+func _exit_tree() -> void:
+	_unbook()
+
 func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float = 0.0) -> void:
 	shooter = from
 	target = to
@@ -111,8 +129,16 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	if jink_at != null:
 		jink_at.note_fast_shot(self)
 	rotation = _vel.angle()
+	fired[owner_pid] = int(fired.get(owner_pid, 0)) + 1
 	if free_flight:
 		life = from.global_position.distance_to(to.global_position) * 1.3 / speed
+	# Overkill Awareness: book the shot against its target so the side's
+	# other guns can see it is already covered (Game.is_doomed). Area shots
+	# are left out.
+	elif splash <= 0.0 and Game.instance.has_tech(owner_pid, "overkill_awareness"):
+		_booked = damage * Game.vs_mult(vs_class, to)
+		_booked_tid = to.get_instance_id()
+		Game.instance.inflight_add(owner_pid, to, _booked)
 
 func _physics_process(delta: float) -> void:
 	if trail_on:
@@ -122,6 +148,9 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 	life -= delta
 	if life <= 0.0:
+		_unbook()
+		if not free_flight and not (is_instance_valid(target) and target.has_method("is_alive") and target.is_alive()):
+			fizzled[owner_pid] = int(fizzled.get(owner_pid, 0)) + 1
 		queue_free()
 		return
 	if free_flight:
@@ -172,6 +201,7 @@ func _physics_process(delta: float) -> void:
 				return
 			var hit := damage
 			hit *= Game.vs_mult(vs_class, target)
+			_unbook()
 			target.take_damage(hit, shooter if is_instance_valid(shooter) and shooter is SpaceEntity else null, profile)
 			if homing:
 				Game.instance.spawn_explosion(near, 0.4)

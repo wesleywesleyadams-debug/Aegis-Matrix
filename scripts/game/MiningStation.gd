@@ -75,7 +75,7 @@ func _shoot(delta: float) -> void:
 	if _cooldown > 0.0:
 		return
 	var d: Dictionary = Defs.MINING_STATION
-	var e := Game.instance.nearest_enemy(self, d["range"] + radius)
+	var e := Game.instance.nearest_enemy(self, d["range"] + radius, true)
 	if e == null:
 		return
 	_cooldown = d["cooldown"]

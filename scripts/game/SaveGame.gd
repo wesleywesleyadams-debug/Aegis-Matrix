@@ -9,6 +9,10 @@ class_name SaveGame
 
 const VERSION := 1
 
+## Techs replaced by another in the same slot: older saves get the new one.
+## (Save migration: Defensive Fire became Overkill Awareness.)
+const RENAMED_TECHS := {"defensive_fire": "overkill_awareness"}
+
 static func _v(p: Vector2) -> Array:
 	return [p.x, p.y]
 
@@ -233,12 +237,15 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		game.spice_cover[int(pid_s)] = bool(data["spice_cover"][pid_s])
 	for pid_s in data.get("researched", {}):
 		var done := {}
-		for t in data["researched"][pid_s]:
+		for t0 in data["researched"][pid_s]:
+			var t: String = RENAMED_TECHS.get(t0, t0)
 			if Defs.TECHS.has(t):
 				done[t] = true
 		game.researched[int(pid_s)] = done
 	for pid_s in data.get("research", {}):
 		var r: Dictionary = data["research"][pid_s]
+		if RENAMED_TECHS.has(r.get("id", "")):
+			r["id"] = RENAMED_TECHS[r["id"]]
 		game.research[int(pid_s)] = r if r.is_empty() or Defs.TECHS.has(r.get("id", "")) else {}
 	for pid_s in data.get("mods_disabled", {}):
 		var off := {}
@@ -253,7 +260,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 				kept[t] = float(data["research_paused"][pid_s][t])
 		game.research_paused[int(pid_s)] = kept
 	for pid_s in data.get("research_queue", {}):
-		game.research_queue[int(pid_s)] = Array(data["research_queue"][pid_s]).filter(func(t): return Defs.TECHS.has(t))
+		game.research_queue[int(pid_s)] = Array(data["research_queue"][pid_s]).map(func(t): return RENAMED_TECHS.get(t, t)).filter(func(t): return Defs.TECHS.has(t))
 	for pid_s in data.get("ai", {}):
 		var st: Dictionary = data["ai"][pid_s]
 		st["claimers"] = []

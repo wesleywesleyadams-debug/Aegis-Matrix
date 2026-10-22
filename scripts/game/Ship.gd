@@ -276,11 +276,15 @@ func _fire_turrets(delta: float) -> void:
 		ordered = bombard_target
 	elif state == State.ATTACK and target_ordered and is_instance_valid(target) and target.is_alive():
 		ordered = target
-	var focus: bool = ordered != null and global_position.distance_to(ordered.global_position) <= rng + float(ordered.get("radius"))
+	# Overkill Awareness: an ordered target the side already has enough shots
+	# in the air to kill (Game.is_doomed) frees the turrets meanwhile.
+	var ok_aware: bool = g.has_tech(owner_id, "overkill_awareness")
+	var focus: bool = ordered != null and global_position.distance_to(ordered.global_position) <= rng + float(ordered.get("radius")) 			and not (ok_aware and g.is_doomed(owner_id, ordered))
 	_t_scan -= delta
 	if not focus and _t_scan <= 0.0:
 		_t_scan = SCAN_INTERVAL
-		_t_near = g.enemies_near(self, rng, _turret_sprites.size() + 2)
+		# Overkill Awareness: a deeper list with doomed enemies sorted last.
+		_t_near = g.enemies_near(self, rng, _turret_sprites.size() + (4 if ok_aware else 2), Vector2.INF, ok_aware)
 	var n := _turret_sprites.size()
 	var dmg: float = def["damage"] * Defs.mark_mult(ship_type, g.mark_level(owner_id, ship_type))
 	var per: int = maxi(1, int(round(float(def.get("guns", n)) / float(n))))
@@ -292,8 +296,6 @@ func _fire_turrets(delta: float) -> void:
 	var had_beams := not _beams.is_empty()
 	_beams.clear()
 	var pd: float = float(weapon_mod.get("pd", 0.0))
-	# Defensive Fire: a turret with nothing to shoot shoots down ordnance.
-	var screen: bool = pd <= 0.0 and not weapon_mod.has("tractor") and g.has_tech(owner_id, "defensive_fire")
 	var claimed := {}
 	for i in n:
 		# Point-Defense: a ready turret first swats incoming ordnance.
@@ -317,6 +319,32 @@ func _fire_turrets(delta: float) -> void:
 			pass
 		elif focus:
 			tgt = ordered
+		elif ok_aware:
+			# Overkill Awareness: keep the target until it leaves reach or the
+			# side's shots already in the air will kill it; then the nearest
+			# not-doomed enemy no other turret here is on, if possible.
+			var cur = _t_target[i]
+			if is_instance_valid(cur) and cur.is_alive() and not taken.has(cur) and global_position.distance_to(cur.global_position) <= rng + cur.radius and not g.is_doomed(owner_id, cur):
+				tgt = cur
+			else:
+				var any_live: Node2D = null
+				var double_up: Node2D = null
+				for e in _t_near:
+					if not is_instance_valid(e) or not e.is_alive():
+						continue
+					if any_live == null:
+						any_live = e
+					if g.is_doomed(owner_id, e):
+						continue
+					if not taken.has(e):
+						tgt = e
+						break
+					if double_up == null:
+						double_up = e
+				if tgt == null:
+					# More turrets than live targets: double up, and only pile
+					# onto a doomed one when nothing else is in reach.
+					tgt = double_up if double_up != null else any_live
 		else:
 			var cur = _t_target[i]
 			if is_instance_valid(cur) and cur.is_alive() and not taken.has(cur) \
@@ -332,18 +360,6 @@ func _fire_turrets(delta: float) -> void:
 		if _t_target[i] != tgt:
 			_t_beam_time[i] = 0.0   # the lance's ramp starts over on a new target
 		_t_target[i] = tgt
-		# Defensive Fire: a ready turret with no ship, construct or world in
-		# range shoots down enemy ordnance or drones instead.
-		if tgt == null and screen and _t_cd[i] <= 0.0:
-			var sd := g.df_target(self, owner_id, rng, claimed)
-			if sd:
-				claimed[sd] = true
-				_t_rot[i] = (sd.global_position - global_position).angle()
-				_turret_sprites[i].rotation = _t_rot[i] - rotation
-				g.intercept(self, sd)
-				# The same reload as a shot at a ship.
-				_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
-				continue
 		if tgt == null:
 			continue
 		taken[tgt] = true
@@ -594,19 +610,6 @@ func _exit_tree() -> void:
 			if is_instance_valid(d) and d.is_alive():
 				d._die()
 	_clear_drones()
-
-## Defensive Fire for fixed-gun ships: when ready, shoot down one enemy
-## missile, torpedo, bomblet or drone within `r` (the weapon range), then reload as
-## from a normal shot. (Drone carriers get none: their doors don't fire.)
-func _defensive_fire(r: float) -> bool:
-	if not Game.instance.has_tech(owner_id, "defensive_fire") or weapon_mod.has("pd") or weapon_mod.has("drones"):
-		return false
-	var sd := Game.instance.df_target(self, owner_id, r)
-	if sd == null:
-		return false
-	Game.instance.intercept(self, sd)
-	_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
-	return true
 
 ## Point-Defense: x damage against Interceptor Drones.
 const PD_DRONE_MULT := 2.0
@@ -1290,7 +1293,7 @@ func _physics_process(delta: float) -> void:
 							order_mine(job)
 			elif def["weapon"] != "" and _acquire_timer <= 0.0:
 				# Stand Ground only takes on what its guns already reach.
-				var e := Game.instance.nearest_enemy(self, weapon_range() if stance == Stance.STAND_GROUND else weapon_range() + 60.0)
+				var e := Game.instance.nearest_enemy(self, weapon_range() if stance == Stance.STAND_GROUND else weapon_range() + 60.0, true)
 				if e:
 					attack_move_goal = global_position if stance == Stance.AGGRESSIVE else anchor
 					target = e
@@ -1317,9 +1320,9 @@ func _physics_process(delta: float) -> void:
 				# Defensive re-engages, and only what it can reach from there.
 				var e: SpaceEntity = null
 				if not _guard:
-					e = Game.instance.nearest_enemy(self, weapon_range() + 120.0)
+					e = Game.instance.nearest_enemy(self, weapon_range() + 120.0, true)
 				elif stance == Stance.DEFENSIVE:
-					e = Game.instance.nearest_enemy(self, weapon_range() + 60.0)
+					e = Game.instance.nearest_enemy(self, weapon_range() + 60.0, true)
 					if e and e.global_position.distance_to(anchor) > _stance_leash() + weapon_range():
 						e = null
 				if e:
@@ -1525,17 +1528,23 @@ func _physics_process(delta: float) -> void:
 		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
 		if state == State.BOMBARD and is_instance_valid(bombard_target):
 			shoot = bombard_target
+		# Overkill Awareness: when the side's shots already in the air will
+		# kill the target, shoot the nearest enemy in reach that is not doomed
+		# (an order stands; the guns come back to it if those shots miss).
+		if shoot != null and Game.instance.is_doomed(owner_id, shoot):
+			var alt := Game.instance.nearest_enemy(self, weapon_range(), true)
+			if alt != null and not Game.instance.is_doomed(owner_id, alt):
+				shoot = alt
+				if not target_ordered and state == State.ATTACK:
+					target = alt
 		if shoot == null or global_position.distance_to(shoot.global_position) > weapon_range() + shoot.radius:
 			# Nothing locked on: scan for anything in range, but only every
 			# SCAN_INTERVAL when the last scan came up empty.
 			shoot = null
 			if _scan_cd <= 0.0:
-				shoot = Game.instance.nearest_enemy(self, weapon_range())
+				shoot = Game.instance.nearest_enemy(self, weapon_range(), true)
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
-		# Defensive Fire: nothing else in range, so shoot down ordnance or drones.
-		if shoot == null:
-			_defensive_fire(weapon_range())
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
 			_aim_at = shoot
 			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))

@@ -488,8 +488,8 @@ const TECHS := {
 		"effects": {}, "desc": "Shots aim where a moving target is going."},
 	"gyro_stabilizers": {"name": "Gyro-Stabilizers", "group": "weapons", "tier": 2, "requires": ["target_prediction"], "cost": {"spice": 60}, "time": 85.0,
 		"effects": {}, "desc": "No accuracy loss when firing on the move."},
-	"defensive_fire": {"name": "Defensive Fire", "group": "weapons", "tier": 3, "requires": ["gyro_stabilizers"], "cost": {"spice": 240}, "time": 245.0,
-		"effects": {}, "desc": "Idle guns and drones shoot down ordnance and drones."},
+	"overkill_awareness": {"name": "Overkill Awareness", "group": "weapons", "tier": 3, "requires": ["gyro_stabilizers"], "cost": {"spice": 240}, "time": 245.0,
+		"effects": {}, "desc": "Guns skip enemies your shots in flight will kill."},
 	"hullbreaker_rounds": {"name": "Rupture Charges", "group": "weapons", "tier": 3, "requires": ["burst_cyclers"], "cost": {"spice": 240}, "time": 245.0,
 		"effects": {"hull_damage": 0.25}, "desc": "+25% damage to enemy hulls."},
 

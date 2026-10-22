@@ -32,7 +32,7 @@ const SCENES := [
 	"ion_cannons", "particle_lances", "capital_batteries", "targeting_arrays", "beam_focusing", "lance_batteries",
 	"autoloaders", "heavy_mounts", "scatter_arrays", "overcharged_coils", "burst_cyclers", "dark_matter",
 	"solar_collectors", "plasma_reactors", "hullbreaker_rounds",
-	"target_prediction", "gyro_stabilizers", "defensive_fire",
+	"target_prediction", "gyro_stabilizers", "overkill_awareness",
 	"hydroponics", "colony_pods", "rationing", "habitat_modules", "gene_clinics", "arcologies",
 	"orbital_farms", "planetary_shields", "terraforming", "deep_vaults", "gene_forges", "planetary_citadels",
 	"deep_drills", "bulk_holds", "cutting_lasers", "resonance_drills", "gas_skimming", "ion_thrusters",
@@ -266,13 +266,22 @@ static func call_scene(id: String, img: Image) -> void:
 			_ellipse(img, Vector2(32, 32), Vector2(20, 7), Color("6a7596"))
 			_ellipse(img, Vector2(32, 32), Vector2(7, 20), Color("6a7596"))
 			_disc(img, Vector2(32, 32), 5.0, Color("ffd84a"))
-		"defensive_fire":
-			_disc(img, Vector2(14, 48), 9.0, Color("6a7596"))
-			_barrel(img, Vector2(14, 46), Vector2(30, 32), 4.0)
-			_beam(img, Vector2(32, 30), Vector2(48, 18), Color("ffd84a"), 1.5)
-			_disc(img, Vector2(50, 16), 5.0, Color("ff8a2a"))
-			_line(img, Vector2(44, 10), Vector2(56, 22), 2.0, Color("ff4a4a"))
-			_line(img, Vector2(44, 22), Vector2(56, 10), 2.0, Color("ff4a4a"))
+		"overkill_awareness":
+			# Two guns: one's bolts already converge on a crossed-out wreck
+			# (top), the other has switched to a fresh target (right).
+			_disc(img, Vector2(12, 50), 7.0, Color("6a7596"))
+			_barrel(img, Vector2(12, 48), Vector2(24, 36), 3.0)
+			_disc(img, Vector2(26, 56), 7.0, Color("6a7596"))
+			_barrel(img, Vector2(26, 54), Vector2(42, 48), 3.0)
+			_beam(img, Vector2(18, 30), Vector2(20, 22), Color("ffd84a"), 1.5)
+			_beam(img, Vector2(24, 28), Vector2(22, 20), Color("ffd84a"), 1.5)
+			_ring(img, Vector2(20, 14), 7.0, 1.5, Color("8a95b8"))
+			_line(img, Vector2(14, 8), Vector2(26, 20), 2.0, Color("ff4a4a"))
+			_line(img, Vector2(14, 20), Vector2(26, 8), 2.0, Color("ff4a4a"))
+			_beam(img, Vector2(44, 46), Vector2(52, 40), Color("ffd84a"), 1.5)
+			_ring(img, Vector2(52, 32), 8.0, 2.0, Color("ff6a4a"))
+			_line(img, Vector2(52, 22), Vector2(52, 42), 1.0, Color("ff6a4a"))
+			_line(img, Vector2(42, 32), Vector2(62, 32), 1.0, Color("ff6a4a"))
 		"autoloaders":
 			for k in 5:
 				_shell(img, Vector2(10 + k * 10, 32))
