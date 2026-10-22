@@ -30,6 +30,8 @@ var _details_right := true
 var _pause_btn: Button
 ## Draws the subtle ring around the planet, the leader line and the name bubble.
 var _deco: Control
+## Reserve bars, on their own layer above the planet and the field slots.
+var _bars: Control
 var _ring_color := Color(1, 1, 1, 0.5)
 var _ring := {}
 var _picker: PopupPanel
@@ -70,6 +72,11 @@ func _ready() -> void:
 	_deco.draw.connect(_draw_deco)
 	add_child(_deco)
 	move_child(_deco, 0)
+	_bars = Control.new()
+	_bars.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bars.draw.connect(_draw_bars)
+	add_child(_bars)
 	_title = _float_label(18, HORIZONTAL_ALIGNMENT_CENTER)
 	_subtitle = _float_label(12, HORIZONTAL_ALIGNMENT_CENTER)
 	# Rich text, so resources show as their icons.
@@ -205,6 +212,8 @@ func _place() -> void:
 	_ring_color = Defs.team_color(planet.owner_id) if planet.owner_id != 0 else Color(0.8, 0.85, 1.0)
 	_ring_color.a = 0.55
 	_deco.queue_redraw()
+	if is_instance_valid(_bars):
+		_bars.queue_redraw()
 	for l in [_title, _subtitle, _details, _pause_btn]:
 		l.modulate.a = a
 	# The build picker opens beside the globe too: the details step aside.
@@ -308,9 +317,12 @@ func _draw_deco() -> void:
 	_deco.draw_line(_ring["from"], _ring["to"], c, 1.5, true)
 	_deco.draw_circle(_ring["bubble"], _ring["br"], Color(0.02, 0.03, 0.08, 0.55 * _ring["alpha"]))
 	_deco.draw_arc(_ring["bubble"], _ring["br"], 0.0, TAU, 64, c, 1.5, true)
-	# Reserve bars under the name bubble: the mineral crust, then the spice
-	# reserve below it (deserts only), each in its resource color.
-	if not is_instance_valid(planet):
+
+## Reserve bars under the name bubble: the mineral crust, then the spice
+## reserve below it, each in its resource color. Drawn on _bars, above the
+## planet, so they stay readable where the bubble overlaps it.
+func _draw_bars() -> void:
+	if _ring.is_empty() or not is_instance_valid(planet):
 		return
 	var w: float = _ring["br"] * 2.0
 	var tl := Vector2(_ring["bubble"].x - _ring["br"], _ring.get("spice_y", _ring["bubble"].y + _ring["br"] + SPICE_BAR_TOP))
@@ -325,16 +337,16 @@ func _draw_deco() -> void:
 ## One reserve bar with its "Name now / max" caption centred below it.
 func _reserve_bar(tl: Vector2, w: float, name: String, now: float, cap: float, sc: Color) -> void:
 	var frac := clampf(now / cap, 0.0, 1.0)
-	_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(0, 0, 0, 0.7 * _ring["alpha"]))
-	_deco.draw_rect(Rect2(tl, Vector2(w * frac, 8)), Color(sc, _ring["alpha"]))
-	_deco.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(sc, 0.8 * _ring["alpha"]), false, 1.0)
+	_bars.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(0, 0, 0, 0.7 * _ring["alpha"]))
+	_bars.draw_rect(Rect2(tl, Vector2(w * frac, 8)), Color(sc, _ring["alpha"]))
+	_bars.draw_rect(Rect2(tl - Vector2(2, 2), Vector2(w + 4, 12)), Color(sc, 0.8 * _ring["alpha"]), false, 1.0)
 	# Centred under the bar but never clipped to its width (big reserves
 	# such as 30k / 30k run wider than the bar).
 	var txt := "%s %s / %s" % [name, Defs.short_num(now), Defs.short_num(cap)]
 	var tw: float = get_theme_default_font().get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 	# A thin black outline keeps it legible over rocks and nebulae.
-	_deco.draw_string_outline(get_theme_default_font(), tl + Vector2((w - tw) / 2.0, 24), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 3, Color(0, 0, 0, 0.9 * _ring["alpha"]))
-	_deco.draw_string(get_theme_default_font(), tl + Vector2((w - tw) / 2.0, 24), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(sc, _ring["alpha"]))
+	_bars.draw_string_outline(get_theme_default_font(), tl + Vector2((w - tw) / 2.0, 24), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 6, Color(0, 0, 0, 0.9 * _ring["alpha"]))
+	_bars.draw_string(get_theme_default_font(), tl + Vector2((w - tw) / 2.0, 24), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(sc, _ring["alpha"]))
 
 func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
 	var st := StyleBoxFlat.new()
