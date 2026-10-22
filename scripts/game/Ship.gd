@@ -415,6 +415,8 @@ func _fire_turrets(delta: float) -> void:
 ## full reach, tr[3] where the pull stops (60% of attack range) and closer,
 ## straight-line in between (and the Mod's dmg
 ## on top, for tuning). No ramp over time. The turrets fire nothing.
+## Light hulls are dragged harder: x3 corvettes, x2 destroyers.
+const TRACTOR_PULL_MULT := {"corvette": 3.0, "destroyer": 2.0}
 func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 	var g := Game.instance
 	var tr: Array = weapon_mod["tractor"]
@@ -446,7 +448,8 @@ func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 		# No slow: the beam only drags its target toward the carrier, at a
 		# fixed pull, and only in to the guns' sweet spot.
 		if d > rng * 0.6:
-			t.global_position += (global_position - t.global_position).normalized() * float(tr[0]) * g.ship_speed_factor(owner_id) * delta
+			var pull: float = float(tr[0]) * float(TRACTOR_PULL_MULT.get(t.ship_type, 1.0) if t is Ship else 1.0)
+			t.global_position += (global_position - t.global_position).normalized() * pull * g.ship_speed_factor(owner_id) * delta
 			if t is Ship:
 				(t as Ship)._tractored_at = Game.now()
 		_tbeams.append([_turret_sprites[i].global_position, t.global_position, 0.5])
