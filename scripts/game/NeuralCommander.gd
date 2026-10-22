@@ -224,7 +224,7 @@ func _valid(a: String, game: Game, base: Starbase) -> bool:
 				return false
 			return _war(game, pid).any(func(s): return s.state == Ship.State.IDLE and not s.def.has("variant") and Defs.VARIANTS_OF.has(s.ship_type))
 		"colony":
-			if r["spice"] < Defs.SHIPS["colony"]["cost"]["spice"]:
+			if r["minerals"] < Defs.SHIPS["colony"]["cost"].get("minerals", 0.0):
 				return false
 			for p in game.get_tree().get_nodes_in_group("planets"):
 				if ai_free(game, p) and p.is_habitable():
