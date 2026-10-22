@@ -316,6 +316,7 @@ func _draw_deco() -> void:
 	_deco.draw_arc(_ring["center"], _ring["r"], 0.0, TAU, 128, c, 1.5, true)
 	_deco.draw_line(_ring["from"], _ring["to"], c, 1.5, true)
 	_deco.draw_circle(_ring["bubble"], _ring["br"], Color(0.02, 0.03, 0.08, 0.55 * _ring["alpha"]))
+	_draw_info_bubble(c)
 	_deco.draw_arc(_ring["bubble"], _ring["br"], 0.0, TAU, 64, c, 1.5, true)
 
 ## Reserve bars under the name bubble: the mineral crust, then the spice
@@ -347,6 +348,28 @@ func _reserve_bar(tl: Vector2, w: float, name: String, now: float, cap: float, s
 	# A thin black outline keeps it legible over rocks and nebulae.
 	_bars.draw_string_outline(get_theme_default_font(), tl + Vector2((w - tw) / 2.0, 24), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 6, Color(0, 0, 0, 0.9 * _ring["alpha"]))
 	_bars.draw_string(get_theme_default_font(), tl + Vector2((w - tw) / 2.0, 24), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(sc, _ring["alpha"]))
+
+## The world info panel sits in a rounded bubble styled like the name
+## bubble, with its own leader line from the ring.
+func _draw_info_bubble(c: Color) -> void:
+	if not _details.visible:
+		return
+	var dsz := _details.get_combined_minimum_size()
+	var r := Rect2(_details.position, Vector2(maxf(_details.size.x, dsz.x), maxf(_details.size.y, dsz.y)))
+	if _pause_btn.visible:
+		r = r.merge(Rect2(_pause_btn.position, _pause_btn.size))
+	r = r.grow(12.0)
+	var st := StyleBoxFlat.new()
+	st.bg_color = Color(0.02, 0.03, 0.08, 0.55 * _ring["alpha"])
+	st.border_color = c
+	st.set_border_width_all(2)
+	st.set_corner_radius_all(16)
+	st.anti_aliasing = true
+	st.draw(_deco.get_canvas_item(), r)
+	# Leader line: from the ring toward the bubble's nearest side.
+	var edge := Vector2(r.position.x if r.get_center().x > _ring["center"].x else r.end.x, clampf(_ring["center"].y, r.position.y + 16.0, r.end.y - 16.0))
+	var dir: Vector2 = (edge - _ring["center"]).normalized()
+	_deco.draw_line(_ring["center"] + dir * _ring["r"], edge, c, 1.5, true)
 
 func _slot_style(bg: Color, border: Color) -> StyleBoxFlat:
 	var st := StyleBoxFlat.new()
