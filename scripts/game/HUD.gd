@@ -32,8 +32,6 @@ var _res_labels := {}
 var _res_boxes := {}
 ## Spice cover toggle on the resource bar (Game.spice_cover).
 var _cover_btn: Button = null
-## Spice covering a shortfall: the counter turns orange and flashes.
-const COVER_WARN := Color("ffa040")
 ## Resource-bar icons, which carry the same tooltip as their counter.
 var _bar_icons := {}
 var _pop_label: Label
@@ -81,7 +79,7 @@ var minimap: Minimap
 var _info_label: Label
 var _refresh: float = 0.0
 var planet_view: PlanetView
-var _speed_slider: HSlider
+var _speed_slider: VSlider
 var _speed_label: Label
 var _sel_panel: PanelContainer
 ## Grid hotkeys for the selection panel's buttons, assigned by position as
@@ -209,42 +207,58 @@ func _fmt(v: float) -> String:
 
 # ---------------------------------------------------------------- layout
 
-## The top row: every panel and button shares one top edge, one height and
-## one gap, and the margin to the screen edge is the same on both sides. The
-## resource bar is not given a width; it stretches from the left margin to
-## the research button, which keeps the row even at any window width.
+## The top row, left to right: [stockpiles half] gap [Research] gap [counts
+## half] gap [Menu]. Every piece shares one top edge and height; the margin
+## to the screen edge is the same on both sides. _layout_top_row sizes the
+## two halves and parks the research button between them at any width.
 const TOP_Y := 8
 const TOP_H := 62
-const HUD_GAP := 20
+const TOP_GAP := 8
 const HUD_SIDE := 12
-const MENU_W := 170
-const SPEED_W := 368
-## The research button also takes the space the match clock used to have;
-## the clock now sits under the resource bar (CLOCK_W x CLOCK_H).
+const MENU_W := 150
+## Widest the research button gets; it shrinks (to RESEARCH_MIN_W) on
+## narrow windows before the counters do.
 const RESEARCH_W := 306
+const RESEARCH_MIN_W := 170
 const CLOCK_W := 86
 const CLOCK_H := 30
-const SPEED_RIGHT := -HUD_SIDE - MENU_W - HUD_GAP
-const RESEARCH_RIGHT := SPEED_RIGHT - SPEED_W - HUD_GAP
-const TOP_BAR_RIGHT := RESEARCH_RIGHT - RESEARCH_W - HUD_GAP
+## The alert strip under the resource bar (one line per resource in trouble).
+const STRIP_H := 20
+## The match clock, then the play/speed column, sit under the strip.
+const CLOCK_Y := TOP_Y + TOP_H + STRIP_H + 6
+const SPEED_Y := CLOCK_Y + CLOCK_H + 6
+## Alert severities on the strip, mildest first.
+const ALERT_COLORS := [Color("ffd84a"), Color("ffa040"), Color("ff5a4a")]
+## A shrinking stock with less than this many seconds left earns a notice.
+const ALERT_LOW_SECS := 60.0
 
-func _build_top_bar(root: Control) -> void:
+var _bar_left: PanelContainer
+var _bar_right: PanelContainer
+## Research button's place, set by _layout_top_row.
+var _research_x := 0.0
+var _research_w := float(RESEARCH_W)
+## Alert line per resource, under its counter.
+var _alerts := {}
+
+func _bar_half(root: Control) -> HBoxContainer:
 	var bar := PanelContainer.new()
-	# Right-aligned next to the speed controls, keeping the left side of
-	# the screen free for other panels.
-	bar.anchor_left = 0.0
-	bar.anchor_right = 1.0
-	bar.offset_left = HUD_SIDE
-	bar.offset_right = TOP_BAR_RIGHT
+	bar.offset_top = TOP_Y
 	bar.offset_bottom = TOP_Y + TOP_H
 	bar.clip_contents = true
-	bar.offset_top = TOP_Y
 	bar.add_theme_stylebox_override("panel", _panel_style(8))
 	root.add_child(bar)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar.add_child(h)
+	if _bar_left == null:
+		_bar_left = bar
+	else:
+		_bar_right = bar
+	return h
+
+func _build_top_bar(root: Control) -> void:
+	var h := _bar_half(root)
 	for key in Defs.RESOURCES:
 		var box := HBoxContainer.new()
 		box.add_theme_constant_override("separation", 6)
@@ -254,7 +268,7 @@ func _build_top_bar(root: Control) -> void:
 		_bar_icons[key] = ri
 		var l := _label("0")
 		# Stockpile and net per minute. Longest realistic text: "54.3k -1.2k".
-		l.custom_minimum_size = Vector2(104, 0)
+		l.custom_minimum_size = Vector2(98, 0)
 		l.clip_text = true
 		box.add_child(l)
 		_res_labels[key] = l
@@ -267,6 +281,22 @@ func _build_top_bar(root: Control) -> void:
 			_cover_btn.pressed.connect(func(): game.set_spice_cover(game.player_id, not game.spice_cover_on(game.player_id)))
 			box.add_child(_cover_btn)
 		h.add_child(box)
+		# Its alert line on the strip under the bar (see _update_alerts).
+		var al := _label("", ALERT_COLORS[0], 12)
+		al.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		al.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		var asb := StyleBoxFlat.new()
+		asb.bg_color = Color(BG.r, BG.g, BG.b, 0.85)
+		asb.set_corner_radius_all(3)
+		asb.content_margin_left = 6
+		asb.content_margin_right = 6
+		al.add_theme_stylebox_override("normal", asb)
+		al.mouse_filter = Control.MOUSE_FILTER_STOP
+		al.visible = false
+		root.add_child(al)
+		_alerts[key] = al
+	# The second half, right of the research button: counts.
+	h = _bar_half(root)
 	# Population: its icon, then the total.
 	var popbox := HBoxContainer.new()
 	popbox.add_theme_constant_override("separation", 6)
@@ -302,6 +332,28 @@ func _build_top_bar(root: Control) -> void:
 	_upkeep_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	fleet.add_child(_upkeep_label)
 	h.add_child(fleet)
+	get_viewport().size_changed.connect(_layout_top_row)
+
+## Lays out the top row for the current window width: each half gets its
+## contents' width plus an equal share of the spare room, the research button
+## sits between them, and the Menu button holds the right edge.
+func _layout_top_row() -> void:
+	if _bar_left == null or _research_button == null:
+		return
+	var w: float = get_viewport().get_visible_rect().size.x
+	var right_edge: float = w - HUD_SIDE - MENU_W - TOP_GAP
+	var lmin: float = _bar_left.get_combined_minimum_size().x
+	var rmin: float = _bar_right.get_combined_minimum_size().x
+	var room: float = right_edge - HUD_SIDE - 2.0 * TOP_GAP - lmin - rmin
+	_research_w = clampf(room, RESEARCH_MIN_W, RESEARCH_W)
+	var spare: float = maxf(0.0, room - _research_w)
+	var lw: float = lmin + spare * 0.5
+	_bar_left.offset_left = HUD_SIDE
+	_bar_left.offset_right = HUD_SIDE + lw
+	_research_x = HUD_SIDE + lw + TOP_GAP
+	_bar_right.offset_left = _research_x + _research_w + TOP_GAP
+	_bar_right.offset_right = right_edge
+	_place_research_button(_research_fill_frac)
 
 ## Research button and match clock, in their own panel between the resource
 ## bar and the speed controls.
@@ -316,10 +368,6 @@ func _build_research_panel(root: Control) -> void:
 	_research_button.focus_mode = Control.FOCUS_NONE
 	# The active tech's picture rides beside its name and progress.
 	_research_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_research_button.anchor_left = 1.0
-	_research_button.anchor_right = 1.0
-	_research_button.offset_right = RESEARCH_RIGHT
-	_research_button.offset_left = RESEARCH_RIGHT - RESEARCH_W
 	_research_button.offset_top = TOP_Y
 	_research_button.offset_bottom = TOP_Y + TOP_H
 	_research_button.pressed.connect(_on_research_button)
@@ -348,18 +396,17 @@ func _build_research_panel(root: Control) -> void:
 	_research_fill.color = Color(GOOD.r, GOOD.g, GOOD.b, 0.3)
 	_research_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_research_fill.visible = false
-	_research_fill.anchor_left = 1.0
-	_research_fill.anchor_right = 1.0
 	_research_fill.offset_top = TOP_Y + 2
 	_research_fill.offset_bottom = TOP_Y + TOP_H - 2
 	root.add_child(_research_fill)
+	_layout_top_row.call_deferred()
 
-	# The match clock: top left, just under the resource bar.
+	# The match clock: top left, under the resource bar's alert strip.
 	var panel := PanelContainer.new()
 	panel.offset_left = HUD_SIDE
 	panel.offset_right = HUD_SIDE + CLOCK_W
-	panel.offset_top = TOP_Y + TOP_H + 6
-	panel.offset_bottom = TOP_Y + TOP_H + 6 + CLOCK_H
+	panel.offset_top = CLOCK_Y
+	panel.offset_bottom = CLOCK_Y + CLOCK_H
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_theme_stylebox_override("panel", _panel_style(4))
 	root.add_child(panel)
@@ -372,7 +419,7 @@ func _build_research_panel(root: Control) -> void:
 	# Under it: one yellow line per Mod you have switched off; click one to
 	# switch it back on.
 	_mod_status = VBoxContainer.new()
-	_mod_status.position = Vector2(HUD_SIDE, TOP_Y + TOP_H + 6 + CLOCK_H + 6)
+	# (Placed under the speed column once that is built: _build_speed.)
 	_mod_status.add_theme_constant_override("separation", 4)
 	root.add_child(_mod_status)
 
@@ -391,60 +438,69 @@ func _build_menu_button(root: Control) -> void:
 	b.pressed.connect(func(): show_pause(true))
 	root.add_child(b)
 
-## Game speed slider (top-right, just left of the Menu button). The notch labelled NORMAL is 1x.
+## Play/pause and game speed: a compact column at the top left, under the
+## match clock. Pause on top, then the vertical speed slider (fastest at the
+## top) with its notch labels beside it. The notch labelled NORMAL is 1x.
 func _build_speed(root: Control) -> void:
 	var panel := PanelContainer.new()
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
-	panel.offset_left = SPEED_RIGHT - SPEED_W
-	panel.offset_right = SPEED_RIGHT
-	panel.offset_top = TOP_Y
-	panel.offset_bottom = TOP_Y + TOP_H
-	panel.add_theme_stylebox_override("panel", _panel_style(6))
+	panel.offset_left = HUD_SIDE
+	panel.offset_top = SPEED_Y
+	panel.add_theme_stylebox_override("panel", _panel_style(4))
 	root.add_child(panel)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 10)
-	h.alignment = BoxContainer.ALIGNMENT_CENTER
-	panel.add_child(h)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 3)
+	panel.add_child(v)
 	_play_button = Button.new()
-	_play_button.custom_minimum_size = Vector2(92, TOP_H - 16)
-	_play_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_play_button.custom_minimum_size = Vector2(CLOCK_W - 8, 26)
+	_play_button.add_theme_font_size_override("font_size", 13)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		var sb := _play_button.get_theme_stylebox(st).duplicate() as StyleBox
-		sb.content_margin_left = 8
-		sb.content_margin_right = 8
+		sb.content_margin_left = 4
+		sb.content_margin_right = 4
+		sb.content_margin_top = 2
+		sb.content_margin_bottom = 2
 		_play_button.add_theme_stylebox_override(st, sb)
 	_play_button.focus_mode = Control.FOCUS_NONE
 	_play_button.tooltip_text = "Pause / resume the game (Pause key). You can still give orders while paused."
 	_play_button.pressed.connect(toggle_play)
-	h.add_child(_play_button)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 0)
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	h.add_child(v)
-	_speed_label = _label("Speed 1x (normal)", TEXT, 13)
+	v.add_child(_play_button)
+	_speed_label = _label("1x", TEXT, 11)
+	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_speed_label.mouse_filter = Control.MOUSE_FILTER_STOP
+	_speed_label.tooltip_text = "Game speed. Keys: - slower, = faster, Backspace normal."
 	v.add_child(_speed_label)
-	_speed_slider = HSlider.new()
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 2)
+	v.add_child(h)
+	_speed_slider = VSlider.new()
 	_speed_slider.min_value = 0
 	_speed_slider.max_value = SPEEDS.size() - 1
 	_speed_slider.step = 1
 	_speed_slider.tick_count = SPEEDS.size()
 	_speed_slider.ticks_on_borders = true
-	_speed_slider.custom_minimum_size = Vector2(200, 18)
+	_speed_slider.custom_minimum_size = Vector2(18, SPEEDS.size() * 14)
 	_speed_slider.focus_mode = Control.FOCUS_NONE
 	_speed_slider.tooltip_text = "Game speed. Keys: - slower, = faster, Backspace normal."
 	_speed_slider.value = NORMAL_SPEED
 	_speed_slider.value_changed.connect(_on_speed_changed)
 	_speed_slider.value_changed.connect(func(_v): if game_paused: toggle_play())
-	v.add_child(_speed_slider)
-	var marks := HBoxContainer.new()
-	for i in SPEEDS.size():
+	h.add_child(_speed_slider)
+	# Notch labels, fastest at the top to match the slider.
+	var marks := VBoxContainer.new()
+	marks.add_theme_constant_override("separation", 0)
+	marks.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for j in SPEEDS.size():
+		var i: int = SPEEDS.size() - 1 - j
 		var m := _label(("NORMAL" if i == NORMAL_SPEED else "%sx" % str(SPEEDS[i])), GOOD if i == NORMAL_SPEED else DIM, 10)
-		m.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		m.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		m.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		m.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		m.mouse_filter = Control.MOUSE_FILTER_STOP
+		m.tooltip_text = "Click: game speed %sx" % str(SPEEDS[i])
+		m.gui_input.connect(func(e): if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT: set_speed_index(i))
 		marks.add_child(m)
-	v.add_child(marks)
+	h.add_child(marks)
+	# The switched-off Mods list goes under the column.
+	panel.resized.connect(func(): _mod_status.position = Vector2(HUD_SIDE, panel.position.y + panel.size.y + 6))
 	_on_speed_changed(_speed_slider.value)
 
 ## Play/pause: while paused the match is frozen (time scale 0) but input,
@@ -471,10 +527,10 @@ func _on_speed_changed(v: float) -> void:
 	if _play_button:
 		_play_button.text = "Play" if game_paused else "Pause"
 		_play_button.modulate = Color("ffd46b") if game_paused else Color.WHITE
-	_speed_label.text = "Speed %sx%s" % [str(s), " (normal)" if int(v) == NORMAL_SPEED else ""]
+	_speed_label.text = "Speed %sx" % str(s)
 	_speed_label.add_theme_color_override("font_color", TEXT if int(v) == NORMAL_SPEED else Color("ffd46b"))
 	if game_paused or _research_pause:
-		_speed_label.text = "PAUSED" if game_paused else "PAUSED (research)"
+		_speed_label.text = "PAUSED" if game_paused else "PAUSED (R)"
 		_speed_label.add_theme_color_override("font_color", Color("ffd46b"))
 
 func _build_selection_panel(root: Control) -> void:
@@ -881,7 +937,7 @@ func _update_side_techs() -> void:
 	_side_techs.move_to_front()
 	var panel_left: float = _research_box.get_parent().get_global_rect().position.x
 	var w: float = maxf(140.0, panel_left - 24.0)
-	var below := _mod_status.position.y + _mod_status.size.y + 10.0 if not _mod_status_ids.is_empty() else float(TOP_Y + TOP_H + 60)
+	var below := _mod_status.position.y + _mod_status.size.y + 10.0 if not _mod_status_ids.is_empty() else _mod_status.position.y
 	_side_techs.position = Vector2(12, below)
 	_side_techs.size = Vector2(w, 0)
 	if ids != _side_ids:
@@ -945,19 +1001,19 @@ func _side_card(id: String, w: float) -> Button:
 	b.pressed.connect(func(): game.request_research(id); _refresh_research())
 	return b
 
-## The Research button's place in the top bar, and its progress fill.
+## The Research button's place in the top bar (between the two halves of
+## the resource bar, see _layout_top_row), and its progress fill.
+var _research_fill_frac := 0.0
 func _place_research_button(frac: float) -> void:
+	_research_fill_frac = frac
 	var b := _research_button
 	var f := _research_fill
-	for c in [b, f]:
-		c.anchor_left = 1.0
-		c.anchor_right = 1.0
-	b.offset_left = RESEARCH_RIGHT - RESEARCH_W
-	b.offset_right = RESEARCH_RIGHT
+	b.offset_left = _research_x
+	b.offset_right = _research_x + _research_w
 	b.offset_top = TOP_Y
 	b.offset_bottom = TOP_Y + TOP_H
-	f.offset_left = RESEARCH_RIGHT - RESEARCH_W + 2
-	f.offset_right = RESEARCH_RIGHT - RESEARCH_W + 2 + (RESEARCH_W - 4) * frac
+	f.offset_left = _research_x + 2
+	f.offset_right = _research_x + 2 + (_research_w - 4) * frac
 	f.offset_top = TOP_Y + 2
 	f.offset_bottom = TOP_Y + TOP_H - 2
 
@@ -1682,12 +1738,9 @@ func _update_top_bar() -> void:
 		_res_labels[k].add_theme_color_override("font_color", col)
 		_res_boxes[k].tooltip_text = "%s: %d stockpiled. NET %s/min over the last minute (%s/min right now): all income minus all spending - upkeep, building upkeep, Power Plant fuel, food eaten, research, construction and ships." % [
 			Defs.RESOURCE_NAMES[k], int(r.get(k, 0.0)), _signed(avg), _signed(rate * Defs.PER_MIN)]
-	if game.in_blackout(pid):
+	if game.energy_starved(pid):
+		# The alert strip under the bar spells out BLACKOUT / NO ENERGY.
 		_res_labels["energy"].add_theme_color_override("font_color", BAD)
-		_res_labels["energy"].text += " !" # the box is narrow; the tooltip spells out BLACKOUT
-	elif game.energy_starved(pid):
-		_res_labels["energy"].add_theme_color_override("font_color", BAD)
-		_res_labels["energy"].text += "  NO ENERGY"
 	var cover_on := game.spice_cover_on(pid)
 	_cover_btn.text = "ON" if cover_on else "OFF"
 	_cover_btn.modulate = Color.WHITE if cover_on else Color(1, 0.6, 0.5)
@@ -1703,11 +1756,7 @@ func _update_top_bar() -> void:
 			var c := game.spice_covering(pid, k)
 			if c > 0.05:
 				parts.append("covering %.1f/min of %s at %d per spice (%.1f spice/min)" % [c * Defs.SPICE_COVER_RATIO, Defs.RESOURCE_NAMES[k].to_lower(), int(Defs.SPICE_COVER_RATIO), c])
-		_res_boxes["spice"].tooltip_text += "\nWARNING: spice is covering a shortfall (the orange ▼N is spice/min spent on it):\n  " + "\n  ".join(parts)
-		var flash: bool = fmod(Time.get_ticks_msec() / 1000.0, 1.0) < 0.6
-		# Narrow box: "493 ▼80" in flashing orange = 80 spice/min going to cover.
-		_res_labels["spice"].text = "%s ▼%s" % [_fmt(r.get("spice", 0.0)), _fmt(covering)]
-		_res_labels["spice"].add_theme_color_override("font_color", COVER_WARN if flash else TEXT)
+		_res_boxes["spice"].tooltip_text += "\nWARNING: spice is covering a shortfall (the orange ▼ line under it shows it):\n  " + "\n  ".join(parts)
 	var fuel := game.fuel_per_min(pid)
 	_res_boxes["minerals"].tooltip_text += "\nBreakdown: Power Plant fuel %.1f/min (1 mineral per 10 energy; included in the net)." % fuel
 	_res_boxes["energy"].tooltip_text += "\nBreakdown: Power Plants burn %.1f minerals/min as fuel (1 per 10 energy). Starbases make no energy." % fuel
@@ -1733,6 +1782,7 @@ OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starve
 	_set_bar_tip("fleet", _fleet_label.tooltip_text)
 	_set_bar_tip("harv", _harv_label.tooltip_text)
 	_set_bar_tip("upkeep", _upkeep_label.tooltip_text)
+	_update_alerts(pid)
 	var cur: Dictionary = game.research[pid]
 	# The button blinks in real time, so it looks the same at any game speed:
 	# yellow when nothing is queued, green while researching, red when stalled.
@@ -1767,6 +1817,70 @@ OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starve
 	var s := int(Game.now())
 	_clock.text = "%02d:%02d" % [s / 60, s % 60]
 	_update_mod_status()
+
+## The alert strip under the resource bar: at most one line per resource,
+## centred under its counter and shown only while something is wrong. The
+## most severe wins: 0 notice (yellow: shrinking and under ALERT_LOW_SECS of
+## stock left), 1 warning (orange: spice covering, power coming back),
+## 2 critical (red: blackout, out of energy, starving, plants out of fuel).
+func _update_alerts(pid: int) -> void:
+	var r: Dictionary = game.resources.get(pid, {})
+	var found := {}   # resource -> [severity, text]
+	var put := func(k: String, sev: int, text: String) -> void:
+		if not found.has(k) or found[k][0] < sev:
+			found[k] = [sev, text]
+	for k in Defs.RESOURCES:
+		var avg: float = game.avg_rate(pid, k)
+		if avg < -TREND_DEADBAND:
+			var secs: float = r.get(k, 0.0) / -avg * 60.0
+			if secs < ALERT_LOW_SECS:
+				put.call(k, 0, "Runs out in %d s" % maxi(0, int(secs)))
+	var covering := game.spice_covering(pid)
+	if covering > 0.05:
+		var parts: Array[String] = []
+		for k in Game.SUBSTITUTABLE:
+			var c := game.spice_covering(pid, k)
+			if c > 0.05:
+				parts.append("%s/min %s" % [_fmt(c), Defs.RESOURCE_NAMES[k].to_lower()])
+		put.call("spice", 1, "▼ covering %s" % ", ".join(parts))
+	if game.in_blackout(pid):
+		if r.get("energy", 0.0) > 0.0001:
+			put.call("energy", 1, "BLACKOUT - restoring %d s" % int(ceil(game.blackout_restore_left(pid))))
+		else:
+			put.call("energy", 2, "BLACKOUT - low power %d%%" % int(Defs.ENERGY_STARVED_FACTOR * 100.0))
+	elif game.energy_starved(pid):
+		put.call("energy", 2, "Out of energy - ships %d%%" % int(Defs.ENERGY_STARVED_FACTOR * 100.0))
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.owner_id != pid:
+			continue
+		if p.starving:
+			put.call("food", 2, "Starving")
+		if p.fuel_frac < 0.999 and p.count_building("generator") > 0:
+			put.call("minerals", 2, "Power Plants out of fuel")
+	for k in _alerts:
+		var al: Label = _alerts[k]
+		al.visible = found.has(k)
+		if not al.visible:
+			continue
+		al.text = found[k][1]
+		var col: Color = ALERT_COLORS[found[k][0]]
+		# Critical lines pulse (real time) so they catch the eye.
+		if found[k][0] == 2 and fmod(Time.get_ticks_msec() / 1000.0, 1.0) > 0.6:
+			col = col.lerp(TEXT, 0.5)
+		al.add_theme_color_override("font_color", col)
+		al.tooltip_text = _res_boxes[k].tooltip_text
+		al.size = al.get_combined_minimum_size()
+	# Centred under each counter, then nudged right (in bar order) so two
+	# long lines side by side never overlap; kept clear of the left edge.
+	var next_x := float(HUD_SIDE)
+	for k in Defs.RESOURCES:
+		var al: Label = _alerts[k]
+		if not al.visible:
+			continue
+		var box: Rect2 = _res_boxes[k].get_global_rect()
+		var x: float = maxf(box.get_center().x - al.size.x * 0.5, next_x)
+		al.position = Vector2(x, TOP_Y + TOP_H + 1)
+		next_x = x + al.size.x + 4.0
 
 ## Shrink-wraps the bottom-left panel to its contents (it grows upward) and
 ## parks the build queue row just above it.
