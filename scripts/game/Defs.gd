@@ -128,7 +128,7 @@ const BASE_SHIPS := {
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 217.0, "armor": 108.0, "shield": 325.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
+		"hp": 280.0, "armor": 140.0, "shield": 420.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 300}, "build_time": 80.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 12.5, "cooldown": 0.97, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
@@ -139,7 +139,7 @@ const BASE_SHIPS := {
 		# About twice a cruiser in every dimension: slower across the map and
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one.
-		"hp": 450.0, "armor": 675.0, "shield": 675.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
+		"hp": 630.0, "armor": 945.0, "shield": 945.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 600}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": 12.5, "cooldown": 0.97, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
