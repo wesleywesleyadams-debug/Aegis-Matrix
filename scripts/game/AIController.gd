@@ -467,11 +467,6 @@ func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	var counter := _class_order(pid, game, st)
 	if not counter.is_empty():
 		options = counter
-	# Far ahead with only worlds left to take: no more drone carriers (they
-	# can't bombard).
-	if st.get("overwhelm", false) and game.has_tech(pid, "mod_interceptor_drones"):
-		while options.has("carrier") and options.size() > 1:
-			options.erase("carrier")
 	var sb := game.nearest_starbase(pid, Vector2.ZERO)
 	var res: Dictionary = game.resources[pid]
 	var capped := true
@@ -2021,11 +2016,6 @@ func _press_attack(pid: int, st: Dictionary, game: Game, base: Starbase, war: Ar
 				s.order_attack(prey)
 	var home_idle: Array = []
 	for s in war:
-		# Drone carriers can't hurt a world (their drones fight ships and
-		# constructs only): off a bombardment, onto whatever defends it.
-		if s.state == Ship.State.BOMBARD and not _hurts_worlds(s):
-			s.order_attack_move(goal + Vector2(randf_range(-150, 150), randf_range(-150, 150)))
-			continue
 		# Still bombarding an old world target: on to the new one.
 		if s.state == Ship.State.BOMBARD and not world_goal:
 			s.order_attack_move(goal + Vector2(randf_range(-50, 50), randf_range(-50, 50)))
@@ -2210,10 +2200,10 @@ const SUPPORT_RANGE := 450.0
 ## their size (fog of war): about the fleet average across the classes.
 const DPS_PER_TOUGH := 0.04
 
-## False for hulls whose weapon can't touch a world's shield or population
-## (an Interceptor Drones carrier: its drones fight ships and constructs).
+## False for unarmed hulls (every weapon, Interceptor Drones included, can
+## bombard a world).
 func _hurts_worlds(s: Ship) -> bool:
-	return s.def.get("weapon", "") != "" and not s.weapon_mod.has("drones")
+	return s.def.get("weapon", "") != ""
 
 func _ship_dps(s: Ship, game: Game) -> float:
 	if s.def.get("weapon", "") == "":
