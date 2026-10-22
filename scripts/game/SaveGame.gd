@@ -65,7 +65,7 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		data["planets"][p.name] = {
 			"owner": p.owner_id, "pop": p.pop, "buildings": Array(p.buildings),
 			"construction": p.construction, "construction_queue": p.construction_queue,
-			"amount": p.amount, "mineral_reserve": p.mineral_reserve, "max_mineral_reserve": p.max_mineral_reserve, "mining_paused": p.mining_paused, "doom_timer": p.doom_timer,
+			"amount": p.amount, "mineral_reserve": p.mineral_reserve, "max_mineral_reserve": p.max_mineral_reserve, "mining_paused": p.mining_paused, "power_paused": p.power_paused, "doom_timer": p.doom_timer,
 					"hungry": p.hungry, "fed_timer": p.fed_timer,
 			"siege_start_pop": p.siege_start_pop, "since_hit": Game.now() - p.last_hit_time, "shield": p.shield, "spice_reserve": p.spice_reserve, "max_spice_reserve": p.max_spice_reserve,
 		}
@@ -289,6 +289,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		p.mineral_reserve = float(d.get("mineral_reserve", p.mineral_reserve))
 		p.max_mineral_reserve = float(d.get("max_mineral_reserve", p.max_mineral_reserve))
 		p.mining_paused = bool(d.get("mining_paused", false))
+		p.power_paused = bool(d.get("power_paused", false))
 		p.doom_timer = float(d.get("doom_timer", -1.0))
 		# Already unstable when saved: no second warning.
 		p._warned = p.unstable()

@@ -109,6 +109,8 @@ var max_mineral_reserve: float = 0.0
 ## The owner switched this world's Mining Complexes off: they produce
 ## nothing and dig nothing.
 var mining_paused: bool = false
+## Power Plants switched off (Pause power): they make no energy and burn no fuel.
+var power_paused: bool = false
 ## Power-plant fuel burnt here (minerals/min) and the share of full output
 ## the plants ran at last tick (1 = fully fuelled).
 var fuel_per_min: float = 0.0
@@ -731,10 +733,10 @@ func power_factor(id: String) -> float:
 		return Defs.ENERGY_STARVED_FACTOR
 	return 1.0
 
-## A building switched off by its owner (Pause mining). Paused buildings
+## A building switched off by its owner (Pause mining / Pause power). Paused buildings
 ## produce nothing and draw no energy upkeep.
 func is_paused(field: int) -> bool:
-	return mining_paused and buildings[field] == "mine"
+	return (mining_paused and buildings[field] == "mine") or (power_paused and buildings[field] == "generator")
 
 ## Whether a building type needs energy upkeep (and so goes dark in a Blackout).
 static func draws_power(id: String) -> bool:

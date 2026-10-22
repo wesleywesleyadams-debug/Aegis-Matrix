@@ -715,6 +715,8 @@ func add_resources(pid: int, amounts: Dictionary) -> void:
 			half[k] = amounts[k] * 0.5 if amounts[k] > 0.0 else amounts[k]
 		amounts = half
 	for k in amounts:
+		if econ_log and amounts[k] != 0.0:
+			econ(pid, ("+" if amounts[k] > 0 else "-") + k, absf(amounts[k]))
 		resources[pid][k] = resources[pid].get(k, 0.0) + amounts[k]
 		_rate_acc[pid][k] = _rate_acc[pid].get(k, 0.0) + amounts[k]
 
@@ -761,7 +763,25 @@ func spice_covering(pid: int, k: String = "") -> float:
 		t += n / maxf(1.0, minf(h.size(), COVER_WINDOW)) * Defs.PER_MIN
 	return t
 
+## Dev (SL_ECON_LOG): cumulative flows per player keyed by caller.
+var econ_log: bool = OS.get_environment("SL_ECON_LOG") != ""
+var econ_ledger := {}
+var starved_secs := {}
+const _ECON_SKIP := ["add_resources", "_deduct", "pay_over_time", "pay_fuel", "econ"]
+func econ(pid: int, k: String, amount: float) -> void:
+	var where := "?"
+	for fr in get_stack():
+		if not (fr["function"] in _ECON_SKIP):
+			where = "%s:%s:%d" % [String(fr["source"]).get_file().get_basename(), fr["function"], fr["line"]]
+			break
+	if not econ_ledger.has(pid):
+		econ_ledger[pid] = {}
+	var key := k + "@" + where
+	econ_ledger[pid][key] = econ_ledger[pid].get(key, 0.0) + amount
+
 func _deduct(pid: int, k: String, amount: float) -> void:
+	if econ_log and amount != 0.0:
+		econ(pid, "-" + k, amount)
 	resources[pid][k] -= amount
 	_rate_acc[pid][k] = _rate_acc[pid].get(k, 0.0) - amount
 
@@ -1309,6 +1329,8 @@ func _physics_process(delta: float) -> void:
 		# (spice covers either, Defs.SPICE_COVER_RATIO per spice). Buildings that can't be paid black out.
 		pay_over_time(pid, {"energy": upkeep(pid) / Defs.PER_MIN}, delta)
 		_tick_building_power(pid, delta)
+		if econ_log and energy_starved(pid):
+			starved_secs[pid] = starved_secs.get(pid, 0.0) + delta
 		_tick_research(pid, delta)
 	# Any other resource hitting zero.
 	for k in ["food", "minerals", "spice"]:

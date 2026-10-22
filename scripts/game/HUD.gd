@@ -1499,6 +1499,17 @@ func _build_planet_panel(p: Planet) -> void:
 			pb.text = "Resume mining" if p.mining_paused else "Pause mining"
 			game.sfx.play_ui("click"))
 		_sel_body.add_child(pb)
+		# Power Plants burn minerals: a switch for them too.
+		var wb := Button.new()
+		wb.name = "PausePower"
+		wb.focus_mode = Control.FOCUS_NONE
+		wb.text = "Resume power" if p.power_paused else "Pause power"
+		wb.tooltip_text = "Switch this world's Power Plants off or on. Paused, they make no energy and burn no minerals."
+		wb.pressed.connect(func():
+			p.power_paused = not p.power_paused
+			wb.text = "Resume power" if p.power_paused else "Pause power"
+			game.sfx.play_ui("click"))
+		_sel_body.add_child(wb)
 	_info_label = _label("")
 	_sel_body.add_child(_info_label)
 

@@ -163,4 +163,44 @@ static func sample(t: float) -> Dictionary:
 			for k in led:
 				ints[k] = int(led[k])
 			out[str(pid)]["spice_ledger"] = ints
+		if g.econ_log:
+			var el := {}
+			var led2: Dictionary = g.econ_ledger.get(pid, {})
+			for k in led2:
+				el[k] = int(led2[k])
+			var o: Dictionary = out[str(pid)]
+			o["econ"] = el
+			o["starved_s"] = int(g.starved_secs.get(pid, 0.0))
+			o["fuel_paid"] = int(g.fuel_paid.get(pid, 0.0))
+			o["fuel_per_min"] = snappedf(g.fuel_per_min(pid), 0.1)
+			o["base_upkeep"] = snappedf(g.base_upkeep(pid), 0.1)
+			o["ships_total"] = g.ship_count(pid)
+			o["harvesters"] = g.harvester_count(pid)
+			o["counters"] = g.stats.counters.get(pid, {}).duplicate() if g.stats else {}
+			var qs := []
+			for sb in g.get_tree().get_nodes_in_group("starbases"):
+				if sb.owner_id == pid:
+					qs.append("%s%s[%s]" % ["*" if sb.under_construction else "", "STALL" if sb.build_stalled else "", ",".join(sb.queue)])
+			o["queues"] = qs
+			var blds := {}
+			for p in g.get_tree().get_nodes_in_group("planets"):
+				if p.owner_id == pid:
+					for b in p.buildings:
+						blds[b] = blds.get(b, 0) + 1
+			o["buildings"] = blds
+			o["rates"] = g.rates.get(pid, {}).duplicate()
+	if g.econ_log:
+		var ast := 0
+		for a in g.get_tree().get_nodes_in_group("asteroids"):
+			ast += int(a.amount)
+		var gg := 0.0
+		var crust := 0.0
+		var sp := 0.0
+		for p in g.get_tree().get_nodes_in_group("planets"):
+			if p.is_habitable():
+				crust += p.mineral_reserve
+			else:
+				gg += p.amount
+			sp += p.spice_reserve
+		out["world"] = {"asteroids": ast, "gas": int(gg), "crust": int(crust), "spice_reserve": int(sp), "blasts": g.blasts}
 	return out

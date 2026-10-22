@@ -28,6 +28,8 @@ var _subtitle: Label
 var _details: RichTextLabel
 var _details_right := true
 var _pause_btn: Button
+## Switch for this world's Power Plants (they burn minerals as fuel).
+var _power_btn: Button
 ## Draws the subtle ring around the planet, the leader line and the name bubble.
 var _deco: Control
 ## Reserve bars, on their own layer above the planet and the field slots.
@@ -117,6 +119,16 @@ func _ready() -> void:
 			game.sfx.play_ui("click")
 			refresh())
 	add_child(_pause_btn)
+	_power_btn = Button.new()
+	_power_btn.focus_mode = Control.FOCUS_NONE
+	_power_btn.add_theme_font_size_override("font_size", 14)
+	_power_btn.tooltip_text = "Switch this world's Power Plants off or on. Paused, they make no energy and burn no minerals."
+	_power_btn.pressed.connect(func():
+		if is_instance_valid(planet) and planet.owner_id == game.player_id:
+			planet.power_paused = not planet.power_paused
+			game.sfx.play_ui("click")
+			refresh())
+	add_child(_power_btn)
 
 	_picker = PopupPanel.new()
 	_picker_list = VBoxContainer.new()
@@ -254,7 +266,7 @@ func _place() -> void:
 	_deco.queue_redraw()
 	if is_instance_valid(_bars):
 		_bars.queue_redraw()
-	for l in [_title, _subtitle, _details, _pause_btn]:
+	for l in [_title, _subtitle, _details, _pause_btn, _power_btn]:
 		l.modulate.a = a
 	# The build picker opens beside the globe too: the details step aside.
 	_details.visible = not (_picker != null and _picker.visible)
@@ -269,6 +281,10 @@ func _place() -> void:
 	_pause_btn.size = _pause_btn.get_combined_minimum_size()
 	_pause_btn.position = _details.position + Vector2(maxf(_details.size.x, dsz.x) - _pause_btn.size.x if _details_right else 0.0, maxf(_details.size.y, dsz.y) + 8.0)
 	_pause_btn.visible = _pause_btn.visible and _details.visible
+	# The power switch sits beside it (on its inner side).
+	_power_btn.size = _power_btn.get_combined_minimum_size()
+	_power_btn.position = _pause_btn.position + Vector2(-_power_btn.size.x - 8.0 if _details_right else _pause_btn.size.x + 8.0, 0.0)
+	_power_btn.visible = _power_btn.visible and _details.visible
 	# Where the spice bar can go. A label's drawn width is not its box width
 	# (a long line overruns it), so rather than trust the gap, the two rects
 	# are compared and the bar is dropped below the text if they touch.
@@ -524,6 +540,8 @@ func _draw_info_bubble(c: Color) -> void:
 	var r := Rect2(_details.position, Vector2(maxf(_details.size.x, dsz.x), maxf(_details.size.y, dsz.y)))
 	if _pause_btn.visible:
 		r = r.merge(Rect2(_pause_btn.position, _pause_btn.size))
+	if _power_btn.visible:
+		r = r.merge(Rect2(_power_btn.position, _power_btn.size))
 	r = r.grow(12.0)
 	var st := StyleBoxFlat.new()
 	st.bg_color = Color(0.02, 0.03, 0.08, 0.55 * _ring["alpha"])
@@ -665,6 +683,8 @@ func refresh() -> void:
 			s += "\nBuilding %s: %d%%%s. %d more queued." % [cd["name"], int(100.0 * planet.construction["progress"] / cd["time"]), " (STALLED: insufficient funds)" if planet.construction_stalled else "", planet.construction_queue.size()]
 	_pause_btn.visible = mine and planet.is_habitable()
 	_pause_btn.text = "Resume mining" if planet.mining_paused else "Pause mining"
+	_power_btn.visible = mine and planet.is_habitable()
+	_power_btn.text = "Resume power" if planet.power_paused else "Pause power"
 	stats = s
 	_details.text = ("[right]%s[/right]" % s) if _details_right else s
 	for i in _field_buttons.size():
@@ -677,7 +697,7 @@ func refresh() -> void:
 			# is gone goes dark.
 			var dry: bool = planet.is_dry(i) or planet.is_paused(i)
 			var offline: bool = not dry and planet.power_factor(built) < 1.0
-			b.text = ("PAUSED" if built == "mine" else "DRY") if dry else ("25%" if offline else "")
+			b.text = ("PAUSED" if built in ["mine", "generator"] else "DRY") if dry else ("25%" if offline else "")
 			b.modulate = Color(1, 1, 1, 0.4) if dry else (Color(1, 0.7, 0.45) if offline else Color.WHITE)
 			(b.get_node("Art") as TextureRect).modulate = Color.WHITE
 			_progress_text(b, Color("ffa040") if offline else (Color("ffd46b") if dry else Color.WHITE), 13)

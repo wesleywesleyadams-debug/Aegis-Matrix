@@ -372,7 +372,7 @@ const BUILDINGS := {
 	"farm": {"energy_upkeep": 2, "name": "Farm", "cost": {"minerals": 60}, "time": 30.0, "output": {"food": 20.0}, "only": [],
 		"desc": "+20 food/min at base on a fertile world (x0.15 to x1.0 by world type), more with population. Feeds 2,000 pops at full fertility (boosted by Hydroponics). Upkeep: 2 energy/min (25% output in a Blackout)."},
 	"generator": {"energy_upkeep": 0, "name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 20.0}, "only": [],
-		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world. Burns 1 mineral per 10 energy it makes (from the mineral stockpile only; with no minerals to burn it makes nothing). Needs no energy upkeep."},
+		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world. Burns 1 mineral per 10 energy it makes (from the mineral stockpile only; with no minerals to burn it makes nothing). Needs no energy upkeep. Pause power in the world panel."},
 	"mine": {"energy_upkeep": 4, "name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],
 		"desc": "+20 minerals/min at base, more with population. Digs out the world's finite crust (300 per size): at 0 the world implodes. Pause mining in the world panel. Upkeep: 4 energy/min (none while paused; 25% output in a Blackout)."},
 	"habitat": {"energy_upkeep": 0, "name": "Habitat", "cost": {"minerals": 110}, "time": 40.0, "output": {}, "max_pop": 1500, "pop_bonus": 0.1, "only": [],
