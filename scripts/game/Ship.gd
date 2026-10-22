@@ -1406,9 +1406,7 @@ func _physics_process(delta: float) -> void:
 						desired = _arrive(target.global_position, 1.0)
 				elif engagement == Engage.DEFAULT or engagement == Engage.EVASIVE:
 					_kiting = false
-					if engagement == Engage.DEFAULT and def.get("base", ship_type) == "corvette" and d <= weapon_range() and target is Ship:
-						desired = _orbit_move(d)
-					elif d > keep:
+					if d > keep:
 						desired = _arrive(target.global_position, 1.0)
 				else:
 					desired = _engage_move(d)
