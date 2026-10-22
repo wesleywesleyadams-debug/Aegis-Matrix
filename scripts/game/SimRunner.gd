@@ -43,8 +43,15 @@ func _process(_delta: float) -> void:
 	if t >= _next_sample:
 		samples.append(_sample(t))
 		_next_sample += SAMPLE
+	if t >= _next_power:
+		_next_power += 120.0
+		var g := Game.instance
+		for pid in g.players:
+			print("SIM POWER t=%dm P%d energy %.0f minerals %.0f spice %.0f bldg_upkeep %.1f/min ship_upkeep %.1f/min blackout %s total %.0fs" % [int(t / 60.0), pid, g.resources[pid]["energy"], g.resources[pid]["minerals"], g.resources[pid]["spice"], g.building_upkeep(pid), g.upkeep(pid), str(g.in_blackout(pid)), float(g.blackout_time.get(pid, 0.0))])
 	if t >= max_minutes * 60.0:
 		_finish("time", 0)
+
+var _next_power := 0.0
 
 ## One snapshot per side (see MatchStats.sample).
 func _sample(t: float) -> Dictionary:

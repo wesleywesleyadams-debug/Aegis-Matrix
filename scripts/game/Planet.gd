@@ -316,6 +316,8 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	# Shield recharge once the bombardment has paused.
 	var ms := max_shield() if owner_id != 0 else 0.0
+	if shield > ms:
+		shield = ms # batteries went dark (Blackout) or were lost
 	if shield < ms and Game.now() - last_hit_time > Defs.SHIELD_REGEN_DELAY:
 		var gain := minf(ms - shield, ms * Defs.SHIELD_REGEN_PER_SEC * delta)
 		var paid := Game.instance.pay_over_time(owner_id, {"energy": gain * Defs.SHIELD_ENERGY_PER_POINT}, 1.0)
@@ -384,7 +386,9 @@ func max_shield() -> float:
 	if owner_id == 0:
 		return 0.0
 	# Each Defense Battery thickens the planetary shield.
-	return (PLANET_SHIELD + count_building("battery") * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "shield") * Game.instance.mod(owner_id, "planet_shield")
+	# Unpowered in a Blackout: the batteries' shield and guns go dark.
+	var nb := 0 if Game.instance.in_blackout(owner_id) else count_building("battery")
+	return (PLANET_SHIELD + nb * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "shield") * Game.instance.mod(owner_id, "planet_shield")
 
 func is_alive() -> bool:
 	return owner_id != 0 and pop > 0.0 and is_inside_tree()
@@ -648,7 +652,9 @@ func _run_buildings(dt: float) -> void:
 		g.add_resources(owner_id, out)
 		g.ledger(owner_id, "in_extractor", out.get("spice", 0.0))
 	# Power Plants burn minerals (Defs.FUEL_PER_ENERGY per energy made, from
-	# the mineral stockpile only): short of fuel, they make that much less.
+	# the mineral stockpile only): all or nothing - without the fuel for this
+	# tick they make no energy at all. They draw no energy upkeep, so they
+	# run through a Blackout and restart as soon as minerals arrive.
 	fuel_frac = 1.0
 	fuel_per_min = 0.0
 	if energy_made > 0.0:
@@ -687,8 +693,11 @@ func _run_buildings(dt: float) -> void:
 ## how much it produces is what the population decides.
 func pop_output_mult() -> float:
 	var ceiling := Defs.OUTPUT_POP_BONUS
+	# An unpowered Habitat still houses its pops (cap kept) but adds no
+	# output bonus during a Blackout.
+	var dark := owner_id != 0 and Game.instance.in_blackout(owner_id)
 	for b in buildings:
-		if b != "":
+		if b != "" and not (dark and draws_power(b)):
 			ceiling += float(Defs.BUILDINGS[b].get("pop_bonus", 0.0))
 	if owner_id != 0:
 		ceiling += Game.instance.mod(owner_id, "pop_bonus") - 1.0
@@ -696,9 +705,38 @@ func pop_output_mult() -> float:
 
 ## Which buildings are producing. Everything built runs, except a Spice
 ## Extractor standing on an exhausted reserve.
+## In a Blackout (Game.blackout) every building that draws energy upkeep is
+## unpowered too; Power Plants (no upkeep) keep running on mineral fuel.
 func _staff() -> void:
+	var dark := owner_id != 0 and Game.instance.in_blackout(owner_id)
 	for i in fields:
-		operating[i] = buildings[i] != "" and not is_dry(i) and not (mining_paused and buildings[i] == "mine")
+		operating[i] = buildings[i] != "" and not is_dry(i) and not is_paused(i) 			and not (dark and draws_power(buildings[i]))
+
+## A building switched off by its owner (Pause mining). Paused buildings
+## produce nothing and draw no energy upkeep.
+func is_paused(field: int) -> bool:
+	return mining_paused and buildings[field] == "mine"
+
+## Whether a building type needs energy upkeep (and so goes dark in a Blackout).
+static func draws_power(id: String) -> bool:
+	return id != "" and float(Defs.BUILDINGS[id].get("energy_upkeep", 0.0)) > 0.0
+
+## This world's building energy upkeep per minute: every finished building's
+## flat Defs energy_upkeep, except paused ones and dry Spice Extractors.
+## Buildings under construction are not in `buildings` yet, so cost nothing.
+func energy_upkeep_per_min() -> float:
+	if owner_id == 0:
+		return 0.0
+	var u := 0.0
+	for i in fields:
+		var b: String = buildings[i]
+		if b != "" and not is_paused(i) and not is_dry(i):
+			u += float(Defs.BUILDINGS[b].get("energy_upkeep", 0.0))
+	return u
+
+## Unpowered by the owner's Blackout (and has buildings that need power).
+func blacked_out() -> bool:
+	return owner_id != 0 and Game.instance.in_blackout(owner_id) and energy_upkeep_per_min() > 0.0
 
 ## A Spice Extractor on a world whose reserve is gone: it shuts down and
 ## produces nothing until... nothing. The reserve does not come back.
@@ -710,7 +748,7 @@ var _battery_cd: float = 0.0
 
 func _batteries_fire(delta: float) -> void:
 	var n := count_building("battery")
-	if n == 0 or owner_id == 0:
+	if n == 0 or owner_id == 0 or Game.instance.in_blackout(owner_id):
 		return
 	_battery_cd -= delta
 	if _battery_cd > 0.0:

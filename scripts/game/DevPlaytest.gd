@@ -207,6 +207,8 @@ func _run(which: String) -> void:
 			await _finite_fuel()
 		"finite_nebula":
 			await _finite_nebula()
+		"blackout":
+			await _blackout()
 		"finite_save":
 			await _finite_save()
 		"finite_verify":
@@ -717,3 +719,109 @@ func _finite_dump(when: String) -> void:
 	for n in get_tree().get_nodes_in_group("nebulae"):
 		nebs.append("%.0f in %d cells, %d empty" % [n.remaining(), n.cells.size(), n.cells.values().filter(func(v): return v <= 0.0).size()])
 	log_("%s: nebulae %s" % [when, " | ".join(nebs)])
+
+## Building energy upkeep and Blackout: upkeep per building, paused/under
+## construction free, multiplier ignored; then drain to 0 -> Blackout ->
+## deliver minerals -> plants -> power back after BLACKOUT_RESUME_SECS.
+func _blackout() -> void:
+	var pid := game.player_id
+	var hp: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == pid).reduce(func(a, b): return a if a.fields >= b.fields else b)
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid and p != hp:
+			p.buildings.fill("")
+	hp.buildings.fill("")
+	var ids := ["farm", "generator", "mine", "habitat", "battery", "spice_extractor"]
+	for i in ids.size():
+		hp.buildings[i] = ids[i]
+	hp.spice_reserve = maxf(hp.spice_reserve, 500.0)
+	for s in get_tree().get_nodes_in_group("ships"):
+		if s.owner_id == pid and s.is_harvester():
+			s.order_stop()
+	log_("UPKEEP world %s fields %d: %s" % [hp.planet_name, hp.fields, str(hp.buildings.slice(0, 6))])
+	log_("UPKEEP all running: world %.1f/min, empire building %.1f/min (expect 15), ship upkeep %.2f/min, multiplier x%.2f" % [hp.energy_upkeep_per_min(), game.building_upkeep(pid), game.upkeep(pid), game.upkeep_multiplier(pid)])
+	hp.mining_paused = true
+	log_("UPKEEP mining paused: %.1f/min (expect 11)" % hp.energy_upkeep_per_min())
+	hp.order_build(6, "battery")
+	log_("UPKEEP + battery under construction: %.1f/min (expect 11), job=%s" % [hp.energy_upkeep_per_min(), hp.field_job(6)])
+	hp.cancel_build(6)
+	hp.mining_paused = false
+	await _frames(2)
+	game._focus_planet(hp)
+	game.selection_changed.emit()
+	await _secs(1.5)
+	await shot("blackout_normal")
+	log_("PANEL normal: %s" % hud.planet_view.stats.replace("\n", " | ") if "planet_view" in hud else "")
+	# Measured drain: mining paused + no minerals (plants off), no spice.
+	hp.mining_paused = true
+	Engine.time_scale = 4.0
+	game.resources[pid]["minerals"] = 0.0
+	game.resources[pid]["spice"] = 0.0
+	game.resources[pid]["energy"] = 60.0
+	await _secs(1.0)
+	var e0: float = game.resources[pid]["energy"]
+	var t0 := Game.now()
+	var bp0: float = game.building_upkeep_paid.get(pid, 0.0)
+	await _secs(6.0)
+	var dt := Game.now() - t0
+	_drain_end = game.resources[pid]["energy"]
+	log_("PAID building upkeep %.3f over %.2fs = %.2f/min (expect 11.00); time_scale-check real ms %d" % [game.building_upkeep_paid.get(pid, 0.0) - bp0, dt, (game.building_upkeep_paid.get(pid, 0.0) - bp0) / dt * 60.0, Time.get_ticks_msec()])
+	log_("DRAIN %.1fs: energy %.2f -> %.2f = %.2f/min; expected ships %.2f + buildings %.2f = %.2f/min (shield regen may add)" % [dt, e0, game.resources[pid]["energy"], (e0 - game.resources[pid]["energy"]) / dt * 60.0, game.upkeep(pid), game.building_upkeep(pid), game.upkeep(pid) + game.building_upkeep(pid)])
+	# Same window with the world's buildings removed: the difference is the
+	# building upkeep alone (other drains - shield regen etc. - cancel out).
+	var saved := hp.buildings.duplicate()
+	for i in hp.fields:
+		hp.buildings[i] = ""
+	game.resources[pid]["energy"] = 60.0
+	await _secs(1.0)
+	var e1: float = game.resources[pid]["energy"]
+	var t1 := Game.now()
+	await _secs(6.0)
+	var dt1 := Game.now() - t1
+	var without: float = (e1 - game.resources[pid]["energy"]) / dt1 * 60.0
+	log_("DRAIN without buildings %.2f/min -> building share = %.2f/min (expect 11.00)" % [without, (e0 - _drain_end) / dt * 60.0 - without])
+	for i in hp.fields:
+		hp.buildings[i] = saved[i]
+	# Run dry -> Blackout.
+	var tb := Game.now()
+	game.resources[pid]["energy"] = 3.0
+	while not game.in_blackout(pid) and Game.now() - tb < 60.0:
+		game.resources[pid]["spice"] = 0.0 # the extractor's spice would cover energy 1:1
+		await _secs(0.25)
+	log_("BLACKOUT entered=%s at t=%.1f energy %.2f" % [str(game.in_blackout(pid)), Game.now(), game.resources[pid]["energy"]])
+	await _secs(4.0)
+	_bo_line(hp, "in blackout, no minerals")
+	Engine.time_scale = 1.0
+	await _secs(0.5)
+	game.selection_changed.emit()
+	await _secs(0.5)
+	await shot("blackout_dark")
+	log_("PANEL dark: %s" % hud.planet_view.stats.replace("\n", " | ") if "planet_view" in hud else "")
+	log_("TOOLTIP energy: %s" % hud._res_boxes["energy"].tooltip_text.replace("\n", " | "))
+	# Deliver minerals; log every 0.5 s.
+	Engine.time_scale = 2.0
+	game.resources[pid]["minerals"] = 300.0
+	log_("DELIVER 300 minerals at t=%.1f" % Game.now())
+	var flips := 0
+	var last := game.in_blackout(pid)
+	var reset_done := false
+	for k in 40:
+		await _secs(0.5)
+		# One forced dip to 0 mid-restore: the 5 s count must restart.
+		if not reset_done and float(game.blackout_restore.get(pid, 0.0)) > 2.5:
+			game.resources[pid]["energy"] = 0.0
+			reset_done = true
+			log_("FORCED energy dip to 0 at restore=%.2f" % float(game.blackout_restore.get(pid, 0.0)))
+		_bo_line(hp, "")
+		if game.in_blackout(pid) != last:
+			flips += 1
+			last = game.in_blackout(pid)
+	log_("RESULT flips=%d final blackout=%s blackout_time=%.1fs" % [flips, str(game.in_blackout(pid)), float(game.blackout_time.get(pid, 0.0))])
+	Engine.time_scale = 1.0
+
+var _drain_end := 0.0
+
+func _bo_line(hp: Planet, tag: String) -> void:
+	var pid := game.player_id
+	log_("BO t=%.1f %s blackout=%s restore=%.1f energy=%.2f minerals=%.1f | plants %.1f/min fuel_frac %.0f | food %.1f min %.1f spice %.1f | shield max %d | op=%s" % [
+		Game.now(), tag, str(game.in_blackout(pid)), float(game.blackout_restore.get(pid, 0.0)), game.resources[pid]["energy"], game.resources[pid]["minerals"],
+		hp.energy_out, hp.fuel_frac, hp.food_made_per_min, hp.minerals_out, hp.spice_out, int(hp.max_shield()), str(hp.operating.slice(0, 6))])

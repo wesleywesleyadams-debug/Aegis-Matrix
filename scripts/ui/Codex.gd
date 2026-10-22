@@ -477,7 +477,7 @@ func _page_overview() -> void:
 	_table(["Resource", "Comes from", "Pays for"], [
 		[["Food", Color("8fe060")], "Farms only", "%.2f per pop per minute (spice covers a shortfall); an unfed world shrinks as fast as it would grow" % Defs.FOOD_PER_POP_PER_MIN],
 		[["Minerals", Color("3fd6b0")], "Mining barges, gas skimmers, mining complexes - all finite", "Ships, buildings, starbases, Power Plant fuel"],
-		[["Energy", Color("ffd84a")], "Power plants (burning 1 mineral per 10 energy), Radiation Sail Arrays. Starbases make none", "Research, fleet and starbase upkeep, shield regeneration"],
+		[["Energy", Color("ffd84a")], "Power plants (burning 1 mineral per 10 energy), Radiation Sail Arrays. Starbases make none", "Research, fleet and starbase upkeep, building upkeep, shield regeneration"],
 		[["Spice", Color("ff9a2e")], "Spice asteroids, spice extractors, nebula harvesting", "Advanced hulls and techs; covers any other shortfall 1:1 (not Power Plant fuel)"],
 	])
 	_heading("A finite galaxy", EDGE_LIT)
@@ -1108,11 +1108,19 @@ func _page_economy() -> void:
 	_heading("Spice nebulae")
 	_para("A spice nebula is finite too: its gas is an invisible grid of %d px cells, %d spice each. A Gas Skimmer drains the cell its harvest spot is in; the cloud thins there, and an empty cell fades away for good - that patch no longer hides ships, irradiates them or counts as nebula at all. The skimmer then moves on to the nearest cell with gas left, until the whole nebula is gone." % [int(SpiceNebula.CELL), int(SpiceNebula.CELL_SPICE)])
 	_heading("Power Plant fuel")
-	_para("Power Plants burn minerals: 1 mineral for every 10 energy they make, counted after every bonus (population, research, a Molten world). Fuel comes only from the mineral stockpile - spice never pays it - and with too few minerals the plants make only what they can fuel. Starbases make no energy and no minerals. The world panel and the resource bar tooltips show fuel per minute.")
+	_para("Power Plants burn minerals: 1 mineral for every 10 energy they make, counted after every bonus (population, research, a Molten world). Fuel comes only from the mineral stockpile - spice never pays it - and it is all or nothing: with no minerals to burn a plant makes no energy at all. Plants need no energy upkeep, so they keep running through a Blackout. Starbases make no energy and no minerals. The world panel and the resource bar tooltips show fuel per minute.")
 	_rock_sizes()
 	_heading("Upkeep")
 	_para("Every ship and construct costs energy per minute, and ALL of it is multiplied by one empire-wide factor (shown on the resource bar): each unit you own multiplies it - starbase x%.2f, carrier x%.2f, cruiser x%.2f, destroyer x%.2f, anything else x%.2f - so the more you own, the dearer every unit gets. Orbital Elevators and Jump Drives each shrink the multiplier by 10%%. With no energy in stock, starbases stop producing and your ships move and fire at %d%% speed." % [
 		Defs.UPKEEP_WEIGHT["starbase"], Defs.UPKEEP_WEIGHT["carrier"], Defs.UPKEEP_WEIGHT["cruiser"], Defs.UPKEEP_WEIGHT["destroyer"], Defs.UPKEEP_WEIGHT_SMALL, int(Defs.ENERGY_STARVED_FACTOR * 100.0)])
+	_heading("Building upkeep and Blackout")
+	var urows: Array = []
+	for b in Defs.BUILDING_ORDER:
+		urows.append([Defs.BUILDINGS[b]["name"], "%d/min" % int(Defs.BUILDINGS[b].get("energy_upkeep", 0))])
+	_table(["Building", "Energy upkeep"], urows)
+	_para("Every finished building also draws a flat amount of energy per minute. The empire upkeep multiplier does NOT apply to it. Buildings under construction, paused Mining Complexes and dry Spice Extractors draw nothing; Power Plants draw nothing (they burn minerals instead). Ship and construct upkeep is paid first, then building upkeep, from the same energy stock, with spice covering shortfalls 1:1.")
+	_para("If energy and spice both run out and building upkeep can't be paid, your empire goes into BLACKOUT: every building that draws energy goes OFFLINE at once - Farms, Mining Complexes and Spice Extractors produce nothing, Habitats lose their output bonus (they still house their pops), and Defense Batteries lose their shield and gun. Offline buildings draw no upkeep, and ships are slowed to %d%% with ship production halted as when out of energy. Power returns once the energy stockpile has stayed above 0 for %d seconds in a row; dropping back to 0 restarts the count (the panels show 'Restoring power: N s')." % [int(Defs.ENERGY_STARVED_FACTOR * 100.0), int(Defs.BLACKOUT_RESUME_SECS)])
+	_para("Recovery: harvesters need no energy, so deliver minerals - Power Plants restart as soon as there are minerals to burn, energy builds up, and the lights come back on. Pausing mining or demolishing buildings cuts the drain.")
 
 ## The population output multiplier at this many pops (see Planet.pop_output_mult).
 func _popm(p: float) -> float:
@@ -1148,9 +1156,9 @@ func _page_worlds() -> void:
 	var brows: Array = []
 	for b in Defs.BUILDINGS:
 		var bd: Dictionary = Defs.BUILDINGS[b]
-		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), bd["desc"]])
-	_table(["Building", "Cost", "Time", "Effect"], brows)
-	_para("A finished building always runs; no staffing needed. Population sets how MUCH a world produces: its pops multiply the output of every Farm, Power Plant, Mining Complex and Spice Extractor on it, with diminishing returns: the first pops count most, and the bonus levels off (x%.2f at 5,000 pops, x%.2f at 10,000, x%.2f at 20,000, x%.2f at 30,000). That bonus levels off toward x%.2f, but each population cap tech raises the ceiling (Habitat Modules +0.15, Arcologies +0.20, Deep Vaults +0.25), and so does each Habitat on the world (+0.1). A Molten world's Power Plants make a further x%.2f, the one thing that barren rock is good for." % [_popm(5000.0), _popm(10000.0), _popm(20000.0), _popm(30000.0), 1.0 + Defs.OUTPUT_POP_BONUS, Defs.PLANET_TYPES["planet_lava"]["energy_mult"]])
+		brows.append([bd["name"], Defs.cost_text(bd["cost"]), "%ds" % int(bd["time"]), "%d/min" % int(bd.get("energy_upkeep", 0)), bd["desc"]])
+	_table(["Building", "Cost", "Time", "Energy upkeep", "Effect"], brows)
+	_para("A finished building runs as long as it has power; no staffing needed (see Economy > Building upkeep and Blackout). Population sets how MUCH a world produces: its pops multiply the output of every Farm, Power Plant, Mining Complex and Spice Extractor on it, with diminishing returns: the first pops count most, and the bonus levels off (x%.2f at 5,000 pops, x%.2f at 10,000, x%.2f at 20,000, x%.2f at 30,000). That bonus levels off toward x%.2f, but each population cap tech raises the ceiling (Habitat Modules +0.15, Arcologies +0.20, Deep Vaults +0.25), and so does each Habitat on the world (+0.1). A Molten world's Power Plants make a further x%.2f, the one thing that barren rock is good for." % [_popm(5000.0), _popm(10000.0), _popm(20000.0), _popm(30000.0), 1.0 + Defs.OUTPUT_POP_BONUS, Defs.PLANET_TYPES["planet_lava"]["energy_mult"]])
 	_heading("Food")
 	_para("Food is counted per minute, like every other resource. One Farm feeds exactly %d pops on a fully fertile world, and only a fraction of that on a poor one, since output scales with fertility. Past that, a world needs another Farm or it starves." % int(Defs.BUILDINGS["farm"]["output"]["food"] / Defs.FOOD_PER_POP_PER_MIN))
 	_table(["", "Rate"], [

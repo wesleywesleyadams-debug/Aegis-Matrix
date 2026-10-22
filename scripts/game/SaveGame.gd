@@ -36,6 +36,9 @@ static func capture(game: Game, save_name: String) -> Dictionary:
 		"research": game.research,
 		"research_queue": game.research_queue,
 		"research_paused": game.research_paused,
+		"blackout": game.blackout,
+		"blackout_time": game.blackout_time,
+		"blackout_restore": game.blackout_restore,
 		"mods_disabled": game.mods_disabled,
 		"ai": game.ai._state.duplicate(true),
 		"planets": {},
@@ -215,6 +218,15 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		var pid := int(pid_s)
 		for k in data["resources"][pid_s]:
 			game.resources[pid][k] = float(data["resources"][pid_s][k])
+	game.blackout = {}
+	for pid_s in data.get("blackout", {}):
+		game.blackout[int(pid_s)] = bool(data["blackout"][pid_s])
+	game.blackout_time = {}
+	for pid_s in data.get("blackout_time", {}):
+		game.blackout_time[int(pid_s)] = float(data["blackout_time"][pid_s])
+	game.blackout_restore = {}
+	for pid_s in data.get("blackout_restore", {}):
+		game.blackout_restore[int(pid_s)] = float(data["blackout_restore"][pid_s])
 	for pid_s in data.get("researched", {}):
 		var done := {}
 		for t in data["researched"][pid_s]:

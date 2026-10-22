@@ -1594,7 +1594,9 @@ func _planet_text(p: Planet) -> String:
 		return "Size %d · Pop cap %s · Spice reserve %d%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), int(p.spice_reserve), traits]
 	var lines := "Population %s / %s   (+%s/min)%s" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min), traits]
 	lines += "\nFood: grown %.1f/min · eaten %.1f/min · net %+.1f/min" % [p.food_made_per_min, p.food_eaten_per_min, p.food_made_per_min - p.food_eaten_per_min]
-	lines += "\nEnergy %.0f/min (burning %.1f minerals/min)%s" % [p.energy_out, p.fuel_per_min, ("   Spice %.1f/min" % p.spice_out) if p.spice_out > 0.0 else ""]
+	lines += "\nEnergy %.0f/min (burning %.1f minerals/min) · building upkeep %.0f/min%s" % [p.energy_out, p.fuel_per_min, p.energy_upkeep_per_min(), ("   Spice %.1f/min" % p.spice_out) if p.spice_out > 0.0 else ""]
+	if p.blacked_out():
+		lines += "\nBLACKOUT: buildings OFFLINE (deliver minerals to restart Power Plants). Restoring power: %d s" % int(ceil(game.blackout_restore_left(p.owner_id)))
 	lines += "\nMineral reserve %s / %s%s%s" % [_fmt(p.mineral_reserve), _fmt(p.max_mineral_reserve), "  (mining paused)" if p.mining_paused else "", _doom_text(p)]
 	if p.starving:
 		lines += "\nSTARVING: shrinking %d/min until food recovers" % int(-p.growth_per_min)
@@ -1661,15 +1663,20 @@ func _update_top_bar() -> void:
 		_res_labels[k].add_theme_color_override("font_color", arrow_color if arrow != "–" else TEXT)
 		_res_boxes[k].tooltip_text = "%s: %d stockpiled, %+.0f/min on average over the last minute (%+.0f/min right now)." % [
 			Defs.RESOURCE_NAMES[k], int(r.get(k, 0.0)), avg, rate * Defs.PER_MIN]
-	if game.energy_starved(pid):
+	if game.in_blackout(pid):
+		_res_labels["energy"].add_theme_color_override("font_color", BAD)
+		_res_labels["energy"].text += " !" # the box is narrow; the tooltip spells out BLACKOUT
+	elif game.energy_starved(pid):
 		_res_labels["energy"].add_theme_color_override("font_color", BAD)
 		_res_labels["energy"].text += "  NO ENERGY"
 	_res_boxes["spice"].tooltip_text += "\nSpice automatically covers shortfalls of food, minerals and energy (1:1) - but never Power Plant fuel."
 	var fuel := game.fuel_per_min(pid)
 	_res_boxes["minerals"].tooltip_text += "\nPower Plant fuel: %.1f/min (1 mineral per 10 energy; included above)." % fuel
 	_res_boxes["energy"].tooltip_text += "\nPower Plants burn %.1f minerals/min as fuel (1 per 10 energy). Starbases make no energy." % fuel
-	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/min for ships and starbases%s" % [game.upkeep(pid), "
+	_res_boxes["energy"].tooltip_text += "\nUpkeep: %.1f/min for ships and constructs (x multiplier) + %.1f/min for buildings (flat)%s" % [game.upkeep(pid), game.building_upkeep(pid), "
 OUT OF ENERGY: ship production halted, ships at 25% speed" if game.energy_starved(pid) else ""]
+	if game.in_blackout(pid):
+		_res_boxes["energy"].tooltip_text += "\nBLACKOUT: every building that needs energy is OFFLINE. Deliver minerals to restart Power Plants; power returns after %d s with energy above 0.\nRestoring power: %d s" % [int(Defs.BLACKOUT_RESUME_SECS), int(ceil(game.blackout_restore_left(pid)))]
 	_pop_label.text = _fmt(game.total_pop(pid))
 	_pop_label.tooltip_text = "Population across your worlds. Each pop eats %.2f food per minute." % Defs.FOOD_PER_POP_PER_MIN
 	_fleet_label.text = str(game.warship_count(pid))

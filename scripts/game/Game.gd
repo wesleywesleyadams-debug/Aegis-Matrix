@@ -778,12 +778,13 @@ func pay_over_time(pid: int, per_sec: Dictionary, dt: float) -> float:
 
 ## Power-plant fuel: takes `minerals` from the mineral stockpile ONLY (spice
 ## never covers it - fuel must deplete minerals) and returns the share of it
-## that could be paid (0..1); the plants run at that share of full output.
+## that was paid: 1 (all of it) or 0 (none - the plants make nothing).
 func pay_fuel(pid: int, minerals: float) -> float:
 	if minerals <= 0.0 or not resources.has(pid):
 		return 1.0
 	var have := maxf(float(resources[pid]["minerals"]), 0.0)
-	var f := clampf(have / minerals, 0.0, 1.0)
+	# All or nothing: a plant either has this tick's fuel or makes nothing.
+	var f := 1.0 if have >= minerals - 0.000001 else 0.0
 	_deduct(pid, "minerals", minerals * f)
 	fuel_paid[pid] = fuel_paid.get(pid, 0.0) + minerals * f
 	return f
@@ -992,7 +993,64 @@ func total_pop(pid: int) -> float:
 ## Out of energy (stockpile at or below 0): starbases can't produce ships
 ## and ships move and fire at ENERGY_STARVED_FACTOR speed.
 func energy_starved(pid: int) -> bool:
-	return resources.has(pid) and resources[pid]["energy"] <= 0.0001
+	return resources.has(pid) and (resources[pid]["energy"] <= 0.0001 or blackout.get(pid, false))
+
+## Blackout per player: the empire could not pay its buildings' energy
+## upkeep (energy at 0 and no spice to cover it). Every building that draws
+## energy is unpowered (Planet._staff, max_shield, _batteries_fire) and
+## draws nothing until the energy stockpile has stayed above 0 for
+## Defs.BLACKOUT_RESUME_SECS in a row (blackout_restore). Power Plants draw no energy, so mineral
+## deliveries restart them and the empire recovers.
+var blackout := {}
+## Match seconds spent in Blackout, per player (dev logs / sims).
+var blackout_time := {}
+var _was_blackout := false
+## Energy paid as building upkeep so far, per player (dev logs / sims).
+var building_upkeep_paid := {}
+
+func in_blackout(pid: int) -> bool:
+	return blackout.get(pid, false)
+
+## Seconds of positive energy stock counted so far toward ending a Blackout.
+var blackout_restore := {}
+
+## Seconds left before power returns (Defs.BLACKOUT_RESUME_SECS while the
+## stock is still at 0).
+func blackout_restore_left(pid: int) -> float:
+	return maxf(0.0, Defs.BLACKOUT_RESUME_SECS - float(blackout_restore.get(pid, 0.0)))
+
+## Flat energy per minute every finished, unpaused building on a player's
+## worlds draws (Defs.BUILDINGS energy_upkeep). Not scaled by the empire
+## upkeep multiplier. Counted even during a Blackout (what it WOULD draw).
+func building_upkeep(pid: int) -> float:
+	var u := 0.0
+	for p in get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid:
+			u += p.energy_upkeep_per_min()
+	return u
+
+## Pays this tick's building upkeep, entering or leaving Blackout.
+func _tick_building_power(pid: int, delta: float) -> void:
+	var need := building_upkeep(pid)
+	if blackout.get(pid, false):
+		blackout_time[pid] = blackout_time.get(pid, 0.0) + delta
+		if resources[pid]["energy"] > 0.0001:
+			blackout_restore[pid] = blackout_restore.get(pid, 0.0) + delta
+		else:
+			blackout_restore[pid] = 0.0
+		if blackout_restore[pid] >= Defs.BLACKOUT_RESUME_SECS:
+			blackout[pid] = false
+			blackout_restore[pid] = 0.0
+			if pid == player_id:
+				notify("Power restored: your buildings are running again.", "note_building")
+		return
+	if need <= 0.0:
+		return
+	var f := pay_over_time(pid, {"energy": need / Defs.PER_MIN}, delta)
+	building_upkeep_paid[pid] = building_upkeep_paid.get(pid, 0.0) + need / Defs.PER_MIN * delta * f
+	if f < 0.999:
+		blackout[pid] = true
+		blackout_restore[pid] = 0.0
 
 ## Speed multiplier for a player's ships (1.0, or the starved factor).
 func ship_speed_factor(pid: int) -> float:
@@ -1203,7 +1261,10 @@ func _physics_process(delta: float) -> void:
 		return
 	for pid in players:
 		# Upkeep is a per-minute figure (Defs.PER_MIN).
+		# Ships and constructs first, then buildings, from the same stock
+		# (spice covers either, 1:1). Buildings that can't be paid black out.
 		pay_over_time(pid, {"energy": upkeep(pid) / Defs.PER_MIN}, delta)
+		_tick_building_power(pid, delta)
 		_tick_research(pid, delta)
 	# Any other resource hitting zero.
 	for k in ["food", "minerals", "spice"]:
@@ -1211,6 +1272,10 @@ func _physics_process(delta: float) -> void:
 		if empty and not _was_empty.get(k, false):
 			alert("Out of %s!" % Defs.RESOURCE_NAMES[k].to_lower(), "alert_resource")
 		_was_empty[k] = empty
+	var bo := in_blackout(player_id)
+	if bo and not _was_blackout:
+		alert("BLACKOUT! Your buildings are offline. Deliver minerals to restart Power Plants.", "alert_energy", true)
+	_was_blackout = bo
 	var starved := energy_starved(player_id)
 	if starved and not _was_starved:
 		alert("Out of energy! Ship production halted and ships slowed to 25%.", "alert_energy")

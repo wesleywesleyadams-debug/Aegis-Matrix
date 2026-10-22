@@ -620,7 +620,12 @@ func refresh() -> void:
 		# what every building on it produces.
 		s += "\n%s +%.0f/min   %s +%.0f/min   %s +%.1f/min" % [_ic("energy"), planet.energy_out, _ic("minerals"), planet.minerals_out, _ic("spice"), planet.spice_out]
 		if planet.count_building("generator") > 0:
-			s += "\n%s Power Plant fuel: %.1f/min%s" % [_ic("minerals"), planet.fuel_per_min, "  (SHORT: plants at %d%%)" % int(planet.fuel_frac * 100.0) if planet.fuel_frac < 0.999 else ""]
+			s += "\n%s Power Plant fuel: %.1f/min%s" % [_ic("minerals"), planet.fuel_per_min, "  (NO FUEL: plants stopped)" if planet.fuel_frac < 0.999 else ""]
+		var bu := planet.energy_upkeep_per_min()
+		if bu > 0.0:
+			s += "\n[hint=%s]%s Building upkeep: %.0f/min[/hint]" % [_hint("Flat energy upkeep of this world's finished, unpaused buildings (per minute: Farm 2, Habitat 1, Mining Complex 4, Defense Battery 3, Spice Extractor 5; Power Plants none). Not affected by the empire upkeep multiplier."), _ic("energy"), bu]
+		if planet.blacked_out():
+			s += "\n[color=#ff6a5a]BLACKOUT: buildings OFFLINE (no output, batteries down). Deliver minerals to restart Power Plants. Restoring power: %d s[/color]" % int(ceil(Game.instance.blackout_restore_left(planet.owner_id)))
 		if planet.doom_timer >= 0.0:
 			s += "\nUNSTABLE: IMPLODES IN %d s (%d damage, %d px)" % [int(ceil(planet.doom_timer)), int(Defs.BLAST_DAMAGE * planet.blast_scale()), int(planet.blast_radius())]
 		elif planet.unstable():
@@ -649,12 +654,13 @@ func refresh() -> void:
 			(b.get_node("Art") as TextureRect).texture = Defs.tex("bld_" + built)
 			# A finished building always runs; only an extractor whose reserve
 			# is gone goes dark.
-			var dry: bool = planet.is_dry(i) or (built == "mine" and planet.mining_paused)
-			b.text = ("PAUSED" if built == "mine" else "DRY") if dry else ""
-			b.modulate = Color(1, 1, 1, 0.4) if dry else Color.WHITE
+			var dry: bool = planet.is_dry(i) or planet.is_paused(i)
+			var offline: bool = not dry and Game.instance.in_blackout(planet.owner_id) and Planet.draws_power(built)
+			b.text = ("PAUSED" if built == "mine" else "DRY") if dry else ("OFFLINE" if offline else "")
+			b.modulate = Color(1, 1, 1, 0.4) if dry or offline else Color.WHITE
 			(b.get_node("Art") as TextureRect).modulate = Color.WHITE
-			_progress_text(b, Color("ffd46b") if dry else Color.WHITE, 13)
-			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], " (dry: the reserve is gone)" if dry else "", Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
+			_progress_text(b, Color("ff6a5a") if offline else (Color("ffd46b") if dry else Color.WHITE), 13)
+			b.tooltip_text = "%s%s\n%s%s" % [Defs.BUILDINGS[built]["name"], " (dry: the reserve is gone)" if planet.is_dry(i) else (" (OFFLINE: Blackout)" if offline else ""), Defs.BUILDINGS[built]["desc"], "\nClick to demolish." if mine else ""]
 		elif job != "":
 			var art := b.get_node("Art") as TextureRect
 			art.texture = Defs.tex("bld_" + job)
