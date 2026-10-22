@@ -1436,7 +1436,7 @@ func _page_controls() -> void:
 ## are covered in Combat, so they aren't repeated here.
 const SHIP_NOTES := {
 	"miner": "Hauls ore. Right-click an asteroid to mine it and it shuttles loads back to a starbase on its own; orange-flecked rocks carry spice. Asteroids run dry, so miners keep moving outward as a belt empties.",
-	"skimmer": "Mines minerals from gas giants (10,000 each, no refill: they shrink, glow when nearly empty and explode when drained) and harvests spice gas inside a spice nebula: right-click a spot in the cloud and it drains the gas there cell by cell, moving on to the nearest gas left until the nebula is gone.",
+	"skimmer": "Mines minerals from gas giants (3,000 each, no refill: they shrink, glow when nearly empty and explode when drained) and harvests spice gas inside a spice nebula: right-click a spot in the cloud and it drains the gas there cell by cell, moving on to the nearest gas left until the nebula is gone.",
 	"colony": "Settles a free world, and is used up doing it. Colonizing takes a minute in orbit and the new colony starts small, so send it early and guard it: an unescorted colony ship is the cheapest kill on the map.",
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, a Mining Station as a forward drop-off, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",

@@ -211,12 +211,12 @@ const FUEL_PER_ENERGY := 0.1
 ## Gas giants hold GAS_RESERVE minerals each and never refill. They shrink as
 ## they are drained (down to GAS_MIN_SCALE of full size), start to glow when
 ## below UNSTABLE_RESERVE, and explode when empty.
-const GAS_RESERVE := 10000
+const GAS_RESERVE := 3000
 const GAS_MIN_SCALE := 0.4
 const UNSTABLE_RESERVE := 1000.0
 ## A habitable world holds WORLD_RESERVE_PER_SIZE minerals per field. Its
 ## Mining Complexes draw it down; at 0 the world implodes.
-const WORLD_RESERVE_PER_SIZE := 1000.0
+const WORLD_RESERVE_PER_SIZE := 300.0
 ## Blast of an exploding gas giant: BLAST_DAMAGE at the centre falling
 ## linearly to 0 at BLAST_RADIUS. A world's implosion scales both linearly by
 ## size / BLAST_REF_SIZE (a size-30 world matches a gas giant; size 20:
