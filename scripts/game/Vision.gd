@@ -55,10 +55,12 @@ var seen_bases := {}
 ## Enemy Frontier Outposts seen, the same way: instance id -> [position,
 ## hull fraction, owner, time] (the AI weighs them as defences).
 var seen_forts := {}
-## Remembered planet defences older than this may have grown: assume one more
+## Remembered planet defences older than DEF_STALE may have grown: assume one more
 ## battery (up to DEF_GUESS_MAX). Never-seen ones: DEF_GUESS batteries.
-const DEF_STALE := 300.0
-const DEF_GUESS := 1
+## (Both off: in A/B sims, guessing extra batteries made 2 of 8 decided games
+## stall; the AI now goes by what it last saw, plain shield if never seen.)
+const DEF_STALE := 1.0e9
+const DEF_GUESS := 0
 const DEF_GUESS_MAX := 3
 var sightings := {}
 ## How long a sighted enemy warship still counts toward its fleet estimate.
