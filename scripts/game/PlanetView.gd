@@ -396,7 +396,7 @@ func refresh() -> void:
 	var s := owner_text
 	# The planetary shield sits under the owner label, at the right.
 	if planet.owner_id != 0 and planet.is_habitable():
-		s += "\n[right]%s Planetary shield %d / %d[/right]" % [_ic("layer_shield"), int(planet.shield), int(planet.max_shield())]
+		s += "\n%s Planetary shield %d / %d" % [_ic("layer_shield"), int(planet.shield), int(planet.max_shield())]
 	for tr in Defs.planet_traits(planet.kind):
 		s += "\n" + tr
 	if not planet.is_habitable():
