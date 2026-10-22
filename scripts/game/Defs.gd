@@ -126,7 +126,7 @@ const BASE_SHIPS := {
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
 		"hp": 385.7, "armor": 192.4, "shield": 577.1, "speed": 55.0, "radius": 26.6, "size": 1.66,
-		"cost": {"minerals": 400}, "build_time": 80.0, "upkeep": 4.0,
+		"cost": {"minerals": 380}, "build_time": 80.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 14.05, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
 		"guns": 3, "turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 1.66, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
@@ -137,7 +137,7 @@ const BASE_SHIPS := {
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one.
 		"hp": 911.6, "armor": 1367.4, "shield": 1367.4, "speed": 38.0, "radius": 64.0, "size": 2.0,
-		"cost": {"minerals": 820}, "build_time": 153.0, "upkeep": 8.0,
+		"cost": {"minerals": 800}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": 14.8, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
 		# Turrets traverse on their own, so the hull does not have to come
@@ -809,7 +809,7 @@ const MOD_WEAPONS := {
 	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.85, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
-	"mod_point_defense_lattice": {"dmg": 1.0, "pd": 220.0},
+	"mod_point_defense_lattice": {"dmg": 1.03, "pd": 220.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.577, "dmg": 0.332, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
