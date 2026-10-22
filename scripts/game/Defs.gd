@@ -290,18 +290,19 @@ const ENERGY_STARVED_FACTOR := 0.25
 ## population cap is size * POP_PER_SIZE (a size 19 world: 19 fields, 19k pops).
 ## fertility multiplies what a Farm grows there: a lush Terran world feeds
 ## its farms in full, a Molten one barely at all.
-## spice_reserve: spice stored underground for Spice Extractors. Barren
-## worlds hold the most (desert above all); lush worlds very little.
+## spice_reserve: spice stored underground per size (field) for Spice
+## Extractors; never refills. Barren worlds hold the most (desert above all);
+## lush worlds very little.
 ## energy_mult: how much a Power Plant here makes, against the same plant
 ## elsewhere. A Molten world runs hot, which is the one thing it is good for:
 ## its fertility is the worst in the game.
 const PLANET_TYPES := {
-	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy_mult": 1.0, "spice_reserve": 200},
-	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy_mult": 1.0, "spice_reserve": 5000},
-	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy_mult": 1.0, "spice_reserve": 1200},
-	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy_mult": 1.15, "spice_reserve": 2000},
+	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy_mult": 1.0, "spice_reserve": 3},
+	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy_mult": 1.0, "spice_reserve": 75},
+	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy_mult": 1.0, "spice_reserve": 18},
+	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy_mult": 1.15, "spice_reserve": 30},
 	"planet_gas": {"label": "Gas Giant", "habitable": false, "fertility": 0.0, "energy_mult": 1.0},
-	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy_mult": 1.0, "spice_reserve": 3000},
+	"planet_moon": {"label": "Barren Moon", "fertility": 0.2, "energy_mult": 1.0, "spice_reserve": 45},
 }
 ## What a planet type does differently from the rest, as short lines for
 ## any description of it: every multiplier that is not 1.0, positive or
@@ -374,7 +375,7 @@ const BUILDINGS := {
 		"desc": "+1,500 population cap, and population's output bonus on this world can rise 0.1x higher."},
 	"battery": {"name": "Defense Battery", "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
 		"desc": "+1,200 planetary shield and a gun that fires on besieging ships (250 px)."},
-	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150, "spice": 30}, "time": 60.0, "output": {"spice": 20.0}, "only": [],
+	"spice_extractor": {"name": "Spice Extractor", "cost": {"minerals": 150}, "time": 60.0, "output": {"spice": 20.0}, "only": [],
 		"desc": "+20 spice/min at base, more with population. Drains the planet's spice reserve (large on barren worlds, tiny on lush ones)."},
 }
 const BUILDING_ORDER: Array[String] = ["farm", "generator", "mine", "habitat", "spice_extractor", "battery"]

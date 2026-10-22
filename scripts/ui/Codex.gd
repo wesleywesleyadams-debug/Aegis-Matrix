@@ -1125,7 +1125,7 @@ func _page_worlds() -> void:
 	for p in Defs.PLANET_TYPES:
 		var pd: Dictionary = Defs.PLANET_TYPES[p]
 		prows.append([pd["label"], "yes" if pd.get("habitable", true) else "no (gas giant)",
-			", ".join(Defs.planet_traits(p)) if not Defs.planet_traits(p).is_empty() else "-", str(pd.get("spice_reserve", Defs.GAS_RESERVE if not pd.get("habitable", true) else 0))])
+			", ".join(Defs.planet_traits(p)) if not Defs.planet_traits(p).is_empty() else "-", (("%d per size" % int(pd["spice_reserve"])) if pd.has("spice_reserve") else ("%s minerals" % Defs.short_num(Defs.GAS_RESERVE) if not pd.get("habitable", true) else "0"))])
 	_table(["Type", "Habitable", "Effects", "Spice / gas reserve"], prows)
 	_heading("Mineral crust")
 	_para("Every world holds %s minerals per size in its crust (a size-30 world: %s), and its Mining Complexes dig it out. Below %s the world turns unstable and glows (no alert: watch for it). At 0 a %d-second countdown starts that nothing can stop - the glow turns red and pulses faster, and its panel shows the seconds left - then it IMPLODES: the world, its pops and its buildings are gone, it counts as a world lost, and the blast hits everything around it - scaled by size: a size-%d world matches a gas giant (%s damage, %d px), a size-20 world %s damage over %d px, a size-10 world %s over %d px. Pause mining (the button in the world's panel) stops its Mining Complexes: they produce nothing and dig nothing until resumed." % [

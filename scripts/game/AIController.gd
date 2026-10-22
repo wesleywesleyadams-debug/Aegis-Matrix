@@ -267,7 +267,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 				pick = "generator"
 		# Spice short: an Extractor on a world with a real reserve, even while
 		# food dips, as long as the larder has some slack.
-		if (food_rate > 0.01 or res["food"] > 300.0) and res["spice"] < 150.0 and res["spice"] >= 15.0 and p.spice_reserve > 500.0 and p.count_building("spice_extractor") == 0:
+		if (food_rate > 0.01 or res["food"] > 300.0) and res["spice"] < 150.0 and p.spice_reserve > 200.0 and p.count_building("spice_extractor") == 0:
 			pick = "spice_extractor"
 		if pick == "farm" and float(p.type_def().get("fertility", 1.0)) < best_soil * 0.6:
 			pick = "generator"

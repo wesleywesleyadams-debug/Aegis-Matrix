@@ -147,7 +147,7 @@ func _ready() -> void:
 		return
 	add_to_group("planets")
 	fields = Defs.field_count($Sprite.texture.get_width()) if is_habitable() else 0
-	spice_reserve = float(type_def().get("spice_reserve", 0)) * reserve_scale()
+	spice_reserve = float(type_def().get("spice_reserve", 0)) * fields
 	max_spice_reserve = spice_reserve
 	if not is_habitable():
 		resource = "minerals"
