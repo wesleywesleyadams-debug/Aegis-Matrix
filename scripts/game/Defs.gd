@@ -80,6 +80,9 @@ const TURRET_ON_SCREEN := 1.33 * 0.5
 ## cost is the total, paid over build_time. upkeep is energy per minute;
 ## harvest is how fast the hold fills, per minute (see Defs.PER_MIN).
 ## requires: tech id that must be researched before it can be queued.
+## PROJECT SYMMETRY (experiment branch): every turret = one corvette gun
+## (12.3 dmg / 0.97 s / 6 rad/s); cost 75/150/300/600; toughness sized so
+## one hull ties its cost in corvettes under split fire (1x/2x/4.33x/12x of 150).
 const BASE_SHIPS := {
 	"miner": {
 		"name": "Mining Barge", "role": "miner", "subclass": "harvester",
@@ -109,15 +112,15 @@ const BASE_SHIPS := {
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
-		"hp": 74.6, "armor": 49.7, "shield": 24.9, "speed": 125.0, "radius": 8.0,
+		"hp": 75.0, "armor": 50.0, "shield": 25.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
 		"weapon": "laser", "damage": 12.3, "cooldown": 0.97, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 8.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
-		"hp": 160.3, "armor": 212.8, "shield": 62.6, "speed": 85.0, "radius": 14.6, "size": 1.33,
-		"cost": {"minerals": 180}, "build_time": 38.0, "upkeep": 1.7,
-		"weapon": "laser", "damage": 12.5, "cooldown": 0.97, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
+		"hp": 110.0, "armor": 147.0, "shield": 43.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
+		"cost": {"minerals": 150}, "build_time": 38.0, "upkeep": 1.7,
+		"weapon": "laser", "damage": 12.3, "cooldown": 0.97, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
@@ -125,9 +128,9 @@ const BASE_SHIPS := {
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 385.7, "armor": 192.4, "shield": 577.1, "speed": 55.0, "radius": 26.6, "size": 1.66,
-		"cost": {"minerals": 400}, "build_time": 80.0, "upkeep": 4.0,
-		"weapon": "laser", "damage": 14.05, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
+		"hp": 217.0, "armor": 108.0, "shield": 325.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
+		"cost": {"minerals": 300}, "build_time": 80.0, "upkeep": 4.0,
+		"weapon": "laser", "damage": 12.3, "cooldown": 0.97, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
 		"guns": 3, "turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 1.66, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
 	},
@@ -136,9 +139,9 @@ const BASE_SHIPS := {
 		# About twice a cruiser in every dimension: slower across the map and
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one.
-		"hp": 911.6, "armor": 1367.4, "shield": 1367.4, "speed": 38.0, "radius": 64.0, "size": 2.0,
-		"cost": {"minerals": 820}, "build_time": 153.0, "upkeep": 8.0,
-		"weapon": "laser", "damage": 14.8, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
+		"hp": 450.0, "armor": 675.0, "shield": 675.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
+		"cost": {"minerals": 600}, "build_time": 153.0, "upkeep": 8.0,
+		"weapon": "laser", "damage": 12.3, "cooldown": 0.97, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
