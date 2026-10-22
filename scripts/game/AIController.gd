@@ -159,7 +159,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 		# (Not while it can't pay the skimmer's spice, or just after one was
 		# cancelled for stalling: re-queueing it at once kept two unpayable
 		# skimmers at the head of the queue and blocked every other build.)
-		elif (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < (3 if st.get("crust_low", false) else 2) 				and res["spice"] >= Defs.SHIPS["skimmer"]["cost"]["spice"] * 1.1 and Game.now() >= st.get("blocked", {}).get("skimmer", -1.0):
+		elif (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < (3 if st.get("crust_low", false) else 2) 				and res["spice"] >= float(Defs.SHIPS["skimmer"]["cost"].get("spice", 0)) * 1.1 and Game.now() >= st.get("blocked", {}).get("skimmer", -1.0):
 			base.enqueue("skimmer")
 		# Jobs: a Scout for sensors, a Repair Tender once the fleet is sizable,
 		# a Radiation Sail Array where the system has radiation hazards to fight in.
@@ -172,7 +172,7 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			base.enqueue("heatshield")
 		# Keep colonizing unless enemies are actually at our worlds (being
 		# outgunned elsewhere isn't a reason to stop growing).
-		elif free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= 10.0:
+		elif free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= float(Defs.SHIPS["colony"]["cost"].get("spice", 0)):
 			base.enqueue("colony")
 		elif mode != "recover" and not _yard_besieged(pid, st, base, v):
 			var pick := _pick_warship(pid, game, st)
@@ -2136,7 +2136,7 @@ func _plan_outpost(pid: int, st: Dictionary, game: Game, base: Starbase, forts: 
 	var res: Dictionary = game.resources[pid]
 	# Never at the cost of the fleet: a fleet first, and the bill (paid over
 	# the build) in hand with a little to spare.
-	if fleet < 4 or res["minerals"] < d["cost"]["minerals"] + 150.0 or res["spice"] < d["cost"]["spice"] + 30.0 or not _upkeep_ok(pid, game, d["upkeep"]):
+	if fleet < 4 or res["minerals"] < d["cost"]["minerals"] + 150.0 or res["spice"] < float(d["cost"].get("spice", 0)) + 30.0 or not _upkeep_ok(pid, game, d["upkeep"]):
 		return
 	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "outpost")
 	var have: int = forts.filter(func(f): return f is FrontierOutpost).size() + pending.size()
@@ -2231,7 +2231,7 @@ func _plan_gate(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Arr
 	if n >= 2 or (n >= 1 and not rich) or not pending.is_empty():
 		return
 	# The bill is paid over the build, so half of it in hand will do.
-	if fleet < 6 or res["minerals"] < d["cost"]["minerals"] * 0.5 or res["spice"] < d["cost"]["spice"] + 60.0 or not _upkeep_ok(pid, game, d["upkeep"]):
+	if fleet < 6 or res["minerals"] < d["cost"]["minerals"] * 0.5 or res["spice"] < float(d["cost"].get("spice", 0)) + 60.0 or not _upkeep_ok(pid, game, d["upkeep"]):
 		return
 	# Beside home (a second beside another yard, well away from the first).
 	var yard: Node2D = base
