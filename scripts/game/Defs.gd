@@ -117,7 +117,7 @@ const BASE_SHIPS := {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
 		"hp": 160.3, "armor": 212.8, "shield": 62.6, "speed": 85.0, "radius": 14.6, "size": 1.33,
 		"cost": {"minerals": 180}, "build_time": 38.0, "upkeep": 1.7,
-		"weapon": "laser", "damage": 12.5, "cooldown": 1.03, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
+		"weapon": "laser", "damage": 12.5, "cooldown": 0.97, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
@@ -788,9 +788,9 @@ const AOE_SHARE := 1.0
 const MOD_WEAPONS := {
 	# Tuned (10% steps) to lose slightly to laser corvettes, then hit bigger
 	# hulls harder: vs_class multiplies damage against those classes.
-	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.63, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.093},
+	"mod_proton_torpedoes": {"weapon": "proton", "dmg": 0.60, "vs_class": {"destroyer": 2.0, "cruiser": 3.0, "carrier": 4.0, "starbase": 4.0, "world": 4.0, "construct": 2.0}, "cd": 3.093},
 	"mod_kinetic_repeaters": {"weapon": "kinetic", "dmg": 0.41, "cd": 0.3436, "range": 0.75},
-	"mod_arc_emitters": {"weapon": "arc", "cd": 1.031, "chain": [0.62, 0.22, 0.22], "jump": 120.0},
+	"mod_arc_emitters": {"weapon": "arc", "cd": 1.031, "chain": [0.59, 0.21, 0.21], "jump": 120.0},
 	#   count  - projectiles per turret shot; spread - their fan, radians;
 	#   fan    - [min, max] total fan width in degrees, rolled fresh each launch
 	#   beam   - Ion Lance: [start, end, seconds] - a continuous beam whose damage
@@ -801,22 +801,22 @@ const MOD_WEAPONS := {
 	#   tractor- Tractor Beams: [pull/s, reach x weapon range, damage at full reach, damage once pulled in to 60% of range]
 	# Exploding shots (flak, missile, proton, bomblet) hit every enemy within
 	# AOE_RADIUS[weapon] for AOE_SHARE of the damage (see Game.splash).
-	"mod_flak_cannons": {"dmg": 0.485, "cd": 0.970, "weapon": "flak"},
+	"mod_flak_cannons": {"dmg": 0.485, "cd": 1.030, "weapon": "flak"},
 	# Each bomblet = one laser shot: 3 per turret every 3 reloads = lasers'
 	# total on a lone ship; the 40 blasts make it far more against a group.
-	"mod_cluster_bombs": {"dmg": 0.277, "weapon": "bomblet", "cd": 2.912, "count": 3, "fan": [10.0, 20.0]},
-	"mod_ion_lance": {"weapon": "beam", "dmg": 0.67, "beam": [0.15, 1.85, 4.0]},
-	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.5, "cd": 4.0, "range": 1.4},
+	"mod_cluster_bombs": {"dmg": 0.277, "weapon": "bomblet", "cd": 3.092, "count": 3, "fan": [10.0, 20.0]},
+	"mod_ion_lance": {"weapon": "beam", "dmg": 0.72, "beam": [0.15, 1.85, 4.0]},
+	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.85, "cd": 4.0, "range": 1.4},
 	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
-	"mod_point_defense_lattice": {"dmg": 0.965, "pd": 220.0},
-	"mod_homing_missiles": {"weapon": "missile", "cd": 2.427, "dmg": 0.332, "count": 2, "range": 1.2},
+	"mod_point_defense_lattice": {"dmg": 1.0, "pd": 220.0},
+	"mod_homing_missiles": {"weapon": "missile", "cd": 2.577, "dmg": 0.332, "count": 2, "range": 1.2},
 	# Carrier. drones: [count, reach from the carrier]; the turrets stand down
 	# and the drones fly out and shoot instead (vs_class: weak vs heavy armor).
-	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.25, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
+	"mod_interceptor_drones": {"drones": [4, 300.0], "dmg": 3.1, "vs_class": {"destroyer": 0.7, "cruiser": 0.6, "carrier": 0.5}},
 	# No lasers: each turret holds a beam that pulls and burns at dmg x a laser's DPS
 	# x a factor: [pull/s, reach x range, factor at full reach, factor once pulled in].
-	"mod_tractor_beams": {"tractor": [60.0, 2.0, 0.5, 1.5], "dmg": 0.55},
+	"mod_tractor_beams": {"tractor": [60.0, 2.0, 0.5, 1.5], "dmg": 0.52},
 	"mod_missile_barrage": {"weapon": "missile", "dmg": 0.262, "count": 5, "cd": 8.0, "range": 1.6, "spread": 0.5},
 }
 
