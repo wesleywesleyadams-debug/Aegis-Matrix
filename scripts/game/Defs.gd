@@ -297,7 +297,7 @@ const ENERGY_STARVED_FACTOR := 0.25
 ## elsewhere. A Molten world runs hot, which is the one thing it is good for:
 ## its fertility is the worst in the game.
 const PLANET_TYPES := {
-	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy_mult": 1.0, "spice_reserve": 3},
+	"planet_terran": {"label": "Terran", "fertility": 1.0, "energy_mult": 1.0, "spice_reserve": 7},
 	"planet_desert": {"label": "Desert", "fertility": 0.45, "energy_mult": 1.0, "spice_reserve": 75},
 	"planet_ice": {"label": "Arctic", "fertility": 0.6, "energy_mult": 1.0, "spice_reserve": 18},
 	"planet_lava": {"label": "Molten", "fertility": 0.15, "energy_mult": 1.15, "spice_reserve": 30},
