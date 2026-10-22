@@ -370,7 +370,7 @@ const BUILDINGS := {
 	"generator": {"name": "Power Plant", "cost": {"minerals": 80}, "time": 30.0, "output": {"energy": 20.0}, "only": [],
 		"desc": "+20 energy/min at base, more with population, and x1.15 on a Molten world. Burns 1 mineral per 10 energy it makes (from the mineral stockpile only; short of minerals, it makes less)."},
 	"mine": {"name": "Mining Complex", "cost": {"minerals": 70}, "time": 35.0, "output": {"minerals": 20.0}, "only": [],
-		"desc": "+20 minerals/min at base, more with population. Digs out the world's finite reserve (1,000 per size): at 0 the world implodes. Pause mining in the world panel."},
+		"desc": "+20 minerals/min at base, more with population. Digs out the world's finite crust (300 per size): at 0 the world implodes. Pause mining in the world panel."},
 	"habitat": {"name": "Habitat", "cost": {"minerals": 100, "spice": 5}, "time": 40.0, "output": {}, "max_pop": 1500, "pop_bonus": 0.1, "only": [],
 		"desc": "+1,500 population cap, and population's output bonus on this world can rise 0.1x higher."},
 	"battery": {"name": "Defense Battery", "cost": {"minerals": 120, "spice": 10}, "time": 45.0, "output": {}, "only": [],
