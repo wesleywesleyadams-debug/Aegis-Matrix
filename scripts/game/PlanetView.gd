@@ -47,6 +47,20 @@ var _grow: float = 1.0
 var _last_us: int = 0
 ## Latest stats summary for the selection panel.
 var stats: String = ""
+## Callout layout picked by _choose_layout: bubble angle (radians, screen
+## space) and details placement (x: 1 right, -1 left, 2 above, 3 below of
+## the globe; y: vertical step for the sides).
+var _lay_ang: float = PI * 1.25
+var _lay_det := Vector2i(1, 0)
+var _layout_key: Array = []
+var _lay_snap := true
+var _lay_dt: float = 0.0
+var _lay_center := Vector2.INF
+## Shown positions relative to the planet center, eased toward the picks.
+var _bub_rel := Vector2.ZERO
+var _det_rel := Vector2.ZERO
+## Groups of things that never move and so are kept clear of the callouts.
+const STATIONARY_GROUPS := ["planets", "stars", "asteroids", "starbases", "mining_stations", "depots", "forts"]
 
 func _ready() -> void:
 	visible = false
@@ -165,6 +179,9 @@ func show_planet(p: Planet) -> void:
 		_field_buttons.append(b)
 	# Grow from the planet's current on-screen size.
 	_grow = 0.0 if was != p else 1.0
+	if was != p:
+		_layout_key = []
+		_lay_snap = true
 	refresh()
 	_place()
 
@@ -178,6 +195,7 @@ func _process(delta: float) -> void:
 	var now_us := Time.get_ticks_usec()
 	var real_dt := minf((now_us - _last_us) / 1000000.0, 0.1) if _last_us > 0 else 0.0
 	_last_us = now_us
+	_lay_dt = real_dt
 	if _grow < 1.0:
 		_grow = minf(1.0, _grow + real_dt / GROW_TIME)
 	_place()
@@ -201,14 +219,36 @@ func _place() -> void:
 	# the upper-left, details floating beside the bubble.
 	var a := _slot_layer.modulate.a if planet.fields > 0 else k
 	var ring_r := d / 2.0 + 26.0
-	var dir := Vector2(-1, -1).normalized()
 	# The bubble is sized to what it has to hold: a long name or a big world's
 	# "Size 30 · 30/30 built" used to run out through the ring.
 	var br := _bubble_radius()
-	var bubble := center + dir * (ring_r + 70.0 + br)
 	var vp := get_viewport_rect().size
-	bubble = bubble.clamp(Vector2(br + 8, br + 80), vp - Vector2(br + 8, br + 8))
-	_ring = {"center": center, "r": ring_r, "from": center + dir * ring_r, "to": bubble - (bubble - (center + dir * ring_r)).normalized() * br, "bubble": bubble, "br": br, "alpha": a}
+	_details.size = Vector2(DETAILS_W, 0)
+	var dsz0 := _details.get_combined_minimum_size()
+	# Where the bubble and the details go is picked to keep stationary
+	# things on the map (rocks, stations, other worlds, the star) visible:
+	# see _choose_layout. Re-chosen only when the view changes.
+	var key := [Vector2i((center / 8.0).round()), int(_target_d), snappedf(game.camera.zoom.x, 0.001), Vector2i(vp), int(br), int(dsz0.y + _pause_btn.size.y) / 8, _obstacle_count()]
+	# A camera jump re-lays out from scratch rather than sliding across.
+	if _lay_center.distance_to(center) > 200.0:
+		_lay_snap = true
+	_lay_center = center
+	if key != _layout_key:
+		_layout_key = key
+		_choose_layout(center, _target_d / 2.0 + 26.0, br, vp)
+	var tb := _bubble_at(center, ring_r, br, vp, _lay_ang)
+	var td := _details_at(center, ring_r, vp, _lay_det, Vector2(DETAILS_W, _details_h()))
+	if _lay_snap:
+		_bub_rel = tb - center
+		_det_rel = td - center
+		_lay_snap = false
+	else:
+		var f := 1.0 - exp(-12.0 * _lay_dt)
+		_bub_rel = _bub_rel.lerp(tb - center, f)
+		_det_rel = _det_rel.lerp(td - center, f)
+	var bubble := center + _bub_rel
+	var dir := (bubble - center).normalized()
+	_ring = {"center": center, "r": ring_r, "from": center + dir * ring_r, "to": bubble - dir * br, "bubble": bubble, "br": br, "alpha": a}
 	_ring_color = Defs.team_color(planet.owner_id) if planet.owner_id != 0 else Color(0.8, 0.85, 1.0)
 	_ring_color.a = 0.55
 	_deco.queue_redraw()
@@ -222,19 +262,8 @@ func _place() -> void:
 	_title.position = bubble + Vector2(-br, -20)
 	_subtitle.size = Vector2(br * 2.0, 18)
 	_subtitle.position = bubble + Vector2(-br, 6)
-	# The spice bar hangs under the bubble (see _draw_deco), so the details
-	# have to clear it: a wide gap when they sit beside the bubble, and a
-	# start below it when they sit underneath.
-	# Details sit clear of the globe: to its right, or to its left when the
-	# right edge has no room. (Under the bubble they used to run over it.)
-	_details.size = Vector2(DETAILS_W, 0)
-	var dy := clampf(center.y - ring_r * 0.45, 90.0, vp.y - 260.0)
-	if center.x + ring_r + 24.0 + DETAILS_W < vp.x - 8.0:
-		_details.position = Vector2(center.x + ring_r + 24.0, dy)
-		_details_right = false
-	else:
-		_details.position = Vector2(maxf(8.0, center.x - ring_r - 24.0 - DETAILS_W), dy)
-		_details_right = true
+	_details.position = center + _det_rel
+	_details_right = _lay_det.x == -1
 	# The mining switch sits under the details text.
 	var dsz := _details.get_combined_minimum_size()
 	_pause_btn.size = _pause_btn.get_combined_minimum_size()
@@ -249,6 +278,129 @@ func _place() -> void:
 	if bar.intersects(text):
 		bar.position.y = text.position.y + text.size.y + 6.0
 	_ring["spice_y"] = bar.position.y + 2.0
+
+## Height of the details text plus the mining switch under it.
+func _details_h() -> float:
+	var h := maxf(_details.size.y, _details.get_combined_minimum_size().y)
+	if _pause_btn.visible:
+		h += 8.0 + _pause_btn.get_combined_minimum_size().y
+	return h
+
+func _bubble_at(center: Vector2, ring_r: float, br: float, vp: Vector2, ang: float) -> Vector2:
+	var b := center + Vector2.from_angle(ang) * (ring_r + 70.0 + br)
+	return b.clamp(Vector2(br + 8, br + 80), vp - Vector2(br + 8, br + 8))
+
+## The bubble plus the reserve bars hanging under it.
+func _bubble_box(b: Vector2, br: float) -> Rect2:
+	var rows := 0
+	if is_instance_valid(planet):
+		rows = int(planet.max_mineral_reserve > 0.0) + int(planet.max_spice_reserve > 0.0)
+	return Rect2(b - Vector2(br, br), Vector2(br * 2.0, br * 2.0 + (SPICE_BAR_TOP + 30.0 * rows if rows > 0 else 0.0)))
+
+## Top-left of the details for a placement (see _lay_det).
+func _details_at(center: Vector2, ring_r: float, vp: Vector2, det: Vector2i, sz: Vector2) -> Vector2:
+	var pos: Vector2
+	match det.x:
+		1:
+			pos = Vector2(center.x + ring_r + 24.0, center.y - ring_r * 0.45 + det.y * 80.0)
+		-1:
+			pos = Vector2(center.x - ring_r - 24.0 - sz.x, center.y - ring_r * 0.45 + det.y * 80.0)
+		2:
+			pos = Vector2(center.x - sz.x / 2.0, center.y - ring_r - 24.0 - sz.y)
+		_:
+			pos = Vector2(center.x - sz.x / 2.0, center.y + ring_r + 24.0)
+	pos.x = clampf(pos.x, 8.0, maxf(8.0, vp.x - 8.0 - sz.x))
+	pos.y = clampf(pos.y, 90.0, maxf(90.0, vp.y - 260.0))
+	return pos
+
+func _obstacle_count() -> int:
+	var n := 0
+	for g in STATIONARY_GROUPS:
+		n += get_tree().get_nodes_in_group(g).size()
+	return n
+
+## Screen-space boxes of the stationary things in view (not the open world).
+func _obstacles(vp: Vector2) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var xf := game.get_viewport().get_canvas_transform()
+	var z := game.camera.zoom.x
+	var screen := Rect2(Vector2.ZERO, vp)
+	for g in STATIONARY_GROUPS:
+		for n in get_tree().get_nodes_in_group(g):
+			if n == planet or not (n is Node2D) or not n.is_inside_tree():
+				continue
+			var r: float = n.get("radius") if n.get("radius") != null else 16.0
+			r = maxf(r * z * 1.15, 6.0)
+			var box := Rect2((xf * (n as Node2D).global_position) - Vector2(r, r), Vector2(r, r) * 2.0)
+			if box.intersects(screen):
+				out.append(box)
+	return out
+
+static func _cover(r: Rect2, obs: Array[Rect2]) -> float:
+	var t := 0.0
+	for o in obs:
+		if r.intersects(o):
+			t += r.intersection(o).get_area()
+	return t
+
+## A box reaching into the globe (it can when clamped to the screen).
+static func _hits_ring(r: Rect2, center: Vector2, ring_r: float) -> bool:
+	return r.grow(4.0).has_point(center) or center.distance_to(Vector2(clampf(center.x, r.position.x, r.end.x), clampf(center.y, r.position.y, r.end.y))) < ring_r
+
+## Picks the bubble angle and details placement that cover the least of the
+## stationary things on screen. The default (bubble upper-left, details to
+## the right) wins ties, and the current pick is kept unless a candidate is
+## clearly better, so the callouts don't hop around.
+func _choose_layout(center: Vector2, ring_r: float, br: float, vp: Vector2) -> void:
+	var obs := _obstacles(vp)
+	var dsz := Vector2(DETAILS_W, _details_h())
+	var right_fits := center.x + ring_r + 24.0 + DETAILS_W < vp.x - 8.0
+	var bubs: Array = []
+	for i in 24:
+		var ang := PI * 1.25 + TAU * i / 24.0
+		var b := _bubble_at(center, ring_r, br, vp, ang)
+		var box := _bubble_box(b, br)
+		var cost := _cover(box, obs) + minf(i, 24 - i) * 150.0
+		# The bubble keeps clear of the ring; the bars under it only of the
+		# globe (by default they already cross the thin ring line).
+		var bars := Rect2(box.position.x, b.y + br, box.size.x, box.end.y - b.y - br)
+		if b.distance_to(center) < ring_r + br - 2.0 or (bars.size.y > 0.0 and _hits_ring(bars, center, ring_r - 26.0)):
+			cost += 1e6
+		if box.end.y > vp.y - 200.0:
+			cost += (box.end.y - (vp.y - 200.0)) * 40.0
+		bubs.append([ang, box, cost])
+	var dets: Array = []
+	for side in [1, -1, 2, 3]:
+		for j in ([0] if side >= 2 else [0, -1, 1, -2, 2, -3, 3]):
+			var det := Vector2i(side, j)
+			var r := Rect2(_details_at(center, ring_r, vp, det, dsz), dsz).grow(12.0)
+			var cost := _cover(r, obs) + absi(j) * 600.0
+			if side == -1 and right_fits or side == 1 and not right_fits:
+				cost += 2500.0
+			elif side >= 2:
+				cost += 6000.0
+			if _hits_ring(r, center, ring_r):
+				cost += 1e6
+			dets.append([det, r, cost])
+	var best := INF
+	var cur := INF
+	var pick := [_lay_ang, _lay_det]
+	for b in bubs:
+		for d in dets:
+			var c: float = b[2] + d[2]
+			if (b[1] as Rect2).grow(10.0).intersects(d[1]):
+				c += 1e6
+			if c < best:
+				best = c
+				pick = [b[0], d[0]]
+			if is_equal_approx(b[0], _lay_ang) and d[0] == _lay_det:
+				cur = c
+	# Keep the current pick unless the new one is clearly better.
+	if OS.get_environment("SL_LAYOUT_LOG") != "":
+		print("LAYOUT obs=", obs, " best=", best, " cur=", cur, " pick=", rad_to_deg(pick[0]), " ", pick[1], " center=", center, " ring=", ring_r)
+	if _layout_key.is_empty() or _lay_snap or best < cur - 1500.0 or best < cur * 0.6:
+		_lay_ang = pick[0]
+		_lay_det = pick[1]
 
 ## The spice reserve bar under the name bubble: how far below the bubble it
 ## starts, how much room it takes (bar plus its figure), and the gap anything
@@ -367,7 +519,10 @@ func _draw_info_bubble(c: Color) -> void:
 	st.anti_aliasing = true
 	st.draw(_deco.get_canvas_item(), r)
 	# Leader line: from the ring toward the bubble's nearest side.
-	var edge := Vector2(r.position.x if r.get_center().x > _ring["center"].x else r.end.x, clampf(_ring["center"].y, r.position.y + 16.0, r.end.y - 16.0))
+	var cx: Vector2 = _ring["center"]
+	var edge := Vector2(r.position.x if r.get_center().x > cx.x else r.end.x, clampf(cx.y, r.position.y + 16.0, r.end.y - 16.0))
+	if cx.x > r.position.x + 16.0 and cx.x < r.end.x - 16.0:
+		edge = Vector2(cx.x, r.end.y if r.get_center().y < cx.y else r.position.y)
 	var dir: Vector2 = (edge - _ring["center"]).normalized()
 	_deco.draw_line(_ring["center"] + dir * _ring["r"], edge, c, 1.5, true)
 

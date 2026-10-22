@@ -3852,7 +3852,20 @@ func _enter_dev_capture() -> void:
 			var home_p: Planet = get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == player_id)[0]
 			home_p.order_build(3, "generator")
 			home_p.order_build(4, "habitat")
+			# SL_FOCUS_PLANET=<index or name>: open that world instead (centered).
+			var fp := OS.get_environment("SL_FOCUS_PLANET")
+			if fp != "":
+				var all_p := get_tree().get_nodes_in_group("planets")
+				for q in all_p:
+					if q.planet_name == fp:
+						home_p = q
+				if fp.is_valid_int() and int(fp) < all_p.size():
+					home_p = all_p[int(fp)]
+				center_on(home_p.global_position)
+				print("FOCUS ", home_p.planet_name)
 			_focus_planet(home_p)
+			if fp != "":
+				await get_tree().create_timer(1.0).timeout
 			selection_changed.emit()
 	await get_tree().create_timer(0.05 if OS.get_environment("SL_SHOT_OPEN") == "flash" else 0.3 * Engine.time_scale).timeout
 	await RenderingServer.frame_post_draw
