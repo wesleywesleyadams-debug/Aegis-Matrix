@@ -674,7 +674,8 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 					break
 	var res: Dictionary = game.resources[pid]
 	var rates: Dictionary = game.rates[pid]
-	var energy_starved: bool = res["energy"] < 7.0 and rates.get("energy", 0.0) < 0.0
+	# (A Blackout counts: buildings are offline, so no new hulls or attacks.)
+	var energy_starved: bool = (res["energy"] < 7.0 and rates.get("energy", 0.0) < 0.0) or game.in_blackout(pid)
 	var spice_starved: bool = res["spice"] < 10.0 and rates.get("spice", 0.0) <= 0.0
 	# Out of spice alone isn't a crisis: corvettes cost none (see _pick_warship).
 	st["corvettes_only"] = spice_starved
@@ -700,6 +701,10 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 	# at most COMMIT_CONSTRUCT_CAP starbases' worth, not all at once.
 	var sbt: float = Defs.STARBASE["hp"] + Defs.STARBASE["armor"] + Defs.STARBASE["shield"]
 	var known := theirs + minf(_known_constructs(pid, game, v), sbt * COMMIT_CONSTRUCT_CAP) * COMMIT_CONSTRUCT_SHARE
+	# No enemy fleet seen lately: the constructs alone don't hold it back
+	# (each target must still be winnable before the army goes, else it stages).
+	if theirs < 400.0:
+		known = theirs
 	var was: bool = st.get("commit", false)
 	var commit: bool = was
 	if not was:
@@ -1220,7 +1225,8 @@ func _upkeep_fits(pid: int, game: Game, u: float, w: float, income: float = 0.0)
 ## (and, for minerals, a couple of minutes of Power Plant fuel: minerals now
 ## pay for energy, and spice never covers fuel).
 func _spare(pid: int, st: Dictionary, game: Game, k: String) -> float:
-	var fuel := game.fuel_per_min(pid) * FUEL_MINUTES if k == "minerals" else 0.0
+	# (At 0 minerals every Power Plant stops: always keep some fuel back.)
+	var fuel := maxf(game.fuel_per_min(pid) * FUEL_MINUTES, 60.0) if k == "minerals" else 0.0
 	return float(game.resources[pid].get(k, 0.0)) - float(st.get("reserve", {}).get(k, 0.0)) - fuel
 
 ## A gas giant or world counting down to its blast: every ship of ours inside
@@ -1350,7 +1356,7 @@ func _swap_from_power(pid: int, st: Dictionary, game: Game, v: Vision) -> void:
 		return
 	# Keep income covering upkeep alone (the stockpile pays for research).
 	var income := _plant_income(pid, game)
-	var upk: float = game.upkeep(pid)
+	var upk: float = game.upkeep(pid) + game.building_upkeep(pid)
 	# Plants already switched off for a while are the long-term surplus: those first.
 	var worlds: Array = game.get_tree().get_nodes_in_group("planets").filter(func(w): return w.owner_id == pid)
 	worlds.sort_custom(func(a, b): return int(a.power_paused) > int(b.power_paused))
@@ -1392,10 +1398,10 @@ func _plant_rate(p: Planet, game: Game) -> float:
 func _toggle_power(pid: int, st: Dictionary, game: Game) -> void:
 	if Game.now() < st.get("next_power_toggle", 0.0):
 		return
-	st["next_power_toggle"] = Game.now() + 10.0
+	st["next_power_toggle"] = Game.now() + (3.0 if game.in_blackout(pid) else 10.0)
 	var e := float(game.resources[pid]["energy"])
 	var income := _plant_income(pid, game)
-	var upk: float = game.upkeep(pid)
+	var upk: float = game.upkeep(pid) + game.building_upkeep(pid)
 	var need := _energy_need(pid, game)
 	var on: Array = []
 	var off: Array = []
@@ -1405,7 +1411,7 @@ func _toggle_power(pid: int, st: Dictionary, game: Game) -> void:
 	# Blackout guard: the pile nearly gone and still falling - every plant
 	# back on at once and, with none left to switch on, the mines with the
 	# least crust off (they draw energy too, where the rules charge for it).
-	if e < AI_ENERGY_FLOOR and game.rates[pid].get("energy", 0.0) < 0.0:
+	if game.in_blackout(pid) or (e < AI_ENERGY_FLOOR and game.rates[pid].get("energy", 0.0) < 0.0):
 		for p in off:
 			p.power_paused = false
 		if not off.is_empty():
@@ -1481,7 +1487,7 @@ func _energy_need(pid: int, game: Game) -> float:
 	var spent: float = _plant_income(pid, game) - game.rates[pid].get("energy", 0.0) * Defs.PER_MIN
 	if cur.is_empty():
 		spent += r
-	return maxf(game.upkeep(pid) + r, spent) + 20.0
+	return maxf(game.upkeep(pid) + game.building_upkeep(pid) + r, spent) + 20.0
 
 ## Whether to build (or keep) more Power Plants: only while income falls
 ## short of AI_POWER_MARGIN x the need and the stockpile isn't big already.
