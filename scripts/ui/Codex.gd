@@ -892,9 +892,9 @@ func _tech_caption(id: String) -> String:
 				s2 += " Batteries also hit +%d%%." % _pct(id, "planet_damage")
 			return s2 + " Worth it when the enemy raids your worlds."
 		"solar_collectors", "plasma_reactors", "dark_matter":
-			var why5: String = {"solar_collectors": "Strong early, when every project is energy-bound.", "plasma_reactors": "Worth it once upkeep from a growing fleet starts eating your income.", "dark_matter": "Costs only spice, no energy: a way to turn spare spice into permanent energy."}[id]
-			var mid5 := " Energy pays for research, upkeep and shield regeneration, so this speeds up everything." if int(t["tier"]) == 1 else ""
-			return "+%d%% energy from Power Plants and Radiation Sail Arrays%s (boosted plants burn fuel for the extra energy too).%s %s" % [_pct(id, "energy"), _cum_text(id, "energy"), mid5, why5]
+			var why5: String = {"solar_collectors": "Cheap fuel savings from the first Power Plant on.", "plasma_reactors": "Worth it once ship and building upkeep start eating your energy.", "dark_matter": "The big one: with all three, each mineral of fuel buys about 1.9x the energy."}[id]
+			var mid5 := " Energy pays for ship, construct and building upkeep and shield regeneration." if int(t["tier"]) == 1 else ""
+			return "+%d%% energy from Power Plants and Radiation Sail Arrays%s ; the extra energy burns no fuel, so each mineral of fuel goes further.%s %s" % [_pct(id, "energy"), _cum_text(id, "energy"), mid5, why5]
 		# --- Logistics
 		"deep_drills", "bulk_holds":
 			return "Harvesters (Mining Barges and Gas Skimmers) carry +%d%% per load. Fewer trips per load hauled: worth most when belts are far from your drop-off." % _pct(id, "cargo")

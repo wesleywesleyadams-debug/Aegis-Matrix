@@ -662,16 +662,19 @@ func _run_buildings(dt: float) -> void:
 	if not out.is_empty():
 		g.add_resources(owner_id, out)
 		g.ledger(owner_id, "in_extractor", out.get("spice", 0.0))
-	# Power Plants burn minerals (Defs.FUEL_PER_ENERGY per energy made, from
+	# Power Plants burn minerals (Defs.FUEL_PER_ENERGY per base energy made, from
 	# the mineral stockpile only): all or nothing - without the fuel for this
 	# tick they make no energy at all. They draw no energy upkeep, so they
 	# run through a Blackout and restart as soon as minerals arrive.
 	fuel_frac = 1.0
 	fuel_per_min = 0.0
 	if energy_made > 0.0:
-		fuel_frac = g.pay_fuel(owner_id, energy_made * Defs.FUEL_PER_ENERGY / Defs.PER_MIN * dt)
+		# Energy research (Solar Collectors and up) is fuel-free: fuel is
+		# charged on the energy the plants would make without it.
+		var fuel_base := energy_made / maxf(g.mod(owner_id, "energy"), 0.01)
+		fuel_frac = g.pay_fuel(owner_id, fuel_base * Defs.FUEL_PER_ENERGY / Defs.PER_MIN * dt)
 		energy_out = energy_made * fuel_frac
-		fuel_per_min = energy_out * Defs.FUEL_PER_ENERGY
+		fuel_per_min = fuel_base * fuel_frac * Defs.FUEL_PER_ENERGY
 		g.add_resources(owner_id, {"energy": energy_out / Defs.PER_MIN * dt})
 	if digging:
 		_check_unstable()
