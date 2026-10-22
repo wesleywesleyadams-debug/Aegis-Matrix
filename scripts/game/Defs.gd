@@ -112,13 +112,13 @@ const BASE_SHIPS := {
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
-		"hp": 75.0, "armor": 50.0, "shield": 25.0, "speed": 125.0, "radius": 8.0,
+		"hp": 66.0, "armor": 50.0, "shield": 34.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
 		"weapon": "laser", "damage": 10.0, "cooldown": 0.97, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 8.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
-		"hp": 110.0, "armor": 147.0, "shield": 43.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
+		"hp": 99.0, "armor": 132.0, "shield": 69.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
 		"cost": {"minerals": 150}, "build_time": 38.0, "upkeep": 1.7,
 		"weapon": "laser", "damage": 10.0, "cooldown": 0.97, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
 		# Two light turrets on the prongs: they track a circling corvette
@@ -128,7 +128,7 @@ const BASE_SHIPS := {
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 268.0, "armor": 134.0, "shield": 403.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
+		"hp": 266.0, "armor": 185.0, "shield": 354.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 300}, "build_time": 80.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": 10.0, "cooldown": 0.97, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
@@ -139,7 +139,7 @@ const BASE_SHIPS := {
 		# About twice a cruiser in every dimension: slower across the map and
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one.
-		"hp": 600.0, "armor": 900.0, "shield": 900.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
+		"hp": 552.0, "armor": 792.0, "shield": 1056.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 600}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": 10.0, "cooldown": 0.97, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
