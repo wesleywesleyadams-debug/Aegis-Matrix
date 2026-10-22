@@ -36,8 +36,15 @@ static func tick(s: Node2D, what: String) -> void:
 
 static func launched(p: Node2D, from: Node2D, to: Node2D) -> void:
 	if from is Ship:
-		_proj[p] = [from.ship_type, to.get("ship_type") if to is Ship else "other"]
+		_proj[p] = [from.ship_type, to.get("ship_type") if to is Ship else "other", (to.velocity as Vector2).length() if to is Ship else 0.0, Game.now() - t0]
 		_b(from.ship_type)["fired"] += 1
+		# As a target: instantaneous velocity (what Target Prediction leads
+		# on) vs net speed over the last 0.25 s (how far it really goes).
+		if to is Ship:
+			var bt := _b(to.ship_type)
+			bt["tv_sum"] = bt.get("tv_sum", 0.0) + (to.velocity as Vector2).length()
+			bt["ta_sum"] = bt.get("ta_sum", 0.0) + float(to.actual_speed)
+			bt["tv_n"] = bt.get("tv_n", 0) + 1
 
 ## A projectile connects: `rem` is the target's toughness before the hit.
 static func hit(p: Node2D, amount: float, rem: float) -> void:
@@ -55,6 +62,13 @@ static func expired(p: Node2D, target_alive: bool) -> void:
 	if not _proj.has(p):
 		return
 	_b(_proj[p][0])["fizzle_dead" if not target_alive else "dodged"] += 1
+	if target_alive:
+		# Dodges as a target: speed it had when the shot was launched, and when.
+		var bd := _b(_proj[p][1])
+		bd["dg_n"] = bd.get("dg_n", 0) + 1
+		bd["dg_v"] = bd.get("dg_v", 0.0) + _proj[p][2]
+		bd["dg_fast"] = bd.get("dg_fast", 0) + (1 if _proj[p][2] > 40.0 else 0)
+		bd["dg_t"] = bd.get("dg_t", 0.0) + _proj[p][3]
 	_proj.erase(p)
 
 static func regen(s: Node2D, amount: float) -> void:
@@ -64,6 +78,7 @@ static func regen(s: Node2D, amount: float) -> void:
 ## Sampled by the duel loop every `dt`: time with an enemy in reach, and how
 ## many enemy hulls are shooting at each ship that is being shot at.
 static var _tl_next := 0.0
+static var _life := {}
 static func sample(ships: Array, dt: float) -> void:
 	var shooters := {}
 	# Timeline every 5 s: guns alive and toughness left per class.
@@ -90,6 +105,25 @@ static func sample(ships: Array, dt: float) -> void:
 		var near = Game.instance.nearest_enemy(s, s.weapon_range())
 		if near != null:
 			b["inrange_t"] += dt
+		# Spacing: nearest enemy / ally centre, and whether any gun has a target.
+		var ne := INF
+		var na := INF
+		for o in ships:
+			if o == s or not (is_instance_valid(o) and o is Ship and o.is_alive()):
+				continue
+			var dd: float = s.global_position.distance_to(o.global_position)
+			if o.owner_id == s.owner_id:
+				na = minf(na, dd)
+			else:
+				ne = minf(ne, dd)
+		if ne < INF:
+			b["ne_sum"] = b.get("ne_sum", 0.0) + ne
+			b["ne_n"] = b.get("ne_n", 0) + 1
+		if na < INF:
+			b["na_sum"] = b.get("na_sum", 0.0) + na
+			b["na_n"] = b.get("na_n", 0) + 1
+		if not _life.has(s):
+			_life[s] = [s.ship_type, Game.now() - t0, mx]
 		var tg := {}
 		for t in s._t_target:
 			if is_instance_valid(t):
@@ -99,6 +133,15 @@ static func sample(ships: Array, dt: float) -> void:
 			tg[s._aim_at] = true
 		for t in tg:
 			shooters[t] = shooters.get(t, 0) + 1
+		b["eng_sum"] = b.get("eng_sum", 0) + (1 if not tg.is_empty() else 0)
+	# Deaths: lifetime and toughness each hull soaked (incl. regen) before dying.
+	for s in _life.keys():
+		if not (is_instance_valid(s) and s.is_alive()):
+			var e: Array = _life[s]
+			var b3 := _b(e[0])
+			b3["deaths"] = b3.get("deaths", 0) + 1
+			b3["life_sum"] = b3.get("life_sum", 0.0) + (Game.now() - t0) - e[1]
+			_life.erase(s)
 	for t in shooters:
 		if t is Ship:
 			var b2 := _b(t.ship_type)
@@ -119,3 +162,8 @@ static func report() -> void:
 			100.0 * b["wasted"] / maxf(1.0, b["dmg"] + b["wasted"]), b["range_sum"] / ev, b["move_sum"] / ev, b["first"],
 			100.0 * b["t_none"] / ticks, 100.0 * b["t_slew"] / ticks, 100.0 * b["t_reload"] / ticks, 100.0 * b["t_fire"] / ticks,
 			100.0 * b["pulls"] / maxf(1.0, expected), b["share_sum"] / maxf(1.0, b["share_n"]), b.get("wound_sum", 0.0) / maxf(1.0, b.get("alive_n", 0)), b["inrange_t"] / maxf(0.5, 0.5 * b.get("alive_n", 0)), b["regen"], b["taken_dmg"]])
+		print("DSTAT2 %s near_enemy=%.0f near_ally=%.0f engaged=%.2f deaths=%d life=%.1f tgt_vel=%.1f tgt_netspeed=%.1f dodged_n=%d dodged_vel=%.0f dodged_fast=%d dodged_t=%.1f" % [k,
+			b.get("ne_sum", 0.0) / maxf(1.0, b.get("ne_n", 0)), b.get("na_sum", 0.0) / maxf(1.0, b.get("na_n", 0)),
+			float(b.get("eng_sum", 0)) / maxf(1.0, b.get("alive_n", 0)), b.get("deaths", 0), b.get("life_sum", 0.0) / maxf(1.0, b.get("deaths", 0)),
+			b.get("tv_sum", 0.0) / maxf(1.0, b.get("tv_n", 0)), b.get("ta_sum", 0.0) / maxf(1.0, b.get("tv_n", 0)),
+			b.get("dg_n", 0), b.get("dg_v", 0.0) / maxf(1.0, b.get("dg_n", 0)), b.get("dg_fast", 0), b.get("dg_t", 0.0) / maxf(1.0, b.get("dg_n", 0))])
