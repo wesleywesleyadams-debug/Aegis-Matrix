@@ -184,6 +184,13 @@ func set_engagement(v: int) -> void:
 var def: Dictionary
 var state: State = State.IDLE
 var velocity: Vector2 = Vector2.ZERO
+## Target Prediction reads these instead of the instantaneous velocity:
+## velocity and acceleration averaged over about LEAD_SMOOTH seconds, so a
+## ship that brakes or swerves is not led along a straight line it left.
+var lead_vel: Vector2 = Vector2.ZERO
+var lead_acc: Vector2 = Vector2.ZERO
+var _lead_prev: Vector2 = Vector2.ZERO
+const LEAD_SMOOTH := 0.2
 var move_goal: Vector2
 var attack_move_goal: Vector2
 ## Seconds until an idle weapon may scan for targets again (empty scans only).
@@ -276,15 +283,16 @@ func _fire_turrets(delta: float) -> void:
 		ordered = bombard_target
 	elif state == State.ATTACK and target_ordered and is_instance_valid(target) and target.is_alive():
 		ordered = target
-	# Overkill Awareness: an ordered target the side already has enough shots
-	# in the air to kill (Game.is_doomed) frees the turrets meanwhile.
-	var ok_aware: bool = g.has_tech(owner_id, "overkill_awareness")
-	var focus: bool = ordered != null and global_position.distance_to(ordered.global_position) <= rng + float(ordered.get("radius")) 			and not (ok_aware and g.is_doomed(owner_id, ordered))
+	# An ordered target the side already has enough shots in the air to kill
+	# (Game.is_doomed) frees the turrets to pick other targets meanwhile.
+	var focus: bool = ordered != null and global_position.distance_to(ordered.global_position) <= rng + float(ordered.get("radius")) \
+			and not g.is_doomed(owner_id, ordered)
 	_t_scan -= delta
 	if not focus and _t_scan <= 0.0:
 		_t_scan = SCAN_INTERVAL
-		# Overkill Awareness: a deeper list with doomed enemies sorted last.
-		_t_near = g.enemies_near(self, rng, _turret_sprites.size() + (4 if ok_aware else 2), Vector2.INF, ok_aware)
+		# Scanned out to the furthest turret's reach; each turret then checks
+		# reach from its own mount. Doomed enemies sort last.
+		_t_near = g.enemies_near(self, rng + _turret_reach_extra(), _turret_sprites.size() + 4, Vector2.INF, true)
 	var n := _turret_sprites.size()
 	var dmg: float = def["damage"] * Defs.mark_mult(ship_type, g.mark_level(owner_id, ship_type))
 	var per: int = maxi(1, int(round(float(def.get("guns", n)) / float(n))))
@@ -319,18 +327,21 @@ func _fire_turrets(delta: float) -> void:
 			pass
 		elif focus:
 			tgt = ordered
-		elif ok_aware:
-			# Overkill Awareness: keep the target until it leaves reach or the
-			# side's shots already in the air will kill it; then the nearest
-			# not-doomed enemy no other turret here is on, if possible.
+		else:
+			# Reach is measured from this turret's own mount. A turret keeps
+			# its target until it leaves reach or the side's shots already in
+			# the air will kill it; then the nearest not-doomed enemy, one no
+			# other turret here is on if possible.
+			var tp: Vector2 = _turret_sprites[i].global_position
 			var cur = _t_target[i]
-			if is_instance_valid(cur) and cur.is_alive() and not taken.has(cur) and global_position.distance_to(cur.global_position) <= rng + cur.radius and not g.is_doomed(owner_id, cur):
+			if is_instance_valid(cur) and cur.is_alive() and not taken.has(cur) \
+					and tp.distance_to(cur.global_position) <= rng + cur.radius and not g.is_doomed(owner_id, cur):
 				tgt = cur
 			else:
 				var any_live: Node2D = null
 				var double_up: Node2D = null
 				for e in _t_near:
-					if not is_instance_valid(e) or not e.is_alive():
+					if not is_instance_valid(e) or not e.is_alive() or tp.distance_to(e.global_position) > rng + e.radius:
 						continue
 					if any_live == null:
 						any_live = e
@@ -342,25 +353,15 @@ func _fire_turrets(delta: float) -> void:
 					if double_up == null:
 						double_up = e
 				if tgt == null:
-					# More turrets than live targets: double up, and only pile
-					# onto a doomed one when nothing else is in reach.
+					# More turrets than live targets: double up, and only
+					# pile onto a doomed one when nothing else is in reach.
 					tgt = double_up if double_up != null else any_live
-		else:
-			var cur = _t_target[i]
-			if is_instance_valid(cur) and cur.is_alive() and not taken.has(cur) \
-					and global_position.distance_to(cur.global_position) <= rng + cur.radius:
-				tgt = cur
-			else:
-				for e in _t_near:
-					if is_instance_valid(e) and e.is_alive() and not taken.has(e):
-						tgt = e
-						break
-				if tgt == null and not _t_near.is_empty() and is_instance_valid(_t_near[0]) and _t_near[0].is_alive():
-					tgt = _t_near[0]   # more turrets than enemies: double up
 		if _t_target[i] != tgt:
 			_t_beam_time[i] = 0.0   # the lance's ramp starts over on a new target
 		_t_target[i] = tgt
 		if tgt == null:
+			if DuelStats.on:
+				DuelStats.tick(self, "none")
 			continue
 		taken[tgt] = true
 		# Traverse this turret toward its own target.
@@ -382,6 +383,8 @@ func _fire_turrets(delta: float) -> void:
 		if weapon_mod.has("tractor"):
 			continue
 		if _t_cd[i] > 0.0 or not on_target:
+			if DuelStats.on:
+				DuelStats.tick(self, "reload" if _t_cd[i] > 0.0 else "slew")
 			continue
 		var wpn: String = weapon_mod.get("weapon", def["weapon"])
 		var n_proj: int = int(weapon_mod.get("count", 1))
@@ -393,11 +396,16 @@ func _fire_turrets(delta: float) -> void:
 		if pd > 0.0 and tgt is Drone:
 			shot *= PD_DRONE_MULT
 		dbg_shots += 1
+		var n_hit := 0
 		for k in per:
 			if randf() < acc or wpn == "missile":   # missiles never miss
+				n_hit += 1
 				for j in n_proj:
 					var off := 0.0 if n_proj == 1 else lerpf(-spread, spread, float(j) / (n_proj - 1)) + randf_range(-0.06, 0.06)
-					g.fire(self, tgt, wpn, shot, off)
+					g.fire(self, tgt, wpn, shot, off, _muzzle(i))
+		if DuelStats.on:
+			DuelStats.tick(self, "fire")
+			DuelStats.pull(self, tgt, acc, per, n_hit, moving_frac())
 		_t_cd[i] = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / g.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
 	if weapon_mod.has("tractor"):
@@ -407,6 +415,25 @@ func _fire_turrets(delta: float) -> void:
 		had_beams = true
 	if had_beams or not _beams.is_empty() or not _tbeams.is_empty():
 		queue_redraw()
+
+## Where turret `i`'s shots leave: the tip of its barrel (the sprite's
+## barrel points along +x, half the sprite's width from its centre).
+func _muzzle(i: int) -> Vector2:
+	var t: Sprite2D = _turret_sprites[i]
+	var barrel: float = float(t.texture.get_width()) * 0.5 * absf(t.global_scale.x) if t.texture else 0.0
+	return t.global_position + Vector2(barrel, 0.0).rotated(_t_rot[i])
+
+## How far the furthest turret mount sits from the hull centre.
+func _turret_reach_extra() -> float:
+	var m := 0.0
+	for t in _turret_sprites:
+		if is_instance_valid(t):
+			m = maxf(m, t.position.length() * absf(scale.x))
+	return m
+
+## Where fixed (forward) guns' shots leave: the nose.
+func _nose() -> Vector2:
+	return global_position + Vector2(radius * 0.9, 0.0).rotated(rotation)
 
 ## Tractor Beams: each turret holds a beam on its own target (or, past laser
 ## range, the nearest enemy out to `reach` x attack range). The beam reels
@@ -1247,6 +1274,11 @@ func order_stop() -> void:
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+	if delta > 0.0:
+		var k := 1.0 - exp(-delta / LEAD_SMOOTH)
+		lead_vel = lead_vel.lerp(velocity, k)
+		lead_acc = lead_acc.lerp((velocity - _lead_prev) / delta, k)
+		_lead_prev = velocity
 	if docked:
 		_last_pos = Vector2.INF
 		return
@@ -1536,6 +1568,8 @@ func _physics_process(delta: float) -> void:
 				and _t_target[0] is SpaceEntity and lateral_thrust() + reverse_thrust() > 0.0:
 			face_target = _t_target[0]
 	# Fire at whatever is in range, even while moving.
+	elif def["weapon"] != "" and _cooldown > 0.0 and DuelStats.on:
+		DuelStats.tick(self, "reload")
 	elif def["weapon"] != "" and _cooldown <= 0.0:
 		var shoot: Node2D = target if is_instance_valid(target) and target.is_alive() else null
 		if state == State.BOMBARD and is_instance_valid(bombard_target):
@@ -1557,6 +1591,8 @@ func _physics_process(delta: float) -> void:
 				shoot = Game.instance.nearest_enemy(self, weapon_range(), true)
 				if shoot == null:
 					_scan_cd = SCAN_INTERVAL
+		if DuelStats.on and not (shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius):
+			DuelStats.tick(self, "none")
 		if shoot and global_position.distance_to(shoot.global_position) <= weapon_range() + shoot.radius:
 			_aim_at = shoot
 			var dmg: float = def["damage"] * Defs.mark_mult(ship_type, Game.instance.mark_level(owner_id, ship_type))
@@ -1573,6 +1609,8 @@ func _physics_process(delta: float) -> void:
 				elif face_target == null and face_at == null:
 					face_at = shoot
 				ready = bears_on(shoot.global_position)
+			if not ready and DuelStats.on:
+				DuelStats.tick(self, "slew")
 			if ready:
 				# Every gun aims the same: a shooter on the move is a worse one,
 				# and at full speed roughly a third of its shots go wide.
@@ -1582,13 +1620,18 @@ func _physics_process(delta: float) -> void:
 				var wpn: String = weapon_mod.get("weapon", def["weapon"])
 				dmg *= float(weapon_mod.get("dmg", 1.0))
 				dbg_shots += 1
+				var n_hit := 0
 				for g in int(def.get("guns", 1)):
 					if randf() >= acc:
 						continue
+					n_hit += 1
 					if wpn == "arc":
 						Game.instance.arc_strike(self, shoot, dmg, weapon_mod["chain"], weapon_mod["jump"])
 					else:
-						Game.instance.fire(self, shoot, wpn, dmg)
+						Game.instance.fire(self, shoot, wpn, dmg, 0.0, _nose())
+				if DuelStats.on:
+					DuelStats.tick(self, "fire")
+					DuelStats.pull(self, shoot, acc, int(def.get("guns", 1)), n_hit, moving_frac())
 				_cooldown = def["cooldown"] * float(weapon_mod.get("cd", 1.0)) / Game.instance.mod(owner_id, "fire_rate") * randf_range(0.9, 1.1)
 
 	# Strafing / Reverse Thrusters: fixed guns stay on what they last shot at

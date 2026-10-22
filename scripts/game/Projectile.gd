@@ -53,7 +53,50 @@ func _unbook() -> void:
 func _exit_tree() -> void:
 	_unbook()
 
-func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float = 0.0) -> void:
+## Target Prediction's lead: where `to` will have moved by the time a shot
+## from `src` at `spd` arrives. Ships are led on their smoothed velocity
+## (Ship.lead_vel); a ship braking hard is assumed to stop rather than keep
+## going, and one coming mostly straight at the shooter (which tends to
+## brake or break off at firing range) is led less.
+static func lead_offset(to: Node2D, src: Vector2, spd: float) -> Vector2:
+	var v: Vector2 = to.get("velocity")
+	var acc := Vector2.ZERO
+	if to is Ship:
+		v = (to as Ship).lead_vel
+		acc = (to as Ship).lead_acc
+	var sp := v.length()
+	if sp < 1.0:
+		return Vector2.ZERO
+	var t := src.distance_to(to.global_position) / spd
+	var vd := v / sp
+	# Deceleration along the direction of travel: the ship covers v*t - a*t^2/2
+	# but never backs up past where it would stop.
+	var dec := maxf(0.0, -acc.dot(vd))
+	var travel := sp * t
+	if dec > 1.0:
+		var t_stop := sp / dec
+		travel = sp * minf(t, t_stop) - 0.5 * dec * minf(t, t_stop) * minf(t, t_stop)
+	var off := v * (travel / sp)
+	# Split into the part along the line to the shooter and the part across
+	# it (only the crossing part really moves the aim point off the target).
+	var dist := src.distance_to(to.global_position)
+	var n := (src - to.global_position) / maxf(dist, 1.0)
+	var along := n * off.dot(n)
+	var across := off - along
+	var closing := maxf(0.0, vd.dot(n))
+	if closing > 0.3 and to is Ship and (to as Ship).weapon_range() > 0.0:
+		# A warship charging the shooter stops once in its own weapon range:
+		# it is led in only as far as it has left to come, and while still
+		# on the run-in (rarely straight) its sideways drift is led less.
+		var left := maxf(0.0, dist - (to as Ship).weapon_range())
+		if off.dot(n) > 0.0:
+			along = along.limit_length(left)
+		if left > 0.0:
+			across *= 1.0 - 0.67 * closing
+	return along + across
+
+func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float = 0.0, origin: Vector2 = Vector2.INF) -> void:
+	var src: Vector2 = from.global_position if origin == Vector2.INF else origin
 	shooter = from
 	target = to
 	damage = dmg
@@ -84,7 +127,7 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 	# Kinetic Repeater slugs: fast and small.
 	speed = (110.0 if weak_lock else (150.0 if weapon == "missile" else 85.0)) if homing else {"kinetic": 320.0, "bomblet": 150.0, "flak": 240.0, "rail": 900.0}.get(weapon, 210.0)
 	# Misses expire just past weapon range instead of crossing the map.
-	var reach: float = from.global_position.distance_to(to.global_position) + 60.0
+	var reach: float = src.distance_to(to.global_position) + 60.0
 	life = minf(life, reach / speed * (2.0 if homing else 1.0))
 	texture = Defs.tex("bolt_" + {"kinetic": "laser", "flak": "laser", "rail": "laser", "proton": "torpedo", "missile": "torpedo", "bomblet": "torpedo"}.get(weapon, weapon))
 	# Bolt art is drawn at Defs.ART_SCALE like the rest of the sprites.
@@ -116,25 +159,26 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 					modulate = Defs.VARIANTS["disruptor"]["color"].lightened(0.1)
 				else:
 					modulate = SLIP_SHOT
-	global_position = from.global_position
+	global_position = src
 	# Target Prediction: aim where a moving target will be when the shot gets
 	# there; without it, at where it is now. Guided shots steer for
 	# themselves and launch straight at the target: led far ahead, a slow
 	# torpedo would start beyond its lock cone and fly off the wrong way.
 	var lead := to.global_position
 	if not homing and Game.instance.has_tech(owner_pid, "target_prediction") and to.get("velocity") is Vector2:
-		lead += to.get("velocity") * (from.global_position.distance_to(to.global_position) / speed)
+		lead += lead_offset(to, src, speed)
 	_vel = (lead - global_position).normalized().rotated(spread) * speed
 	# Evasive warships start jinking when fast rounds come at them.
 	if jink_at != null:
 		jink_at.note_fast_shot(self)
 	rotation = _vel.angle()
+	if DuelStats.on:
+		DuelStats.launched(self, from, to)
 	fired[owner_pid] = int(fired.get(owner_pid, 0)) + 1
 	if free_flight:
-		life = from.global_position.distance_to(to.global_position) * 1.3 / speed
-	# Overkill Awareness: book the shot against its target so the side's
-	# other guns can see it is already covered (Game.is_doomed). Area shots
-	# are left out.
+		life = src.distance_to(to.global_position) * 1.3 / speed
+	# Book the shot against its target so other guns of this side can see it
+	# is already covered (Game.is_doomed). Area shots are left out.
 	elif splash <= 0.0 and Game.instance.has_tech(owner_pid, "overkill_awareness"):
 		_booked = damage * Game.vs_mult(vs_class, to)
 		_booked_tid = to.get_instance_id()
@@ -149,6 +193,8 @@ func _physics_process(delta: float) -> void:
 	life -= delta
 	if life <= 0.0:
 		_unbook()
+		if DuelStats.on:
+			DuelStats.expired(self, is_instance_valid(target) and target.is_alive())
 		if not free_flight and not (is_instance_valid(target) and target.has_method("is_alive") and target.is_alive()):
 			fizzled[owner_pid] = int(fizzled.get(owner_pid, 0)) + 1
 		queue_free()
@@ -201,6 +247,8 @@ func _physics_process(delta: float) -> void:
 				return
 			var hit := damage
 			hit *= Game.vs_mult(vs_class, target)
+			if DuelStats.on:
+				DuelStats.hit(self, hit, target.hp + target.armor + target.shield)
 			_unbook()
 			target.take_damage(hit, shooter if is_instance_valid(shooter) and shooter is SpaceEntity else null, profile)
 			if homing:

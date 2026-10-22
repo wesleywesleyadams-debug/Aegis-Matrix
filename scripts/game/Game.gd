@@ -1634,12 +1634,14 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 		notify("Starbase construction started.", "note_starbase", pos)
 	return sb
 
-func fire(from: Node2D, to: Node2D, weapon: String, damage: float, spread: float = 0.0) -> void:
+## `origin`: where the shot leaves (a turret's muzzle, a corvette's nose);
+## the shooter's centre when left out.
+func fire(from: Node2D, to: Node2D, weapon: String, damage: float, spread: float = 0.0, origin: Vector2 = Vector2.INF) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
-	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"), spread)
+	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"), spread, origin)
 	if not sim_mode:
-		sfx.play_at("laser" if weapon in ["laser", "kinetic", "flak"] else "torpedo", from.global_position, -8.0)   # proton / missile / bomblet: torpedo sound
+		sfx.play_at("laser" if weapon in ["laser", "kinetic", "flak"] else "torpedo", p.global_position, -8.0)   # proton / missile / bomblet: torpedo sound
 
 # ------------------------------------------------- Overkill Awareness
 ## Damage already flying at each target, per firing side:
@@ -4706,6 +4708,9 @@ func _duel() -> void:
 				s.order_attack_move(c - Vector2(dir * 400.0, 0))
 			fleets[i].append(s)
 	var t0 := now()
+	# SL_DUEL_STATS=1: per-class firing statistics (DSTAT lines) at the end.
+	DuelStats.on = OS.get_environment("SL_DUEL_STATS") != ""
+	DuelStats.t0 = t0
 	# SL_DUEL_SHOT=<seconds>: save user://shot.png of the fight, zoomed to fit the arena.
 	if OS.get_environment("SL_DUEL_SHOT") != "":
 		get_tree().create_timer(float(OS.get_environment("SL_DUEL_SHOT"))).timeout.connect(func():
@@ -4740,6 +4745,8 @@ func _duel() -> void:
 	while true:
 		await get_tree().create_timer(0.5).timeout
 		var alive := [fleets[0].filter(func(x): return is_instance_valid(x) and x.is_alive()), fleets[1].filter(func(x): return is_instance_valid(x) and x.is_alive())]
+		if DuelStats.on:
+			DuelStats.sample(alive[0] + alive[1], 0.5)
 		# Part-way result every 30 s, so a duel cut off early still says who was ahead.
 		if now() - t0 >= next_report:
 			next_report += 30.0
@@ -4770,6 +4777,8 @@ func _duel() -> void:
 					mx += _duel_tough(s, true)
 				line += "%s wins with %d/%d ships, %d%% of their toughness left, in %ds" % [specs[w], alive[w].size(), fleets[w].size(), int(100.0 * hp / maxf(mx, 1.0)), int(now() - t0)]
 			print(line)
+			if DuelStats.on:
+				DuelStats.report()
 			# Shots that ran out of life with their target already dead
 			# (overkill), per side.
 			print("DUEL_FIZZLE %s %d/%d | %s %d/%d" % [specs[0], Projectile.fizzled.get(1, 0), Projectile.fired.get(1, 0), specs[1], Projectile.fizzled.get(2, 0), Projectile.fired.get(2, 0)])
