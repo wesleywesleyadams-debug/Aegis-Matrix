@@ -530,11 +530,11 @@ const TECHS := {
 
 	# --- Defense: the Deflectors line (id "deflectors"), soaking damage before the layers see it.
 	"glance_plates": {"name": "Glance Plates", "group": "defense", "line": "deflectors", "tier": 1, "requires": [], "cost": {"spice": 40}, "time": 160.0,
-		"effects": {"damage_taken": 0.06}, "desc": "-6% damage taken: ships, constructs and worlds."},
+		"effects": {"damage_taken": 0.06}, "desc": "-6% damage taken: ships and constructs."},
 	"graviton_shunts": {"name": "Graviton Shunts", "group": "defense", "line": "deflectors", "tier": 2, "requires": ["glance_plates"], "cost": {"spice": 120}, "time": 240.0,
-		"effects": {"damage_taken": 0.07}, "desc": "-7% damage taken: ships, constructs and worlds."},
+		"effects": {"damage_taken": 0.07}, "desc": "-7% damage taken: ships and constructs."},
 	"iron_umbrella": {"name": "Iron Umbrella", "group": "defense", "line": "deflectors", "tier": 3, "requires": ["graviton_shunts"], "cost": {"spice": 360}, "time": 310.0,
-		"effects": {"damage_taken": 0.11}, "desc": "-11% damage taken: ships, constructs and worlds."},
+		"effects": {"damage_taken": 0.11}, "desc": "-11% damage taken: ships and constructs."},
 
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 60.0,
@@ -576,11 +576,11 @@ const TECHS := {
 	# is three tiers of big, expensive upgrades for every ship and starbase,
 	# so which layer to invest in is a real strategic choice.
 	"phase_shields": {"name": "Phase Shields", "group": "defense", "line": "shields", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
-		"effects": {"shield_total": 0.07, "world_shield": 0.20}, "desc": "+7% of total HP as shields; worlds +20%."},
+		"effects": {"shield_total": 0.07}, "desc": "+7% of total HP as shields on ships and constructs."},
 	"crystal_prisms": {"name": "Crystal Prisms", "group": "defense", "line": "shields", "tier": 2, "requires": ["phase_shields"], "cost": {"spice": 90}, "time": 180.0,
-		"effects": {"shield_total": 0.08, "world_shield": 0.25}, "desc": "+8% of total HP as shields; worlds +25%."},
+		"effects": {"shield_total": 0.08}, "desc": "+8% of total HP as shields on ships and constructs."},
 	"aegis_matrix": {"name": "Aegis Matrix", "group": "defense", "line": "shields", "tier": 3, "requires": ["crystal_prisms"], "cost": {"spice": 300}, "time": 260.0,
-		"effects": {"shield_total": 0.15, "world_shield": 0.45}, "desc": "+15% of total HP as shields; worlds +45%."},
+		"effects": {"shield_total": 0.15}, "desc": "+15% of total HP as shields on ships and constructs."},
 	"composite_plating": {"name": "Composite Plating", "group": "defense", "line": "armor", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
 		"effects": {"armor_total": 0.07}, "desc": "+7% of total HP as armor: ships and constructs."},
 	"reactive_armor": {"name": "Reactive Armor", "group": "defense", "line": "armor", "tier": 2, "requires": ["composite_plating"], "cost": {"spice": 90}, "time": 180.0,

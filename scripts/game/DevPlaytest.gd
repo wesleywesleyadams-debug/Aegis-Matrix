@@ -848,7 +848,7 @@ func _outs(hp: Planet) -> Dictionary:
 		"farm_food": Defs.BUILDINGS["farm"]["output"]["food"] * hands * hp.power_factor("farm"),
 		"mine_minerals": Defs.BUILDINGS["mine"]["output"]["minerals"] * hands * hp.power_factor("mine"),
 		"extractor_spice": Defs.BUILDINGS["spice_extractor"]["output"]["spice"] * hands * hp.power_factor("spice_extractor"),
-		"battery_shield_bonus": hp.max_shield() / (g.mod(hp.owner_id, "world_shield") * g.mod(hp.owner_id, "planet_shield")) - Planet.PLANET_SHIELD,
+		"battery_shield_bonus": hp.max_shield() / g.mod(hp.owner_id, "planet_shield") - Planet.PLANET_SHIELD,
 		"battery_fire_rate": Defs.BATTERY["cooldown"] / (Defs.BATTERY["cooldown"] / hp.power_factor("battery")),
 		"habitat_output_bonus": ceiling_bonus,
 		"live_food_made": hp.food_made_per_min, "live_minerals_out": hp.minerals_out, "live_spice_out": hp.spice_out}

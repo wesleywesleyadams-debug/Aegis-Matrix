@@ -390,7 +390,7 @@ func max_shield() -> float:
 	# Each Defense Battery thickens the planetary shield.
 	# Low power in a Blackout: the batteries' shield bonus drops to 25%.
 	var nb := count_building("battery") * power_factor("battery")
-	return (PLANET_SHIELD + nb * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "world_shield") * Game.instance.mod(owner_id, "planet_shield")
+	return (PLANET_SHIELD + nb * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "planet_shield")
 
 func is_alive() -> bool:
 	return owner_id != 0 and pop > 0.0 and is_inside_tree()
@@ -414,9 +414,8 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	var g := Game.instance
 	if is_instance_valid(from) and from.get("owner_id") != null:
 		g.note_attack(owner_id, int(from.get("owner_id")))
-	# Deflectors (Defense) soak a slice of every hit on a world too, before
-	# the planetary shield, exactly as for ships and constructs.
-	amount *= maxf(0.1, 2.0 - g.mod(owner_id, "damage_taken"))
+	# Defense techs (Deflectors, layer lines) guard ships and constructs only;
+	# world defense comes from the Worlds tab.
 	# A Radiation Sail Array's bubble soaks fire on worlds inside it too.
 	amount = Abilities.sail_absorb(self, amount, from)
 	if amount <= 0.0:
