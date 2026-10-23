@@ -65,6 +65,16 @@ static func warm_up() -> void:
 	var dir := _cache_dir()
 	_warm_task = WorkerThreadPool.add_task(_warm_all.bind(dir), false, "TechIcons.warm_up")
 
+## How far warm_up() has got, 0..1 (1 when it never started, e.g. headless),
+## for the boot screen's progress bar.
+static func warm_progress() -> float:
+	if _warm_task < 0:
+		return 1.0
+	_mutex.lock()
+	var n := _painted.size()
+	_mutex.unlock()
+	return clampf(float(n) / maxf(1.0, Defs.TECHS.size()), 0.0, 1.0)
+
 ## Painted icons are also kept on disk under a key made from the painting
 ## code and the tech table, so later launches just read them back; any
 ## change to the art (or to the techs) gives a new key and repaints.
