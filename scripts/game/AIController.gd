@@ -12,6 +12,16 @@ var _state := {}
 ## Per-player state restored from a save (set before setup()).
 var saved_state := {}
 
+
+# ======================================================================
+# COORDINATOR
+# ======================================================================
+# Runs each side once a second: builds the shared Ctx, then calls the
+# protocols in a fixed order (situation -> research -> production ->
+# economy -> construction -> preservation -> defense -> military). A protocol
+# that takes ships (defense, preservation, gates) runs before the ones that
+# would otherwise give them other orders.
+
 func setup(ai_players: Array) -> void:
 	for pid in ai_players:
 		players.append(pid)
@@ -221,34 +231,314 @@ func _debug_log(cx: Ctx) -> void:
 			print("AIBUD   P%d target (%d,%d) winnable=%s states=%s planet=%s owner=%d pop=%d shield=%d" % [pid, ct.x, ct.y, str(st.get("commit_winnable", true)), str(hist),
 				tp.planet_name if tp else "-", tp.owner_id if tp else -1, tp.pop if tp else 0, tp.shield if tp else 0])
 
-## RESEARCH protocol: research never idles; Mods only for fielded classes
-## and the one intel says fits; otherwise _pick_tech scores by group.
-func _research_protocol(cx: Ctx) -> void:
-	var pid: int = cx.pid
-	var st: Dictionary = cx.st
-	var game: Game = cx.game
-	var res: Dictionary = cx.res
-	var war: Array = cx.war
-	var all_war: Array = cx.all_war
-	var nn = cx.nn
-	# Research never idles: the moment a project ends the next one starts
-	# (the AI thinks every second; one project runs at a time).
-	# (The learning agent picks its own research.)
-	if not (st.get("nn") is RLAgent) and game.research[pid].is_empty() and game.research_queue[pid].is_empty():
-		# Mods: one per class, only for a class it fields, and only the one its
-		# intel says fits (see _pick_mod). It never swaps a Mod once chosen.
-		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available" 			and (not Defs.TECHS[t].has("mod") or _mod_wanted(pid, game, t, war)))
-		# Prefer techs it can pay for now; fall back to anything available.
-		var payable := options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
-		if not payable.is_empty():
-			options = payable
-		if not options.is_empty():
-			var tech := _pick_tech(options, all_war.size())
-			game.queue_research(pid, tech)
-			if Defs.TECHS[tech].has("mod"):
-				_flog(pid, "counter: research %s (seen %s)" % [tech, _mix_text(st.get("mix", {}))])
-			if Defs.TECHS[tech].get("group", "") == "constructs":
-				_flog(pid, "research %s" % tech)
+func _nearest_planet(from: Vector2, game: Game, filter: Callable) -> Planet:
+	var best: Planet = null
+	var best_d := INF
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if filter.call(p):
+			var d := from.distance_to(p.global_position)
+			if d < best_d:
+				best_d = d
+				best = p
+	return best
+
+func _count_type(ships: Array, base: Starbase, t: String) -> int:
+	return ships.filter(func(s): return s.ship_type == t).size() + base.queue.count(t)
+
+func _count_role(ships: Array, base: Starbase, role: String) -> int:
+	var q := 0
+	for t in base.queue:
+		if Defs.SHIPS[t]["role"] == role:
+			q += 1
+	return ships.filter(func(s): return s.def["role"] == role).size() + q
+
+## Systems where a Radiation Sail Array earns its keep: a spice nebula or twin suns.
+func _hazardous(game: Game) -> bool:
+	if not game.nebula_list.is_empty():
+		return true
+	return game.stars_list.any(func(s): return s.orbit_radius > 0.0)
+
+## A gas giant or world counting down to its blast: every ship of ours inside
+## it (plus a margin) runs straight out, whatever it was doing. Called after
+## the rest of the AI's orders so nothing sends it back in. Stations can't move.
+func _flee_blasts(pid: int, game: Game) -> void:
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.doom_timer < 0.0:
+			continue
+		var r: float = p.blast_radius() + 120.0
+		for s in game.get_tree().get_nodes_in_group("ships"):
+			if s.owner_id != pid or not s.is_alive() or s.docked or s.warping:
+				continue
+			var off: Vector2 = s.global_position - p.global_position
+			if off.length() < r:
+				var out: Vector2 = p.global_position + (off.normalized() if off.length() > 1.0 else Vector2.RIGHT) * (r + 60.0)
+				if s.move_goal.distance_to(out) > 40.0 or s.state != Ship.State.MOVE:
+					s.order_move(out)
+
+# Frontier Outposts hold exposed ground (worlds, stations and worked belts far
+# from any starbase, on the side facing the enemy); a Warp Gate near home
+# garrisons the idle fleet and flings it at a target it has seen and can
+# beat, or at its own territory under attack. Same costs, sites and
+# information (its own Vision) as a player.
+
+## Seconds between outpost orders, and the most it keeps at once.
+const OUTPOST_EVERY := 150.0
+
+const OUTPOST_MAX := 4
+
+## A world / station / belt this far from every own starbase is "exposed".
+const EXPOSED := 900.0
+
+## Warships in a gate before it warps them at a target.
+const GATE_WAVE := 5
+
+## The longest ships wait in a gate with nothing to warp at, and how long
+## they then stay out before the gate takes them again.
+const GATE_HOLD := 120.0
+
+const GATE_REST := 60.0
+
+## Where a warped wave lands: this far short of its target, outside its guns.
+const WARP_STANDOFF := 650.0
+
+## SL_AI_FORTS_LOG=1: one "AIFORT" line per outpost / gate decision.
+func _flog(pid: int, msg: String) -> void:
+	if OS.get_environment("SL_AI_FORTS_LOG") != "":
+		print("AIFORT t=%d P%d %s" % [int(Game.now()), pid, msg])
+
+
+# ======================================================================
+# INTEL / SCOUTING
+# ======================================================================
+# What this side knows: its own Vision only (sensors + memory), never hidden
+# state. One Scout explores then patrols; enemy mix, builders and holdings
+# are remembered with decay.
+
+## Where to look for hidden enemies: the nearest world that isn't ours or an
+## ally's and isn't in sight right now (its owner may have changed since we
+## last looked). INF if every world is in view.
+func _scout_target(pid: int, from: Vector2, game: Game, v: Vision) -> Vector2:
+	var best := Vector2.INF
+	var best_d := INF
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		var ko: int = v.known_owner(p)
+		if ko != 0 and game.are_allies(pid, ko):
+			continue
+		if v.is_visible_at(p.global_position):
+			continue
+		var d := from.distance_to(p.global_position)
+		if d < best_d:
+			best_d = d
+			best = p.global_position
+	return best
+
+## A planet this player knows to be free (seen unclaimed); without fog, any
+## unclaimed planet.
+func _known_free(pid: int, p: Planet, game: Game) -> bool:
+	var v: Vision = game.visions.get(pid)
+	if v:
+		return v.known_owner(p) == 0
+	return p.owner_id == 0
+
+## Scouting: one ship (a Scout, else the fastest warship) explores until the
+## whole system is known, then patrols it for good (only with fog of war).
+const SCOUT_UNTIL := 0.98   # "the whole system" (a few cells sit in rock fields/behind the star)
+
+func _scout(pid: int, st: Dictionary, game: Game, war: Array) -> void:
+	var v: Vision = game.visions.get(pid)
+	if v == null or war.is_empty() or Game.now() < st.get("next_scout", 0.0):
+		return
+	st["next_scout"] = Game.now() + 5.0
+	# (Untyped until checked: the old scout may have been destroyed.)
+	var old = st.get("scout")
+	var sc: Ship = old if is_instance_valid(old) else null
+	if sc == null or not sc.is_alive():
+		# A Scout if we have one, else the fastest warship (corvettes).
+		var pick: Array = war.filter(func(s): return s.def["role"] == "scout")
+		if pick.is_empty():
+			pick = war.duplicate()
+			pick.sort_custom(func(a, b): return a.def["speed"] > b.def["speed"])
+		sc = pick[0]
+		st["scout"] = sc
+	var arrived: bool = sc.state == Ship.State.IDLE or sc.global_position.distance_to(sc.move_goal) < 60.0
+	if v.explored_fraction() < SCOUT_UNTIL:
+		# First uncover the whole system.
+		if arrived or v.is_explored_at(sc.move_goal):
+			sc.order_move(v.nearest_unexplored(sc.global_position))
+	elif arrived:
+		# Then patrol for good: round the system world by world, skipping
+		# ours, allies' and any already in sight, so news of the enemy
+		# (fleets, new colonies) stays current.
+		var worlds: Array = game.get_tree().get_nodes_in_group("planets").filter(func(p): return not (v.known_owner(p) > 0 and game.are_allies(pid, v.known_owner(p))))
+		worlds.sort_custom(func(a, b): return a.global_position.angle() < b.global_position.angle())
+		if worlds.is_empty():
+			return
+		var i: int = st.get("patrol_i", 0)
+		for k in worlds.size():
+			var w: Node2D = worlds[(i + k) % worlds.size()]
+			if not v.is_visible_at(w.global_position) or k == worlds.size() - 1:
+				st["patrol_i"] = (i + k + 1) % worlds.size()
+				sc.order_move(w.global_position + Vector2.from_angle(randf() * TAU) * 220.0)
+				break
+
+## The matchup side our `cls` ships fight as right now (its active Mod).
+func _our_side(pid: int, game: Game, cls: String) -> int:
+	var slot: int = SIDE_MODS.get(cls, []).find(game.active_mod(pid, cls))
+	return _side_index(cls, maxi(slot, 0))
+
+## The enemy fleet mix as this side remembers it: {side index: weight}.
+## Each warship seen counts 1, halving every MIX_HALF_LIFE since last seen;
+## one seen destroyed (gone from where it was, see Vision) is dropped.
+func _enemy_mix(pid: int, st: Dictionary, game: Game) -> Dictionary:
+	var v: Vision = game.visions.get(pid)
+	var mem: Dictionary = st.get("mix_mem", {})
+	var now := Game.now()
+	if v:
+		for id in v.sightings:
+			var sg: Array = v.sightings[id]
+			if sg.size() < 6:
+				continue
+			var cls := str(sg[4])
+			var slot: int = SEEN_WEAPON_SLOT.get(cls, {}).get(str(sg[5]), 0)
+			mem[id] = [_side_index(cls, slot), float(sg[0]), sg[3]]
+		for id in mem.keys():
+			# Vision forgets a ship after a while, or at once when seen gone:
+			# inside its memory window, a missing one was seen destroyed.
+			if not v.sightings.has(id) and now - float(mem[id][1]) < Vision.SIGHTING_MEMORY - 1.0:
+				mem.erase(id)
+			elif now - float(mem[id][1]) > MIX_HALF_LIFE * 5.0:
+				mem.erase(id)
+	st["mix_mem"] = mem
+	var mix := {}
+	for id in mem:
+		var i: int = mem[id][0]
+		if i >= 0:
+			mix[i] = mix.get(i, 0.0) + pow(0.5, (now - float(mem[id][1])) / MIX_HALF_LIFE)
+	return mix
+
+## Short text of the mix's top sides (logs).
+func _mix_text(mix: Dictionary) -> String:
+	var keys := mix.keys()
+	keys.sort_custom(func(a, b): return mix[a] > mix[b])
+	var parts := []
+	for k in keys.slice(0, 4):
+		var cls: String = SIDE_CLASSES[int(k) / 4]
+		var m: String = SIDE_MODS[cls][int(k) % 4]
+		parts.append("%s%s:%.1f" % [cls, "" if m == "" else "/" + m.trim_prefix("mod_"), mix[k]])
+	return ",".join(parts)
+
+## Each rethink: refresh the mix, and switch researched Mods off (back to
+## lasers) where the laser does clearly better against it, on again where
+## the Mod does.
+func _counter_update(pid: int, st: Dictionary, game: Game) -> void:
+	var mix := _enemy_mix(pid, st, game)
+	st["mix"] = mix
+	if _mix_weight(mix) < MIX_MIN:
+		return
+	for cls in SIDE_CLASSES:
+		for slot in range(1, 4):
+			var m: String = SIDE_MODS[cls][slot]
+			if not game.has_tech(pid, m):
+				continue
+			var off: bool = game.mods_disabled.get(pid, {}).has(m)
+			var with_mod := _side_score(_side_index(cls, slot), mix)
+			var laser := _side_score(_side_index(cls, 0), mix)
+			if (not off and laser > with_mod + 0.25) or (off and with_mod > laser + 0.1):
+				game.toggle_mod(pid, m)
+				_flog(pid, "counter: %s %s %s (mod %.2f vs laser %.2f; seen %s)" % [cls, m, "OFF" if not off else "ON", with_mod, laser, _mix_text(mix)])
+
+## Enemy warships seen within `r` of `pos` in the last `secs` seconds.
+func _enemy_seen_near(v: Vision, pos: Vector2, r: float, secs: float) -> bool:
+	var now := Game.now()
+	for id in v.sightings:
+		var sg: Array = v.sightings[id]
+		if now - sg[0] < secs and pos.distance_to(sg[2]) < r:
+			return true
+	return false
+
+## No commitment before this (game seconds), with fewer warships than
+## COMMIT_MIN, or unless this much stronger than everything known.
+const COMMIT_AFTER := 600.0
+
+const COMMIT_MIN := 8
+
+const COMMIT_EDGE := 1.3
+
+## Committed: stay in until strength falls below this share of the enemy's.
+const COMMIT_DROP := 0.7
+
+## How much a known enemy construct's hull counts toward enemy strength.
+const COMMIT_CONSTRUCT_SHARE := 0.25
+
+## The most starbases' worth of known constructs counted toward that.
+const COMMIT_CONSTRUCT_CAP := 2.0
+
+## Ships within this of the target are "at the front".
+const FRONT := 1400.0
+
+## A committed army that can't yet take its target waits this far short of it.
+const STAGE_BACK := 900.0
+
+## Hull + armor + shield of the enemy starbases and outposts this player has seen.
+func _known_constructs(pid: int, game: Game, v: Vision) -> float:
+	var t := 0.0
+	var sbt: float = Defs.STARBASE["hp"] + Defs.STARBASE["armor"] + Defs.STARBASE["shield"]
+	if v:
+		for sb in v.seen_bases:
+			t += sbt * float(v.seen_bases[sb][1])
+		for f in v.seen_forts:
+			t += (Defs.FRONTIER_OUTPOST["hp"] + Defs.FRONTIER_OUTPOST["armor"] + Defs.FRONTIER_OUTPOST["shield"]) * float(v.seen_forts[f][1])
+	else:
+		for sb in game.get_tree().get_nodes_in_group("starbases"):
+			if game.is_hostile(pid, sb.owner_id):
+				t += sb.hp + sb.armor + sb.shield
+	return t
+
+## Enemy Constructors in sight are remembered (where, when) for a minute:
+## with the enemy's yards gone they are what keeps it in the game.
+func _note_builders(pid: int, st: Dictionary, game: Game, v: Vision) -> void:
+	var mem: Dictionary = st.get("seen_builders", {})
+	for s in game.get_tree().get_nodes_in_group("ships"):
+		if game.is_hostile(pid, s.owner_id) and s.is_alive() and s.def["role"] == "constructor" and (v == null or v.can_see(s)):
+			mem[s.get_instance_id()] = [s.global_position, Game.now()]
+	for id in mem.keys():
+		var gone: bool = v != null and v.is_visible_at(mem[id][0]) and _visible_builder(pid, id, Game.instance, v) == null
+		if Game.now() - float(mem[id][1]) > 60.0 or gone:
+			mem.erase(id)
+	st["seen_builders"] = mem
+
+## An enemy Constructor we can see right now, as a node (null if not).
+func _visible_builder(_pid: int, id: int, _game: Game, v: Vision) -> Ship:
+	if id == 0 or not is_instance_id_valid(id):
+		return null
+	var s = instance_from_id(id)
+	if s is Ship and s.is_alive() and (v == null or v.can_see(s)):
+		return s
+	return null
+
+## Enemy starbases and worlds this player knows of (its own Vision).
+func _enemy_spots(pid: int, game: Game, v: Vision) -> Array:
+	var spots: Array = []
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		var o: int = v.known_owner(p) if v else p.owner_id
+		if o > 0 and o != pid and game.is_hostile(pid, o):
+			spots.append(p.global_position)
+	if v:
+		for sb in v.seen_bases:
+			spots.append(v.seen_bases[sb][0])
+	else:
+		for sb in game.get_tree().get_nodes_in_group("starbases"):
+			if game.is_hostile(pid, sb.owner_id):
+				spots.append(sb.global_position)
+	return spots
+
+
+# ======================================================================
+# PRODUCTION
+# ======================================================================
+# What the yards build: support hulls, warship class / variant / Mod by
+# counter-value against the seen enemy mix, extra yards and stations, the
+# savings reserve, and the upkeep brake.
 
 ## PRODUCTION protocol (home yard): the support hulls and warships the
 ## home starbase queues, in priority order.
@@ -300,6 +590,533 @@ func _production_home_yard(cx: Ctx) -> void:
 			var pick := _pick_warship(pid, game, st)
 			if pick != "" and _spare(pid, st, game, "minerals") >= Defs.SHIPS[pick]["cost"]["minerals"] * 0.5:
 				base.enqueue(pick)
+
+func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
+	# Any class it has unlocked, with no caps. The richer it is, the more it
+	# leans to big hulls, which turn a stockpile into strength fastest.
+	var options: Array[String] = ["corvette", "corvette", "destroyer", "destroyer", "cruiser", "carrier"]
+	if float(game.resources[pid]["minerals"]) > SPARE_MINERALS * 2.0:
+		options.append_array(["cruiser", "carrier", "carrier"])
+	options.shuffle()
+	# Upkeep is multiplied empire-wide per unit, so once the multiplier is
+	# high, one big hull adds far less upkeep per point of strength than a
+	# handful of small ones: biggest first then.
+	if game.upkeep_multiplier(pid) >= BIG_HULLS_MULT:
+		options = ["carrier", "cruiser", "destroyer", "corvette"]
+	# Counter-picking: once enough of the enemy fleet has been seen, order
+	# the classes by how they fare against it (see _class_order).
+	var counter := _class_order(pid, game, st)
+	if not counter.is_empty():
+		options = counter
+	var sb := game.nearest_starbase(pid, Vector2.ZERO)
+	var res: Dictionary = game.resources[pid]
+	var capped := true
+	# Spice already promised to hulls queued in every yard.
+	var spice_owed := 0.0
+	for b in game.get_tree().get_nodes_in_group("starbases"):
+		if b.owner_id == pid:
+			for q in b.queue:
+				spice_owed += float(Defs.SHIPS[q]["cost"].get("spice", 0))
+	for t in options:
+		# The only brake on spending: energy income must cover the upkeep this
+		# hull adds (its own plus the multiplier it puts on everything else).
+		if not _upkeep_fits(pid, game, Defs.SHIPS[t]["upkeep"], Defs.UPKEEP_WEIGHT.get(t, Defs.UPKEEP_WEIGHT_SMALL)):
+			continue
+		capped = false
+		if st.get("corvettes_only", false) and Defs.SHIPS[t].get("base", t) != "corvette":
+			continue
+		# Recently cancelled for stalling: give it a minute.
+		if Game.now() < st.get("blocked", {}).get(t, -1.0):
+			continue
+		# A hull whose spice we can't pay stalls the whole queue: skip it.
+		if Defs.SHIPS[t]["cost"].get("spice", 0) > 0 and res["spice"] - spice_owed < Defs.SHIPS[t]["cost"].get("spice", 0) * 1.1:
+			continue
+		if sb.can_queue(t) == "":
+			st["upkeep_capped"] = false
+			return t
+	st["upkeep_capped"] = capped
+	return ""
+
+func _front_needs_spice(base: Starbase) -> bool:
+	return not base.queue.is_empty() and Defs.SHIPS[base.queue[0]]["cost"].has("spice")
+
+## Cancel builds that have been stuck waiting on resources: the starbase's
+## front item after STALL_CANCEL seconds (and don't requeue that type for a
+## minute), planet constructions after PLANET_STALL_CANCEL. Refunds follow
+## the usual cancel rules.
+const STALL_CANCEL := 12.0
+
+const PLANET_STALL_CANCEL := 20.0
+
+func _manage_queues(pid: int, st: Dictionary, game: Game, base: Starbase) -> void:
+	if base.build_stalled and not base.queue.is_empty():
+		st["stall"] = st.get("stall", 0.0) + 1.0
+		if st["stall"] >= STALL_CANCEL:
+			var t: String = base.queue[0]
+			if not st.has("blocked"):
+				st["blocked"] = {}
+			st["blocked"][t] = Game.now() + 60.0
+			base.cancel(0)
+			st["stall"] = 0.0
+	else:
+		st["stall"] = 0.0
+	# The other yards likewise (a hull stalled on spice there blocked that
+	# yard for good, with minerals piling up behind it).
+	if not st.has("ystall"):
+		st["ystall"] = {}
+	for b in game.get_tree().get_nodes_in_group("starbases"):
+		if b == base or b.owner_id != pid:
+			continue
+		var yk := str(b.get_instance_id())
+		if b.build_stalled and not b.queue.is_empty():
+			st["ystall"][yk] = st["ystall"].get(yk, 0.0) + 1.0
+			if st["ystall"][yk] >= STALL_CANCEL:
+				if not st.has("blocked"):
+					st["blocked"] = {}
+				st["blocked"][b.queue[0]] = Game.now() + 60.0
+				b.cancel(0)
+				st["ystall"][yk] = 0.0
+		else:
+			st["ystall"][yk] = 0.0
+	if not st.has("pstall"):
+		st["pstall"] = {}
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.owner_id != pid or p.construction.is_empty():
+			continue
+		var key := String(p.name)
+		if p.construction_stalled:
+			st["pstall"][key] = st["pstall"].get(key, 0.0) + 1.0
+			if st["pstall"][key] >= PLANET_STALL_CANCEL:
+				p.cancel_build(p.construction["field"])
+				st["pstall"][key] = 0.0
+		else:
+			st["pstall"][key] = 0.0
+
+## The corvette variant that best fits the enemy defenses seen so far (see
+## Defs.VARIANTS), or "" when we haven't seen enough of their fleet.
+## Whether to research Mod `t` now: the class is fielded (2+ hulls), has no
+## Mod yet (none researched or in progress), and `t` is the one that fits.
+func _mod_wanted(pid: int, game: Game, t: String, war: Array) -> bool:
+	var cls: String = Defs.TECHS[t]["mod"]
+	if war.filter(func(s): return s.def.get("base", s.ship_type) == cls).size() < 2:
+		return false
+	for id in Defs.TECHS:
+		if Defs.TECHS[id].get("mod", "") == cls and game.tech_state(pid, id) in ["done", "active", "queued"]:
+			return false
+	return _pick_mod(pid, game, cls) == t
+
+## The Mod for `cls` that suits the enemy warships this player has seen
+## lately (its own sightings only - no cheating): big hulls, swarms of
+## corvettes, or missile/torpedo/drone users each call for a different one.
+func _pick_mod(pid: int, game: Game, cls: String) -> String:
+	var v: Vision = game.visions.get(pid)
+	var n := 0
+	var small := 0
+	var big := 0
+	var ordnance := 0
+	if v:
+		for id in v.sightings:
+			var sg: Array = v.sightings[id]
+			if sg.size() < 6:
+				continue
+			n += 1
+			if sg[4] == "corvette":
+				small += 1
+			elif sg[4] in ["cruiser", "carrier"]:
+				big += 1
+			if sg[5] in ["proton", "missile", "bomblet", "drones"]:
+				ordnance += 1
+	# Enough seen: the Mod whose measured duels go best against the mix.
+	var mix: Dictionary = _state.get(pid, {}).get("mix", {})
+	if _mix_weight(mix) >= MIX_MIN and SIDE_MODS.has(cls):
+		var best := ""
+		var best_sc := -INF
+		for slot in range(1, 4):
+			var sc := _side_score(_side_index(cls, slot), mix)
+			if sc > best_sc:
+				best_sc = sc
+				best = SIDE_MODS[cls][slot]
+		return best
+	var fs := float(small) / maxf(n, 1)
+	var fb := float(big) / maxf(n, 1)
+	var fo := float(ordnance) / maxf(n, 1)
+	var seen := n >= 3
+	match cls:
+		"corvette":
+			return "mod_proton_torpedoes" if seen and fb >= 0.35 else ("mod_arc_emitters" if seen and fs >= 0.5 else "mod_kinetic_repeaters")
+		"destroyer":
+			return "mod_flak_cannons" if seen and fs >= 0.5 else ("mod_cluster_bombs" if seen and fb >= 0.35 else "mod_homing_missiles")
+		"cruiser":
+			return "mod_point_defense_lattice" if seen and fo >= 0.3 else ("mod_ion_lance" if seen and fb >= 0.35 else "mod_rail_cannons")
+		"carrier":
+			return "mod_interceptor_drones" if seen and fs >= 0.5 else ("mod_missile_barrage" if seen and fb >= 0.35 else "mod_tractor_beams")
+	return ""
+
+func _pick_variant(pid: int, game: Game) -> String:
+	# For every enemy warship remembered (decaying with time since seen; its
+	# defense layers as seen), how much base damage each variant needs to
+	# destroy it relative to a generalist (Defs.kill_ratio), weighted by its
+	# toughness; the variant with the lowest total, if clearly better.
+	var mem: Dictionary = _state.get(pid, {}).get("mix_mem", {})
+	if mem.size() < 3:
+		return ""
+	var now := Game.now()
+	var tot := 0.0
+	var by := {}
+	for id in mem:
+		var l = mem[id][2]
+		if not (l is Vector3):
+			continue
+		var w: float = pow(0.5, (now - float(mem[id][1])) / MIX_HALF_LIFE) * (l.x + l.y + l.z)
+		tot += w
+		var tgt := {"shield": l.x, "armor": l.y, "hp": l.z}
+		for vid in Defs.VARIANTS:
+			by[vid] = by.get(vid, 0.0) + w * Defs.kill_ratio(tgt, vid)
+	if tot <= 0.0:
+		return ""
+	var best := ""
+	var best_r := 0.93
+	for vid in by:
+		var r: float = by[vid] / tot
+		if r < best_r:
+			best_r = r
+			best = vid
+	var st: Dictionary = _state.get(pid, {})
+	if best != st.get("last_variant", "") and best != "":
+		st["last_variant"] = best
+		_flog(pid, "counter: depot variant %s (kill cost x%.2f of a generalist; seen %s)" % [best, best_r, _mix_text(st.get("mix", {}))])
+	return best
+
+# What it builds, which Mod each class carries (research and on/off) and
+# which variant its depot fits follow the enemy warships it has SEEN (its
+# own Vision, remembered with decay), scored with the measured side-vs-side
+# duel results in data/matchups.json. Before contact: the defaults.
+
+## data/matchups.json sides, in order: class, then its laser and three Mods.
+const SIDE_CLASSES := ["corvette", "destroyer", "cruiser", "carrier"]
+
+const SIDE_MODS := {
+	"corvette": ["", "mod_kinetic_repeaters", "mod_arc_emitters", "mod_proton_torpedoes"],
+	"destroyer": ["", "mod_flak_cannons", "mod_cluster_bombs", "mod_homing_missiles"],
+	"cruiser": ["", "mod_ion_lance", "mod_rail_cannons", "mod_point_defense_lattice"],
+	"carrier": ["", "mod_interceptor_drones", "mod_tractor_beams", "mod_missile_barrage"],
+}
+
+## What a Mod's ships visibly fire (Vision sightings): weapon -> slot in SIDE_MODS.
+## Point-Defense and Tractor Beams look like lasers from outside.
+const SEEN_WEAPON_SLOT := {
+	"corvette": {"kinetic": 1, "arc": 2, "proton": 3},
+	"destroyer": {"flak": 1, "bomblet": 2, "missile": 3},
+	"cruiser": {"beam": 1, "rail": 2},
+	"carrier": {"drones": 1, "missile": 3},
+}
+
+## Seconds over which a remembered enemy warship's weight halves.
+const MIX_HALF_LIFE := 360.0
+
+## Seen-weight needed before it counter-picks at all.
+const MIX_MIN := 3.0
+
+static var _matchups: Array = []
+
+static func _weights() -> Array:
+	if _matchups.is_empty():
+		var f := FileAccess.open("res://data/matchups.json", FileAccess.READ)
+		if f:
+			var d = JSON.parse_string(f.get_as_text())
+			if d is Dictionary and d.has("weights"):
+				_matchups = d["weights"]
+		if _matchups.is_empty():
+			_matchups = [[]]
+	return _matchups
+
+static func _side_index(cls: String, slot: int) -> int:
+	var c := SIDE_CLASSES.find(cls)
+	return -1 if c < 0 else c * 4 + slot
+
+## How side `side` fares against the mix: weighted mean duel weight, -1..1.
+func _side_score(side: int, mix: Dictionary) -> float:
+	var w: Array = _weights()
+	if side < 0 or side >= w.size():
+		return 0.0
+	var tot := 0.0
+	var acc := 0.0
+	for j in mix:
+		var x = w[side][j] if j < w[side].size() else null
+		tot += mix[j]
+		acc += mix[j] * (float(x) if x != null else 0.0)
+	return acc / tot if tot > 0.0 else 0.0
+
+static func _mix_weight(mix: Dictionary) -> float:
+	var t := 0.0
+	for j in mix:
+		t += mix[j]
+	return t
+
+## Classes in the order to build them against the enemy mix seen (best
+## first, by duel weight with a little noise and, under a high upkeep
+## multiplier, a lean to big hulls); hard-countered classes dropped while
+## anything decent is unlocked. Empty before enough contact.
+func _class_order(pid: int, game: Game, st: Dictionary) -> Array[String]:
+	var mix: Dictionary = st.get("mix", {})
+	var out: Array[String] = []
+	if _mix_weight(mix) < MIX_MIN:
+		return out
+	var scored := []
+	var big := game.upkeep_multiplier(pid) >= BIG_HULLS_MULT
+	for i in SIDE_CLASSES.size():
+		var cls: String = SIDE_CLASSES[i]
+		if Defs.SHIPS[cls].has("requires") and not game.has_tech(pid, str(Defs.SHIPS[cls]["requires"])):
+			continue
+		var sc := _side_score(_our_side(pid, game, cls), mix)
+		# A Mod it could still pick for this class lifts it a little.
+		if game.active_mod(pid, cls) == "":
+			var best_mod := sc
+			for slot in range(1, 4):
+				best_mod = maxf(best_mod, _side_score(_side_index(cls, slot), mix))
+			sc = sc * 0.7 + best_mod * 0.3
+		scored.append([cls, sc + randf() * 0.25 + (i * 0.08 if big else 0.0), sc])
+	scored.sort_custom(func(a, b): return a[1] > b[1])
+	var decent: bool = scored.any(func(x): return x[2] > -0.2)
+	for x in scored:
+		if decent and x[2] < -0.5:
+			continue
+		out.append(x[0])
+	if Game.now() >= st.get("next_counter_log", 0.0) and not out.is_empty():
+		st["next_counter_log"] = Game.now() + 120.0
+		_flog(pid, "counter: seen %s -> build order %s" % [_mix_text(mix), str(scored.map(func(x): return "%s %.2f" % [x[0], x[2]]))])
+	return out
+
+## Spend, don't hoard: when minerals pile up past SPARE_MINERALS, add as many
+## starbases as the stockpile pays for (a mining station only where a worked
+## rock lacks a drop-off and a starbase is out of reach), and keep every extra
+## starbase building warships. One yard cannot turn a growing income into
+## ships fast enough, which is what left AI fleets small and games stalled.
+const SPARE_MINERALS := 1500.0
+
+func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, ships: Array) -> void:
+	var res: Dictionary = game.resources[pid]
+	var bases: Array = game.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == pid)
+	# Every yard but the home one is a pure warship yard.
+	# (Every yard builds in parallel, from whatever is above the reserve; a
+	# yard with enemies at it that it can't hold builds nothing - its new
+	# hulls would die as they launch.)
+	var v: Vision = game.visions.get(pid)
+	for b in bases:
+		if b == base or b.under_construction or b.queue.size() >= 2 or st.get("mode", "") == "recover" or _yard_besieged(pid, st, b, v):
+			continue
+		var pick := _pick_warship(pid, game, st)
+		if pick != "" and b.can_queue(pick) == "" and _spare(pid, st, game, "minerals") >= Defs.SHIPS[pick]["cost"]["minerals"] * 0.5:
+			b.enqueue(pick)
+	var stations: Array = game.get_tree().get_nodes_in_group("mining_stations").filter(func(m): return m.owner_id == pid)
+	# Build a construct when the budget is saving for a starbase and has it
+	# in hand, or when a worked rock has no drop-off and a station is
+	# affordable.
+	var gap := _dropoff_gap(pid, game, ships, bases + stations)
+	var want_yard: bool = st.get("reserve_for", "") == "starbase" and res["minerals"] >= Defs.STARBASE["cost"]["minerals"] * 0.6
+	if not want_yard and (gap == Vector2.INF or _spare(pid, st, game, "minerals") < Defs.MINING_STATION["cost"]["minerals"]):
+		return
+	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
+	var sb_cost: Dictionary = Defs.STARBASE["cost"]
+	var pending: Array = builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "starbase")
+	# Yards are the throughput limit (one hull at a time each), so when the
+	# stockpile pays for several, several go up at once - one Constructor
+	# each (up to four Constructors).
+	var yards_paid := int((float(res["minerals"]) - pending.size() * float(sb_cost["minerals"]) * 0.6) / (float(sb_cost["minerals"]) * 0.6))
+	if want_yard and yards_paid >= 2 and builders.filter(func(c): return c.state == Ship.State.IDLE).is_empty() \
+			and builders.size() < 4 and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
+		base.enqueue("constructor")
+	if builders.is_empty():
+		if base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
+			base.enqueue("constructor")
+		return
+	var idle := builders.filter(func(c): return c.state == Ship.State.IDLE)
+	if idle.is_empty():
+		return
+	# A starbase by default, as many as the stockpile pays for. Only when a
+	# starbase is out of reach does it fall back to a mining station, and
+	# only for a resource our harvesters are working with no drop-off nearby.
+	if want_yard and yards_paid >= 1 and bases.size() + pending.size() < MAX_YARDS and float(res["spice"]) >= sb_cost.get("spice", 0) * 0.6 * (pending.size() + 1):
+		var taken: Array = bases.map(func(b): return b.global_position) + pending.map(func(c): return c.build_site)
+		var site := _yard_site(pid, game, taken)
+		if site != Vector2.INF:
+			idle[0].order_build_starbase(site)
+			_flog(pid, "starbase ordered at (%d,%d) (%d yards, %d going up)" % [site.x, site.y, bases.size(), pending.size() + 1])
+			return
+	if builders.any(func(c): return c.state == Ship.State.BUILD):
+		return
+	if _spare(pid, st, game, "minerals") >= Defs.MINING_STATION["cost"]["minerals"] and gap != Vector2.INF \
+			and (v == null or not _enemy_seen_near(v, gap, 900.0, 60.0)) \
+			and _upkeep_fits(pid, game, Defs.MINING_STATION["upkeep"], Defs.UPKEEP_WEIGHT_SMALL):
+		idle[0].order_build_station(gap)
+
+# Spend everything above the reserve for the next big purchase (a starbase
+# or a Warp Gate), continuously. The one brake is upkeep: nothing that adds
+# upkeep is bought once energy income would no longer cover it. Then the
+# spare goes to what adds none or raises income instead: Power Plants,
+# Defense Batteries, research, refits.
+
+## Upkeep multiplier from which the AI builds its biggest hulls first.
+const BIG_HULLS_MULT := 2.5
+
+## Most starbases the AI grows to by itself.
+const MAX_YARDS := 10
+
+## Energy per minute left after upkeep (research spending added back: it
+## is optional, and counting it would block ships while a project runs).
+func _energy_margin(pid: int, game: Game) -> float:
+	var r: float = game.rates[pid].get("energy", 0.0) * Defs.PER_MIN
+	var cur: Dictionary = game.research[pid]
+	if not cur.is_empty() and not cur.get("stalled", false):
+		var t: Dictionary = Defs.TECHS[cur["id"]]
+		r += float(t["cost"].get("energy", 0.0)) / float(t["time"]) * Defs.PER_MIN
+	return r
+
+## Upkeep per minute one more unit (own upkeep `u`, multiplier weight `w`,
+## energy it makes `income` per minute) adds: its own upkeep plus the
+## multiplier it puts on everything already owned.
+func _added_upkeep(pid: int, game: Game, u: float, w: float, income: float = 0.0) -> float:
+	var m := game.upkeep_multiplier(pid)
+	var base := game.base_upkeep(pid)
+	# Hulls already queued in our yards will add theirs too: count them as owned.
+	var m2 := m
+	var base2 := base
+	for sb in game.get_tree().get_nodes_in_group("starbases"):
+		if sb.owner_id == pid:
+			for t in sb.queue:
+				base2 += float(Defs.SHIPS[t]["upkeep"])
+				m2 *= Defs.UPKEEP_WEIGHT.get(Defs.SHIPS[t].get("base", t), Defs.UPKEEP_WEIGHT_SMALL)
+	return m2 * w * (base2 + u) - m * base - income
+
+## True if energy income still covers that unit's upkeep - or the stockpile
+## can carry the shortfall for ten minutes.
+func _upkeep_fits(pid: int, game: Game, u: float, w: float, income: float = 0.0) -> bool:
+	var add := _added_upkeep(pid, game, u, w, income)
+	if add <= 0.0:
+		return true
+	var margin := _energy_margin(pid, game)
+	return margin - add > 1.0 or float(game.resources[pid]["energy"]) > maxf(add - margin, 0.0) * 10.0 + 80.0
+
+## What is left of resource `k` after the reserve for the next big purchase
+## (and, for minerals, a couple of minutes of Power Plant fuel: minerals now
+## pay for energy, and spice never covers fuel).
+func _spare(pid: int, st: Dictionary, game: Game, k: String) -> float:
+	# (At 0 minerals every Power Plant stops: always keep some fuel back.)
+	var fuel := maxf(game.fuel_per_min(pid) * FUEL_MINUTES, 60.0) if k == "minerals" else 0.0
+	return float(game.resources[pid].get(k, 0.0)) - float(st.get("reserve", {}).get(k, 0.0)) - fuel
+
+## Picks the next big purchase to save toward (st["reserve_for"]) and how
+## much of each resource to hold back for it (st["reserve"]). A Warp Gate
+## once researched and there is a fleet to move; otherwise another starbase
+## while minerals still pile up faster than the yards can spend them.
+func _update_reserve(pid: int, st: Dictionary, game: Game, fleet: int) -> void:
+	var res: Dictionary = game.resources[pid]
+	var mode: String = st.get("mode", "")
+	var pick := ""
+	var calm: bool = mode != "recover" and not st.get("threat", false)
+	var bases: Array = game.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == pid)
+	var builders: Array = game.get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == pid and s.def["role"] == "constructor")
+	var forts: Array = game.get_tree().get_nodes_in_group("forts").filter(func(f): return f.owner_id == pid and f is WarpGate)
+	# (Not while far ahead and assaulting: reinforcements come first.)
+	if calm and not st.get("overwhelm", false) and game.has_tech(pid, str(Defs.WARP_GATE["requires"])) and forts.is_empty() and fleet >= 6 \
+			and not builders.any(func(c): return c.state == Ship.State.BUILD and c.build_kind == "gate") \
+			and _upkeep_fits(pid, game, Defs.WARP_GATE["upkeep"], Defs.UPKEEP_WEIGHT["starbase"]):
+		pick = "gate"
+	elif mode != "recover" and bases.size() < MAX_YARDS \
+			and (st.get("reserve_for", "") == "starbase" or (float(res["minerals"]) > SPARE_MINERALS and game.rates[pid].get("minerals", 0.0) > 0.0)) \
+			and _upkeep_fits(pid, game, Defs.STARBASE["upkeep"], Defs.UPKEEP_WEIGHT["starbase"]) \
+			and _yard_site(pid, game, bases.map(func(b): return b.global_position)) != Vector2.INF:
+		pick = "starbase"
+	st["reserve_for"] = pick
+	st["reserve"] = (Defs.WARP_GATE["cost"] if pick == "gate" else Defs.STARBASE["cost"] if pick == "starbase" else {}).duplicate()
+
+## Spare energy for one more construct's upkeep (per minute).
+func _upkeep_ok(pid: int, game: Game, upkeep_per_min: float) -> bool:
+	return game.rates[pid].get("energy", 0.0) > 0.06 + upkeep_per_min / 60.0 or game.resources[pid]["energy"] > 250.0
+
+
+# ======================================================================
+# RESEARCH
+# ======================================================================
+# Research never idles; scored by group, Mods only where they fit.
+
+## RESEARCH protocol: research never idles; Mods only for fielded classes
+## and the one intel says fits; otherwise _pick_tech scores by group.
+func _research_protocol(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var res: Dictionary = cx.res
+	var war: Array = cx.war
+	var all_war: Array = cx.all_war
+	var nn = cx.nn
+	# Research never idles: the moment a project ends the next one starts
+	# (the AI thinks every second; one project runs at a time).
+	# (The learning agent picks its own research.)
+	if not (st.get("nn") is RLAgent) and game.research[pid].is_empty() and game.research_queue[pid].is_empty():
+		# Mods: one per class, only for a class it fields, and only the one its
+		# intel says fits (see _pick_mod). It never swaps a Mod once chosen.
+		var options: Array = Defs.TECHS.keys().filter(func(t): return game.tech_state(pid, t) == "available" 			and (not Defs.TECHS[t].has("mod") or _mod_wanted(pid, game, t, war)))
+		# Prefer techs it can pay for now; fall back to anything available.
+		var payable := options.filter(func(t): return not Defs.TECHS[t]["cost"].has("spice") or res["spice"] > Defs.TECHS[t]["cost"]["spice"] * 1.2)
+		if not payable.is_empty():
+			options = payable
+		if not options.is_empty():
+			var tech := _pick_tech(options, all_war.size())
+			game.queue_research(pid, tech)
+			if Defs.TECHS[tech].has("mod"):
+				_flog(pid, "counter: research %s (seen %s)" % [tech, _mix_text(st.get("mix", {}))])
+			if Defs.TECHS[tech].get("group", "") == "constructs":
+				_flog(pid, "research %s" % tech)
+
+## Which tech to start next. Unlocking a class or a depot beats upgrading
+## what you already have, and a hull mark is only worth it once there is a
+## fleet to apply it to — otherwise the AI spends its early energy making
+## three corvettes slightly better while the enemy fields destroyers.
+func _pick_tech(options: Array, fleet: int) -> String:
+	var best := ""
+	var best_score := -INF
+	for t in options:
+		var d: Dictionary = Defs.TECHS[t]
+		var score := 0.0
+		match d.get("group", "general"):
+			"warships":
+				# Unlocks (they have no "class") come first, then marks.
+				score = 100.0 if not d.has("class") else 40.0 + minf(fleet, 12) * 2.0 - d["tier"] * 8.0
+			"constructs":
+				# What a construct UNLOCKS is worth far more than what it
+				# improves, now that the line is more than one tech deep.
+				score = 75.0 if d["effects"].keys().any(func(k): return k.begins_with("unlock")) else 48.0 - d["tier"] * 6.0
+				# A Warp Gate moves a fleet: worth it only once there is one.
+				if d["effects"].has("unlock_warp_gate") and fleet < 6:
+					score = 30.0
+			"weapons":
+				# Weapons pay off in proportion to the fleet carrying them.
+				score = 40.0 + minf(fleet, 12) * 1.8 - d["tier"] * 6.0
+			"logistics", "worlds":
+				score = 55.0 - d["tier"] * 5.0
+			"defense":
+				score = 35.0 + minf(fleet, 12) * 1.5 - d["tier"] * 6.0
+			"mods":
+				score = 46.0 + minf(fleet, 12) * 1.5
+			_:
+				score = 45.0 - d["tier"] * 5.0
+		# Cheap things first when scores are close, and a little noise so two
+		# AIs on the same map don't research in lockstep.
+		score -= (d["cost"].get("energy", 0.0) / 45.0 + d["cost"].get("spice", 0.0) / 20.0)
+		score += randf() * 6.0
+		if score > best_score:
+			best_score = score
+			best = t
+	return best
+
+
+# ======================================================================
+# ECONOMY / EXPANSION
+# ======================================================================
+# Harvesters to work, colonies to free worlds, world fields, Power Plants only
+# while energy is short (and paused while a pile covers the shortfall),
+# crusts kept, spice cover.
 
 ## EXPANSION protocol: colony ships settle the nearest known free world.
 func _expansion_colonize(cx: Ctx) -> void:
@@ -472,518 +1289,6 @@ func _economy_power(cx: Ctx) -> void:
 	_swap_for_power(pid, st, game)
 	_swap_from_power(pid, st, game, v)
 
-## DEFENSE protocol: enemies at the home starbase pull the fleet in when the
-## fight can be held, else gather at a safe rally. True while defending.
-func _defense_protocol(cx: Ctx) -> bool:
-	var pid: int = cx.pid
-	var st: Dictionary = cx.st
-	var game: Game = cx.game
-	var base: Starbase = cx.base
-	var v: Vision = cx.v
-	var war: Array = cx.war
-	# Defend: enemies near the starbase pull every warship home.
-	var threat := game.nearest_enemy(base, 450.0)
-	# Only enemies our sensors can actually see (not ones hidden in a nebula).
-	if threat and v and not v.can_see(threat):
-		threat = null
-	if threat:
-		# A fight it can hold (with the starbase's guns): everyone in. One it
-		# can't: whoever is already in it fights, the rest (and new hulls)
-		# gather at a safe rally point until together they can, instead of
-		# trickling in one at a time to die.
-		var tp: Vector2 = threat.global_position
-		if _can_hold(pid, war, base, tp, game):
-			st.erase("rally")
-			for s in war:
-				if s.state != Ship.State.ATTACK:
-					s.order_attack_move(tp)
-		else:
-			var rally := _safe_rally(pid, st, game, base, tp)
-			st["rally"] = rally
-			for s in war:
-				if s.global_position.distance_to(tp) < 300.0:
-					if s.state != Ship.State.ATTACK:
-						s.order_attack_move(tp)
-				elif s.global_position.distance_to(rally) > 150.0 and s.move_goal.distance_to(rally) > 150.0:
-					s.order_move(rally + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
-		return true
-	st.erase("rally")
-	return false
-
-## MILITARY protocol: a committed army presses its target; otherwise idle
-## groups bombard worlds in reach and launch waves at winnable targets.
-func _military_protocol(cx: Ctx) -> void:
-	var pid: int = cx.pid
-	var st: Dictionary = cx.st
-	var game: Game = cx.game
-	var base: Starbase = cx.base
-	var ships: Array = cx.ships
-	var v: Vision = cx.v
-	var war: Array = cx.war
-	var mode: String = cx.mode
-	# Committed (clearly ahead): the whole army goes for the kill in waves.
-	if st.get("commit", false):
-		_press_attack(pid, st, game, base, war, ships, v)
-		return
-
-	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
-	# Idle warships next to an enemy planet start bombarding it (not a turtle).
-	for s in (idle.duplicate() if not (game.rl_side > 0 and pid != game.rl_side and game.opp_level == 2) else []):
-		var ep := _nearest_planet(s.global_position, game, func(pl): return pl.is_enemy_of(pid) and (v == null or v.is_visible_at(pl.global_position)))
-		# Only a world the warships near it can actually bring down.
-		if ep and _hurts_worlds(s) and s.global_position.distance_to(ep.global_position) < 350.0 and _can_win(pid, idle.filter(func(o): return o.global_position.distance_to(ep.global_position) < 500.0), ep.global_position, game):
-			s.order_bombard(ep)
-			idle.erase(s)
-	# Aggressive: any idle group that can destroy something goes for it,
-	# whatever the mode and whatever it costs (see _can_win).
-	# Gather a wave of meaningful size first (half the army, 3 to 8 ships)
-	# instead of trickling ships out three at a time.
-	var need := clampi(war.size() / 2, 3, 8)
-	if _regrouping(st):
-		need = maxi(need, ceili(war.size() * REGROUP_SHARE))
-	# Training curriculum (see Game.opp_level): a turtle never attacks, a
-	# slow opponent waits for a bigger wave.
-	var vs_rl: bool = game.rl_side > 0 and pid != game.rl_side
-	if vs_rl and game.opp_level == 3:
-		need = 8
-	if vs_rl and game.opp_level == 2:
-		need = 1 << 30
-	if idle.size() >= need:
-		var goal := _winnable_target(pid, idle, base.global_position, game)
-		if goal != Vector2.INF:
-			for s in idle:
-				s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
-			# Radiation Sail Arrays (support, not warships) go with the wave to
-			# screen it from radiation and soak fire with their solar shield.
-			for rsa in ships.filter(func(s): return s.ship_type.ends_with("heatshield") and s.state == Ship.State.IDLE):
-				rsa.order_move(goal + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
-			st["wave"] = mini(st["wave"] + 4, 30)
-	# Waves already out pull back if their target has become too strong.
-	_recall_losing_waves(pid, war, base, game)
-
-## Which tech to start next. Unlocking a class or a depot beats upgrading
-## what you already have, and a hull mark is only worth it once there is a
-## fleet to apply it to — otherwise the AI spends its early energy making
-## three corvettes slightly better while the enemy fields destroyers.
-func _pick_tech(options: Array, fleet: int) -> String:
-	var best := ""
-	var best_score := -INF
-	for t in options:
-		var d: Dictionary = Defs.TECHS[t]
-		var score := 0.0
-		match d.get("group", "general"):
-			"warships":
-				# Unlocks (they have no "class") come first, then marks.
-				score = 100.0 if not d.has("class") else 40.0 + minf(fleet, 12) * 2.0 - d["tier"] * 8.0
-			"constructs":
-				# What a construct UNLOCKS is worth far more than what it
-				# improves, now that the line is more than one tech deep.
-				score = 75.0 if d["effects"].keys().any(func(k): return k.begins_with("unlock")) else 48.0 - d["tier"] * 6.0
-				# A Warp Gate moves a fleet: worth it only once there is one.
-				if d["effects"].has("unlock_warp_gate") and fleet < 6:
-					score = 30.0
-			"weapons":
-				# Weapons pay off in proportion to the fleet carrying them.
-				score = 40.0 + minf(fleet, 12) * 1.8 - d["tier"] * 6.0
-			"logistics", "worlds":
-				score = 55.0 - d["tier"] * 5.0
-			"defense":
-				score = 35.0 + minf(fleet, 12) * 1.5 - d["tier"] * 6.0
-			"mods":
-				score = 46.0 + minf(fleet, 12) * 1.5
-			_:
-				score = 45.0 - d["tier"] * 5.0
-		# Cheap things first when scores are close, and a little noise so two
-		# AIs on the same map don't research in lockstep.
-		score -= (d["cost"].get("energy", 0.0) / 45.0 + d["cost"].get("spice", 0.0) / 20.0)
-		score += randf() * 6.0
-		if score > best_score:
-			best_score = score
-			best = t
-	return best
-
-func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
-	# Any class it has unlocked, with no caps. The richer it is, the more it
-	# leans to big hulls, which turn a stockpile into strength fastest.
-	var options: Array[String] = ["corvette", "corvette", "destroyer", "destroyer", "cruiser", "carrier"]
-	if float(game.resources[pid]["minerals"]) > SPARE_MINERALS * 2.0:
-		options.append_array(["cruiser", "carrier", "carrier"])
-	options.shuffle()
-	# Upkeep is multiplied empire-wide per unit, so once the multiplier is
-	# high, one big hull adds far less upkeep per point of strength than a
-	# handful of small ones: biggest first then.
-	if game.upkeep_multiplier(pid) >= BIG_HULLS_MULT:
-		options = ["carrier", "cruiser", "destroyer", "corvette"]
-	# Counter-picking: once enough of the enemy fleet has been seen, order
-	# the classes by how they fare against it (see _class_order).
-	var counter := _class_order(pid, game, st)
-	if not counter.is_empty():
-		options = counter
-	var sb := game.nearest_starbase(pid, Vector2.ZERO)
-	var res: Dictionary = game.resources[pid]
-	var capped := true
-	# Spice already promised to hulls queued in every yard.
-	var spice_owed := 0.0
-	for b in game.get_tree().get_nodes_in_group("starbases"):
-		if b.owner_id == pid:
-			for q in b.queue:
-				spice_owed += float(Defs.SHIPS[q]["cost"].get("spice", 0))
-	for t in options:
-		# The only brake on spending: energy income must cover the upkeep this
-		# hull adds (its own plus the multiplier it puts on everything else).
-		if not _upkeep_fits(pid, game, Defs.SHIPS[t]["upkeep"], Defs.UPKEEP_WEIGHT.get(t, Defs.UPKEEP_WEIGHT_SMALL)):
-			continue
-		capped = false
-		if st.get("corvettes_only", false) and Defs.SHIPS[t].get("base", t) != "corvette":
-			continue
-		# Recently cancelled for stalling: give it a minute.
-		if Game.now() < st.get("blocked", {}).get(t, -1.0):
-			continue
-		# A hull whose spice we can't pay stalls the whole queue: skip it.
-		if Defs.SHIPS[t]["cost"].get("spice", 0) > 0 and res["spice"] - spice_owed < Defs.SHIPS[t]["cost"].get("spice", 0) * 1.1:
-			continue
-		if sb.can_queue(t) == "":
-			st["upkeep_capped"] = false
-			return t
-	st["upkeep_capped"] = capped
-	return ""
-
-func _nearest_planet(from: Vector2, game: Game, filter: Callable) -> Planet:
-	var best: Planet = null
-	var best_d := INF
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		if filter.call(p):
-			var d := from.distance_to(p.global_position)
-			if d < best_d:
-				best_d = d
-				best = p
-	return best
-
-## A fleet only detours to an enemy world when it is this much closer than the
-## enemy starbase (a fraction of the distance), so attacks reach the yards
-## that build the enemy fleet instead of grinding on colonies along the way.
-const DETOUR := 0.5
-## Attack once our fleet is this much stronger than theirs.
-const ATTACK_EDGE := 1.15
-## This far ahead the AI goes for the kill: it attacks with whatever it has
-## and heads for the nearest enemy world or starbase, since either one
-## falling (with the rest) ends the match.
-const FINISH_EDGE := 2.0
-
-func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
-	if _state.get(pid, {}).get("finishing", false):
-		var kill := _finish_target(pid, from, game)
-		if kill != Vector2.INF:
-			return kill
-	# The enemy starbase wins the match; a small enemy colony on the way is
-	# fair game (big worlds take too long to bombard).
-	var v: Vision = game.visions.get(pid)
-	if v:
-		# Fog of war: only targets we've seen. With no enemy starbase found
-		# yet, head for the mirror image of our home (systems are point-
-		# symmetric, so that's where the enemy most likely started).
-		var kp := _nearest_planet(from, game, func(pl): return game.is_hostile(pid, v.known_owner(pl)) and v.seen_planet_pop.get(pl, 0.0) < 4000.0)
-		var kb := v.known_enemy_base(from)
-		var home := game.nearest_starbase(pid, Vector2.ZERO)
-		# Starts are evenly spaced round the star: the next one along is the
-		# nearest likely enemy home.
-		var base_pos: Vector2 = kb[0] if not kb.is_empty() else (home.global_position.rotated(TAU / game.players.size()) if home else Vector2.ZERO)
-		# Nothing hostile known and that guess already checked: sweep for
-		# the leftovers instead of idling (see _scout_target).
-		if kb.is_empty() and kp == null and v.is_visible_at(base_pos):
-			var sc := _scout_target(pid, from, game, v)
-			if sc != Vector2.INF:
-				return sc
-		if kp and from.distance_to(kp.global_position) < from.distance_to(base_pos) * DETOUR:
-			return kp.global_position
-		return base_pos
-	var p := _nearest_planet(from, game, func(pl): return game.is_hostile(pid, pl.owner_id) and pl.pop < 4000.0)
-	var enemy_base: Starbase = null
-	for sb in game.get_tree().get_nodes_in_group("starbases"):
-		if game.is_hostile(pid, sb.owner_id) and (enemy_base == null or from.distance_to(sb.global_position) < from.distance_to(enemy_base.global_position)):
-			enemy_base = sb
-	if p and (enemy_base == null or from.distance_to(p.global_position) < from.distance_to(enemy_base.global_position) * DETOUR):
-		return p.global_position
-	return enemy_base.global_position if enemy_base else from
-
-## The nearest enemy world or finished starbase this player knows of (any
-## size: when finishing, every one counts). INF if none is known.
-func _finish_target(pid: int, from: Vector2, game: Game) -> Vector2:
-	var v: Vision = game.visions.get(pid)
-	var best := Vector2.INF
-	var best_d := INF
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		var owner_seen: int = v.known_owner(p) if v else p.owner_id
-		if game.is_hostile(pid, owner_seen) and from.distance_to(p.global_position) < best_d:
-			best_d = from.distance_to(p.global_position)
-			best = p.global_position
-	if v:
-		var kb := v.known_enemy_base(from)
-		if not kb.is_empty() and from.distance_to(kb[0]) < best_d:
-			best = kb[0]
-		if best == Vector2.INF:
-			# Clean-up: the enemy's last worlds may be out of sight; go and look.
-			best = _scout_target(pid, from, game, v)
-	else:
-		for sb in game.get_tree().get_nodes_in_group("starbases"):
-			if game.is_hostile(pid, sb.owner_id) and from.distance_to(sb.global_position) < best_d:
-				best_d = from.distance_to(sb.global_position)
-				best = sb.global_position
-	return best
-
-## Where to look for hidden enemies: the nearest world that isn't ours or an
-## ally's and isn't in sight right now (its owner may have changed since we
-## last looked). INF if every world is in view.
-func _scout_target(pid: int, from: Vector2, game: Game, v: Vision) -> Vector2:
-	var best := Vector2.INF
-	var best_d := INF
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		var ko: int = v.known_owner(p)
-		if ko != 0 and game.are_allies(pid, ko):
-			continue
-		if v.is_visible_at(p.global_position):
-			continue
-		var d := from.distance_to(p.global_position)
-		if d < best_d:
-			best_d = d
-			best = p.global_position
-	return best
-
-## A planet this player knows to be free (seen unclaimed); without fog, any
-## unclaimed planet.
-func _known_free(pid: int, p: Planet, game: Game) -> bool:
-	var v: Vision = game.visions.get(pid)
-	if v:
-		return v.known_owner(p) == 0
-	return p.owner_id == 0
-
-## Scouting: one ship (a Scout, else the fastest warship) explores until the
-## whole system is known, then patrols it for good (only with fog of war).
-const SCOUT_UNTIL := 0.98   # "the whole system" (a few cells sit in rock fields/behind the star)
-
-func _scout(pid: int, st: Dictionary, game: Game, war: Array) -> void:
-	var v: Vision = game.visions.get(pid)
-	if v == null or war.is_empty() or Game.now() < st.get("next_scout", 0.0):
-		return
-	st["next_scout"] = Game.now() + 5.0
-	# (Untyped until checked: the old scout may have been destroyed.)
-	var old = st.get("scout")
-	var sc: Ship = old if is_instance_valid(old) else null
-	if sc == null or not sc.is_alive():
-		# A Scout if we have one, else the fastest warship (corvettes).
-		var pick: Array = war.filter(func(s): return s.def["role"] == "scout")
-		if pick.is_empty():
-			pick = war.duplicate()
-			pick.sort_custom(func(a, b): return a.def["speed"] > b.def["speed"])
-		sc = pick[0]
-		st["scout"] = sc
-	var arrived: bool = sc.state == Ship.State.IDLE or sc.global_position.distance_to(sc.move_goal) < 60.0
-	if v.explored_fraction() < SCOUT_UNTIL:
-		# First uncover the whole system.
-		if arrived or v.is_explored_at(sc.move_goal):
-			sc.order_move(v.nearest_unexplored(sc.global_position))
-	elif arrived:
-		# Then patrol for good: round the system world by world, skipping
-		# ours, allies' and any already in sight, so news of the enemy
-		# (fleets, new colonies) stays current.
-		var worlds: Array = game.get_tree().get_nodes_in_group("planets").filter(func(p): return not (v.known_owner(p) > 0 and game.are_allies(pid, v.known_owner(p))))
-		worlds.sort_custom(func(a, b): return a.global_position.angle() < b.global_position.angle())
-		if worlds.is_empty():
-			return
-		var i: int = st.get("patrol_i", 0)
-		for k in worlds.size():
-			var w: Node2D = worlds[(i + k) % worlds.size()]
-			if not v.is_visible_at(w.global_position) or k == worlds.size() - 1:
-				st["patrol_i"] = (i + k + 1) % worlds.size()
-				sc.order_move(w.global_position + Vector2.from_angle(randf() * TAU) * 220.0)
-				break
-
-# ---------------------------------------------------------------- strategy
-
-## Re-reads the situation every RETHINK seconds and picks a mode:
-##   recover  - out of energy: no new warships, cancel queued ones (out of
-##              spice only limits the fleet to corvettes, in any mode)
-##   build_up - under threat or outgunned: warships first, no colonies, no waves
-##   attack   - clearly stronger: smaller waves launch right away
-##   expand   - otherwise: colonies first while free worlds remain
-## Switching mode cancels queued items that no longer fit.
-const RETHINK := 15.0
-
-func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) -> void:
-	if Game.now() < st.get("next_rethink", 0.0):
-		return
-	st["next_rethink"] = Game.now() + RETHINK
-	_counter_update(pid, st, game)
-	var mine := 0.0
-	for s in war:
-		mine += s.max_hp + s.max_armor + s.max_shield
-	var theirs := 0.0
-	var threat := false
-	var v: Vision = game.visions.get(pid)
-	if v:
-		# Fog of war: judge the enemy only by what our sensors have seen.
-		theirs = v.enemy_power()
-		threat = v.enemy_near(base.global_position, 900.0) > 0
-		for p in game.get_tree().get_nodes_in_group("planets"):
-			if p.owner_id == pid and v.enemy_near(p.global_position, 500.0) > 0:
-				threat = true
-				break
-	for s in ([] if v else game.get_tree().get_nodes_in_group("ships")):
-		if not game.is_hostile(pid, s.owner_id) or not s.is_alive() or s.def["role"] != "warship":
-			continue
-		theirs += s.max_hp + s.max_armor + s.max_shield
-		if s.global_position.distance_to(base.global_position) < 900.0:
-			threat = true
-		else:
-			for p in game.get_tree().get_nodes_in_group("planets"):
-				if p.owner_id == pid and s.global_position.distance_to(p.global_position) < 500.0:
-					threat = true
-					break
-	var res: Dictionary = game.resources[pid]
-	var rates: Dictionary = game.rates[pid]
-	# (A Blackout counts: buildings are offline, so no new hulls or attacks.)
-	var energy_starved: bool = (res["energy"] < 7.0 and rates.get("energy", 0.0) < 0.0) or game.in_blackout(pid)
-	var spice_starved: bool = res["spice"] < 10.0 and rates.get("spice", 0.0) <= 0.0
-	# Out of spice alone isn't a crisis: corvettes cost none (see _pick_warship).
-	st["corvettes_only"] = spice_starved
-	var starved := energy_starved
-	var free := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game) and p.is_habitable()) != null
-	var mode := "expand" if free else "build_up"
-	if starved:
-		mode = "recover"
-	elif threat or theirs > mine * 1.3:
-		mode = "build_up"
-	elif mine > theirs * ATTACK_EDGE and war.size() >= 8:
-		mode = "attack"
-	# Clearly winning: finish it, however small the fleet.
-	elif mine > theirs * FINISH_EDGE and war.size() >= 2:
-		mode = "attack"
-	st["finishing"] = mine > theirs * FINISH_EDGE
-	st["threat"] = threat
-	# Commit to a decisive attack when clearly ahead of everything it knows
-	# of (warships seen lately plus the starbases and outposts it has seen);
-	# stay committed through minor losses, drop it only when the edge is gone.
-	# Constructs are taken one at a time (targets are picked by cost to kill
-	# and must be winnable, see _commit_target): a sprawl of yards counts as
-	# at most COMMIT_CONSTRUCT_CAP starbases' worth, not all at once.
-	var sbt: float = Defs.STARBASE["hp"] + Defs.STARBASE["armor"] + Defs.STARBASE["shield"]
-	var known := theirs + minf(_known_constructs(pid, game, v), sbt * COMMIT_CONSTRUCT_CAP) * COMMIT_CONSTRUCT_SHARE
-	# No enemy fleet seen lately: the constructs alone don't hold it back
-	# (each target must still be winnable before the army goes, else it stages).
-	if theirs < 400.0:
-		known = theirs
-	var was: bool = st.get("commit", false)
-	var commit: bool = was
-	# Far ahead (see _overwhelming): commit even without the usual edge over
-	# the constructs, and stay in while the advantage holds.
-	var ow := _overwhelming(pid, st, game, v, mine, theirs, war.size())
-	if ow != st.get("overwhelm", false):
-		_flog(pid, "overwhelm %s: mine %d (+%d in production) vs seen fleet %d, %d warships" % ["ON" if ow else "off", int(mine), int(st.get("str_prod", 0.0)), int(theirs), war.size()])
-	st["overwhelm"] = ow
-	if ow and not was and Game.now() >= COMMIT_AFTER and not energy_starved:
-		commit = true
-	elif ow and was:
-		commit = war.size() >= 2 and not energy_starved
-	elif not was:
-		# With no enemy fleet seen lately, a smaller army can finish the job.
-		var cmin := COMMIT_MIN if theirs > 400.0 else COMMIT_MIN / 2
-		commit = Game.now() >= COMMIT_AFTER and war.size() >= cmin and mine > known * COMMIT_EDGE and not energy_starved
-	elif war.size() < (COMMIT_MIN / 2 if theirs > 400.0 else 2) or energy_starved or (mine < known * COMMIT_DROP and war.size() < st.get("commit_peak", 0) * 0.6):
-		commit = false
-	# (The edge alone doesn't end it: its picture of the enemy remembers
-	# ships for two minutes, so it only lets go once it has really lost much
-	# of the army it committed.)
-	st["commit_dbg"] = "mine=%d theirs=%d known=%d" % [int(mine), int(theirs), int(known)]
-	st["commit_peak"] = maxi(st.get("commit_peak", 0), war.size()) if commit else 0
-	if commit != was:
-		_flog(pid, "commit %s: mine %d vs known %d (%d warships)" % ["ON" if commit else "off", int(mine), int(known), war.size()])
-	st["commit"] = commit
-	if commit:
-		mode = "attack"
-	var old: String = st.get("mode", "")
-	st["mode"] = mode
-	if mode == old:
-		return
-	# Drop queued items (not the one already being built) that the new plan
-	# doesn't want.
-	for i in range(base.queue.size() - 1, 0, -1):
-		var t: String = base.queue[i]
-		var role: String = Defs.SHIPS[t]["role"]
-		if (mode == "recover" and role == "warship") or (threat and role == "colony"):
-			base.cancel(i)
-
-func _front_needs_spice(base: Starbase) -> bool:
-	return not base.queue.is_empty() and Defs.SHIPS[base.queue[0]]["cost"].has("spice")
-
-## Cancel builds that have been stuck waiting on resources: the starbase's
-## front item after STALL_CANCEL seconds (and don't requeue that type for a
-## minute), planet constructions after PLANET_STALL_CANCEL. Refunds follow
-## the usual cancel rules.
-const STALL_CANCEL := 12.0
-const PLANET_STALL_CANCEL := 20.0
-
-func _manage_queues(pid: int, st: Dictionary, game: Game, base: Starbase) -> void:
-	if base.build_stalled and not base.queue.is_empty():
-		st["stall"] = st.get("stall", 0.0) + 1.0
-		if st["stall"] >= STALL_CANCEL:
-			var t: String = base.queue[0]
-			if not st.has("blocked"):
-				st["blocked"] = {}
-			st["blocked"][t] = Game.now() + 60.0
-			base.cancel(0)
-			st["stall"] = 0.0
-	else:
-		st["stall"] = 0.0
-	# The other yards likewise (a hull stalled on spice there blocked that
-	# yard for good, with minerals piling up behind it).
-	if not st.has("ystall"):
-		st["ystall"] = {}
-	for b in game.get_tree().get_nodes_in_group("starbases"):
-		if b == base or b.owner_id != pid:
-			continue
-		var yk := str(b.get_instance_id())
-		if b.build_stalled and not b.queue.is_empty():
-			st["ystall"][yk] = st["ystall"].get(yk, 0.0) + 1.0
-			if st["ystall"][yk] >= STALL_CANCEL:
-				if not st.has("blocked"):
-					st["blocked"] = {}
-				st["blocked"][b.queue[0]] = Game.now() + 60.0
-				b.cancel(0)
-				st["ystall"][yk] = 0.0
-		else:
-			st["ystall"][yk] = 0.0
-	if not st.has("pstall"):
-		st["pstall"] = {}
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		if p.owner_id != pid or p.construction.is_empty():
-			continue
-		var key := String(p.name)
-		if p.construction_stalled:
-			st["pstall"][key] = st["pstall"].get(key, 0.0) + 1.0
-			if st["pstall"][key] >= PLANET_STALL_CANCEL:
-				p.cancel_build(p.construction["field"])
-				st["pstall"][key] = 0.0
-		else:
-			st["pstall"][key] = 0.0
-
-# ---------------------------------------------------------------- jobs
-
-func _count_type(ships: Array, base: Starbase, t: String) -> int:
-	return ships.filter(func(s): return s.ship_type == t).size() + base.queue.count(t)
-
-func _count_role(ships: Array, base: Starbase, role: String) -> int:
-	var q := 0
-	for t in base.queue:
-		if Defs.SHIPS[t]["role"] == role:
-			q += 1
-	return ships.filter(func(s): return s.def["role"] == role).size() + q
-
-## Systems where a Radiation Sail Array earns its keep: a spice nebula or twin suns.
-func _hazardous(game: Game) -> bool:
-	if not game.nebula_list.is_empty():
-		return true
-	return game.stars_list.any(func(s): return s.orbit_radius > 0.0)
-
 ## Uses ship abilities when the situation calls for them, and keeps Repair
 ## Tenders with the fleet.
 func _use_jobs(pid: int, ships: Array, game: Game, st: Dictionary = {}) -> void:
@@ -1032,417 +1337,30 @@ func _nebula_spot(from: Vector2, game: Game, v: Vision) -> Vector2:
 			best = p
 	return best
 
-## The corvette variant that best fits the enemy defenses seen so far (see
-## Defs.VARIANTS), or "" when we haven't seen enough of their fleet.
-## Whether to research Mod `t` now: the class is fielded (2+ hulls), has no
-## Mod yet (none researched or in progress), and `t` is the one that fits.
-func _mod_wanted(pid: int, game: Game, t: String, war: Array) -> bool:
-	var cls: String = Defs.TECHS[t]["mod"]
-	if war.filter(func(s): return s.def.get("base", s.ship_type) == cls).size() < 2:
-		return false
-	for id in Defs.TECHS:
-		if Defs.TECHS[id].get("mod", "") == cls and game.tech_state(pid, id) in ["done", "active", "queued"]:
-			return false
-	return _pick_mod(pid, game, cls) == t
-
-## The Mod for `cls` that suits the enemy warships this player has seen
-## lately (its own sightings only - no cheating): big hulls, swarms of
-## corvettes, or missile/torpedo/drone users each call for a different one.
-func _pick_mod(pid: int, game: Game, cls: String) -> String:
-	var v: Vision = game.visions.get(pid)
-	var n := 0
-	var small := 0
-	var big := 0
-	var ordnance := 0
-	if v:
-		for id in v.sightings:
-			var sg: Array = v.sightings[id]
-			if sg.size() < 6:
-				continue
-			n += 1
-			if sg[4] == "corvette":
-				small += 1
-			elif sg[4] in ["cruiser", "carrier"]:
-				big += 1
-			if sg[5] in ["proton", "missile", "bomblet", "drones"]:
-				ordnance += 1
-	# Enough seen: the Mod whose measured duels go best against the mix.
-	var mix: Dictionary = _state.get(pid, {}).get("mix", {})
-	if _mix_weight(mix) >= MIX_MIN and SIDE_MODS.has(cls):
-		var best := ""
-		var best_sc := -INF
-		for slot in range(1, 4):
-			var sc := _side_score(_side_index(cls, slot), mix)
-			if sc > best_sc:
-				best_sc = sc
-				best = SIDE_MODS[cls][slot]
-		return best
-	var fs := float(small) / maxf(n, 1)
-	var fb := float(big) / maxf(n, 1)
-	var fo := float(ordnance) / maxf(n, 1)
-	var seen := n >= 3
-	match cls:
-		"corvette":
-			return "mod_proton_torpedoes" if seen and fb >= 0.35 else ("mod_arc_emitters" if seen and fs >= 0.5 else "mod_kinetic_repeaters")
-		"destroyer":
-			return "mod_flak_cannons" if seen and fs >= 0.5 else ("mod_cluster_bombs" if seen and fb >= 0.35 else "mod_homing_missiles")
-		"cruiser":
-			return "mod_point_defense_lattice" if seen and fo >= 0.3 else ("mod_ion_lance" if seen and fb >= 0.35 else "mod_rail_cannons")
-		"carrier":
-			return "mod_interceptor_drones" if seen and fs >= 0.5 else ("mod_missile_barrage" if seen and fb >= 0.35 else "mod_tractor_beams")
-	return ""
-
-func _pick_variant(pid: int, game: Game) -> String:
-	# For every enemy warship remembered (decaying with time since seen; its
-	# defense layers as seen), how much base damage each variant needs to
-	# destroy it relative to a generalist (Defs.kill_ratio), weighted by its
-	# toughness; the variant with the lowest total, if clearly better.
-	var mem: Dictionary = _state.get(pid, {}).get("mix_mem", {})
-	if mem.size() < 3:
-		return ""
-	var now := Game.now()
-	var tot := 0.0
-	var by := {}
-	for id in mem:
-		var l = mem[id][2]
-		if not (l is Vector3):
-			continue
-		var w: float = pow(0.5, (now - float(mem[id][1])) / MIX_HALF_LIFE) * (l.x + l.y + l.z)
-		tot += w
-		var tgt := {"shield": l.x, "armor": l.y, "hp": l.z}
-		for vid in Defs.VARIANTS:
-			by[vid] = by.get(vid, 0.0) + w * Defs.kill_ratio(tgt, vid)
-	if tot <= 0.0:
-		return ""
-	var best := ""
-	var best_r := 0.93
-	for vid in by:
-		var r: float = by[vid] / tot
-		if r < best_r:
-			best_r = r
-			best = vid
-	var st: Dictionary = _state.get(pid, {})
-	if best != st.get("last_variant", "") and best != "":
-		st["last_variant"] = best
-		_flog(pid, "counter: depot variant %s (kill cost x%.2f of a generalist; seen %s)" % [best, best_r, _mix_text(st.get("mix", {}))])
-	return best
-
-# ---------------------------------------------------------------- counter-picking
-# What it builds, which Mod each class carries (research and on/off) and
-# which variant its depot fits follow the enemy warships it has SEEN (its
-# own Vision, remembered with decay), scored with the measured side-vs-side
-# duel results in data/matchups.json. Before contact: the defaults.
-
-## data/matchups.json sides, in order: class, then its laser and three Mods.
-const SIDE_CLASSES := ["corvette", "destroyer", "cruiser", "carrier"]
-const SIDE_MODS := {
-	"corvette": ["", "mod_kinetic_repeaters", "mod_arc_emitters", "mod_proton_torpedoes"],
-	"destroyer": ["", "mod_flak_cannons", "mod_cluster_bombs", "mod_homing_missiles"],
-	"cruiser": ["", "mod_ion_lance", "mod_rail_cannons", "mod_point_defense_lattice"],
-	"carrier": ["", "mod_interceptor_drones", "mod_tractor_beams", "mod_missile_barrage"],
-}
-## What a Mod's ships visibly fire (Vision sightings): weapon -> slot in SIDE_MODS.
-## Point-Defense and Tractor Beams look like lasers from outside.
-const SEEN_WEAPON_SLOT := {
-	"corvette": {"kinetic": 1, "arc": 2, "proton": 3},
-	"destroyer": {"flak": 1, "bomblet": 2, "missile": 3},
-	"cruiser": {"beam": 1, "rail": 2},
-	"carrier": {"drones": 1, "missile": 3},
-}
-## Seconds over which a remembered enemy warship's weight halves.
-const MIX_HALF_LIFE := 360.0
-## Seen-weight needed before it counter-picks at all.
-const MIX_MIN := 3.0
-
-static var _matchups: Array = []
-
-static func _weights() -> Array:
-	if _matchups.is_empty():
-		var f := FileAccess.open("res://data/matchups.json", FileAccess.READ)
-		if f:
-			var d = JSON.parse_string(f.get_as_text())
-			if d is Dictionary and d.has("weights"):
-				_matchups = d["weights"]
-		if _matchups.is_empty():
-			_matchups = [[]]
-	return _matchups
-
-static func _side_index(cls: String, slot: int) -> int:
-	var c := SIDE_CLASSES.find(cls)
-	return -1 if c < 0 else c * 4 + slot
-
-## The matchup side our `cls` ships fight as right now (its active Mod).
-func _our_side(pid: int, game: Game, cls: String) -> int:
-	var slot: int = SIDE_MODS.get(cls, []).find(game.active_mod(pid, cls))
-	return _side_index(cls, maxi(slot, 0))
-
-## The enemy fleet mix as this side remembers it: {side index: weight}.
-## Each warship seen counts 1, halving every MIX_HALF_LIFE since last seen;
-## one seen destroyed (gone from where it was, see Vision) is dropped.
-func _enemy_mix(pid: int, st: Dictionary, game: Game) -> Dictionary:
-	var v: Vision = game.visions.get(pid)
-	var mem: Dictionary = st.get("mix_mem", {})
-	var now := Game.now()
-	if v:
-		for id in v.sightings:
-			var sg: Array = v.sightings[id]
-			if sg.size() < 6:
-				continue
-			var cls := str(sg[4])
-			var slot: int = SEEN_WEAPON_SLOT.get(cls, {}).get(str(sg[5]), 0)
-			mem[id] = [_side_index(cls, slot), float(sg[0]), sg[3]]
-		for id in mem.keys():
-			# Vision forgets a ship after a while, or at once when seen gone:
-			# inside its memory window, a missing one was seen destroyed.
-			if not v.sightings.has(id) and now - float(mem[id][1]) < Vision.SIGHTING_MEMORY - 1.0:
-				mem.erase(id)
-			elif now - float(mem[id][1]) > MIX_HALF_LIFE * 5.0:
-				mem.erase(id)
-	st["mix_mem"] = mem
-	var mix := {}
-	for id in mem:
-		var i: int = mem[id][0]
-		if i >= 0:
-			mix[i] = mix.get(i, 0.0) + pow(0.5, (now - float(mem[id][1])) / MIX_HALF_LIFE)
-	return mix
-
-## How side `side` fares against the mix: weighted mean duel weight, -1..1.
-func _side_score(side: int, mix: Dictionary) -> float:
-	var w: Array = _weights()
-	if side < 0 or side >= w.size():
-		return 0.0
-	var tot := 0.0
-	var acc := 0.0
-	for j in mix:
-		var x = w[side][j] if j < w[side].size() else null
-		tot += mix[j]
-		acc += mix[j] * (float(x) if x != null else 0.0)
-	return acc / tot if tot > 0.0 else 0.0
-
-static func _mix_weight(mix: Dictionary) -> float:
-	var t := 0.0
-	for j in mix:
-		t += mix[j]
-	return t
-
-## Short text of the mix's top sides (logs).
-func _mix_text(mix: Dictionary) -> String:
-	var keys := mix.keys()
-	keys.sort_custom(func(a, b): return mix[a] > mix[b])
-	var parts := []
-	for k in keys.slice(0, 4):
-		var cls: String = SIDE_CLASSES[int(k) / 4]
-		var m: String = SIDE_MODS[cls][int(k) % 4]
-		parts.append("%s%s:%.1f" % [cls, "" if m == "" else "/" + m.trim_prefix("mod_"), mix[k]])
-	return ",".join(parts)
-
-## Classes in the order to build them against the enemy mix seen (best
-## first, by duel weight with a little noise and, under a high upkeep
-## multiplier, a lean to big hulls); hard-countered classes dropped while
-## anything decent is unlocked. Empty before enough contact.
-func _class_order(pid: int, game: Game, st: Dictionary) -> Array[String]:
-	var mix: Dictionary = st.get("mix", {})
-	var out: Array[String] = []
-	if _mix_weight(mix) < MIX_MIN:
-		return out
-	var scored := []
-	var big := game.upkeep_multiplier(pid) >= BIG_HULLS_MULT
-	for i in SIDE_CLASSES.size():
-		var cls: String = SIDE_CLASSES[i]
-		if Defs.SHIPS[cls].has("requires") and not game.has_tech(pid, str(Defs.SHIPS[cls]["requires"])):
-			continue
-		var sc := _side_score(_our_side(pid, game, cls), mix)
-		# A Mod it could still pick for this class lifts it a little.
-		if game.active_mod(pid, cls) == "":
-			var best_mod := sc
-			for slot in range(1, 4):
-				best_mod = maxf(best_mod, _side_score(_side_index(cls, slot), mix))
-			sc = sc * 0.7 + best_mod * 0.3
-		scored.append([cls, sc + randf() * 0.25 + (i * 0.08 if big else 0.0), sc])
-	scored.sort_custom(func(a, b): return a[1] > b[1])
-	var decent: bool = scored.any(func(x): return x[2] > -0.2)
-	for x in scored:
-		if decent and x[2] < -0.5:
-			continue
-		out.append(x[0])
-	if Game.now() >= st.get("next_counter_log", 0.0) and not out.is_empty():
-		st["next_counter_log"] = Game.now() + 120.0
-		_flog(pid, "counter: seen %s -> build order %s" % [_mix_text(mix), str(scored.map(func(x): return "%s %.2f" % [x[0], x[2]]))])
-	return out
-
-## Each rethink: refresh the mix, and switch researched Mods off (back to
-## lasers) where the laser does clearly better against it, on again where
-## the Mod does.
-func _counter_update(pid: int, st: Dictionary, game: Game) -> void:
-	var mix := _enemy_mix(pid, st, game)
-	st["mix"] = mix
-	if _mix_weight(mix) < MIX_MIN:
-		return
-	for cls in SIDE_CLASSES:
-		for slot in range(1, 4):
-			var m: String = SIDE_MODS[cls][slot]
-			if not game.has_tech(pid, m):
-				continue
-			var off: bool = game.mods_disabled.get(pid, {}).has(m)
-			var with_mod := _side_score(_side_index(cls, slot), mix)
-			var laser := _side_score(_side_index(cls, 0), mix)
-			if (not off and laser > with_mod + 0.25) or (off and with_mod > laser + 0.1):
-				game.toggle_mod(pid, m)
-				_flog(pid, "counter: %s %s %s (mod %.2f vs laser %.2f; seen %s)" % [cls, m, "OFF" if not off else "ON", with_mod, laser, _mix_text(mix)])
-
-# ---------------------------------------------------------------- weapons depot
-
-## Spend, don't hoard: when minerals pile up past SPARE_MINERALS, add as many
-## starbases as the stockpile pays for (a mining station only where a worked
-## rock lacks a drop-off and a starbase is out of reach), and keep every extra
-## starbase building warships. One yard cannot turn a growing income into
-## ships fast enough, which is what left AI fleets small and games stalled.
-const SPARE_MINERALS := 1500.0
-
-func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, ships: Array) -> void:
-	var res: Dictionary = game.resources[pid]
-	var bases: Array = game.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == pid)
-	# Every yard but the home one is a pure warship yard.
-	# (Every yard builds in parallel, from whatever is above the reserve; a
-	# yard with enemies at it that it can't hold builds nothing - its new
-	# hulls would die as they launch.)
-	var v: Vision = game.visions.get(pid)
-	for b in bases:
-		if b == base or b.under_construction or b.queue.size() >= 2 or st.get("mode", "") == "recover" or _yard_besieged(pid, st, b, v):
-			continue
-		var pick := _pick_warship(pid, game, st)
-		if pick != "" and b.can_queue(pick) == "" and _spare(pid, st, game, "minerals") >= Defs.SHIPS[pick]["cost"]["minerals"] * 0.5:
-			b.enqueue(pick)
-	var stations: Array = game.get_tree().get_nodes_in_group("mining_stations").filter(func(m): return m.owner_id == pid)
-	# Build a construct when the budget is saving for a starbase and has it
-	# in hand, or when a worked rock has no drop-off and a station is
-	# affordable.
-	var gap := _dropoff_gap(pid, game, ships, bases + stations)
-	var want_yard: bool = st.get("reserve_for", "") == "starbase" and res["minerals"] >= Defs.STARBASE["cost"]["minerals"] * 0.6
-	if not want_yard and (gap == Vector2.INF or _spare(pid, st, game, "minerals") < Defs.MINING_STATION["cost"]["minerals"]):
-		return
-	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
-	var sb_cost: Dictionary = Defs.STARBASE["cost"]
-	var pending: Array = builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "starbase")
-	# Yards are the throughput limit (one hull at a time each), so when the
-	# stockpile pays for several, several go up at once - one Constructor
-	# each (up to four Constructors).
-	var yards_paid := int((float(res["minerals"]) - pending.size() * float(sb_cost["minerals"]) * 0.6) / (float(sb_cost["minerals"]) * 0.6))
-	if want_yard and yards_paid >= 2 and builders.filter(func(c): return c.state == Ship.State.IDLE).is_empty() \
-			and builders.size() < 4 and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
-		base.enqueue("constructor")
-	if builders.is_empty():
-		if base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
-			base.enqueue("constructor")
-		return
-	var idle := builders.filter(func(c): return c.state == Ship.State.IDLE)
-	if idle.is_empty():
-		return
-	# A starbase by default, as many as the stockpile pays for. Only when a
-	# starbase is out of reach does it fall back to a mining station, and
-	# only for a resource our harvesters are working with no drop-off nearby.
-	if want_yard and yards_paid >= 1 and bases.size() + pending.size() < MAX_YARDS and float(res["spice"]) >= sb_cost.get("spice", 0) * 0.6 * (pending.size() + 1):
-		var taken: Array = bases.map(func(b): return b.global_position) + pending.map(func(c): return c.build_site)
-		var site := _yard_site(pid, game, taken)
-		if site != Vector2.INF:
-			idle[0].order_build_starbase(site)
-			_flog(pid, "starbase ordered at (%d,%d) (%d yards, %d going up)" % [site.x, site.y, bases.size(), pending.size() + 1])
-			return
-	if builders.any(func(c): return c.state == Ship.State.BUILD):
-		return
-	if _spare(pid, st, game, "minerals") >= Defs.MINING_STATION["cost"]["minerals"] and gap != Vector2.INF \
-			and (v == null or not _enemy_seen_near(v, gap, 900.0, 60.0)) \
-			and _upkeep_fits(pid, game, Defs.MINING_STATION["upkeep"], Defs.UPKEEP_WEIGHT_SMALL):
-		idle[0].order_build_station(gap)
-
-# ---------------------------------------------------------------- budget
-# Spend everything above the reserve for the next big purchase (a starbase
-# or a Warp Gate), continuously. The one brake is upkeep: nothing that adds
-# upkeep is bought once energy income would no longer cover it. Then the
-# spare goes to what adds none or raises income instead: Power Plants,
-# Defense Batteries, research, refits.
-
-## Upkeep multiplier from which the AI builds its biggest hulls first.
-const BIG_HULLS_MULT := 2.5
-## Most starbases the AI grows to by itself.
-const MAX_YARDS := 10
-
-## Energy per minute left after upkeep (research spending added back: it
-## is optional, and counting it would block ships while a project runs).
-func _energy_margin(pid: int, game: Game) -> float:
-	var r: float = game.rates[pid].get("energy", 0.0) * Defs.PER_MIN
-	var cur: Dictionary = game.research[pid]
-	if not cur.is_empty() and not cur.get("stalled", false):
-		var t: Dictionary = Defs.TECHS[cur["id"]]
-		r += float(t["cost"].get("energy", 0.0)) / float(t["time"]) * Defs.PER_MIN
-	return r
-
-## Upkeep per minute one more unit (own upkeep `u`, multiplier weight `w`,
-## energy it makes `income` per minute) adds: its own upkeep plus the
-## multiplier it puts on everything already owned.
-func _added_upkeep(pid: int, game: Game, u: float, w: float, income: float = 0.0) -> float:
-	var m := game.upkeep_multiplier(pid)
-	var base := game.base_upkeep(pid)
-	# Hulls already queued in our yards will add theirs too: count them as owned.
-	var m2 := m
-	var base2 := base
-	for sb in game.get_tree().get_nodes_in_group("starbases"):
-		if sb.owner_id == pid:
-			for t in sb.queue:
-				base2 += float(Defs.SHIPS[t]["upkeep"])
-				m2 *= Defs.UPKEEP_WEIGHT.get(Defs.SHIPS[t].get("base", t), Defs.UPKEEP_WEIGHT_SMALL)
-	return m2 * w * (base2 + u) - m * base - income
-
-## True if energy income still covers that unit's upkeep - or the stockpile
-## can carry the shortfall for ten minutes.
-func _upkeep_fits(pid: int, game: Game, u: float, w: float, income: float = 0.0) -> bool:
-	var add := _added_upkeep(pid, game, u, w, income)
-	if add <= 0.0:
-		return true
-	var margin := _energy_margin(pid, game)
-	return margin - add > 1.0 or float(game.resources[pid]["energy"]) > maxf(add - margin, 0.0) * 10.0 + 80.0
-
-## What is left of resource `k` after the reserve for the next big purchase
-## (and, for minerals, a couple of minutes of Power Plant fuel: minerals now
-## pay for energy, and spice never covers fuel).
-func _spare(pid: int, st: Dictionary, game: Game, k: String) -> float:
-	# (At 0 minerals every Power Plant stops: always keep some fuel back.)
-	var fuel := maxf(game.fuel_per_min(pid) * FUEL_MINUTES, 60.0) if k == "minerals" else 0.0
-	return float(game.resources[pid].get(k, 0.0)) - float(st.get("reserve", {}).get(k, 0.0)) - fuel
-
-## A gas giant or world counting down to its blast: every ship of ours inside
-## it (plus a margin) runs straight out, whatever it was doing. Called after
-## the rest of the AI's orders so nothing sends it back in. Stations can't move.
-func _flee_blasts(pid: int, game: Game) -> void:
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		if p.doom_timer < 0.0:
-			continue
-		var r: float = p.blast_radius() + 120.0
-		for s in game.get_tree().get_nodes_in_group("ships"):
-			if s.owner_id != pid or not s.is_alive() or s.docked or s.warping:
-				continue
-			var off: Vector2 = s.global_position - p.global_position
-			if off.length() < r:
-				var out: Vector2 = p.global_position + (off.normalized() if off.length() > 1.0 else Vector2.RIGHT) * (r + 60.0)
-				if s.move_goal.distance_to(out) > 40.0 or s.state != Ship.State.MOVE:
-					s.order_move(out)
-
 ## Minutes of Power Plant fuel the AI keeps back from spending.
 const FUEL_MINUTES := 2.0
+
 ## The least crust at which the AI pauses a world's Mining Complexes (see _mine_pause_at).
 const AI_PAUSE_FLOOR := 300.0
+
 ## Energy planner: Power Plants only while plant income < AI_POWER_MARGIN x
 ## need and the stockpile is under AI_ENERGY_ENOUGH; above AI_ENERGY_SURPLUS
 ## surplus plants are turned back into mines and other buildings.
 const AI_POWER_MARGIN := 1.4
+
 const AI_ENERGY_ENOUGH := 1000.0
+
 const AI_ENERGY_SURPLUS := 2000.0
+
 ## Minutes of shortfall the pile above AI_ENERGY_ENOUGH must cover to pause plants.
 const AI_PAUSE_RUNWAY := 5.0
+
 ## Energy stock below which (while falling) the AI acts to avoid a blackout.
 const AI_ENERGY_FLOOR := 250.0
+
 ## Spare minerals above which the AI pauses a world's mines to keep its crust.
 const AI_MINERAL_GLUT := 6000.0
+
 ## A gas giant this close to empty is treated as about to blow.
 const AI_GIANT_DANGER := 1500
 
@@ -1473,31 +1391,6 @@ func _safe_giant(pid: int, from: Vector2, game: Game, v: Vision) -> Planet:
 			best_d = d
 			best = p
 	return best
-
-## Picks the next big purchase to save toward (st["reserve_for"]) and how
-## much of each resource to hold back for it (st["reserve"]). A Warp Gate
-## once researched and there is a fleet to move; otherwise another starbase
-## while minerals still pile up faster than the yards can spend them.
-func _update_reserve(pid: int, st: Dictionary, game: Game, fleet: int) -> void:
-	var res: Dictionary = game.resources[pid]
-	var mode: String = st.get("mode", "")
-	var pick := ""
-	var calm: bool = mode != "recover" and not st.get("threat", false)
-	var bases: Array = game.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == pid)
-	var builders: Array = game.get_tree().get_nodes_in_group("ships").filter(func(s): return s.owner_id == pid and s.def["role"] == "constructor")
-	var forts: Array = game.get_tree().get_nodes_in_group("forts").filter(func(f): return f.owner_id == pid and f is WarpGate)
-	# (Not while far ahead and assaulting: reinforcements come first.)
-	if calm and not st.get("overwhelm", false) and game.has_tech(pid, str(Defs.WARP_GATE["requires"])) and forts.is_empty() and fleet >= 6 \
-			and not builders.any(func(c): return c.state == Ship.State.BUILD and c.build_kind == "gate") \
-			and _upkeep_fits(pid, game, Defs.WARP_GATE["upkeep"], Defs.UPKEEP_WEIGHT["starbase"]):
-		pick = "gate"
-	elif mode != "recover" and bases.size() < MAX_YARDS \
-			and (st.get("reserve_for", "") == "starbase" or (float(res["minerals"]) > SPARE_MINERALS and game.rates[pid].get("minerals", 0.0) > 0.0)) \
-			and _upkeep_fits(pid, game, Defs.STARBASE["upkeep"], Defs.UPKEEP_WEIGHT["starbase"]) \
-			and _yard_site(pid, game, bases.map(func(b): return b.global_position)) != Vector2.INF:
-		pick = "starbase"
-	st["reserve_for"] = pick
-	st["reserve"] = (Defs.WARP_GATE["cost"] if pick == "gate" else Defs.STARBASE["cost"] if pick == "starbase" else {}).duplicate()
 
 ## A world of ours worth hardening: far from every own starbase, or within
 ## reach of an enemy holding we know of.
@@ -1580,7 +1473,9 @@ func _swap_from_power(pid: int, st: Dictionary, game: Game, v: Vision) -> void:
 ## world's plants have sat switched off for SWAP_PAUSED_FOR - pausing comes
 ## before demolishing.
 const BUILDING_KEEP := 480.0
+
 const SWAP_NEED_FOR := 120.0
+
 const SWAP_PAUSED_FOR := 240.0
 
 func _note_build(st: Dictionary, p: Planet, i: int) -> void:
@@ -1702,7 +1597,9 @@ func _toggle_mining(pid: int, st: Dictionary, game: Game) -> void:
 ## out or already out, minerals stalled with the enemy at our worlds) or once
 ## the stock is back over COVER_GLUT_MULT x that need.
 const COVER_GLUT_MULT := 1.5
+
 const COVER_CALM := 60.0
+
 ## Minutes of food / energy deficit left that count as an emergency.
 const COVER_RUNWAY := 1.5
 
@@ -1759,7 +1656,9 @@ func _research_keep(pid: int, game: Game) -> float:
 ## Spice pays for all research: worth more harvesters, Extractors and
 ## skimming while the stock is under SPICE_LOW or income is thin.
 const SPICE_LOW := 400.0
+
 const SPICE_INCOME_MIN := 40.0
+
 func _spice_short(pid: int, game: Game) -> bool:
 	return float(game.resources[pid]["spice"]) < SPICE_LOW or game.rates[pid].get("spice", 0.0) * Defs.PER_MIN < SPICE_INCOME_MIN
 
@@ -1864,122 +1763,531 @@ func _far_rock(pid: int, from: Vector2, game: Game, v: Vision) -> Asteroid:
 			best = a
 	return best
 
-## Enemy warships seen within `r` of `pos` in the last `secs` seconds.
-func _enemy_seen_near(v: Vision, pos: Vector2, r: float, secs: float) -> bool:
-	var now := Game.now()
-	for id in v.sightings:
-		var sg: Array = v.sightings[id]
-		if now - sg[0] < secs and pos.distance_to(sg[2]) < r:
-			return true
-	return false
 
-## Harvesters with enemy warships at them: idle warships that can win go
-## to them; with none, the harvesters run for the nearest yard.
-func _guard_harvesters(pid: int, st: Dictionary, game: Game, war: Array, ships: Array, v: Vision) -> void:
-	if v == null or Game.now() < st.get("next_guard", 0.0):
+# ======================================================================
+# CONSTRUCTION
+# ======================================================================
+# Where constructs go: yards, drop-offs, depots, outposts and gates, never
+# into spots where enemies were seen lately.
+
+## Where a mining station is needed: beside a rock one of our harvesters is
+## working that has no starbase or station within DROPOFF_NEAR. INF if every
+## worked rock already has a drop-off close by.
+const DROPOFF_NEAR := 700.0
+
+func _dropoff_gap(pid: int, game: Game, ships: Array, drops: Array) -> Vector2:
+	for s in ships:
+		if not s.def["role"] in ["miner", "skimmer"] or not is_instance_valid(s.mine_target):
+			continue
+		var rock: Vector2 = s.mine_target.global_position
+		if drops.any(func(d): return is_instance_valid(d) and d.global_position.distance_to(rock) < DROPOFF_NEAR):
+			continue
+		for r in [90.0, 140.0, 200.0]:
+			for a in range(8):
+				var q: Vector2 = rock + Vector2.from_angle(TAU * a / 8.0) * r
+				if game.site_problem("station", q) == "":
+					return q
+	return Vector2.INF
+
+## A legal starbase site beside one of our worlds that has no yard nearby.
+func _yard_site(pid: int, game: Game, bases: Array) -> Vector2:
+	# (`bases`: positions of our yards and yard sites already ordered.)
+	var v: Vision = game.visions.get(pid)
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.owner_id != pid or bases.any(func(b): return b.distance_to(p.global_position) < 700.0):
+			continue
+		# Only where it is safe: no enemy warships seen near that world.
+		if v and v.enemy_near(p.global_position, 900.0) > 0:
+			continue
+		for r in [160.0, 220.0, 280.0]:
+			for a in [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]:
+				var q: Vector2 = p.global_position + Vector2.from_angle(a) * r
+				if game.starbase_site_problem(q) == "":
+					return q
+	# Every world has a yard: ring the yards we already have.
+	for b in bases:
+		for r in [260.0, 360.0, 460.0]:
+			for a in range(12):
+				var q2: Vector2 = b + Vector2.from_angle(TAU * a / 12.0) * r
+				if game.starbase_site_problem(q2) == "" and (v == null or v.enemy_near(q2, 900.0) == 0):
+					return q2
+	return Vector2.INF
+
+## Once the fleet is sizable: get a Constructor, build a Weapons Depot near
+## home, then refit idle generalist corvettes near home into the variant
+## that suits the enemy defenses seen so far (a few at a time).
+func _manage_depot(pid: int, ships: Array, base: Starbase, game: Game) -> void:
+	if not game.has_tech(pid, str(Defs.WEAPONS_DEPOT["requires"])):
 		return
-	st["next_guard"] = Game.now() + 3.0
-	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
-	for h in ships:
-		if not h.def["role"] in ["miner", "skimmer", "constructor"] or v.enemy_near(h.global_position, 380.0) == 0:
-			continue
-		var yard := game.nearest_starbase(pid, h.global_position)
-		if yard and yard.global_position.distance_to(h.global_position) < 450.0:
-			continue
-		var near := idle.filter(func(s): return s.global_position.distance_to(h.global_position) < 2200.0)
-		if not near.is_empty() and _can_win(pid, near, h.global_position, game):
-			for s in near:
-				s.order_attack_move(h.global_position + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
-				idle.erase(s)
-			_flog(pid, "escort: %d warships to %s under attack at (%d,%d)" % [near.size(), h.def["role"], h.global_position.x, h.global_position.y])
-		elif yard and h.state != Ship.State.BUILD:
-			h.order_move(yard.global_position + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
-
-## A yard with enemies at it that the defence can't hold builds no warships
-## (they would die as they launch) - as long as another yard can.
-func _yard_besieged(pid: int, st: Dictionary, b: Starbase, v: Vision) -> bool:
-	if v == null or not st.has("rally") or v.enemy_near(b.global_position, 600.0) == 0:
-		return false
-	return Game.instance.get_tree().get_nodes_in_group("starbases").any(func(o): return o != b and o.owner_id == pid and not o.under_construction and v.enemy_near(o.global_position, 900.0) == 0)
-
-## True if `war` plus the starbase's own guns should beat the enemies at `at`.
-func _can_hold(pid: int, war: Array, base: Starbase, at: Vector2, game: Game) -> bool:
-	var dps := Defs.construct_dps(Defs.STARBASE) if base.global_position.distance_to(at) < 600.0 else 0.0
-	var tough := base.hp + base.armor + base.shield if dps > 0.0 else 0.0
+	var war := ships.filter(func(s): return s.def["role"] == "warship")
+	var want := _pick_variant(pid, game)
+	var depots: Array = game.get_tree().get_nodes_in_group("depots").filter(func(d): return d.owner_id == pid)
+	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
+	# Each depot fits one variant, so build one for the variant our intel says
+	# we want (and a second later if the enemy fleet changes).
+	var have := depots.any(func(d): return d.variant == want)
+	if want != "" and not have and depots.size() < 3:
+		if war.size() >= 6 and builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
+			base.enqueue("constructor")
+		for c in builders:
+			if c.state == Ship.State.IDLE:
+				var site := _depot_site(base.global_position, game)
+				if site != Vector2.INF:
+					c.order_build_depot(site, want)
+				break
+	# Send idle generalists to a finished depot: the one we want if it exists,
+	# otherwise whatever we have.
+	var depot: WeaponsDepot = game.nearest_depot(pid, base.global_position, want)
+	if depot == null:
+		depot = game.nearest_depot(pid, base.global_position)
+	if depot == null:
+		return
+	var heading := ships.filter(func(s): return s.state == Ship.State.REFIT).size()
 	for s in war:
-		dps += _ship_dps(s, game)
-		tough += s.hp + s.armor + s.shield
-	var d := _defence_at(pid, at, game)
-	return dps * tough > d.x * d.y * 0.8
+		if heading + depot.bays.size() >= int(Defs.WEAPONS_DEPOT["capacity"]):
+			break
+		if s.state == Ship.State.IDLE and s.can_refit(depot.variant) and s.global_position.distance_to(base.global_position) < 1200.0 and randf() < 0.5:
+			s.order_refit(depot.variant, depot)
+			heading += 1
 
-## Where a fleet that can't hold gathers: the own yard farthest from the
-## fight with no enemies near it, else a point behind home away from them.
-func _safe_rally(pid: int, st: Dictionary, game: Game, base: Starbase, threat: Vector2) -> Vector2:
+## A free spot for a depot a little way from home, toward the middle.
+func _depot_site(home: Vector2, game: Game) -> Vector2:
+	var dir := (-home).normalized() if home.length() > 1.0 else Vector2.RIGHT
+	for r in [260.0, 340.0, 420.0]:
+		for a in [0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, PI]:
+			var p: Vector2 = home + dir.rotated(a) * r
+			if game.depot_site_problem(p) == "":
+				return p
+	return Vector2.INF
+
+## Returns `war` without the ships it sent into a gate this tick.
+func _manage_forts(pid: int, st: Dictionary, game: Game, base: Starbase, ships: Array, war: Array, fleet: int) -> Array:
+	var v: Vision = game.visions.get(pid)
+	var forts: Array = game.get_tree().get_nodes_in_group("forts").filter(func(f): return f.owner_id == pid and f.is_alive())
+	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
+	if OS.get_environment("SL_AI_FORTS_LOG") != "":
+		var done: Dictionary = st.get("forts_done", {})
+		for f in forts:
+			if not f.under_construction and not done.has(f.get_instance_id()):
+				done[f.get_instance_id()] = true
+				_flog(pid, "%s finished at (%d,%d)" % [f.label(), f.global_position.x, f.global_position.y])
+		st["forts_done"] = done
+	# The gate first: it is the one that needs saving up for.
+	if game.has_tech(pid, str(Defs.WARP_GATE["requires"])):
+		_plan_gate(pid, st, game, base, forts, builders, fleet)
+	if game.has_tech(pid, str(Defs.FRONTIER_OUTPOST["requires"])):
+		_plan_outpost(pid, st, game, base, forts, builders.filter(func(c): return c.state != Ship.State.IDLE or not st.get("gate_wants_builder", false)), v, fleet)
+	return _use_gates(pid, st, game, forts, war, v)
+
+## An idle Constructor, or null (then one is queued if none exists).
+func _idle_builder(base: Starbase, builders: Array) -> Ship:
+	for c in builders:
+		if c.state == Ship.State.IDLE:
+			return c
+	if builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
+		base.enqueue("constructor")
+	return null
+
+func _plan_outpost(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Array, builders: Array, v: Vision, fleet: int) -> void:
+	# (Under threat only with minerals to spare: then holding ground is
+	# exactly what the stockpile should buy.)
+	if Game.now() < st.get("next_outpost", 0.0) or st.get("mode", "") == "recover" or (st.get("threat", false) and _spare(pid, st, game, "minerals") < 3000.0):
+		return
+	var d: Dictionary = Defs.FRONTIER_OUTPOST
+	var res: Dictionary = game.resources[pid]
+	# Never at the cost of the fleet: a fleet first, and the bill (paid over
+	# the build) in hand with a little to spare.
+	if fleet < 4 or res["minerals"] < d["cost"]["minerals"] + 150.0 or res["spice"] < float(d["cost"].get("spice", 0)) + 30.0 or not _upkeep_ok(pid, game, d["upkeep"]):
+		return
+	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "outpost")
+	var have: int = forts.filter(func(f): return f is FrontierOutpost).size() + pending.size()
+	var worlds: int = game.get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == pid).size()
+	# One to start; another every 7 minutes and per two worlds, up to OUTPOST_MAX.
+	var cap := mini(OUTPOST_MAX, mini(1 + int(Game.now() / 420.0), 1 + worlds / 2))
+	# Minerals piling up past what the yards can use: more ground held.
+	var rich: bool = _spare(pid, st, game, "minerals") > 3000.0
+	if rich:
+		cap = mini(OUTPOST_MAX + 3, cap + 2)
+	if have >= cap:
+		return
+	var taken: Array = forts.map(func(f): return f.global_position) + pending.map(func(c): return c.build_site)
+	var site := _outpost_site(pid, game, base, taken, v)
+	# Not into a contested spot (enemies seen there lately).
+	if site != Vector2.INF and v and _enemy_seen_near(v, site, 700.0, 60.0):
+		site = Vector2.INF
+	if site == Vector2.INF:
+		st["next_outpost"] = Game.now() + 30.0
+		return
+	var c := _idle_builder(base, builders)
+	if c == null:
+		return
+	c.order_build_fort(site, "outpost")
+	st["next_outpost"] = Game.now() + (OUTPOST_EVERY * 0.4 if rich else OUTPOST_EVERY)
+	_flog(pid, "outpost ordered at (%d,%d) (%d/%d)" % [site.x, site.y, have + 1, cap])
+
+## A legal outpost site guarding the most exposed thing we own: a world,
+## Mining Station or worked rock far from every own starbase, nearest the
+## known enemy, with no fort of ours near it yet. Placed on its enemy side.
+func _outpost_site(pid: int, game: Game, base: Starbase, taken: Array, v: Vision) -> Vector2:
+	var enemy := _enemy_spots(pid, game, v)
+	var anchors: Array = []
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		if p.owner_id == pid:
+			anchors.append(p.global_position)
+	for m in game.get_tree().get_nodes_in_group("mining_stations"):
+		if m.owner_id == pid:
+			anchors.append(m.global_position)
+	for s in game.get_tree().get_nodes_in_group("ships"):
+		if s.owner_id == pid and s.def["role"] in ["miner", "skimmer"] and is_instance_valid(s.mine_target):
+			anchors.append(s.mine_target.global_position)
+	var best := Vector2.INF
+	var best_score := INF
+	# Exposed holdings first; with none, the front line: whatever we hold
+	# nearest the known enemy (the outpost then goes out in front of it).
+	var reach := 300.0
+	for pass_i in 2:
+		if best != Vector2.INF or (pass_i == 1 and enemy.is_empty()):
+			break
+		if pass_i == 1:
+			reach = 420.0
+		for a in anchors:
+			var yard := game.nearest_starbase(pid, a, true)
+			if pass_i == 0 and yard and yard.global_position.distance_to(a) < EXPOSED:
+				continue
+			if taken.any(func(t): return t.distance_to(a) < 700.0):
+				continue
+			if v and v.enemy_near(a, 700.0) > 0:
+				continue
+			# Nearest the enemy we know of; with none known, farthest from home.
+			var score: float = -a.distance_to(base.global_position)
+			if not enemy.is_empty():
+				score = INF
+				for e in enemy:
+					score = minf(score, a.distance_to(e))
+			if score < best_score:
+				best_score = score
+				best = a
+	if best == Vector2.INF:
+		return Vector2.INF
+	# On the enemy side of it (or the side away from home).
+	var toward := (best - base.global_position).normalized()
+	if not enemy.is_empty():
+		enemy.sort_custom(func(x, y): return best.distance_to(x) < best.distance_to(y))
+		toward = (enemy[0] - best).normalized()
+	for r in [reach - 130.0, reach - 70.0, reach]:
+		for ang in [0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, PI]:
+			var q: Vector2 = best + toward.rotated(ang) * r
+			if game.site_problem("outpost", q) == "":
+				return q
+	return Vector2.INF
+
+func _plan_gate(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Array, builders: Array, fleet: int) -> void:
+	st["gate_wants_builder"] = false
+	if st.get("mode", "") == "recover" or st.get("threat", false):
+		return
+	var d: Dictionary = Defs.WARP_GATE
+	var res: Dictionary = game.resources[pid]
+	var gates := forts.filter(func(f): return f is WarpGate)
+	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "gate")
+	var n: int = gates.size() + pending.size()
+	# One gate; a second only late in a long, rich game.
+	var rich: bool = Game.now() > 1800.0 and res["minerals"] > 6000.0
+	if n >= 2 or (n >= 1 and not rich) or not pending.is_empty():
+		return
+	# The bill is paid over the build, so half of it in hand will do.
+	if fleet < 6 or res["minerals"] < d["cost"]["minerals"] * 0.5 or res["spice"] < float(d["cost"].get("spice", 0)) + 60.0 or not _upkeep_ok(pid, game, d["upkeep"]):
+		return
+	# Beside home (a second beside another yard, well away from the first).
+	var yard: Node2D = base
+	if not gates.is_empty():
+		var far := -1.0
+		for b in game.get_tree().get_nodes_in_group("starbases"):
+			var dg: float = b.global_position.distance_to(gates[0].global_position)
+			if b.owner_id == pid and dg > far:
+				far = dg
+				yard = b
+		if far < 1500.0:
+			return
+	var site := Vector2.INF
+	var dir := (-yard.global_position).normalized() if yard.global_position.length() > 1.0 else Vector2.RIGHT
+	for r in [300.0, 400.0, 520.0]:
+		for ang in [0.6, -0.6, 1.2, -1.2, 0.0, 2.0, -2.0, PI]:
+			var q: Vector2 = yard.global_position + dir.rotated(ang) * r
+			if site == Vector2.INF and game.site_problem("gate", q) == "":
+				site = q
+	if site == Vector2.INF:
+		return
+	var c := _idle_builder(base, builders)
+	st["gate_wants_builder"] = c == null
+	if c == null:
+		return
+	c.order_build_fort(site, "gate")
+	_flog(pid, "gate ordered at (%d,%d)" % [site.x, site.y])
+
+
+# ======================================================================
+# MILITARY / ENGAGEMENT
+# ======================================================================
+# Mode and commitment (_rethink), target choice by cost to kill, waves,
+# fortress assaults and gate jumps. Fight sense (_defence_at, _can_win) uses
+# only what this side has seen.
+
+## MILITARY protocol: a committed army presses its target; otherwise idle
+## groups bombard worlds in reach and launch waves at winnable targets.
+func _military_protocol(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var base: Starbase = cx.base
+	var ships: Array = cx.ships
+	var v: Vision = cx.v
+	var war: Array = cx.war
+	var mode: String = cx.mode
+	# Committed (clearly ahead): the whole army goes for the kill in waves.
+	if st.get("commit", false):
+		_press_attack(pid, st, game, base, war, ships, v)
+		return
+
+	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
+	# Idle warships next to an enemy planet start bombarding it (not a turtle).
+	for s in (idle.duplicate() if not (game.rl_side > 0 and pid != game.rl_side and game.opp_level == 2) else []):
+		var ep := _nearest_planet(s.global_position, game, func(pl): return pl.is_enemy_of(pid) and (v == null or v.is_visible_at(pl.global_position)))
+		# Only a world the warships near it can actually bring down.
+		if ep and _hurts_worlds(s) and s.global_position.distance_to(ep.global_position) < 350.0 and _can_win(pid, idle.filter(func(o): return o.global_position.distance_to(ep.global_position) < 500.0), ep.global_position, game):
+			s.order_bombard(ep)
+			idle.erase(s)
+	# Aggressive: any idle group that can destroy something goes for it,
+	# whatever the mode and whatever it costs (see _can_win).
+	# Gather a wave of meaningful size first (half the army, 3 to 8 ships)
+	# instead of trickling ships out three at a time.
+	var need := clampi(war.size() / 2, 3, 8)
+	if _regrouping(st):
+		need = maxi(need, ceili(war.size() * REGROUP_SHARE))
+	# Training curriculum (see Game.opp_level): a turtle never attacks, a
+	# slow opponent waits for a bigger wave.
+	var vs_rl: bool = game.rl_side > 0 and pid != game.rl_side
+	if vs_rl and game.opp_level == 3:
+		need = 8
+	if vs_rl and game.opp_level == 2:
+		need = 1 << 30
+	if idle.size() >= need:
+		var goal := _winnable_target(pid, idle, base.global_position, game)
+		if goal != Vector2.INF:
+			for s in idle:
+				s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+			# Radiation Sail Arrays (support, not warships) go with the wave to
+			# screen it from radiation and soak fire with their solar shield.
+			for rsa in ships.filter(func(s): return s.ship_type.ends_with("heatshield") and s.state == Ship.State.IDLE):
+				rsa.order_move(goal + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
+			st["wave"] = mini(st["wave"] + 4, 30)
+	# Waves already out pull back if their target has become too strong.
+	_recall_losing_waves(pid, war, base, game)
+
+## A fleet only detours to an enemy world when it is this much closer than the
+## enemy starbase (a fraction of the distance), so attacks reach the yards
+## that build the enemy fleet instead of grinding on colonies along the way.
+const DETOUR := 0.5
+
+## Attack once our fleet is this much stronger than theirs.
+const ATTACK_EDGE := 1.15
+
+## This far ahead the AI goes for the kill: it attacks with whatever it has
+## and heads for the nearest enemy world or starbase, since either one
+## falling (with the rest) ends the match.
+const FINISH_EDGE := 2.0
+
+func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
+	if _state.get(pid, {}).get("finishing", false):
+		var kill := _finish_target(pid, from, game)
+		if kill != Vector2.INF:
+			return kill
+	# The enemy starbase wins the match; a small enemy colony on the way is
+	# fair game (big worlds take too long to bombard).
+	var v: Vision = game.visions.get(pid)
+	if v:
+		# Fog of war: only targets we've seen. With no enemy starbase found
+		# yet, head for the mirror image of our home (systems are point-
+		# symmetric, so that's where the enemy most likely started).
+		var kp := _nearest_planet(from, game, func(pl): return game.is_hostile(pid, v.known_owner(pl)) and v.seen_planet_pop.get(pl, 0.0) < 4000.0)
+		var kb := v.known_enemy_base(from)
+		var home := game.nearest_starbase(pid, Vector2.ZERO)
+		# Starts are evenly spaced round the star: the next one along is the
+		# nearest likely enemy home.
+		var base_pos: Vector2 = kb[0] if not kb.is_empty() else (home.global_position.rotated(TAU / game.players.size()) if home else Vector2.ZERO)
+		# Nothing hostile known and that guess already checked: sweep for
+		# the leftovers instead of idling (see _scout_target).
+		if kb.is_empty() and kp == null and v.is_visible_at(base_pos):
+			var sc := _scout_target(pid, from, game, v)
+			if sc != Vector2.INF:
+				return sc
+		if kp and from.distance_to(kp.global_position) < from.distance_to(base_pos) * DETOUR:
+			return kp.global_position
+		return base_pos
+	var p := _nearest_planet(from, game, func(pl): return game.is_hostile(pid, pl.owner_id) and pl.pop < 4000.0)
+	var enemy_base: Starbase = null
+	for sb in game.get_tree().get_nodes_in_group("starbases"):
+		if game.is_hostile(pid, sb.owner_id) and (enemy_base == null or from.distance_to(sb.global_position) < from.distance_to(enemy_base.global_position)):
+			enemy_base = sb
+	if p and (enemy_base == null or from.distance_to(p.global_position) < from.distance_to(enemy_base.global_position) * DETOUR):
+		return p.global_position
+	return enemy_base.global_position if enemy_base else from
+
+## The nearest enemy world or finished starbase this player knows of (any
+## size: when finishing, every one counts). INF if none is known.
+func _finish_target(pid: int, from: Vector2, game: Game) -> Vector2:
 	var v: Vision = game.visions.get(pid)
 	var best := Vector2.INF
-	var best_d := 1200.0
-	for b in game.get_tree().get_nodes_in_group("starbases"):
-		if b.owner_id != pid or b.under_construction:
-			continue
-		var d: float = b.global_position.distance_to(threat)
-		if d > best_d and (v == null or v.enemy_near(b.global_position, 900.0) == 0):
-			best_d = d
-			best = b.global_position + (b.global_position - threat).normalized() * 150.0
-	if best != Vector2.INF:
-		return best
-	var away := (base.global_position - threat).normalized()
-	if away == Vector2.ZERO:
-		away = -base.global_position.normalized()
-	var q: Vector2 = base.global_position + away * 800.0
-	return q.limit_length(Game.MAP_RADIUS - 250.0)
-
-# ---------------------------------------------------------------- decisive attack
-
-## No commitment before this (game seconds), with fewer warships than
-## COMMIT_MIN, or unless this much stronger than everything known.
-const COMMIT_AFTER := 600.0
-const COMMIT_MIN := 8
-const COMMIT_EDGE := 1.3
-## Committed: stay in until strength falls below this share of the enemy's.
-const COMMIT_DROP := 0.7
-## How much a known enemy construct's hull counts toward enemy strength.
-const COMMIT_CONSTRUCT_SHARE := 0.25
-## The most starbases' worth of known constructs counted toward that.
-const COMMIT_CONSTRUCT_CAP := 2.0
-## Ships within this of the target are "at the front".
-const FRONT := 1400.0
-## A committed army that can't yet take its target waits this far short of it.
-const STAGE_BACK := 900.0
-
-## Hull + armor + shield of the enemy starbases and outposts this player has seen.
-func _known_constructs(pid: int, game: Game, v: Vision) -> float:
-	var t := 0.0
-	var sbt: float = Defs.STARBASE["hp"] + Defs.STARBASE["armor"] + Defs.STARBASE["shield"]
+	var best_d := INF
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		var owner_seen: int = v.known_owner(p) if v else p.owner_id
+		if game.is_hostile(pid, owner_seen) and from.distance_to(p.global_position) < best_d:
+			best_d = from.distance_to(p.global_position)
+			best = p.global_position
 	if v:
-		for sb in v.seen_bases:
-			t += sbt * float(v.seen_bases[sb][1])
-		for f in v.seen_forts:
-			t += (Defs.FRONTIER_OUTPOST["hp"] + Defs.FRONTIER_OUTPOST["armor"] + Defs.FRONTIER_OUTPOST["shield"]) * float(v.seen_forts[f][1])
+		var kb := v.known_enemy_base(from)
+		if not kb.is_empty() and from.distance_to(kb[0]) < best_d:
+			best = kb[0]
+		if best == Vector2.INF:
+			# Clean-up: the enemy's last worlds may be out of sight; go and look.
+			best = _scout_target(pid, from, game, v)
 	else:
 		for sb in game.get_tree().get_nodes_in_group("starbases"):
-			if game.is_hostile(pid, sb.owner_id):
-				t += sb.hp + sb.armor + sb.shield
-	return t
+			if game.is_hostile(pid, sb.owner_id) and from.distance_to(sb.global_position) < best_d:
+				best_d = from.distance_to(sb.global_position)
+				best = sb.global_position
+	return best
+
+## Re-reads the situation every RETHINK seconds and picks a mode:
+##   recover  - out of energy: no new warships, cancel queued ones (out of
+##              spice only limits the fleet to corvettes, in any mode)
+##   build_up - under threat or outgunned: warships first, no colonies, no waves
+##   attack   - clearly stronger: smaller waves launch right away
+##   expand   - otherwise: colonies first while free worlds remain
+## Switching mode cancels queued items that no longer fit.
+const RETHINK := 15.0
+
+func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) -> void:
+	if Game.now() < st.get("next_rethink", 0.0):
+		return
+	st["next_rethink"] = Game.now() + RETHINK
+	_counter_update(pid, st, game)
+	var mine := 0.0
+	for s in war:
+		mine += s.max_hp + s.max_armor + s.max_shield
+	var theirs := 0.0
+	var threat := false
+	var v: Vision = game.visions.get(pid)
+	if v:
+		# Fog of war: judge the enemy only by what our sensors have seen.
+		theirs = v.enemy_power()
+		threat = v.enemy_near(base.global_position, 900.0) > 0
+		for p in game.get_tree().get_nodes_in_group("planets"):
+			if p.owner_id == pid and v.enemy_near(p.global_position, 500.0) > 0:
+				threat = true
+				break
+	for s in ([] if v else game.get_tree().get_nodes_in_group("ships")):
+		if not game.is_hostile(pid, s.owner_id) or not s.is_alive() or s.def["role"] != "warship":
+			continue
+		theirs += s.max_hp + s.max_armor + s.max_shield
+		if s.global_position.distance_to(base.global_position) < 900.0:
+			threat = true
+		else:
+			for p in game.get_tree().get_nodes_in_group("planets"):
+				if p.owner_id == pid and s.global_position.distance_to(p.global_position) < 500.0:
+					threat = true
+					break
+	var res: Dictionary = game.resources[pid]
+	var rates: Dictionary = game.rates[pid]
+	# (A Blackout counts: buildings are offline, so no new hulls or attacks.)
+	var energy_starved: bool = (res["energy"] < 7.0 and rates.get("energy", 0.0) < 0.0) or game.in_blackout(pid)
+	var spice_starved: bool = res["spice"] < 10.0 and rates.get("spice", 0.0) <= 0.0
+	# Out of spice alone isn't a crisis: corvettes cost none (see _pick_warship).
+	st["corvettes_only"] = spice_starved
+	var starved := energy_starved
+	var free := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game) and p.is_habitable()) != null
+	var mode := "expand" if free else "build_up"
+	if starved:
+		mode = "recover"
+	elif threat or theirs > mine * 1.3:
+		mode = "build_up"
+	elif mine > theirs * ATTACK_EDGE and war.size() >= 8:
+		mode = "attack"
+	# Clearly winning: finish it, however small the fleet.
+	elif mine > theirs * FINISH_EDGE and war.size() >= 2:
+		mode = "attack"
+	st["finishing"] = mine > theirs * FINISH_EDGE
+	st["threat"] = threat
+	# Commit to a decisive attack when clearly ahead of everything it knows
+	# of (warships seen lately plus the starbases and outposts it has seen);
+	# stay committed through minor losses, drop it only when the edge is gone.
+	# Constructs are taken one at a time (targets are picked by cost to kill
+	# and must be winnable, see _commit_target): a sprawl of yards counts as
+	# at most COMMIT_CONSTRUCT_CAP starbases' worth, not all at once.
+	var sbt: float = Defs.STARBASE["hp"] + Defs.STARBASE["armor"] + Defs.STARBASE["shield"]
+	var known := theirs + minf(_known_constructs(pid, game, v), sbt * COMMIT_CONSTRUCT_CAP) * COMMIT_CONSTRUCT_SHARE
+	# No enemy fleet seen lately: the constructs alone don't hold it back
+	# (each target must still be winnable before the army goes, else it stages).
+	if theirs < 400.0:
+		known = theirs
+	var was: bool = st.get("commit", false)
+	var commit: bool = was
+	# Far ahead (see _overwhelming): commit even without the usual edge over
+	# the constructs, and stay in while the advantage holds.
+	var ow := _overwhelming(pid, st, game, v, mine, theirs, war.size())
+	if ow != st.get("overwhelm", false):
+		_flog(pid, "overwhelm %s: mine %d (+%d in production) vs seen fleet %d, %d warships" % ["ON" if ow else "off", int(mine), int(st.get("str_prod", 0.0)), int(theirs), war.size()])
+	st["overwhelm"] = ow
+	if ow and not was and Game.now() >= COMMIT_AFTER and not energy_starved:
+		commit = true
+	elif ow and was:
+		commit = war.size() >= 2 and not energy_starved
+	elif not was:
+		# With no enemy fleet seen lately, a smaller army can finish the job.
+		var cmin := COMMIT_MIN if theirs > 400.0 else COMMIT_MIN / 2
+		commit = Game.now() >= COMMIT_AFTER and war.size() >= cmin and mine > known * COMMIT_EDGE and not energy_starved
+	elif war.size() < (COMMIT_MIN / 2 if theirs > 400.0 else 2) or energy_starved or (mine < known * COMMIT_DROP and war.size() < st.get("commit_peak", 0) * 0.6):
+		commit = false
+	# (The edge alone doesn't end it: its picture of the enemy remembers
+	# ships for two minutes, so it only lets go once it has really lost much
+	# of the army it committed.)
+	st["commit_dbg"] = "mine=%d theirs=%d known=%d" % [int(mine), int(theirs), int(known)]
+	st["commit_peak"] = maxi(st.get("commit_peak", 0), war.size()) if commit else 0
+	if commit != was:
+		_flog(pid, "commit %s: mine %d vs known %d (%d warships)" % ["ON" if commit else "off", int(mine), int(known), war.size()])
+	st["commit"] = commit
+	if commit:
+		mode = "attack"
+	var old: String = st.get("mode", "")
+	st["mode"] = mode
+	if mode == old:
+		return
+	# Drop queued items (not the one already being built) that the new plan
+	# doesn't want.
+	for i in range(base.queue.size() - 1, 0, -1):
+		var t: String = base.queue[i]
+		var role: String = Defs.SHIPS[t]["role"]
+		if (mode == "recover" and role == "warship") or (threat and role == "colony"):
+			base.cancel(i)
 
 ## Fortress assault: how far ahead a side must be (army plus warships in
 ## its yards' queues, against the enemy fleet it has seen lately) before it
 ## stops waiting for a target that looks winnable and storms the strongest
 ## worlds and yards anyway, accepting losses.
 const OVERWHELM_EDGE := 3.0
+
 ## ... or: no enemy fleet seen lately and at most this many enemy worlds and
 ## yards known.
 const OVERWHELM_FEW := 3
+
 const OVERWHELM_FEW_AFTER := 1200.0
+
 ## Least warships for either.
 const OVERWHELM_MIN := 6
+
 ## Assault: the share of the army that must be massed at the staging point
 ## before it goes in, and after how long (s) a smaller share will do.
 const ASSAULT_MASS := 0.75
+
 const ASSAULT_WAIT := 150.0
 
 ## Far ahead of everything this side knows of the enemy (own Vision only):
@@ -2080,28 +2388,6 @@ func _commit_target(pid: int, st: Dictionary, war: Array, from: Vector2, game: G
 		return cheapest[0]
 	st["commit_kind"] = "guess"
 	return _attack_goal(pid, from, game)
-
-## Enemy Constructors in sight are remembered (where, when) for a minute:
-## with the enemy's yards gone they are what keeps it in the game.
-func _note_builders(pid: int, st: Dictionary, game: Game, v: Vision) -> void:
-	var mem: Dictionary = st.get("seen_builders", {})
-	for s in game.get_tree().get_nodes_in_group("ships"):
-		if game.is_hostile(pid, s.owner_id) and s.is_alive() and s.def["role"] == "constructor" and (v == null or v.can_see(s)):
-			mem[s.get_instance_id()] = [s.global_position, Game.now()]
-	for id in mem.keys():
-		var gone: bool = v != null and v.is_visible_at(mem[id][0]) and _visible_builder(pid, id, Game.instance, v) == null
-		if Game.now() - float(mem[id][1]) > 60.0 or gone:
-			mem.erase(id)
-	st["seen_builders"] = mem
-
-## An enemy Constructor we can see right now, as a node (null if not).
-func _visible_builder(_pid: int, id: int, _game: Game, v: Vision) -> Ship:
-	if id == 0 or not is_instance_id_valid(id):
-		return null
-	var s = instance_from_id(id)
-	if s is Ship and s.is_alive() and (v == null or v.can_see(s)):
-		return s
-	return null
 
 ## Committed: ships at the front finish their target (bombard worlds, attack
 ## everything else) and move on to the next; fresh hulls gather at home and
@@ -2257,107 +2543,18 @@ func _assault(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array, 
 	_flog(pid, "assault: %d of %d warships go in at %s (%d,%d) after %ds massing" % [massed.size(), war.size(), st.get("commit_kind", "?"), goal.x, goal.y, int(waited)])
 	return true
 
-## Where a mining station is needed: beside a rock one of our harvesters is
-## working that has no starbase or station within DROPOFF_NEAR. INF if every
-## worked rock already has a drop-off close by.
-const DROPOFF_NEAR := 700.0
-
-func _dropoff_gap(pid: int, game: Game, ships: Array, drops: Array) -> Vector2:
-	for s in ships:
-		if not s.def["role"] in ["miner", "skimmer"] or not is_instance_valid(s.mine_target):
-			continue
-		var rock: Vector2 = s.mine_target.global_position
-		if drops.any(func(d): return is_instance_valid(d) and d.global_position.distance_to(rock) < DROPOFF_NEAR):
-			continue
-		for r in [90.0, 140.0, 200.0]:
-			for a in range(8):
-				var q: Vector2 = rock + Vector2.from_angle(TAU * a / 8.0) * r
-				if game.site_problem("station", q) == "":
-					return q
-	return Vector2.INF
-
-## A legal starbase site beside one of our worlds that has no yard nearby.
-func _yard_site(pid: int, game: Game, bases: Array) -> Vector2:
-	# (`bases`: positions of our yards and yard sites already ordered.)
-	var v: Vision = game.visions.get(pid)
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		if p.owner_id != pid or bases.any(func(b): return b.distance_to(p.global_position) < 700.0):
-			continue
-		# Only where it is safe: no enemy warships seen near that world.
-		if v and v.enemy_near(p.global_position, 900.0) > 0:
-			continue
-		for r in [160.0, 220.0, 280.0]:
-			for a in [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]:
-				var q: Vector2 = p.global_position + Vector2.from_angle(a) * r
-				if game.starbase_site_problem(q) == "":
-					return q
-	# Every world has a yard: ring the yards we already have.
-	for b in bases:
-		for r in [260.0, 360.0, 460.0]:
-			for a in range(12):
-				var q2: Vector2 = b + Vector2.from_angle(TAU * a / 12.0) * r
-				if game.starbase_site_problem(q2) == "" and (v == null or v.enemy_near(q2, 900.0) == 0):
-					return q2
-	return Vector2.INF
-
-## Once the fleet is sizable: get a Constructor, build a Weapons Depot near
-## home, then refit idle generalist corvettes near home into the variant
-## that suits the enemy defenses seen so far (a few at a time).
-func _manage_depot(pid: int, ships: Array, base: Starbase, game: Game) -> void:
-	if not game.has_tech(pid, str(Defs.WEAPONS_DEPOT["requires"])):
-		return
-	var war := ships.filter(func(s): return s.def["role"] == "warship")
-	var want := _pick_variant(pid, game)
-	var depots: Array = game.get_tree().get_nodes_in_group("depots").filter(func(d): return d.owner_id == pid)
-	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
-	# Each depot fits one variant, so build one for the variant our intel says
-	# we want (and a second later if the enemy fleet changes).
-	var have := depots.any(func(d): return d.variant == want)
-	if want != "" and not have and depots.size() < 3:
-		if war.size() >= 6 and builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
-			base.enqueue("constructor")
-		for c in builders:
-			if c.state == Ship.State.IDLE:
-				var site := _depot_site(base.global_position, game)
-				if site != Vector2.INF:
-					c.order_build_depot(site, want)
-				break
-	# Send idle generalists to a finished depot: the one we want if it exists,
-	# otherwise whatever we have.
-	var depot: WeaponsDepot = game.nearest_depot(pid, base.global_position, want)
-	if depot == null:
-		depot = game.nearest_depot(pid, base.global_position)
-	if depot == null:
-		return
-	var heading := ships.filter(func(s): return s.state == Ship.State.REFIT).size()
-	for s in war:
-		if heading + depot.bays.size() >= int(Defs.WEAPONS_DEPOT["capacity"]):
-			break
-		if s.state == Ship.State.IDLE and s.can_refit(depot.variant) and s.global_position.distance_to(base.global_position) < 1200.0 and randf() < 0.5:
-			s.order_refit(depot.variant, depot)
-			heading += 1
-
-## A free spot for a depot a little way from home, toward the middle.
-func _depot_site(home: Vector2, game: Game) -> Vector2:
-	var dir := (-home).normalized() if home.length() > 1.0 else Vector2.RIGHT
-	for r in [260.0, 340.0, 420.0]:
-		for a in [0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, PI]:
-			var p: Vector2 = home + dir.rotated(a) * r
-			if game.depot_site_problem(p) == "":
-				return p
-	return Vector2.INF
-
-# ---------------------------------------------------------------- fight sense
 # The AI takes any fight it expects to win, however many ships it costs.
 # A side's strength is its total damage per second times its total toughness
 # (the duel tests show fights scaling that way); attackers must out-strength
 # the defence by WIN_MARGIN squared (just over 1: winning at all is enough).
-
 const WIN_MARGIN := 1.02
+
 ## Enemy ships counted as defending a target within this range of it.
 const DEFEND_RANGE := 600.0
+
 ## Enemy starbases, outposts and battery worlds this close to a target join its defence.
 const SUPPORT_RANGE := 450.0
+
 ## Damage per second per point of toughness, for enemy ships known only by
 ## their size (fog of war): about the fleet average across the classes.
 const DPS_PER_TOUGH := 0.04
@@ -2492,216 +2689,6 @@ func _recall_losing_waves(pid: int, war: Array, base: Starbase, game: Game) -> v
 			for s in g:
 				s.order_move(base.global_position + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
 
-# ---------------------------------------------------------------- forts
-# Frontier Outposts hold exposed ground (worlds, stations and worked belts far
-# from any starbase, on the side facing the enemy); a Warp Gate near home
-# garrisons the idle fleet and flings it at a target it has seen and can
-# beat, or at its own territory under attack. Same costs, sites and
-# information (its own Vision) as a player.
-
-## Seconds between outpost orders, and the most it keeps at once.
-const OUTPOST_EVERY := 150.0
-const OUTPOST_MAX := 4
-## A world / station / belt this far from every own starbase is "exposed".
-const EXPOSED := 900.0
-## Warships in a gate before it warps them at a target.
-const GATE_WAVE := 5
-## The longest ships wait in a gate with nothing to warp at, and how long
-## they then stay out before the gate takes them again.
-const GATE_HOLD := 120.0
-const GATE_REST := 60.0
-## Where a warped wave lands: this far short of its target, outside its guns.
-const WARP_STANDOFF := 650.0
-
-## SL_AI_FORTS_LOG=1: one "AIFORT" line per outpost / gate decision.
-func _flog(pid: int, msg: String) -> void:
-	if OS.get_environment("SL_AI_FORTS_LOG") != "":
-		print("AIFORT t=%d P%d %s" % [int(Game.now()), pid, msg])
-
-## Returns `war` without the ships it sent into a gate this tick.
-func _manage_forts(pid: int, st: Dictionary, game: Game, base: Starbase, ships: Array, war: Array, fleet: int) -> Array:
-	var v: Vision = game.visions.get(pid)
-	var forts: Array = game.get_tree().get_nodes_in_group("forts").filter(func(f): return f.owner_id == pid and f.is_alive())
-	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
-	if OS.get_environment("SL_AI_FORTS_LOG") != "":
-		var done: Dictionary = st.get("forts_done", {})
-		for f in forts:
-			if not f.under_construction and not done.has(f.get_instance_id()):
-				done[f.get_instance_id()] = true
-				_flog(pid, "%s finished at (%d,%d)" % [f.label(), f.global_position.x, f.global_position.y])
-		st["forts_done"] = done
-	# The gate first: it is the one that needs saving up for.
-	if game.has_tech(pid, str(Defs.WARP_GATE["requires"])):
-		_plan_gate(pid, st, game, base, forts, builders, fleet)
-	if game.has_tech(pid, str(Defs.FRONTIER_OUTPOST["requires"])):
-		_plan_outpost(pid, st, game, base, forts, builders.filter(func(c): return c.state != Ship.State.IDLE or not st.get("gate_wants_builder", false)), v, fleet)
-	return _use_gates(pid, st, game, forts, war, v)
-
-## An idle Constructor, or null (then one is queued if none exists).
-func _idle_builder(base: Starbase, builders: Array) -> Ship:
-	for c in builders:
-		if c.state == Ship.State.IDLE:
-			return c
-	if builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
-		base.enqueue("constructor")
-	return null
-
-## Spare energy for one more construct's upkeep (per minute).
-func _upkeep_ok(pid: int, game: Game, upkeep_per_min: float) -> bool:
-	return game.rates[pid].get("energy", 0.0) > 0.06 + upkeep_per_min / 60.0 or game.resources[pid]["energy"] > 250.0
-
-## Enemy starbases and worlds this player knows of (its own Vision).
-func _enemy_spots(pid: int, game: Game, v: Vision) -> Array:
-	var spots: Array = []
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		var o: int = v.known_owner(p) if v else p.owner_id
-		if o > 0 and o != pid and game.is_hostile(pid, o):
-			spots.append(p.global_position)
-	if v:
-		for sb in v.seen_bases:
-			spots.append(v.seen_bases[sb][0])
-	else:
-		for sb in game.get_tree().get_nodes_in_group("starbases"):
-			if game.is_hostile(pid, sb.owner_id):
-				spots.append(sb.global_position)
-	return spots
-
-func _plan_outpost(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Array, builders: Array, v: Vision, fleet: int) -> void:
-	# (Under threat only with minerals to spare: then holding ground is
-	# exactly what the stockpile should buy.)
-	if Game.now() < st.get("next_outpost", 0.0) or st.get("mode", "") == "recover" or (st.get("threat", false) and _spare(pid, st, game, "minerals") < 3000.0):
-		return
-	var d: Dictionary = Defs.FRONTIER_OUTPOST
-	var res: Dictionary = game.resources[pid]
-	# Never at the cost of the fleet: a fleet first, and the bill (paid over
-	# the build) in hand with a little to spare.
-	if fleet < 4 or res["minerals"] < d["cost"]["minerals"] + 150.0 or res["spice"] < float(d["cost"].get("spice", 0)) + 30.0 or not _upkeep_ok(pid, game, d["upkeep"]):
-		return
-	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "outpost")
-	var have: int = forts.filter(func(f): return f is FrontierOutpost).size() + pending.size()
-	var worlds: int = game.get_tree().get_nodes_in_group("planets").filter(func(p): return p.owner_id == pid).size()
-	# One to start; another every 7 minutes and per two worlds, up to OUTPOST_MAX.
-	var cap := mini(OUTPOST_MAX, mini(1 + int(Game.now() / 420.0), 1 + worlds / 2))
-	# Minerals piling up past what the yards can use: more ground held.
-	var rich: bool = _spare(pid, st, game, "minerals") > 3000.0
-	if rich:
-		cap = mini(OUTPOST_MAX + 3, cap + 2)
-	if have >= cap:
-		return
-	var taken: Array = forts.map(func(f): return f.global_position) + pending.map(func(c): return c.build_site)
-	var site := _outpost_site(pid, game, base, taken, v)
-	# Not into a contested spot (enemies seen there lately).
-	if site != Vector2.INF and v and _enemy_seen_near(v, site, 700.0, 60.0):
-		site = Vector2.INF
-	if site == Vector2.INF:
-		st["next_outpost"] = Game.now() + 30.0
-		return
-	var c := _idle_builder(base, builders)
-	if c == null:
-		return
-	c.order_build_fort(site, "outpost")
-	st["next_outpost"] = Game.now() + (OUTPOST_EVERY * 0.4 if rich else OUTPOST_EVERY)
-	_flog(pid, "outpost ordered at (%d,%d) (%d/%d)" % [site.x, site.y, have + 1, cap])
-
-## A legal outpost site guarding the most exposed thing we own: a world,
-## Mining Station or worked rock far from every own starbase, nearest the
-## known enemy, with no fort of ours near it yet. Placed on its enemy side.
-func _outpost_site(pid: int, game: Game, base: Starbase, taken: Array, v: Vision) -> Vector2:
-	var enemy := _enemy_spots(pid, game, v)
-	var anchors: Array = []
-	for p in game.get_tree().get_nodes_in_group("planets"):
-		if p.owner_id == pid:
-			anchors.append(p.global_position)
-	for m in game.get_tree().get_nodes_in_group("mining_stations"):
-		if m.owner_id == pid:
-			anchors.append(m.global_position)
-	for s in game.get_tree().get_nodes_in_group("ships"):
-		if s.owner_id == pid and s.def["role"] in ["miner", "skimmer"] and is_instance_valid(s.mine_target):
-			anchors.append(s.mine_target.global_position)
-	var best := Vector2.INF
-	var best_score := INF
-	# Exposed holdings first; with none, the front line: whatever we hold
-	# nearest the known enemy (the outpost then goes out in front of it).
-	var reach := 300.0
-	for pass_i in 2:
-		if best != Vector2.INF or (pass_i == 1 and enemy.is_empty()):
-			break
-		if pass_i == 1:
-			reach = 420.0
-		for a in anchors:
-			var yard := game.nearest_starbase(pid, a, true)
-			if pass_i == 0 and yard and yard.global_position.distance_to(a) < EXPOSED:
-				continue
-			if taken.any(func(t): return t.distance_to(a) < 700.0):
-				continue
-			if v and v.enemy_near(a, 700.0) > 0:
-				continue
-			# Nearest the enemy we know of; with none known, farthest from home.
-			var score: float = -a.distance_to(base.global_position)
-			if not enemy.is_empty():
-				score = INF
-				for e in enemy:
-					score = minf(score, a.distance_to(e))
-			if score < best_score:
-				best_score = score
-				best = a
-	if best == Vector2.INF:
-		return Vector2.INF
-	# On the enemy side of it (or the side away from home).
-	var toward := (best - base.global_position).normalized()
-	if not enemy.is_empty():
-		enemy.sort_custom(func(x, y): return best.distance_to(x) < best.distance_to(y))
-		toward = (enemy[0] - best).normalized()
-	for r in [reach - 130.0, reach - 70.0, reach]:
-		for ang in [0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, PI]:
-			var q: Vector2 = best + toward.rotated(ang) * r
-			if game.site_problem("outpost", q) == "":
-				return q
-	return Vector2.INF
-
-func _plan_gate(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Array, builders: Array, fleet: int) -> void:
-	st["gate_wants_builder"] = false
-	if st.get("mode", "") == "recover" or st.get("threat", false):
-		return
-	var d: Dictionary = Defs.WARP_GATE
-	var res: Dictionary = game.resources[pid]
-	var gates := forts.filter(func(f): return f is WarpGate)
-	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "gate")
-	var n: int = gates.size() + pending.size()
-	# One gate; a second only late in a long, rich game.
-	var rich: bool = Game.now() > 1800.0 and res["minerals"] > 6000.0
-	if n >= 2 or (n >= 1 and not rich) or not pending.is_empty():
-		return
-	# The bill is paid over the build, so half of it in hand will do.
-	if fleet < 6 or res["minerals"] < d["cost"]["minerals"] * 0.5 or res["spice"] < float(d["cost"].get("spice", 0)) + 60.0 or not _upkeep_ok(pid, game, d["upkeep"]):
-		return
-	# Beside home (a second beside another yard, well away from the first).
-	var yard: Node2D = base
-	if not gates.is_empty():
-		var far := -1.0
-		for b in game.get_tree().get_nodes_in_group("starbases"):
-			var dg: float = b.global_position.distance_to(gates[0].global_position)
-			if b.owner_id == pid and dg > far:
-				far = dg
-				yard = b
-		if far < 1500.0:
-			return
-	var site := Vector2.INF
-	var dir := (-yard.global_position).normalized() if yard.global_position.length() > 1.0 else Vector2.RIGHT
-	for r in [300.0, 400.0, 520.0]:
-		for ang in [0.6, -0.6, 1.2, -1.2, 0.0, 2.0, -2.0, PI]:
-			var q: Vector2 = yard.global_position + dir.rotated(ang) * r
-			if site == Vector2.INF and game.site_problem("gate", q) == "":
-				site = q
-	if site == Vector2.INF:
-		return
-	var c := _idle_builder(base, builders)
-	st["gate_wants_builder"] = c == null
-	if c == null:
-		return
-	c.order_build_fort(site, "gate")
-	_flog(pid, "gate ordered at (%d,%d)" % [site.x, site.y])
-
 ## `q` pulled onto the gate's reach: a point beyond warp_max is stepped
 ## back along the gate->q line to just inside it (the wave lands there and
 ## flies the rest), one closer than warp_min pushed out to it.
@@ -2831,7 +2818,116 @@ func _use_gates(pid: int, st: Dictionary, game: Game, forts: Array, war: Array, 
 			war = war.filter(func(s): return not sent.has(s))
 	return war
 
-# ---------------------------------------------------------------- preservation
+
+# ======================================================================
+# DEFENSE
+# ======================================================================
+# Home starbase, harvesters and besieged yards.
+
+## DEFENSE protocol: enemies at the home starbase pull the fleet in when the
+## fight can be held, else gather at a safe rally. True while defending.
+func _defense_protocol(cx: Ctx) -> bool:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var base: Starbase = cx.base
+	var v: Vision = cx.v
+	var war: Array = cx.war
+	# Defend: enemies near the starbase pull every warship home.
+	var threat := game.nearest_enemy(base, 450.0)
+	# Only enemies our sensors can actually see (not ones hidden in a nebula).
+	if threat and v and not v.can_see(threat):
+		threat = null
+	if threat:
+		# A fight it can hold (with the starbase's guns): everyone in. One it
+		# can't: whoever is already in it fights, the rest (and new hulls)
+		# gather at a safe rally point until together they can, instead of
+		# trickling in one at a time to die.
+		var tp: Vector2 = threat.global_position
+		if _can_hold(pid, war, base, tp, game):
+			st.erase("rally")
+			for s in war:
+				if s.state != Ship.State.ATTACK:
+					s.order_attack_move(tp)
+		else:
+			var rally := _safe_rally(pid, st, game, base, tp)
+			st["rally"] = rally
+			for s in war:
+				if s.global_position.distance_to(tp) < 300.0:
+					if s.state != Ship.State.ATTACK:
+						s.order_attack_move(tp)
+				elif s.global_position.distance_to(rally) > 150.0 and s.move_goal.distance_to(rally) > 150.0:
+					s.order_move(rally + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
+		return true
+	st.erase("rally")
+	return false
+
+## Harvesters with enemy warships at them: idle warships that can win go
+## to them; with none, the harvesters run for the nearest yard.
+func _guard_harvesters(pid: int, st: Dictionary, game: Game, war: Array, ships: Array, v: Vision) -> void:
+	if v == null or Game.now() < st.get("next_guard", 0.0):
+		return
+	st["next_guard"] = Game.now() + 3.0
+	var idle := war.filter(func(s): return s.state == Ship.State.IDLE)
+	for h in ships:
+		if not h.def["role"] in ["miner", "skimmer", "constructor"] or v.enemy_near(h.global_position, 380.0) == 0:
+			continue
+		var yard := game.nearest_starbase(pid, h.global_position)
+		if yard and yard.global_position.distance_to(h.global_position) < 450.0:
+			continue
+		var near := idle.filter(func(s): return s.global_position.distance_to(h.global_position) < 2200.0)
+		if not near.is_empty() and _can_win(pid, near, h.global_position, game):
+			for s in near:
+				s.order_attack_move(h.global_position + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
+				idle.erase(s)
+			_flog(pid, "escort: %d warships to %s under attack at (%d,%d)" % [near.size(), h.def["role"], h.global_position.x, h.global_position.y])
+		elif yard and h.state != Ship.State.BUILD:
+			h.order_move(yard.global_position + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
+
+## A yard with enemies at it that the defence can't hold builds no warships
+## (they would die as they launch) - as long as another yard can.
+func _yard_besieged(pid: int, st: Dictionary, b: Starbase, v: Vision) -> bool:
+	if v == null or not st.has("rally") or v.enemy_near(b.global_position, 600.0) == 0:
+		return false
+	return Game.instance.get_tree().get_nodes_in_group("starbases").any(func(o): return o != b and o.owner_id == pid and not o.under_construction and v.enemy_near(o.global_position, 900.0) == 0)
+
+## True if `war` plus the starbase's own guns should beat the enemies at `at`.
+func _can_hold(pid: int, war: Array, base: Starbase, at: Vector2, game: Game) -> bool:
+	var dps := Defs.construct_dps(Defs.STARBASE) if base.global_position.distance_to(at) < 600.0 else 0.0
+	var tough := base.hp + base.armor + base.shield if dps > 0.0 else 0.0
+	for s in war:
+		dps += _ship_dps(s, game)
+		tough += s.hp + s.armor + s.shield
+	var d := _defence_at(pid, at, game)
+	return dps * tough > d.x * d.y * 0.8
+
+## Where a fleet that can't hold gathers: the own yard farthest from the
+## fight with no enemies near it, else a point behind home away from them.
+func _safe_rally(pid: int, st: Dictionary, game: Game, base: Starbase, threat: Vector2) -> Vector2:
+	var v: Vision = game.visions.get(pid)
+	var best := Vector2.INF
+	var best_d := 1200.0
+	for b in game.get_tree().get_nodes_in_group("starbases"):
+		if b.owner_id != pid or b.under_construction:
+			continue
+		var d: float = b.global_position.distance_to(threat)
+		if d > best_d and (v == null or v.enemy_near(b.global_position, 900.0) == 0):
+			best_d = d
+			best = b.global_position + (b.global_position - threat).normalized() * 150.0
+	if best != Vector2.INF:
+		return best
+	var away := (base.global_position - threat).normalized()
+	if away == Vector2.ZERO:
+		away = -base.global_position.normalized()
+	var q: Vector2 = base.global_position + away * 800.0
+	return q.limit_length(Game.MAP_RADIUS - 250.0)
+
+
+# ======================================================================
+# PRESERVATION
+# ======================================================================
+# (Rules in the block comment below.)
+
 # Ships, constructs and worlds are kept alive unless losing some buys
 # something worth it. Every PRESERVE_EVERY seconds each local fight (own
 # warships with an enemy in sight) is weighed with what this side can see
@@ -2845,26 +2941,39 @@ func _use_gates(pid: int, st: Dictionary, game: Game, forts: Array, war: Array, 
 ## How much own losses weigh against what a fight buys: a fight is left when
 ## sqrt(own power / enemy power) x (1 + objective bonus) drops below this.
 const PRESERVE_WEIGHT := 0.9
+
 ## Objective bonuses: an enemy starbase or Constructor (ends a side), own
 ## world / starbase / construct defended, an enemy group about to die.
 const OBJ_GAME_WIN := 0.5
+
 const OBJ_DEFEND := 0.3
+
 const OBJ_FINISH := 0.3
+
 ## A group this battered (share of its toughness left) leaves an even fight.
 const PRESERVE_BATTERED := 0.4
+
 ## A ship under this share of its toughness peels off (if the rest still win).
 const PEEL_AT := 0.3
+
 ## Seconds a retreating group takes no other orders; a peeled ship stays
 ## home until healed past PEEL_BACK (or PEEL_MAX seconds).
 const RETREAT_HOLD := 40.0
+
 const PEEL_BACK := 0.7
+
 const PEEL_MAX := 120.0
+
 ## After a retreat, the next wave waits for this share of the army (seconds).
 const REGROUP_FOR := 120.0
+
 const REGROUP_SHARE := 0.7
+
 const PRESERVE_EVERY := 2.0
+
 ## Enemies this close to a warship make it part of a fight.
 const FIGHT_RANGE := 600.0
+
 ## Own warships this close to an engaged one fight as one group.
 const GROUP_RANGE := 900.0
 
