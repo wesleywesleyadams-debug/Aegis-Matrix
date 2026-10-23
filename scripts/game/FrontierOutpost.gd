@@ -1,6 +1,6 @@
 class_name FrontierOutpost
 extends FortConstruct
-## Frontier Outpost (Defs.FRONTIER_OUTPOST): half a starbase's guns (3 standard
+## Frontier Outpost (Defs.FRONTIER_OUTPOST): about half a starbase's guns (3 standard
 ## lasers) and most of its layers on a cheaper site, for holding a choke or a belt. It builds nothing,
 ## takes no deliveries and is not a starbase for winning or losing — it only
 ## shoots. Enemy ships auto-target it like a starbase (Game.fort_list).

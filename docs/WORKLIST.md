@@ -22,7 +22,7 @@ code or art. Last updated 2026-10-23.
 
 - **[balance] Playtest the new balance** (Symmetry + Mod pass 5 + variant pass 4 + Defense rework + construct toughness): nothing has been played by hand yet.
 - **[balance] Target Prediction: next phase pending** (smoothed-velocity lead and braking/charge handling are in; further tuning not started).
-- **[balance] Mods ~+5% over lasers** (earlier goal): pass 5 put Mods at 0..+0.09 over lasers; confirm whether that closes it. Tractor Beams are locked (beam-only, closer = more damage; pull x3 corvettes / x2 destroyers / x0.5 carriers / x4 drones, stops at 52% of range): change only with the user's go-ahead.
+- **Tractor Beams lock:** Tractor Beams are locked (beam-only, closer = more damage; pull x3 corvettes / x2 destroyers / x0.5 carriers / x4 drones, stops at 52% of range): change only with the user's go-ahead.
 - **[balance] Refresh the Codex matchup tables on each merge:** `python tools/matchups_to_json.py <duels.txt> "<label>"` rewrites `data/matchups.json`, which the Combat page reads.
 - **[balance] Recheck "Which variant against what"** (Codex): its numbers are computed live, but the note that equal-cost duels confirmed them predates the recent rebalance.
 - **[balance] (parked by the user 2026-10-20) Upkeep explodes late.** AI sims (2026-10-20): x2.7 at 30 min, x12 (~3,900 energy/min) at 45 min; nobody starved yet thanks to 50k stockpiles, but longer games will hit a wall. Options: smaller weight for harvesters/support, a cap, or keep.

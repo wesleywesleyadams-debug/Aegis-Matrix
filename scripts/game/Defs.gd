@@ -246,7 +246,7 @@ const DOOM_SECONDS := 10.0
 ## Constructor. Harvesters unload here instead of flying home, which is what
 ## makes a distant belt worth working. It builds nothing, and losing one
 ## never loses the match.
-## Frontier Outpost: half a starbase's guns and layers on a cheaper site — a
+## Frontier Outpost: about half a starbase's guns and layers on a cheaper site — a
 ## laser fort for holding ground. Builds nothing, takes no deliveries, and is
 ## not a starbase for winning or losing.
 const FRONTIER_OUTPOST := {

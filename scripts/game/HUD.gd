@@ -2470,7 +2470,7 @@ func _add_constructor_buttons() -> void:
 
 	for kind in ["outpost", "gate"]:
 		var d: Dictionary = Defs.construct_def(kind)
-		var tip := ("Half a starbase: %d hull / %d armor / %d shields and a %d-range laser. Holds ground; builds nothing, takes no deliveries." % [
+		var tip := ("About half a starbase: %d hull / %d armor / %d shields and a %d-range laser. Holds ground; builds nothing, takes no deliveries." % [
 			int(d["hp"]), int(d["armor"]), int(d["shield"]), int(d["range"])]) if kind == "outpost" else \
 			("Right-click it with ships to garrison them (no limit). Warp sends them all %d-%d px at %dx speed, then recharges %ds. Ships inside die if it falls." % [
 			int(d["warp_min"]), int(d["warp_max"]), int(d["warp_speed_mult"]), int(d["warp_cooldown"])])

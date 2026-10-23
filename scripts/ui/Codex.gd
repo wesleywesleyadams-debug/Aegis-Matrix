@@ -1203,7 +1203,7 @@ func _page_constructs() -> void:
 	_heading("Mining Station")
 	_para("A forward drop-off: harvesters unload here instead of flying home, so a station beside a far belt or nebula shortens every trip. It has no weapons: guard it with ships or a Frontier Outpost.")
 	_heading("Frontier Outpost")
-	_para("Half a starbase: %s instead of its %d, on a cheaper site (Outposts research). It builds nothing and takes no cargo; it only holds the space around it, and enemy ships attack it on sight like a starbase. Construct weapon research (damage, range, fire rate) applies to its guns. Upkeep weight x%.2f, as a cruiser." % [_construct_guns(Defs.FRONTIER_OUTPOST), int(Defs.STARBASE["guns"]), Defs.UPKEEP_WEIGHT["cruiser"]])
+	_para("About half a starbase: %s instead of its %d, on a cheaper site (Outposts research). It builds nothing and takes no cargo; it only holds the space around it, and enemy ships attack it on sight like a starbase. Construct weapon research (damage, range, fire rate) applies to its guns. Upkeep weight x%.2f, as a cruiser." % [_construct_guns(Defs.FRONTIER_OUTPOST), int(Defs.STARBASE["guns"]), Defs.UPKEEP_WEIGHT["cruiser"]])
 	_heading("Warp Gate")
 	var wg: Dictionary = Defs.WARP_GATE
 	_para("No gun (Warp Gates research). Right-click your gate with ships selected to garrison them inside, any number; they still cost upkeep, and if the gate is destroyed every ship inside is lost with it. Its panel ejects one ship or all of them. Warp (Q) flings the whole garrison at a point %s-%s px away, fog or not: they fly there in a straight line at %dx speed, holding fire and ignoring orders until they arrive, and can be shot on the way. The gate then recharges for %d s. Upkeep weight x%.2f, as a starbase." % [
