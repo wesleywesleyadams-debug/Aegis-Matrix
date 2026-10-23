@@ -371,10 +371,24 @@ static func call_scene(id: String, img: Image) -> void:
 			_disc(img, Vector2(60, 34), 2.4, QCYAN)
 			_disc(img, Vector2(60, 34), 1.0, QL[4])
 		"beam_focusing":
-			_beam(img, Vector2(6, 22), Vector2(28, 32), Color("ff6a4a", 0.6), 4.0)
-			_beam(img, Vector2(6, 42), Vector2(28, 32), Color("ff6a4a", 0.6), 4.0)
-			_ellipse(img, Vector2(30, 32), Vector2(3, 12), Color("b0f0ff"))
-			_beam(img, Vector2(32, 32), Vector2(60, 32), Color("ffd84a"), 1.5)
+			# C: an iris of steel blades closes around the beam, squeezing it into
+			# a bright pinpoint stream.
+			var c := Vector2(26, 34)
+			_disc(img, c, 19.0, STEEL[0])
+			_disc(img, c, 17.5, STEEL[1])
+			for k in 7:
+				var a := k * TAU / 7.0
+				var p0 := c + Vector2.from_angle(a) * 17.0
+				var p1 := c + Vector2.from_angle(a + 0.9) * 17.0
+				var p2 := c + Vector2.from_angle(a + 1.6) * 3.4
+				_poly(img, [p0, p1, p2], STEEL[0])
+				_poly(img, [p0.lerp(c, 0.06), p1.lerp(c, 0.06), p2.lerp(p0, 0.08)], STEEL[2] if k % 2 == 0 else STEEL[3])
+				_line(img, p0.lerp(c, 0.08), p2, 1.0, STEEL[4] if k < 3 else STEEL[1])
+			_ring(img, c, 18.0, 1.4, STEEL[3])
+			_disc(img, c, 3.2, Color(QCYAN, 0.6))
+			_disc(img, c, 1.8, QL[4])
+			_line(img, c, Vector2(62, 10), 3.4, Color(QCYAN, 0.35))
+			_line(img, c, Vector2(62, 10), 1.4, QL[4])
 		"starfire_batteries":
 			# A star held in a containment ring - the battery - venting a jet of
 			# starfire out of its muzzle.
