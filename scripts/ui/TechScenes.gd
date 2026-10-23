@@ -464,23 +464,25 @@ static func call_scene(id: String, img: Image) -> void:
 				_arc(img, c, 22.0 + k * 3.0, -0.9 - k * 0.2, 0.4 - k * 0.2, 1.4, Color(BR[3], 0.8 - k * 0.3))
 			_round(img, Vector2(54, 12), Vector2(0.5, -1).normalized(), 9.0, 1.8)
 		"heavy_mounts":
-			# C: twin heavy guns bolted to an armoured mount, firing in turn - one
-			# flashing, the other recoiled and reloading.
-			var dir := Vector2(1, -0.55).normalized()
-			var n := dir.orthogonal()
-			var base := Vector2(18, 40)
-			_disc(img, base, 13.0, STEEL[0])
-			_disc(img, base, 12.0, STEEL[1])
-			_disc(img, base + Vector2(-2, -2), 9.0, STEEL[2])
-			for k in 8:
-				_joint(img, base + Vector2.from_angle(k * TAU / 8.0) * 10.5, 1.1, STEEL)
-			var g1 := base + n * 4.0
-			var g2 := base - n * 4.0
-			_cannon(img, g1, g1 + dir * 26.0, 5.0, 2)
-			_cannon(img, g2 - dir * 4.0, g2 + dir * 20.0, 5.0, 2)
-			_burst(img, g1 + dir * 29.0, 4.0, BR[4])
-			_tracer(img, g1 + dir * 38.0, dir, 5.0)
-			_joint(img, base, 2.4, STEEL)
+			# V1: a battleship turret in profile - sloped gun house on a ring base,
+			# twin barrels out of its front face, one firing.
+			var dir := Vector2(1, -0.42).normalized()
+			_twin_fire(img, [Vector2(26, 30), Vector2(26, 36)], dir, 24.0, 0)
+			var house := [Vector2(6, 42), Vector2(8, 28), Vector2(16, 22), Vector2(28, 24), Vector2(32, 34), Vector2(30, 42)]
+			var out := []
+			for p in house:
+				out.append(Vector2(18, 33) + (p - Vector2(18, 33)) * 1.08)
+			_poly(img, out, STEEL[0])
+			_poly(img, house, STEEL[2])
+			_poly(img, [Vector2(8, 28), Vector2(16, 22), Vector2(28, 24), Vector2(26, 27), Vector2(16, 25.5), Vector2(10, 30)], STEEL[3])
+			_line(img, Vector2(9, 27.5), Vector2(16, 22.5), 1.0, STEEL[4])
+			_poly(img, [Vector2(28, 24), Vector2(32, 34), Vector2(30, 42), Vector2(27, 42), Vector2(29, 34), Vector2(26, 26)], STEEL[1])
+			_box(img, Vector2(4, 42), Vector2(34, 48), STEEL[0])
+			_box(img, Vector2(5, 43), Vector2(33, 47), STEEL[1])
+			_line(img, Vector2(5, 43.5), Vector2(33, 43.5), 1.0, STEEL[3])
+			for x in [10.0, 18.0, 26.0]:
+				_joint(img, Vector2(x, 45), 1.1, STEEL)
+			_joint(img, Vector2(14, 34), 1.4, STEEL)
 		"scatter_arrays":
 			# B: five barrels fanned out from one hub, each with its own stream of
 			# fire - a wall of shot.
@@ -1308,3 +1310,12 @@ static func _oc_zap(img: Image, a: Vector2, b: Vector2, seed_v: int) -> void:
 		var q := a.lerp(b, k / 4.0) + (n * rng.randf_range(-2.0, 2.0) if k < 4 else Vector2.ZERO)
 		_line(img, prev, q, 1.0, OC[3] if k % 2 == 0 else OC[4])
 		prev = q
+
+static func _twin_fire(img: Image, roots: Array, dir: Vector2, len: float, firing: int) -> void:
+	for k in roots.size():
+		var r: Vector2 = roots[k]
+		var l := len if k == firing else len - 4.0
+		_cannon(img, r, r + dir * l, 4.2, 2)
+		if k == firing:
+			_burst(img, r + dir * (l + 3.0), 3.6, BR[4])
+			_tracer(img, r + dir * (l + 12.0), dir, 5.0)
