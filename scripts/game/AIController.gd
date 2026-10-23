@@ -1014,8 +1014,9 @@ func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, sh
 ## Upkeep multiplier from which the AI builds its biggest hulls first.
 const BIG_HULLS_MULT := 2.5
 
-## Most starbases the AI grows to by itself.
-const MAX_YARDS := 10
+## Never more than this many starbases at a time (built or going up): past
+## this, minerals go into the fleet instead.
+const MAX_YARDS := 4
 
 ## Energy per minute left after upkeep (research spending added back: it
 ## is optional, and counting it would block ships while a project runs).
