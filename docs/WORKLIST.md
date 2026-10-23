@@ -30,6 +30,7 @@ code or art. Last updated 2026-10-21.
 
 - **[missing] Munitions and reloading** (idea, 2026-09-22): limited ammo, restocked at a starbase.
 - **[balance] Warp Gate reach 1,000-10,000 px** is wider than the map (radius 1,750), so in practice the limit is the map edge. Warp lines are straight and can cross the star's radiation.
+- **[balance] Constructs (HP / damage / cost)** - pending; user will schedule after ship/Mod/variant/Defense balance (2026-10-23).
 - **[missing] "Claude plays a match via text"** (idea, 2026-10-17).
 
 ## Cleanup
