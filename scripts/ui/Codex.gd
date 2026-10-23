@@ -398,7 +398,7 @@ func _fit_sprite(name: String, box: float, team: bool = false) -> Control:
 	base.custom_minimum_size = Vector2(box, art.y * k)
 	stack.custom_minimum_size = base.custom_minimum_size
 	stack.add_child(base)
-	if team and Defs.tex(name + "_team") != null:
+	if team and ResourceLoader.exists(Defs.PIXEL + name + "_team.png"):
 		var tm := TextureRect.new()
 		tm.texture = Defs.tex(name + "_team")
 		tm.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
