@@ -106,6 +106,17 @@ func _builtin_path(id: String) -> String:
 			return p
 	return ""
 
+## Whether a track can be played, without loading it. Loading every song
+## just to filter the playlist (each adaptive-music mood change rebuilds it)
+## froze the game for ~350 ms every time a battle or siege started.
+func _has_stream(id: String) -> bool:
+	if id.begins_with("cue:"):
+		return ResourceLoader.exists(CUE_DIR % id.substr(4))
+	if id.begins_with("user:"):
+		var path := USER_DIR + "/" + id.substr(5)
+		return FileAccess.file_exists(path) and path.get_extension().to_lower() in ["ogg", "wav", "mp3"]
+	return _builtin_path(id) != ""
+
 ## Loads a track as a stream (imported files are read from disk).
 func _stream(id: String) -> AudioStream:
 	if id.begins_with("cue:"):
@@ -186,7 +197,7 @@ func play_screen(track: String) -> void:
 		_set_loop(ts, true)
 		_start("cue:title", ts)
 		return
-	if GameState.music_playlist.has(track) and _stream(track) != null:
+	if GameState.music_playlist.has(track) and _has_stream(track):
 		play_track(track)
 	elif not _in_game:
 		_start_playlist()
@@ -222,7 +233,7 @@ func play_game_playlist() -> void:
 
 func _start_playlist() -> void:
 	_in_game = true
-	var pl: Array = GameState.music_playlist.filter(func(id): return _in_rotation(id) and _stream(id) != null)
+	var pl: Array = GameState.music_playlist.filter(func(id): return _in_rotation(id) and _has_stream(id))
 	if pl.is_empty():
 		_playlist = []
 		player.stop()
@@ -321,7 +332,7 @@ func stop_preview() -> void:
 		var was := _current
 		_playlist = _playlist.filter(func(t): return GameState.music_playlist.has(t))
 		for t in GameState.music_playlist:
-			if not _playlist.has(t) and _in_rotation(t) and _stream(t) != null:
+			if not _playlist.has(t) and _in_rotation(t) and _has_stream(t):
 				_playlist.append(t)
 		if _playlist.is_empty():
 			player.stop()
@@ -373,7 +384,7 @@ func _playlist_changed(id: String, on: bool) -> void:
 	if not _in_rotation(id):
 		return
 	if on:
-		if not _playlist.has(id) and _stream(id) != null:
+		if not _playlist.has(id) and _has_stream(id):
 			_playlist.append(id)
 			if _playlist.size() == 1 and previewing == "":
 				_playlist_index = 0
