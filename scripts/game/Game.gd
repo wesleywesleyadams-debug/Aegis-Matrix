@@ -4699,9 +4699,12 @@ func _duel() -> void:
 				tech += float(Defs.TECHS[dmod]["cost"][r9])
 		# "class:mark:mod:tech+tech" gives only this side those techs, and
 		# pays for their research like a Mod (the mod field may be empty).
+		# SL_DUEL_FREE_TECHS=1: those techs are free (compare pure combat value).
 		for dt in (sp[3].split("+", false) if sp.size() > 3 else PackedStringArray()):
 			researched[pid][dt] = true
 			_on_tech_done(pid, dt)
+			if OS.get_environment("SL_DUEL_FREE_TECHS") != "":
+				continue
 			for r9 in Defs.TECHS[dt]["cost"]:
 				tech += float(Defs.TECHS[dt]["cost"][r9])
 		var n := maxi(1, int(round((budget - tech) / unit)))
