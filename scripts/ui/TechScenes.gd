@@ -520,11 +520,38 @@ static func call_scene(id: String, img: Image) -> void:
 			_disc(img, b + d * 2.0, 3.4, Color(OC[2], 0.5))
 			_oc_bolt(img, b + d * 2.0, b + d * 26.0, 2.6)
 		"burst_cyclers":
-			_disc(img, Vector2(18, 32), 10.0, Color("6a7596"))
+			# Three barrels reaching in from the frame's edge, each with a cycle
+			# lamp lit in turn; the bottom one fires, its flash flowing into the
+			# bolt, while the burst's earlier bolts fly on ahead.
 			for k in 3:
-				_barrel(img, Vector2(18, 26 + k * 6), Vector2(36, 26 + k * 6), 3.0)
-			for k in 3:
-				_burst(img, Vector2(44 + k * 6, 26 + k * 6), 3.0, Color("ffd84a"))
+				var y := 21.0 + k * 11.0
+				_cannon(img, Vector2(-2, y), Vector2(24, y), 4.0, 0)
+				# Muzzle brake: a flared, vented tip.
+				_box(img, Vector2(22, y - 4.2), Vector2(30, y + 4.2), STEEL[0])
+				_box(img, Vector2(23, y - 3.4), Vector2(29, y + 3.4), STEEL[2])
+				_box(img, Vector2(23, y - 3.4), Vector2(29, y - 2.0), STEEL[4])
+				_box(img, Vector2(23, y + 2.0), Vector2(29, y + 3.4), STEEL[1])
+				for vx in [24.5, 27.0]:
+					_box(img, Vector2(vx, y - 2.0), Vector2(vx + 1.0, y + 2.0), STEEL[0])
+				# Cycle lamp, set into the barrel.
+				var q := Vector2(12, y)
+				_disc(img, q, 2.0, STEEL[0])
+				_disc(img, q, 1.3, OC[1].lerp(OC[4], 1.0 - k * 0.45))
+				if k == 2:
+					# Firing: a soft round flash at the muzzle that tapers into
+					# the bolt.
+					var m := Vector2(31, y)
+					_disc(img, m, 5.0, Color(OC[2], 0.18))
+					_disc(img, m, 3.6, Color(OC[2], 0.35))
+					_disc(img, m, 2.4, Color(OC[3], 0.8))
+					_disc(img, m, 1.3, OC[4])
+					_poly(img, [m + Vector2(0, -2.4), m + Vector2(12, -1.0), m + Vector2(12, 1.0), m + Vector2(0, 2.4)], Color(OC[2], 0.6))
+					_oc_bolt(img, m + Vector2(3, 0), m + Vector2(13, 0), 2.0)
+					_disc(img, m + Vector2(13, 0), 1.5, OC[4])
+				else:
+					var x := 60.0 - k * 9.0
+					_oc_bolt(img, Vector2(x - 9, y), Vector2(x, y), 2.0)
+					_disc(img, Vector2(x, y), 1.5, OC[4])
 		"hullbreaker_rounds":
 			_plate(img, Vector2(30, 10), Vector2(10, 44), Color("6a7596"))
 			_poly(img, [Vector2(6, 30), Vector2(26, 26), Vector2(34, 32), Vector2(26, 38), Vector2(6, 34)], Color("c8a04a"))
