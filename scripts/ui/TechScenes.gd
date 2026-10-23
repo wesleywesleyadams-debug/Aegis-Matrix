@@ -373,8 +373,19 @@ static func call_scene(id: String, img: Image) -> void:
 			_ellipse(img, Vector2(30, 32), Vector2(3, 12), Color("b0f0ff"))
 			_beam(img, Vector2(32, 32), Vector2(60, 32), Color("ffd84a"), 1.5)
 		"starfire_batteries":
-			for k in 3:
-				_beam(img, Vector2(8, 18 + k * 14), Vector2(58, 12 + k * 14), Color("ff6a4a"), 2.5)
+			# A star held in a containment ring - the battery - venting a jet of
+			# starfire out of its muzzle.
+			var c := Vector2(24, 36)
+			_line(img, c, Vector2(62, 10), 9.0, Color(SF[1], 0.5))
+			_line(img, c, Vector2(62, 10), 5.0, SF[2])
+			_line(img, c, Vector2(62, 10), 2.4, SF[4])
+			_sun(img, c, 9.0)
+			_ring(img, c, 17.0, 4.0, STEEL[0])
+			_ring(img, c, 17.0, 2.6, STEEL[2])
+			_arc(img, c, 18.0, PI * 0.9, PI * 1.5, 1.0, STEEL[4])
+			for k in 4:
+				var a := PI * 0.25 + k * PI / 2.0
+				_joint(img, c + Vector2.from_angle(a) * 17.0, 2.6, STEEL)
 		"target_prediction":
 			# A shot aimed at the reticle ahead of the ship, not at the ship.
 			_sprite(img, "ship_corvette", Vector2(22, 44), 16.0)
@@ -1106,3 +1117,23 @@ static func _spray(img: Image, p: Vector2, dir: float) -> void:
 	for k in 6:
 		var d := Vector2.from_angle(dir - 0.9 + k * 0.36)
 		_line(img, p + d * 3.0, p + d * (6.0 + (k % 3) * 2.0), 1.0, PL[3] if k % 2 == 0 else PL[4])
+
+## Starfire tones (sun-hot): outline, deep, body, light, highlight.
+const SF := [Color("3a1402"), Color("c2460a"), Color("ff9a1e"), Color("ffd860"), Color("fffbe8")]
+
+## A miniature sun: corona glow, flame spikes, outlined banded body,
+## white-gold core, prominence loops and a glint.
+static func _sun(img: Image, c: Vector2, r: float) -> void:
+	_disc(img, c, r * 1.35, Color(SF[1], 0.25))
+	for k in 12:
+		var a := k * TAU / 12.0 + 0.2
+		var len := r * (1.85 if k % 2 == 0 else 1.45)
+		var d := Vector2.from_angle(a)
+		_poly(img, [c + d.rotated(0.2) * r * 0.85, c + d * (len + 0.8), c + d.rotated(-0.2) * r * 0.85], SF[0])
+		_poly(img, [c + d.rotated(0.16) * r * 0.85, c + d * len, c + d.rotated(-0.16) * r * 0.85], SF[3] if k % 2 == 0 else SF[2])
+	_disc(img, c, r + 0.9, SF[0])
+	_disc(img, c, r, SF[1])
+	_disc(img, c + Vector2(-0.12, -0.12) * r, r * 0.78, SF[2])
+	_disc(img, c + Vector2(-0.2, -0.2) * r, r * 0.52, SF[3])
+	_disc(img, c + Vector2(-0.22, -0.22) * r, r * 0.26, SF[4])
+	_arc(img, c + Vector2(r * 0.7, -r * 0.6), r * 0.4, -PI * 0.9, PI * 0.1, 1.0, SF[3])
