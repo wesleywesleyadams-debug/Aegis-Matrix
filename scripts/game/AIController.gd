@@ -284,7 +284,7 @@ func _flee_blasts(pid: int, game: Game) -> void:
 ## Seconds between outpost orders, and the most it keeps at once.
 const OUTPOST_EVERY := 150.0
 
-const OUTPOST_MAX := 4
+const OUTPOST_MAX := 5
 
 ## A world / station / belt this far from every own starbase is "exposed".
 const EXPOSED := 900.0
@@ -1000,7 +1000,7 @@ func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, sh
 			return
 	if builders.any(func(c): return c.state == Ship.State.BUILD):
 		return
-	if _spare(pid, st, game, "minerals") >= Defs.MINING_STATION["cost"]["minerals"] and gap != Vector2.INF \
+	if stations.size() < MAX_STATIONS and _spare(pid, st, game, "minerals") >= Defs.MINING_STATION["cost"]["minerals"] and gap != Vector2.INF \
 			and (v == null or not _enemy_seen_near(v, gap, 900.0, 60.0)) \
 			and _upkeep_fits(pid, game, Defs.MINING_STATION["upkeep"], Defs.UPKEEP_WEIGHT_SMALL):
 		idle[0].order_build_station(gap)
@@ -1017,6 +1017,9 @@ const BIG_HULLS_MULT := 2.5
 ## Never more than this many starbases at a time (built or going up): past
 ## this, minerals go into the fleet instead.
 const MAX_YARDS := 4
+## Other construct caps (at a time, built or going up).
+const MAX_GATES := 1
+const MAX_STATIONS := 4
 
 ## Energy per minute left after upkeep (research spending added back: it
 ## is optional, and counting it would block ships while a project runs).
@@ -1899,9 +1902,9 @@ func _manage_depot(pid: int, ships: Array, base: Starbase, game: Game) -> void:
 	var depots: Array = game.get_tree().get_nodes_in_group("depots").filter(func(d): return d.owner_id == pid)
 	var builders := ships.filter(func(s): return s.def["role"] == "constructor")
 	# Each depot fits one variant, so build one for the variant our intel says
-	# we want (and a second later if the enemy fleet changes).
+	# we want: at most one of each variant (a new one if the enemy fleet changes).
 	var have := depots.any(func(d): return d.variant == want)
-	if want != "" and not have and depots.size() < 3:
+	if want != "" and not have:
 		if war.size() >= 6 and builders.is_empty() and base.queue.count("constructor") == 0 and base.can_queue("constructor") == "":
 			base.enqueue("constructor")
 		for c in builders:
@@ -1982,7 +1985,7 @@ func _plan_outpost(pid: int, st: Dictionary, game: Game, base: Starbase, forts: 
 	# Minerals piling up past what the yards can use: more ground held.
 	var rich: bool = _spare(pid, st, game, "minerals") > 3000.0
 	if rich:
-		cap = mini(OUTPOST_MAX + 3, cap + 2)
+		cap = mini(OUTPOST_MAX, cap + 2)
 	if have >= cap:
 		return
 	var taken: Array = forts.map(func(f): return f.global_position) + pending.map(func(c): return c.build_site)
@@ -2065,9 +2068,8 @@ func _plan_gate(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Arr
 	var gates := forts.filter(func(f): return f is WarpGate)
 	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "gate")
 	var n: int = gates.size() + pending.size()
-	# One gate; a second only late in a long, rich game.
-	var rich: bool = Game.now() > 1800.0 and res["minerals"] > 6000.0
-	if n >= 2 or (n >= 1 and not rich) or not pending.is_empty():
+	# One Warp Gate at a time (MAX_GATES).
+	if n >= MAX_GATES or not pending.is_empty():
 		return
 	# The bill is paid over the build, so half of it in hand will do.
 	if fleet < 6 or res["minerals"] < d["cost"]["minerals"] * 0.5 or res["spice"] < float(d["cost"].get("spice", 0)) + 60.0 or not _upkeep_ok(pid, game, d["upkeep"]):
