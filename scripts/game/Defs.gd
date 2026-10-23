@@ -530,11 +530,11 @@ const TECHS := {
 
 	# --- Defense: the Deflectors line (id "deflectors"), soaking damage before the layers see it.
 	"glance_plates": {"name": "Glance Plates", "group": "defense", "line": "deflectors", "tier": 1, "requires": [], "cost": {"spice": 40}, "time": 160.0,
-		"effects": {"damage_taken": 0.05}, "desc": "-5% damage taken: ships and constructs."},
-	"graviton_shunts": {"name": "Graviton Shunts", "group": "defense", "line": "deflectors", "tier": 2, "requires": ["glance_plates"], "cost": {"spice": 120}, "time": 240.0,
 		"effects": {"damage_taken": 0.06}, "desc": "-6% damage taken: ships and constructs."},
+	"graviton_shunts": {"name": "Graviton Shunts", "group": "defense", "line": "deflectors", "tier": 2, "requires": ["glance_plates"], "cost": {"spice": 120}, "time": 240.0,
+		"effects": {"damage_taken": 0.07}, "desc": "-7% damage taken: ships and constructs."},
 	"iron_umbrella": {"name": "Iron Umbrella", "group": "defense", "line": "deflectors", "tier": 3, "requires": ["graviton_shunts"], "cost": {"spice": 360}, "time": 310.0,
-		"effects": {"damage_taken": 0.09}, "desc": "-9% damage taken: ships and constructs."},
+		"effects": {"damage_taken": 0.10}, "desc": "-10% damage taken: ships and constructs."},
 
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 60.0,
