@@ -553,11 +553,22 @@ static func call_scene(id: String, img: Image) -> void:
 					_oc_bolt(img, Vector2(x - 9, y), Vector2(x, y), 2.0)
 					_disc(img, Vector2(x, y), 1.5, OC[4])
 		"hullbreaker_rounds":
-			_plate(img, Vector2(30, 10), Vector2(10, 44), Color("6a7596"))
-			_poly(img, [Vector2(6, 30), Vector2(26, 26), Vector2(34, 32), Vector2(26, 38), Vector2(6, 34)], Color("c8a04a"))
-			_burst(img, Vector2(44, 32), 9.0, Color("ff8a3a"))
-			for k in 4:
-				_line(img, Vector2(40, 32), Vector2(40, 32) + Vector2.from_angle(-1.2 + k * 0.8) * 14.0, 1.0, Color("2c2a3a"))
+			# A charge clamped to a green hull plate goes off; the plate tears
+			# open outward in curled petals around a soft fireball.
+			_hull_panel(img, Vector2(6, 8), Vector2(58, 48))
+			var c := Vector2(30, 28)
+			_disc(img, c, 11.0, HU[0])
+			for k in 6:
+				var a := k * TAU / 6.0 + 0.3
+				var d := Vector2.from_angle(a)
+				var tip := c + d * 17.0
+				var p0 := c + d.rotated(0.45) * 10.0
+				var p1 := c + d.rotated(-0.45) * 10.0
+				_poly(img, [p0, tip + d.orthogonal() * 1.5, tip - d.orthogonal() * 1.5, p1], HU[0])
+				_poly(img, [p0.lerp(c, 0.08), tip, p1.lerp(c, 0.08)], HU[3] if k % 2 == 0 else HU[4].lerp(HU[3], 0.5))
+				_line(img, p1.lerp(c, 0.08), tip, 1.0, HU[1])
+			_disc(img, c, 9.0, Color("1a0a04"))
+			_glow(img, c, 11.0)
 		"solar_collectors":
 			_disc(img, Vector2(14, 14), 7.0, Color("ffd84a"))
 			for k in 3:
@@ -1346,3 +1357,18 @@ static func _twin_fire(img: Image, roots: Array, dir: Vector2, len: float, firin
 		if k == firing:
 			_burst(img, r + dir * (l + 3.0), 3.6, BR[4])
 			_tracer(img, r + dir * (l + 12.0), dir, 5.0)
+
+## A soft round layered glow (no star spikes).
+static func _glow(img: Image, c: Vector2, r: float) -> void:
+	_disc(img, c, r, Color(SF[2], 0.18))
+	_disc(img, c, r * 0.75, Color(SF[2], 0.35))
+	_disc(img, c, r * 0.5, Color(SF[3], 0.85))
+	_disc(img, c, r * 0.28, SF[4])
+
+## A green hull plate (flat panel with bevel and seams).
+static func _hull_panel(img: Image, a: Vector2, b: Vector2) -> void:
+	_box(img, a - Vector2(1, 1), b + Vector2(1, 1), HU[0])
+	_box(img, a, b, HU[1])
+	_box(img, a + Vector2(1, 1), b - Vector2(2, 2), HU[2])
+	_line(img, a + Vector2(1, 0.5), Vector2(b.x - 2, a.y + 0.5), 1.0, HU[4])
+	_line(img, a + Vector2(0.5, 1), Vector2(a.x + 0.5, b.y - 2), 1.0, HU[3])
