@@ -72,6 +72,25 @@ func _process(delta: float) -> void:
 		_think(pid, st, game)
 		_flee_blasts(pid, game)
 
+## Everything one planning tick of one side shares between protocols.
+class Ctx:
+	var pid: int
+	var st: Dictionary
+	var game: Game
+	var base: Starbase
+	var res: Dictionary
+	var ships: Array
+	var miners: Array
+	var skimmers: Array
+	var v: Vision
+	var giant: Planet
+	var neb_spot: Vector2
+	var war: Array
+	var all_war: Array
+	var colonists: Array
+	var nn
+	var mode: String
+
 func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# The learning agent runs its whole side itself: nothing scripted (unless
 	# it lost its server, in a normal match - then the scripted AI takes over).
@@ -99,6 +118,78 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# strength (all_war) but the order-giving code below only sees the rest.
 	var all_war := war
 	war = war.filter(func(s): return not s.warping and not (s.docked and is_instance_valid(s.warp_gate)))
+	var c := Ctx.new()
+	c.pid = pid
+	c.st = st
+	c.game = game
+	c.base = base
+	c.res = res
+	c.ships = ships
+	c.miners = miners
+	c.skimmers = skimmers
+	c.v = v
+	c.giant = giant
+	c.neb_spot = neb_spot
+	c.war = war
+	c.all_war = all_war
+	c.colonists = colonists
+	_debug_log(c)
+	# Enemies just spotted near home: re-plan now instead of at the next
+	# scheduled rethink.
+	if v and not st.get("threat", false) and v.enemy_near(base.global_position, 900.0) > 0:
+		st["next_rethink"] = 0.0
+	_note_builders(pid, st, game, v)
+	var nn = st.get("nn")   # NeuralCommander or RLAgent: both have tick()
+	if nn == null:
+		_rethink(pid, st, game, base, all_war)
+		_update_reserve(pid, st, game, all_war.size())
+	_manage_queues(pid, st, game, base)
+	c.nn = nn
+	var mode: String = st.get("mode", "expand")
+	c.mode = mode
+
+	_research_protocol(c)
+	_production_home_yard(c)
+	_expansion_colonize(c)
+	_economy_harvesters(c)
+	_economy_worlds(c)
+	_economy_power(c)
+
+	if nn == null:
+		# Preservation protocol: leave fights not worth their cost; retreating
+		# and peeled-off ships take no other orders (see _preserve).
+		_preserve(pid, st, game, base, war, v)
+		war = war.filter(func(s): return not _held_back(st, s))
+		_guard_harvesters(pid, st, game, war, ships, v)
+	_scout(pid, st, game, ships.filter(func(s): return s.def["role"] == "scout") + war)
+	_use_jobs(pid, ships, game, st)
+	_expand_production(pid, st, game, base, ships)
+	_manage_depot(pid, ships, base, game)
+	# Frontier Outposts and Warp Gates (scripted AI only). Before the fleet
+	# orders below, so ships it puts in a gate aren't also sent elsewhere.
+	if nn == null:
+		war = _manage_forts(pid, st, game, base, ships, war, all_war.size())
+
+	# The learned commander decides builds and fleet moves itself.
+	if nn != null:
+		nn.tick(game, base, self)
+		return
+
+	c.war = war
+	if _defense_protocol(c):
+		return
+	_military_protocol(c)
+
+## Coordinator: SL_AI_DEBUG / SL_AI_BUDGET_LOG lines.
+func _debug_log(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var base: Starbase = cx.base
+	var res: Dictionary = cx.res
+	var war: Array = cx.war
+	var all_war: Array = cx.all_war
+	var mode: String = cx.mode
 	if OS.get_environment("SL_AI_DEBUG") != "" and int(Game.now()) % 20 == 0:
 		print("AIDBG t=%d pid=%d mode=%s queue=%s stalled=%s stall=%s blocked=%s prog=%.1f" % [Game.now(), pid, st.get("mode", ""), str(base.queue), str(base.build_stalled), str(st.get("stall", 0)), str(st.get("blocked", {})), base.build_progress])
 	# SL_AI_BUDGET_LOG=1: one "AIBUD" line per side a minute (budget / attack state).
@@ -129,18 +220,17 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			var tp := _nearest_planet(ct, game, func(_pl): return true)
 			print("AIBUD   P%d target (%d,%d) winnable=%s states=%s planet=%s owner=%d pop=%d shield=%d" % [pid, ct.x, ct.y, str(st.get("commit_winnable", true)), str(hist),
 				tp.planet_name if tp else "-", tp.owner_id if tp else -1, tp.pop if tp else 0, tp.shield if tp else 0])
-	# Enemies just spotted near home: re-plan now instead of at the next
-	# scheduled rethink.
-	if v and not st.get("threat", false) and v.enemy_near(base.global_position, 900.0) > 0:
-		st["next_rethink"] = 0.0
-	_note_builders(pid, st, game, v)
-	var nn = st.get("nn")   # NeuralCommander or RLAgent: both have tick()
-	if nn == null:
-		_rethink(pid, st, game, base, all_war)
-		_update_reserve(pid, st, game, all_war.size())
-	_manage_queues(pid, st, game, base)
-	var mode: String = st.get("mode", "expand")
 
+## RESEARCH protocol: research never idles; Mods only for fielded classes
+## and the one intel says fits; otherwise _pick_tech scores by group.
+func _research_protocol(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var res: Dictionary = cx.res
+	var war: Array = cx.war
+	var all_war: Array = cx.all_war
+	var nn = cx.nn
 	# Research never idles: the moment a project ends the next one starts
 	# (the AI thinks every second; one project runs at a time).
 	# (The learning agent picks its own research.)
@@ -160,6 +250,24 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			if Defs.TECHS[tech].get("group", "") == "constructs":
 				_flog(pid, "research %s" % tech)
 
+## PRODUCTION protocol (home yard): the support hulls and warships the
+## home starbase queues, in priority order.
+func _production_home_yard(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var base: Starbase = cx.base
+	var res: Dictionary = cx.res
+	var ships: Array = cx.ships
+	var miners: Array = cx.miners
+	var skimmers: Array = cx.skimmers
+	var v: Vision = cx.v
+	var giant: Planet = cx.giant
+	var neb_spot: Vector2 = cx.neb_spot
+	var war: Array = cx.war
+	var colonists: Array = cx.colonists
+	var nn = cx.nn
+	var mode: String = cx.mode
 	# Builds: only queue when stockpiles can roughly cover the next item.
 	if nn == null and base.queue.size() < 2:
 		var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game))
@@ -193,12 +301,28 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			if pick != "" and _spare(pid, st, game, "minerals") >= Defs.SHIPS[pick]["cost"]["minerals"] * 0.5:
 				base.enqueue(pick)
 
+## EXPANSION protocol: colony ships settle the nearest known free world.
+func _expansion_colonize(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var game: Game = cx.game
+	var colonists: Array = cx.colonists
 	for c in colonists:
 		if c.state == Ship.State.IDLE or c.state == Ship.State.MOVE:
 			var p := _nearest_planet(c.global_position, game, func(pl): return _known_free(pid, pl, game))
 			if p:
 				c.order_colonize(p)
 
+## ECONOMY protocol (harvesting): skimmers and miners to work, spice first
+## while it is short, away from unstable gas giants.
+func _economy_harvesters(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var game: Game = cx.game
+	var base: Starbase = cx.base
+	var miners: Array = cx.miners
+	var skimmers: Array = cx.skimmers
+	var v: Vision = cx.v
+	var giant: Planet = cx.giant
+	var neb_spot: Vector2 = cx.neb_spot
 	# Skimmers: gas giants for minerals; one harvests spice gas in a known
 	# spice nebula while spice is short (nebulae are finite: depleted ones are skipped).
 	var on_neb := skimmers.filter(func(s): return s.mine_target is NebulaPocket).size()
@@ -253,6 +377,15 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 					m.order_mine(rock)
 					break
 
+## ECONOMY protocol (worlds): spent crusts swapped out and free fields built
+## (farms, mines, Power Plants only while energy is short, batteries).
+func _economy_worlds(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var res: Dictionary = cx.res
+	var ships: Array = cx.ships
+	var v: Vision = cx.v
 	# Develop planets: farms when food is falling, otherwise a rotating mix.
 	var food_rate: float = game.rates[pid].get("food", 0.0)
 	# Farms grow in proportion to fertility, so food goes where the soil is:
@@ -325,32 +458,29 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 			if p.order_build(i, pick) == "":
 				_note_build(st, p, i)
 				break
+
+## ECONOMY protocol (power, mining, spice cover toggles).
+func _economy_power(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var base: Starbase = cx.base
+	var v: Vision = cx.v
 	_toggle_power(pid, st, game)
 	_toggle_mining(pid, st, game)
 	_spice_cover_policy(pid, st, game, base)
 	_swap_for_power(pid, st, game)
 	_swap_from_power(pid, st, game, v)
 
-	if nn == null:
-		# Preservation protocol: leave fights not worth their cost; retreating
-		# and peeled-off ships take no other orders (see _preserve).
-		_preserve(pid, st, game, base, war, v)
-		war = war.filter(func(s): return not _held_back(st, s))
-		_guard_harvesters(pid, st, game, war, ships, v)
-	_scout(pid, st, game, ships.filter(func(s): return s.def["role"] == "scout") + war)
-	_use_jobs(pid, ships, game, st)
-	_expand_production(pid, st, game, base, ships)
-	_manage_depot(pid, ships, base, game)
-	# Frontier Outposts and Warp Gates (scripted AI only). Before the fleet
-	# orders below, so ships it puts in a gate aren't also sent elsewhere.
-	if nn == null:
-		war = _manage_forts(pid, st, game, base, ships, war, all_war.size())
-
-	# The learned commander decides builds and fleet moves itself.
-	if nn != null:
-		nn.tick(game, base, self)
-		return
-
+## DEFENSE protocol: enemies at the home starbase pull the fleet in when the
+## fight can be held, else gather at a safe rally. True while defending.
+func _defense_protocol(cx: Ctx) -> bool:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var base: Starbase = cx.base
+	var v: Vision = cx.v
+	var war: Array = cx.war
 	# Defend: enemies near the starbase pull every warship home.
 	var threat := game.nearest_enemy(base, 450.0)
 	# Only enemies our sensors can actually see (not ones hidden in a nebula).
@@ -376,9 +506,21 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 						s.order_attack_move(tp)
 				elif s.global_position.distance_to(rally) > 150.0 and s.move_goal.distance_to(rally) > 150.0:
 					s.order_move(rally + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
-		return
+		return true
 	st.erase("rally")
+	return false
 
+## MILITARY protocol: a committed army presses its target; otherwise idle
+## groups bombard worlds in reach and launch waves at winnable targets.
+func _military_protocol(cx: Ctx) -> void:
+	var pid: int = cx.pid
+	var st: Dictionary = cx.st
+	var game: Game = cx.game
+	var base: Starbase = cx.base
+	var ships: Array = cx.ships
+	var v: Vision = cx.v
+	var war: Array = cx.war
+	var mode: String = cx.mode
 	# Committed (clearly ahead): the whole army goes for the kill in waves.
 	if st.get("commit", false):
 		_press_attack(pid, st, game, base, war, ships, v)
