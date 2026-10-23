@@ -212,10 +212,21 @@ static func call_scene(id: String, img: Image) -> void:
 				var a := float(k) * 2.4
 				_put(img, int(32 + cos(a) * (10 + k % 9)), int(32 + sin(a) * (8 + k % 7)), Color("6fe07a"))
 		"adaptive_hulls":
-			_sprite(img, "ship_cruiser", C, 34.0)
-			_hex(img, C + Vector2(-8, -6), 5.0, 1.2, Color("6fe07a"))
-			_hex(img, C + Vector2(4, 4), 5.0, 1.2, Color("6fe07a"))
-			_hex(img, C + Vector2(12, -6), 5.0, 1.2, Color("6fe07a"))
+			# Hull scales: small and flat far from the hit, swollen and bright at it.
+			var imp := Vector2(40, 22)
+			for j in 7:
+				for i in 7:
+					var p := Vector2(10 + i * 7.5 + (3.75 if j % 2 == 1 else 0.0), 12 + j * 7.0)
+					if p.x > 58:
+						continue
+					var near := clampf(1.0 - p.distance_to(imp) / 26.0, 0.0, 1.0)
+					var r := lerpf(2.2, 4.6, near)
+					var col := Color("4a5a50").lerp(Color("58e07a"), near)
+					_disc(img, p, r + 0.8, col.darkened(0.5))
+					_disc(img, p, r, col)
+					_disc(img, p + Vector2(-r * 0.35, -r * 0.35), r * 0.35, col.lightened(0.5))
+			_line(img, Vector2(60, 4), imp + Vector2(2, -2), 2.0, Color("ff4a3a"))
+			_burst(img, imp, 4.0, Color("fff2b0"))
 		"glance_plates":
 			_sprite(img, "ship_corvette", C, 22.0)
 			for q in [Vector2(14, 14), Vector2(50, 18), Vector2(48, 48), Vector2(16, 46), Vector2(32, 10)]:
