@@ -206,7 +206,7 @@ static func construct_dps(d: Dictionary) -> float:
 	return float(d.get("guns", 0)) * LASER_DAMAGE / LASER_COOLDOWN
 
 const STARBASE := {
-	"name": "Starbase", "hp": 989.0, "armor": 1892.0, "shield": 1419.0, "radius": 26.0,
+	"name": "Starbase", "hp": 1092.0, "armor": 2090.0, "shield": 1568.0, "radius": 26.0,
 	"weapon": "laser", "guns": 6, "range": 260.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 1200}, "build_time": 40.0,
@@ -250,7 +250,7 @@ const DOOM_SECONDS := 10.0
 ## laser fort for holding ground. Builds nothing, takes no deliveries, and is
 ## not a starbase for winning or losing.
 const FRONTIER_OUTPOST := {
-	"name": "Frontier Outpost", "requires": "outposts", "hp": 598.0, "armor": 1144.0, "shield": 858.0, "radius": 20.0,
+	"name": "Frontier Outpost", "requires": "outposts", "hp": 632.0, "armor": 1210.0, "shield": 908.0, "radius": 20.0,
 	"weapon": "laser", "guns": 3, "range": 260.0,
 	"cost": {"minerals": 535}, "build_time": 30.0,
 	"upkeep": 1.65,
@@ -273,7 +273,7 @@ const WARP_GATE := {
 const PLACEMENT_RING := 6.0
 
 const MINING_STATION := {
-	"name": "Mining Station", "hp": 218.0, "armor": 418.0, "shield": 314.0, "radius": 16.0,
+	"name": "Mining Station", "hp": 178.0, "armor": 341.0, "shield": 256.0, "radius": 16.0,
 	"weapon": "laser", "guns": 1, "range": 190.0,
 	"cost": {"minerals": 150}, "build_time": 20.0,
 	"upkeep": 1.0,
