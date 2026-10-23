@@ -102,9 +102,9 @@ Three lines on the research screen's **Defenses** tab, expensive on purpose:
 
 | Tier | Shields | Armor | Hull | Cost |
 |---|---|---|---|---|
-| 1 | Deflector Arrays +20% (unlocks Heat Shield Frigate) | Composite Plating +20% | Reinforced Frames +15% (unlocks Repair Tender) | 1500 energy + 40 spice, 120 s |
-| 2 | Phase Shields +25% | Reactive Armor +25% | Nanite Plating +20% | 3000 energy + 100 spice, 180 s |
-| 3 | Aegis Matrix +35% | Neutronium Armor +35% | Adaptive Hulls +30% | 5000 energy + 250 spice, 240 s |
+| 1 | Deflector Arrays +7% of total HP (unlocks Heat Shield Frigate) | Composite Plating +7% of total HP | Reinforced Frames +7% of total HP (unlocks Repair Tender) | 1500 energy + 40 spice, 120 s |
+| 2 | Phase Shields +8% | Reactive Armor +8% | Nanite Plating +8% | 3000 energy + 100 spice, 180 s |
+| 3 | Aegis Matrix +15% | Neutronium Armor +15% | Adaptive Hulls +15% | 5000 energy + 250 spice, 240 s |
 
 ## Ideas not built yet
 

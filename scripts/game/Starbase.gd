@@ -52,10 +52,11 @@ func refresh_stats() -> void:
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
 	# Constructs take the Constructs line's toughness on top of the fleet-wide
 	# hull and armor research.
-	max_hp = Defs.STARBASE["hp"] * g.mod(owner_id, "hull") * g.mod(owner_id, "structure")
-	max_armor = Defs.STARBASE.get("armor", 0.0) * g.mod(owner_id, "armor") * g.mod(owner_id, "structure")
+	var tot: float = Defs.STARBASE["hp"] + Defs.STARBASE.get("armor", 0.0) + Defs.STARBASE["shield"]
+	max_hp = (Defs.STARBASE["hp"] * g.mod(owner_id, "hull") + g.layer_bonus(owner_id, "hull", tot)) * g.mod(owner_id, "structure")
+	max_armor = (Defs.STARBASE.get("armor", 0.0) * g.mod(owner_id, "armor") + g.layer_bonus(owner_id, "armor", tot)) * g.mod(owner_id, "structure")
 	armor = max_armor * ar_frac
-	max_shield = Defs.STARBASE["shield"] * g.mod(owner_id, "shield") * g.mod(owner_id, "structure_shield")
+	max_shield = (Defs.STARBASE["shield"] * g.mod(owner_id, "shield") + g.layer_bonus(owner_id, "shield", tot)) * g.mod(owner_id, "structure_shield")
 	# Training curriculum level 1: the sitting duck's starbase is only
 	# duck_frac as tough (the trainer raises it each time the agent wins).
 	if g.rl_side > 0 and g.opp_level == 1 and owner_id != g.rl_side:

@@ -820,7 +820,7 @@ func _build_research(root: Control) -> void:
 
 	# Defense: one row per layer line.
 	var def_rows: Array = []
-	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]], ["screens", "SCREENS", Color("c9b6ff")]]:
+	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]], ["screens", "DEFLECTORS", Color("c9b6ff")]]:
 		var ids: Array = ["", "", ""]
 		for id in Defs.TECHS:
 			if Defs.TECHS[id].get("line", "") == line[0]:

@@ -1058,9 +1058,10 @@ func refresh_stats() -> void:
 	var hp_frac := hp / max_hp if max_hp > 0.0 else 1.0
 	var ar_frac := armor / max_armor if max_armor > 0.0 else 1.0
 	var sh_frac := shield / max_shield if max_shield > 0.0 else 1.0
-	max_hp = def["hp"] * g.hull_mod(owner_id, ship_type, "hull")
-	max_shield = def["shield"] * g.hull_mod(owner_id, ship_type, "shield")
-	max_armor = def.get("armor", 0.0) * g.hull_mod(owner_id, ship_type, "armor")
+	var tot: float = def["hp"] + def["shield"] + def.get("armor", 0.0)
+	max_hp = def["hp"] * g.hull_mod(owner_id, ship_type, "hull") + g.layer_bonus(owner_id, "hull", tot)
+	max_shield = def["shield"] * g.hull_mod(owner_id, ship_type, "shield") + g.layer_bonus(owner_id, "shield", tot)
+	max_armor = def.get("armor", 0.0) * g.hull_mod(owner_id, ship_type, "armor") + g.layer_bonus(owner_id, "armor", tot)
 	# Convoy Protocols: harvesters gain shields and armor equal to their hull.
 	if is_harvester() and g.has_tech(owner_id, "convoy_protocols"):
 		max_shield += max_hp
