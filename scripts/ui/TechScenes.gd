@@ -482,9 +482,22 @@ static func call_scene(id: String, img: Image) -> void:
 			_tracer(img, g1 + dir * 38.0, dir, 5.0)
 			_joint(img, base, 2.4, STEEL)
 		"scatter_arrays":
-			_barrel(img, Vector2(8, 32), Vector2(22, 32), 6.0)
+			# B: five barrels fanned out from one hub, each with its own stream of
+			# fire - a wall of shot.
+			var hub := Vector2(14, 46)
 			for k in 5:
-				_beam(img, Vector2(24, 32), Vector2(58, 12 + k * 10), Color("ffd84a"), 1.5)
+				var d := Vector2.from_angle(-1.45 + k * 0.3)
+				_girder(img, hub + d * 4.0, hub + d * 18.0, 3.0, STEEL)
+				_line(img, hub + d * 17.0 + d.orthogonal() * 2.4, hub + d * 17.0 - d.orthogonal() * 2.4, 2.2, STEEL[0])
+				_burst(img, hub + d * 20.0, 2.4, BR[4])
+				for m in 2:
+					var tp := hub + d * (28.0 + m * 9.0)
+					if tp.x > 40 and tp.y > 48:
+						continue
+					_tracer(img, tp, d, 4.0)
+			_disc(img, hub, 7.0, STEEL[0])
+			_disc(img, hub + Vector2(-1, -1), 5.4, STEEL[2])
+			_joint(img, hub, 2.4, STEEL)
 		"overcharged_coils":
 			for k in 5:
 				_ellipse(img, Vector2(18 + k * 7, 32), Vector2(3, 12), Color("c87a3a"))
