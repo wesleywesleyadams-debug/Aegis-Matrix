@@ -118,13 +118,13 @@ const BASE_SHIPS := {
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
-		"hp": 99.0, "armor": 132.0, "shield": 69.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
+		"hp": 99.0, "armor": 132.0, "shield": 69.0, "speed": 85.0, "radius": 14.6, "size": 0.81,
 		"cost": {"minerals": 150}, "build_time": 38.0, "upkeep": 1.7,
 		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
-		"guns": 2, "turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 1.33, "turrets": [[0.62, -0.22], [0.62, 0.22]],
+		"guns": 2, "turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 0.81, "turrets": [[0.332, -0.33], [0.332, 0.261]],
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
