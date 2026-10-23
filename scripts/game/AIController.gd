@@ -1282,8 +1282,10 @@ const AI_PAUSE_FLOOR := 300.0
 ## need and the stockpile is under AI_ENERGY_ENOUGH; above AI_ENERGY_SURPLUS
 ## surplus plants are turned back into mines and other buildings.
 const AI_POWER_MARGIN := 1.4
-const AI_ENERGY_ENOUGH := 3000.0
-const AI_ENERGY_SURPLUS := 5000.0
+const AI_ENERGY_ENOUGH := 1000.0
+const AI_ENERGY_SURPLUS := 2000.0
+## Minutes of shortfall the pile above AI_ENERGY_ENOUGH must cover to pause plants.
+const AI_PAUSE_RUNWAY := 5.0
 ## Energy stock below which (while falling) the AI acts to avoid a blackout.
 const AI_ENERGY_FLOOR := 250.0
 ## Spare minerals above which the AI pauses a world's mines to keep its crust.
@@ -1489,7 +1491,7 @@ func _toggle_power(pid: int, st: Dictionary, game: Game) -> void:
 				_flog(pid, "blackout guard: pause mining on %s (energy %d)" % [mw[0].planet_name, int(e)])
 		return
 	# Resume: the pile is running down, or income no longer covers upkeep.
-	if not off.is_empty() and (e < AI_ENERGY_ENOUGH * 0.5 or (_energy_margin(pid, game) < 0.0 and e < AI_ENERGY_SURPLUS * 1.2) or (income < upk and e < AI_ENERGY_ENOUGH) or (income < need and e < AI_ENERGY_ENOUGH * 0.25)):
+	if not off.is_empty() and (e < AI_ENERGY_ENOUGH * 0.5 or (_energy_margin(pid, game) < 0.0 and e < AI_ENERGY_ENOUGH) or (income < need and e < AI_ENERGY_ENOUGH * 0.25)):
 		off.sort_custom(func(a, b): return a.count_building("generator") > b.count_building("generator"))
 		off[0].power_paused = false
 		_flog(pid, "resume power on %s (energy %d, plant income %d/min, upkeep %d/min)" % [off[0].planet_name, int(e), int(income), int(upk)])
@@ -1500,7 +1502,11 @@ func _toggle_power(pid: int, st: Dictionary, game: Game) -> void:
 		on.sort_custom(func(a, b): return a.count_building("generator") < b.count_building("generator"))
 		for p in on:
 			var lose: float = _plant_rate(p, game) * p.count_building("generator")
-			if income - lose >= upk * 1.05 or e > AI_ENERGY_SURPLUS * 2.0 and income - lose >= upk * 0.5:
+			# Research no longer draws energy, so a pile is only upkeep
+			# cover: run it down as long as what is above AI_ENERGY_ENOUGH
+			# lasts AI_PAUSE_RUNWAY minutes of the shortfall.
+			var short := upk - (income - lose)
+			if short <= upk * -0.05 or (e - AI_ENERGY_ENOUGH) / maxf(short, 1.0) >= AI_PAUSE_RUNWAY:
 				p.power_paused = true
 				if not st.has("paused_at"):
 					st["paused_at"] = {}
