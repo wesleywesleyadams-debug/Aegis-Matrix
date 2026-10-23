@@ -558,6 +558,10 @@ const PROD_SCOUT_SCORE := 10.0
 ## is dropped for SAVE_COOLDOWN seconds, so ships keep flowing.
 const SAVE_DEADLINE := 150.0
 const SAVE_COOLDOWN := 90.0
+## Upkeep-capped with this many spare minerals: the excess goes into Power
+## Plants. The first REPLACE_RESERVE stays banked to rebuild lost hulls.
+const REPLACE_RESERVE := 600.0
+const CAPPED_POWER_MINERALS := 800.0 + REPLACE_RESERVE
 
 func _budget_weights(pid: int, st: Dictionary, game: Game, v: Vision) -> Dictionary:
 	var w: Dictionary = PROD_BASE.duplicate()
@@ -1327,15 +1331,19 @@ func _economy_worlds(cx: Ctx) -> void:
 		# to power (more upkeep room), and spare minerals harden the worlds
 		# nearest the enemy with Defense Batteries (no upkeep).
 		if pick != "spice_extractor" and (food_rate > 0.01 or res["food"] > 300.0):
-			if st.get("upkeep_capped", false) and want_power:
+			# Upkeep-capped with minerals to spare: Power Plants only (more
+			# energy lifts the cap; nothing that adds upkeep).
+			if st.get("upkeep_capped", false) and (want_power or _spare(pid, st, game, "minerals") > CAPPED_POWER_MINERALS):
 				pick = "generator"
-			if _spare(pid, st, game, "minerals") > 600.0 and _spare(pid, st, game, "spice") > 40.0 \
-					and p.count_building("battery") < (3 if st.get("upkeep_capped", false) else 2) and _frontier_world(pid, p, game, v):
+			# Batteries only while under threat: idle hardening just prolongs
+			# a stalemate.
+			elif st.get("threat", false) and _spare(pid, st, game, "minerals") > 600.0 and _spare(pid, st, game, "spice") > 40.0 \
+					and p.count_building("battery") < 2 and _frontier_world(pid, p, game, v):
 				pick = "battery"
 		# No new Mining Complexes on a world with little crust left.
 		if pick == "mine" and not _mine_room(p):
 			pick = "generator" if want_power else ("habitat" if p.count_building("habitat") < 3 else "farm")
-		if pick == "generator" and not want_power and game.rates[pid].get("energy", 0.0) >= 0.06:
+		if pick == "generator" and not want_power and not st.get("upkeep_capped", false) and game.rates[pid].get("energy", 0.0) >= 0.06:
 			pick = "mine" if _mine_room(p) else ("habitat" if p.count_building("habitat") < 3 else "farm")
 		for i in p.fields:
 			if p.order_build(i, pick) == "":
@@ -1473,7 +1481,7 @@ func _frontier_world(pid: int, p: Planet, game: Game, v: Vision) -> bool:
 ## turn a Mining Complex on a full world into a Power Plant. One at a time,
 ## never a world's last mine.
 func _swap_for_power(pid: int, st: Dictionary, game: Game) -> void:
-	var want: bool = st.get("upkeep_capped", false) and _want_power(pid, game) and _spare(pid, st, game, "minerals") >= 2000.0 and game.rates[pid].get("food", 0.0) >= 0.0
+	var want: bool = st.get("upkeep_capped", false) and _want_power(pid, game) and _spare(pid, st, game, "minerals") >= CAPPED_POWER_MINERALS and game.rates[pid].get("food", 0.0) >= 0.0
 	# Hysteresis: the need must last SWAP_NEED_FOR before a building goes.
 	if not _need_lasts(st, "need_power_since", want) or Game.now() < st.get("next_swap", 0.0):
 		return
