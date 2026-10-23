@@ -29,7 +29,7 @@ const SCENES := [
 	"outposts", "rapid_assembly", "citadel_protocols", "warp_gates", "shipyard_networks", "orbital_elevators",
 	"phase_shields", "crystal_prisms", "aegis_matrix", "composite_plating", "reactive_armor", "neutronium_armor",
 	"reinforced_frames", "living_metals", "adaptive_hulls", "glance_plates", "graviton_shunts", "iron_umbrella",
-	"ion_cannons", "particle_lances", "capital_batteries", "targeting_arrays", "beam_focusing", "lance_batteries",
+	"ion_cannons", "particle_lances", "capital_batteries", "targeting_arrays", "beam_focusing", "starfire_batteries",
 	"autoloaders", "heavy_mounts", "scatter_arrays", "overcharged_coils", "burst_cyclers", "dark_matter",
 	"solar_collectors", "plasma_reactors", "hullbreaker_rounds",
 	"target_prediction", "gyro_stabilizers", "overkill_awareness",
@@ -372,7 +372,7 @@ static func call_scene(id: String, img: Image) -> void:
 			_beam(img, Vector2(6, 42), Vector2(28, 32), Color("ff6a4a", 0.6), 4.0)
 			_ellipse(img, Vector2(30, 32), Vector2(3, 12), Color("b0f0ff"))
 			_beam(img, Vector2(32, 32), Vector2(60, 32), Color("ffd84a"), 1.5)
-		"lance_batteries":
+		"starfire_batteries":
 			for k in 3:
 				_beam(img, Vector2(8, 18 + k * 14), Vector2(58, 12 + k * 14), Color("ff6a4a"), 2.5)
 		"target_prediction":

@@ -830,8 +830,8 @@ func _tech_caption(id: String) -> String:
 		"cruisers": return _ship_line("cruiser") + ", %d turreted guns. Cruisers lean on shields, which regenerate between fights. Opens cruiser marks and Mods, and leads to Carriers." % int(Defs.SHIPS["cruiser"]["guns"])
 		"carriers": return _ship_line("carrier") + ". The heaviest hull, shields and armor in equal measure, slow, and the dearest upkeep after a starbase. Opens carrier marks and Mods. A late-game investment."
 		# --- Weapons
-		"ion_cannons", "particle_lances", "lance_batteries":
-			var why: String = {"ion_cannons": "The cheapest raw combat upgrade in the game: almost always worth it early.", "particle_lances": "A strong mid-game pick once you fight regularly.", "lance_batteries": "The heavy-gun end of the tier-3 choice; pairs best with slow, heavy weapons (Rail Cannons, Proton Torpedoes)."}[id]
+		"ion_cannons", "particle_lances", "starfire_batteries":
+			var why: String = {"ion_cannons": "The cheapest raw combat upgrade in the game: almost always worth it early.", "particle_lances": "A strong mid-game pick once you fight regularly.", "starfire_batteries": "The heavy-gun end of the tier-3 choice; pairs best with slow, heavy weapons (Rail Cannons, Proton Torpedoes)."}[id]
 			var mid := " It applies to every shot you fire: warships, drones, starbases, outposts, mining stations and world batteries, against ships, constructs and worlds alike (so bombardment kills pops faster too), on top of marks, variants and Mods." if int(t["tier"]) == 1 else ""
 			return "+%d%% weapon damage%s.%s %s" % [_pct(id, "damage"), _cum_text(id, "damage"), mid, why]
 		"targeting_arrays", "beam_focusing", "capital_batteries":
@@ -839,7 +839,7 @@ func _tech_caption(id: String) -> String:
 			var mid2 := " It reaches every ship, starbase and Frontier Outpost (Mining Stations keep theirs), and multiplies a Mod's own range: with the whole line Rail Cannons' x%s becomes x%.2f. Longer reach gives you the first volley and lets you kite slower fleets." % [String.num(float(Defs.MOD_WEAPONS["mod_rail_cannons"]["range"])), float(Defs.MOD_WEAPONS["mod_rail_cannons"]["range"]) * (1.0 + _tot("range"))] if int(t["tier"]) == 1 else ""
 			return "+%d%% weapon range%s.%s %s" % [_pct(id, "range"), _cum_text(id, "range"), mid2, why2]
 		"autoloaders", "heavy_mounts", "scatter_arrays":
-			var why3: String = {"autoloaders": "Worth about as much as a damage tech; take whichever is cheaper first.", "heavy_mounts": "Best with many small guns: corvette swarms, Kinetic Repeaters, Flak.", "scatter_arrays": "The fast-gun end of the tier-3 choice (Lance Batteries is the heavy-gun end)."}[id]
+			var why3: String = {"autoloaders": "Worth about as much as a damage tech; take whichever is cheaper first.", "heavy_mounts": "Best with many small guns: corvette swarms, Kinetic Repeaters, Flak.", "scatter_arrays": "The fast-gun end of the tier-3 choice (Starfire Batteries is the heavy-gun end)."}[id]
 			var mid3 := " It speeds the reload of ships, drones and starbases (outposts and Mining Stations keep theirs); more shots also means more Point-Defense needles." if int(t["tier"]) == 1 else ""
 			return "+%d%% rate of fire%s.%s %s" % [_pct(id, "fire_rate"), _cum_text(id, "fire_rate"), mid3, why3]
 		"overcharged_coils": return "%d%% of each hit ignores enemy shields and goes straight on to armor. Strongest against cruisers, carriers and starbases (shield-heavy); no help once a target's shields are down. Disruptor already skips shields, and a Inhibitor's EMP switches them off, so it adds little to those." % _pct(id, "shield_pierce")

@@ -492,7 +492,7 @@ const TECHS := {
 		"effects": {"shield_pierce": 0.25}, "desc": "25% of each hit skips enemy shields."},
 	"burst_cyclers": {"name": "Burst Cyclers", "group": "weapons", "tier": 2, "requires": ["overcharged_coils"], "cost": {"spice": 60}, "time": 85.0,
 		"effects": {"armor_pierce": 0.25}, "desc": "25% of each hit skips enemy armor."},
-	"lance_batteries": {"name": "Lance Batteries", "group": "weapons", "tier": 3, "requires": ["particle_lances"], "cost": {"spice": 240}, "time": 245.0,
+	"starfire_batteries": {"name": "Starfire Batteries", "group": "weapons", "tier": 3, "requires": ["particle_lances"], "cost": {"spice": 240}, "time": 245.0,
 		"effects": {"damage": 0.30}, "desc": "+30% weapon damage: ships, constructs, worlds."},
 	"scatter_arrays": {"name": "Scatter Arrays", "group": "weapons", "tier": 3, "requires": ["heavy_mounts"], "cost": {"spice": 240}, "time": 245.0,
 		"effects": {"fire_rate": 0.30}, "desc": "+30% rate of fire: ships and starbases."},

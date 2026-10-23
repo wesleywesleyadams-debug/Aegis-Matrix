@@ -2254,7 +2254,7 @@ func _row_head(text: String, color: Color, icon: String) -> Control:
 ## then the tier 1-3 techs of that line.
 const TECH_ROWS := {
 	"weapons": [
-		["DAMAGE", ["ion_cannons", "particle_lances", "lance_batteries"]],
+		["DAMAGE", ["ion_cannons", "particle_lances", "starfire_batteries"]],
 		["RANGE", ["targeting_arrays", "beam_focusing", "capital_batteries"]],
 		["FIRE RATE", ["autoloaders", "heavy_mounts", "scatter_arrays"]],
 		["PENETRATION", ["overcharged_coils", "burst_cyclers", "hullbreaker_rounds"]],
