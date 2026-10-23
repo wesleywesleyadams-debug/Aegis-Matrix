@@ -1,4 +1,4 @@
-# Stardust Dominion — Defense layers, ship variants and the Weapons Depot
+# Aegis Matrix — Defense layers, ship variants and the Weapons Depot
 
 Reference for the combat design. In game it is the Codex screen
 (title menu > Codex > Combat), which builds these tables from the same data at

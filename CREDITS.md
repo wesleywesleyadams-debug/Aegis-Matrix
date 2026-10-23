@@ -1,4 +1,4 @@
-# Stardust Dominion — Credits
+# Aegis Matrix — Credits
 
 ## Music
 

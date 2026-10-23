@@ -1,4 +1,4 @@
-"""Stardust Dominion as a training environment.
+"""Aegis Matrix as a training environment.
 
 StarEnv launches a headless Godot sim with the RLAgent (scripts/game/RLAgent.gd)
 on one side and connects over TCP. Each step: the game sends an observation

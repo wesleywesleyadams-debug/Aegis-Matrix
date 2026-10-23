@@ -1,5 +1,5 @@
 extends SceneTree
-## Procedural pixel-art generator for Stardust Dominion' placeholder sprites.
+## Procedural pixel-art generator for Aegis Matrix's placeholder sprites.
 ## Run headless from the project root:
 ##   Godot --headless --path . --script res://tools/gen_art.gd
 ## Writes PNGs into res://assets/pixel/. Re-running overwrites them, so
@@ -78,7 +78,7 @@ func _init() -> void:
 	_gen_icons2()
 	_gen_buildings()
 	_gen_title()
-	print("Stardust Dominion art generated.")
+	print("Aegis Matrix art generated.")
 	quit()
 
 # ---------------------------------------------------------------- helpers

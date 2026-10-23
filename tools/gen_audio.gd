@@ -1,5 +1,5 @@
 extends SceneTree
-## Bakes Stardust Dominion' procedural audio into res://assets/audio/*.wav:
+## Bakes Aegis Matrix's procedural audio into res://assets/audio/*.wav:
 ## 8-bit style SFX (sfx_*.wav) and ambient music loops (music_*.wav).
 ## Run headless from the project root:
 ##   Godot --headless --path . --script res://tools/gen_audio.gd
@@ -63,7 +63,7 @@ func _init() -> void:
 		var t0 := Time.get_ticks_msec()
 		_save("music_" + name, _music(TRACKS[name]))
 		print("music_%s: %d ms" % [name, Time.get_ticks_msec() - t0])
-	print("Stardust Dominion audio generated.")
+	print("Aegis Matrix audio generated.")
 	quit()
 
 func _save(name: String, s: PackedFloat32Array) -> void:
