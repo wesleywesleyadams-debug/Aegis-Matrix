@@ -213,6 +213,17 @@ func _debug_log(cx: Ctx) -> void:
 			Game.now(), pid, st.get("mode", ""), res["minerals"], res["spice"], res["energy"], _energy_margin(pid, game), game.upkeep_multiplier(pid),
 			st.get("reserve_for", ""), str(st.get("upkeep_capped", false)), str(st.get("commit", false)), str(st.has("rally")), all_war.size(), " | ".join(qs), str(game.research[pid].get("id", "-")), st.get("commit_dbg", ""),
 			"on" if game.spice_cover_on(pid) else "off", int(st.get("cover_on_s", 0.0)), int(st.get("cover_spent", 0.0)), st.get("demolished", 0), str(st.get("overwhelm", false)), st.get("assaults", 0), st.get("assault_waves_lost", 0), int(st.get("assault_mass_s", 0.0))])
+		# Colonization: colony ships by state, and every free habitable world
+		# with whether this side knows it is free and how far it is.
+		var cst := {}
+		for c in cx.colonists:
+			var k: String = Ship.State.keys()[c.state]
+			cst[k] = cst.get(k, 0) + 1
+		var fw := []
+		for p in game.get_tree().get_nodes_in_group("planets"):
+			if p.owner_id <= 0 and p.is_habitable():
+				fw.append("%s:%s:%d" % [p.planet_name, "known" if _known_free(pid, p, game) else "unknown", int(base.global_position.distance_to(p.global_position))])
+		print("AIBUD   P%d colonists=%s free_worlds=[%s]" % [pid, str(cst), " ".join(fw)])
 		if st.get("commit", false) and st.has("commit_target"):
 			var ct: Vector2 = st["commit_target"]
 			var hist := {}
@@ -621,17 +632,17 @@ func _production_home_yard(cx: Ctx) -> void:
 	# cancelled for stalling: re-queueing it at once kept two unpayable
 	# skimmers at the head of the queue and blocked every other build.)
 	if (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < (3 if st.get("crust_low", false) else 2) \
-			and res["spice"] >= float(Defs.SHIPS["skimmer"]["cost"].get("spice", 0)) * 1.1 and Game.now() >= st.get("blocked", {}).get("skimmer", -1.0):
+			and Game.now() >= st.get("blocked", {}).get("skimmer", -1.0):
 		cands.append([w["economy"] * 0.9, "skimmer"])
 	# Support: a Repair Tender once the fleet is sizable (two for a fortress
 	# assault), a Radiation Sail Array where radiation hazards are fought in.
-	if war.size() >= (4 if st.get("overwhelm", false) else 8) and _count_type(ships, base, "tender") < (2 if st.get("overwhelm", false) else 1) and base.can_queue("tender") == "" and res["spice"] >= 15.0:
+	if war.size() >= (4 if st.get("overwhelm", false) else 8) and _count_type(ships, base, "tender") < (2 if st.get("overwhelm", false) else 1) and base.can_queue("tender") == "":
 		cands.append([w["support"], "tender"])
-	if war.size() >= 6 and _hazardous(game) and _count_type(ships, base, "heatshield") == 0 and base.can_queue("heatshield") == "" and res["spice"] >= 15.0:
+	if war.size() >= 6 and _hazardous(game) and _count_type(ships, base, "heatshield") == 0 and base.can_queue("heatshield") == "":
 		cands.append([w["support"] * 0.8, "heatshield"])
 	# Expansion: keep colonizing unless enemies are at our worlds.
 	var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game) and p.is_habitable())
-	if free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= float(Defs.SHIPS["colony"]["cost"].get("spice", 0)):
+	if free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2:
 		cands.append([w["expansion"] * 1.2, "colony"])
 	# Military: the counter-picked class, if the minerals above the
 	# savings goal cover half of it (it pays the rest while it builds).
@@ -666,34 +677,20 @@ func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	var sb := game.nearest_starbase(pid, Vector2.ZERO)
 	var res: Dictionary = game.resources[pid]
 	var capped := true
-	# Spice already promised to hulls queued in every yard.
-	var spice_owed := 0.0
-	for b in game.get_tree().get_nodes_in_group("starbases"):
-		if b.owner_id == pid:
-			for q in b.queue:
-				spice_owed += float(Defs.SHIPS[q]["cost"].get("spice", 0))
 	for t in options:
 		# The only brake on spending: energy income must cover the upkeep this
 		# hull adds (its own plus the multiplier it puts on everything else).
 		if not _upkeep_fits(pid, game, Defs.SHIPS[t]["upkeep"], Defs.UPKEEP_WEIGHT.get(t, Defs.UPKEEP_WEIGHT_SMALL)):
 			continue
 		capped = false
-		if st.get("corvettes_only", false) and Defs.SHIPS[t].get("base", t) != "corvette":
-			continue
 		# Recently cancelled for stalling: give it a minute.
 		if Game.now() < st.get("blocked", {}).get(t, -1.0):
-			continue
-		# A hull whose spice we can't pay stalls the whole queue: skip it.
-		if Defs.SHIPS[t]["cost"].get("spice", 0) > 0 and res["spice"] - spice_owed < Defs.SHIPS[t]["cost"].get("spice", 0) * 1.1:
 			continue
 		if sb.can_queue(t) == "":
 			st["upkeep_capped"] = false
 			return t
 	st["upkeep_capped"] = capped
 	return ""
-
-func _front_needs_spice(base: Starbase) -> bool:
-	return not base.queue.is_empty() and Defs.SHIPS[base.queue[0]]["cost"].has("spice")
 
 ## Cancel builds that have been stuck waiting on resources: the starbase's
 ## front item after STALL_CANCEL seconds (and don't requeue that type for a
@@ -991,7 +988,7 @@ func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, sh
 	# A starbase by default, as many as the stockpile pays for. Only when a
 	# starbase is out of reach does it fall back to a mining station, and
 	# only for a resource our harvesters are working with no drop-off nearby.
-	if want_yard and yards_paid >= 1 and bases.size() + pending.size() < MAX_YARDS and float(res["spice"]) >= sb_cost.get("spice", 0) * 0.6 * (pending.size() + 1):
+	if want_yard and yards_paid >= 1 and bases.size() + pending.size() < MAX_YARDS:
 		var taken: Array = bases.map(func(b): return b.global_position) + pending.map(func(c): return c.build_site)
 		var site := _yard_site(pid, game, taken)
 		if site != Vector2.INF:
@@ -1341,7 +1338,7 @@ func _economy_worlds(cx: Ctx) -> void:
 				pick = "generator"
 			# Batteries only while under threat: idle hardening just prolongs
 			# a stalemate.
-			elif st.get("threat", false) and _spare(pid, st, game, "minerals") > 600.0 and _spare(pid, st, game, "spice") > 40.0 \
+			elif st.get("threat", false) and _spare(pid, st, game, "minerals") > 600.0 \
 					and p.count_building("battery") < 2 and _frontier_world(pid, p, game, v):
 				pick = "battery"
 		# No new Mining Complexes on a world with little crust left.
@@ -1532,7 +1529,7 @@ func _swap_from_power(pid: int, st: Dictionary, game: Game, v: Vision) -> void:
 			to = "mine"
 		elif game.rates[pid].get("food", 0.0) < 0.0:
 			to = "farm"
-		elif p.count_building("battery") < 3 and _frontier_world(pid, p, game, v) and _spare(pid, st, game, "spice") > 40.0:
+		elif p.count_building("battery") < 3 and _frontier_world(pid, p, game, v):
 			to = "battery"
 		elif p.count_building("habitat") < 3:
 			to = "habitat"
@@ -1975,7 +1972,7 @@ func _plan_outpost(pid: int, st: Dictionary, game: Game, base: Starbase, forts: 
 	var res: Dictionary = game.resources[pid]
 	# Never at the cost of the fleet: a fleet first, and the bill (paid over
 	# the build) in hand with a little to spare.
-	if fleet < 4 or res["minerals"] < d["cost"]["minerals"] + 150.0 or res["spice"] < float(d["cost"].get("spice", 0)) + 30.0 or not _upkeep_ok(pid, game, d["upkeep"]):
+	if fleet < 4 or res["minerals"] < d["cost"]["minerals"] + 150.0 or not _upkeep_ok(pid, game, d["upkeep"]):
 		return
 	var pending := builders.filter(func(c): return c.state == Ship.State.BUILD and c.build_kind == "outpost")
 	var have: int = forts.filter(func(f): return f is FrontierOutpost).size() + pending.size()
@@ -2072,7 +2069,7 @@ func _plan_gate(pid: int, st: Dictionary, game: Game, base: Starbase, forts: Arr
 	if n >= MAX_GATES or not pending.is_empty():
 		return
 	# The bill is paid over the build, so half of it in hand will do.
-	if fleet < 6 or res["minerals"] < d["cost"]["minerals"] * 0.5 or res["spice"] < float(d["cost"].get("spice", 0)) + 60.0 or not _upkeep_ok(pid, game, d["upkeep"]):
+	if fleet < 6 or res["minerals"] < d["cost"]["minerals"] * 0.5 or not _upkeep_ok(pid, game, d["upkeep"]):
 		return
 	# Beside home (a second beside another yard, well away from the first).
 	var yard: Node2D = base
@@ -2281,9 +2278,6 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 	var rates: Dictionary = game.rates[pid]
 	# (A Blackout counts: buildings are offline, so no new hulls or attacks.)
 	var energy_starved: bool = (res["energy"] < 7.0 and rates.get("energy", 0.0) < 0.0) or game.in_blackout(pid)
-	var spice_starved: bool = res["spice"] < 10.0 and rates.get("spice", 0.0) <= 0.0
-	# Out of spice alone isn't a crisis: corvettes cost none (see _pick_warship).
-	st["corvettes_only"] = spice_starved
 	var starved := energy_starved
 	var free := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game) and p.is_habitable()) != null
 	var mode := "expand" if free else "build_up"

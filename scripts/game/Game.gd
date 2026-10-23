@@ -1626,6 +1626,17 @@ func spawn_ship(ship_type: String, pid: int, pos: Vector2) -> Ship:
 	ships_root.add_child(s)
 	# Destroyed in battle (not used up colonizing / founding a starbase).
 	s.died.connect(func(e): if e.hp <= 0.0: stats.count(e.owner_id, "ships_lost"))
+	# Colony ship fates (sims): used up founding a world, killed by an
+	# enemy, or killed by the environment (no enemy hit it).
+	if sim_mode and s.def.get("role", "") == "colony":
+		stats.count(pid, "colony_built")
+		s.died.connect(func(e):
+			var fate := "used" if e.hp > 0.0 else ("killed_enemy" if e._killer > 0 else "killed_env")
+			stats.count(e.owner_id, "colony_" + fate)
+			if fate != "used":
+				var t = e.colonize_target
+				print("CLOG t=%d P%d colony %s at (%d,%d) target=%s" % [Game.now(), e.owner_id, fate, e.global_position.x, e.global_position.y,
+					("%s o%d d%d" % [t.planet_name, t.owner_id, int(e.global_position.distance_to(t.global_position))]) if is_instance_valid(t) else "-"]))
 	return s
 
 func found_starbase(pid: int, pos: Vector2) -> Starbase:
