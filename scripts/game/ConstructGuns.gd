@@ -1,6 +1,6 @@
 class_name ConstructGuns
 extends RefCounted
-## A construct's laser battery (Starbase, Frontier Outpost, Mining Station):
+## A construct's laser battery (Starbase, Frontier Outpost):
 ## def["guns"] standard ship laser guns (Defs.LASER_DAMAGE every
 ## Defs.LASER_COOLDOWN s), spread evenly around the hull. Each gun keeps its
 ## own cooldown and target and fires from its own mount, exactly like a

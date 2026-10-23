@@ -734,7 +734,7 @@ static func marked_name(ship_type: String, level: int) -> String:
 ## shields, armor and hull alike. Specialists are variants of a generalist:
 ##   bonus  - 80% base damage, x2.5-3.0 against one layer (x2.2 for hull, the
 ##            biggest layer on most ships)
-##   pierce - skip layers entirely: 2 = shields and armor (Disruptor, 35% base
+##   pierce - skip layers entirely: 2 = shields and armor (Disruptor, 36% base
 ##            damage)
 ##   emp    - Inhibitor (80% base damage): hits switch the target's shields
 ##            off for Abilities.EMP_TIME (see Abilities.emp_try)
