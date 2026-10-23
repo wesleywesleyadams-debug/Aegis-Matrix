@@ -155,7 +155,7 @@ static func report() -> void:
 		var pulls: float = maxf(1.0, b["pulls"])
 		var ticks: float = maxf(1.0, b["t_none"] + b["t_slew"] + b["t_reload"] + b["t_fire"])
 		var ev: float = maxf(1.0, b.get("events", 0))
-		var expected: float = b["inrange_t"] * b["guns"] / 0.97
+		var expected: float = b["inrange_t"] * b["guns"] / 1.0
 		print("DSTAT %s pulls=%d accmiss=%.0f%% fired=%d hit=%.0f%% overkill_fizzle=%.0f%% dodged=%.0f%% dmg=%.0f wasted_on_kill=%.0f (%.0f%%) range=%.0f movefrac=%.2f first=%.1fs ticks:none=%.0f%% slew=%.0f%% reload=%.0f%% fire=%.1f%% util=%.0f%% (pulls/expected while in reach) shooters_on_me=%.2f wounded=%.2f inreach=%.2f regen=%.0f taken=%.0f" % [
 			k, b["pulls"], 100.0 * b["acc_miss"] / pulls, b["fired"], 100.0 * b["hit"] / shots,
 			100.0 * b["fizzle_dead"] / shots, 100.0 * b["dodged"] / shots, b["dmg"], b["wasted"],
