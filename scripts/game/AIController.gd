@@ -163,7 +163,11 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# Builds: only queue when stockpiles can roughly cover the next item.
 	if nn == null and base.queue.size() < 2:
 		var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game))
-		if miners.size() + base.queue.count("miner") < _target_miners(pid, st, game, v):
+		var rich_pick: String = _pick_warship(pid, game, st) if _spare(pid, st, game, "minerals") > SPARE_MINERALS and mode != "recover" and not _yard_besieged(pid, st, base, v) else ""
+		if rich_pick != "":
+			# Minerals piling up: a warship before the support hulls.
+			base.enqueue(rich_pick)
+		elif miners.size() + base.queue.count("miner") < _target_miners(pid, st, game, v):
 			base.enqueue("miner")
 		# (Not while it can't pay the skimmer's spice, or just after one was
 		# cancelled for stalling: re-queueing it at once kept two unpayable
@@ -328,6 +332,10 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	_swap_from_power(pid, st, game, v)
 
 	if nn == null:
+		# Preservation protocol: leave fights not worth their cost; retreating
+		# and peeled-off ships take no other orders (see _preserve).
+		_preserve(pid, st, game, base, war, v)
+		war = war.filter(func(s): return not _held_back(st, s))
 		_guard_harvesters(pid, st, game, war, ships, v)
 	_scout(pid, st, game, ships.filter(func(s): return s.def["role"] == "scout") + war)
 	_use_jobs(pid, ships, game, st)
@@ -389,6 +397,8 @@ func _think(pid: int, st: Dictionary, game: Game) -> void:
 	# Gather a wave of meaningful size first (half the army, 3 to 8 ships)
 	# instead of trickling ships out three at a time.
 	var need := clampi(war.size() / 2, 3, 8)
+	if _regrouping(st):
+		need = maxi(need, ceili(war.size() * REGROUP_SHARE))
 	# Training curriculum (see Game.opp_level): a turtle never attacks, a
 	# slow opponent waits for a bigger wave.
 	var vs_rl: bool = game.rl_side > 0 and pid != game.rl_side
@@ -1199,6 +1209,7 @@ func _expand_production(pid: int, st: Dictionary, game: Game, base: Starbase, sh
 	if builders.any(func(c): return c.state == Ship.State.BUILD):
 		return
 	if _spare(pid, st, game, "minerals") >= Defs.MINING_STATION["cost"]["minerals"] and gap != Vector2.INF \
+			and (v == null or not _enemy_seen_near(v, gap, 900.0, 60.0)) \
 			and _upkeep_fits(pid, game, Defs.MINING_STATION["upkeep"], Defs.UPKEEP_WEIGHT_SMALL):
 		idle[0].order_build_station(gap)
 
@@ -2041,6 +2052,9 @@ func _press_attack(pid: int, st: Dictionary, game: Game, base: Starbase, war: Ar
 	# Reinforcements gather at a forward rally short of the target (when no
 	# enemy has been seen there lately) and leave it in waves, not one by one.
 	var wave_min := clampi(war.size() / 3, 3, 8)
+	# Just fell back: no trickle, the next wave is most of the army.
+	if _regrouping(st):
+		wave_min = maxi(wave_min, ceili(war.size() * REGROUP_SHARE))
 	var rally: Vector2 = goal + (base.global_position - goal).normalized() * (FRONT + 300.0)
 	var rally_ok: bool = v == null or not _enemy_seen_near(v, rally, 800.0, 30.0)
 	var at_rally := home_idle.filter(func(s): return rally_ok and s.global_position.distance_to(rally) < 450.0)
@@ -2434,6 +2448,9 @@ func _plan_outpost(pid: int, st: Dictionary, game: Game, base: Starbase, forts: 
 		return
 	var taken: Array = forts.map(func(f): return f.global_position) + pending.map(func(c): return c.build_site)
 	var site := _outpost_site(pid, game, base, taken, v)
+	# Not into a contested spot (enemies seen there lately).
+	if site != Vector2.INF and v and _enemy_seen_near(v, site, 700.0, 60.0):
+		site = Vector2.INF
 	if site == Vector2.INF:
 		st["next_outpost"] = Game.now() + 30.0
 		return
@@ -2671,3 +2688,171 @@ func _use_gates(pid: int, st: Dictionary, game: Game, forts: Array, war: Array, 
 			_flog(pid, "garrison: %d ships sent in (%d inside)" % [sent.size(), inside.size()])
 			war = war.filter(func(s): return not sent.has(s))
 	return war
+
+# ---------------------------------------------------------------- preservation
+# Ships, constructs and worlds are kept alive unless losing some buys
+# something worth it. Every PRESERVE_EVERY seconds each local fight (own
+# warships with an enemy in sight) is weighed with what this side can see
+# or remembers (its Vision, never hidden information): own guns x toughness
+# (plus own starbases / outposts in range) against _defence_at. A fight
+# whose odds, raised by what it is for (OBJ_*), fall below PRESERVE_WEIGHT
+# is left: the whole group falls back to a safe rally and regroups into one
+# bigger wave. Badly hurt ships peel off home when the rest still win.
+# Never left: the last stand at its only starbase.
+
+## How much own losses weigh against what a fight buys: a fight is left when
+## sqrt(own power / enemy power) x (1 + objective bonus) drops below this.
+const PRESERVE_WEIGHT := 0.9
+## Objective bonuses: an enemy starbase or Constructor (ends a side), own
+## world / starbase / construct defended, an enemy group about to die.
+const OBJ_GAME_WIN := 0.5
+const OBJ_DEFEND := 0.3
+const OBJ_FINISH := 0.3
+## A group this battered (share of its toughness left) leaves an even fight.
+const PRESERVE_BATTERED := 0.4
+## A ship under this share of its toughness peels off (if the rest still win).
+const PEEL_AT := 0.3
+## Seconds a retreating group takes no other orders; a peeled ship stays
+## home until healed past PEEL_BACK (or PEEL_MAX seconds).
+const RETREAT_HOLD := 40.0
+const PEEL_BACK := 0.7
+const PEEL_MAX := 120.0
+## After a retreat, the next wave waits for this share of the army (seconds).
+const REGROUP_FOR := 120.0
+const REGROUP_SHARE := 0.7
+const PRESERVE_EVERY := 2.0
+## Enemies this close to a warship make it part of a fight.
+const FIGHT_RANGE := 600.0
+
+func _tough_frac(s: Ship) -> float:
+	return (s.hp + s.armor + s.shield) / maxf(s.max_hp + s.max_armor + s.max_shield, 1.0)
+
+## True while `s` is retreating or peeled off (other fleet code leaves it be).
+func _held_back(st: Dictionary, s: Ship) -> bool:
+	var h: Dictionary = st.get("held", {})
+	var id := s.get_instance_id()
+	if not h.has(id):
+		return false
+	var e: Array = h[id]
+	if Game.now() < float(e[0]):
+		return true
+	# Peeled: until healed, or PEEL_MAX.
+	if e[1] and _tough_frac(s) < PEEL_BACK and Game.now() < float(e[0]) + PEEL_MAX - RETREAT_HOLD:
+		return true
+	h.erase(id)
+	return false
+
+func _hold(st: Dictionary, s: Ship, peeled: bool) -> void:
+	if not st.has("held"):
+		st["held"] = {}
+	st["held"][s.get_instance_id()] = [Game.now() + RETREAT_HOLD, peeled]
+
+func _regrouping(st: Dictionary) -> bool:
+	return Game.now() < float(st.get("regroup_until", -1.0))
+
+## Own power at `at`: `ships` plus own starbases and outposts in range.
+func _own_power(pid: int, ships: Array, at: Vector2, game: Game) -> Vector2:
+	var dps := 0.0
+	var tough := 0.0
+	for s in ships:
+		dps += _ship_dps(s, game)
+		tough += s.hp + s.armor + s.shield
+	for sb in game.get_tree().get_nodes_in_group("starbases"):
+		if sb.owner_id == pid and sb.is_alive() and not sb.under_construction and sb.global_position.distance_to(at) < SUPPORT_RANGE:
+			dps += Defs.construct_dps(Defs.STARBASE)
+			tough += sb.hp + sb.armor + sb.shield
+	for f in game.get_tree().get_nodes_in_group("forts"):
+		if f is FrontierOutpost and f.owner_id == pid and f.is_alive() and f.global_position.distance_to(at) < SUPPORT_RANGE:
+			dps += Defs.construct_dps(Defs.FRONTIER_OUTPOST)
+			tough += f.hp + f.armor + f.shield
+	return Vector2(dps, tough)
+
+## What a fight at `at` is for: OBJ_* bonus, or INF for a last stand.
+func _objective(pid: int, at: Vector2, own_t: float, enemy_t: float, game: Game, v: Vision) -> float:
+	var bases: Array = game.get_tree().get_nodes_in_group("starbases").filter(func(b): return b.owner_id == pid and not b.under_construction)
+	if bases.size() <= 1 and (bases.is_empty() or bases[0].global_position.distance_to(at) < 900.0):
+		return INF
+	var bonus := 0.0
+	for sb in game.get_tree().get_nodes_in_group("starbases"):
+		if game.is_hostile(pid, sb.owner_id) and sb.is_alive() and sb.global_position.distance_to(at) < 500.0 and (v == null or v.can_see(sb)):
+			bonus = OBJ_GAME_WIN
+	if bonus == 0.0:
+		for s in game.get_tree().get_nodes_in_group("ships"):
+			if game.is_hostile(pid, s.owner_id) and s.def["role"] == "constructor" and s.global_position.distance_to(at) < 500.0 and (v == null or v.can_see(s)):
+				bonus = OBJ_GAME_WIN
+				break
+	var defending := bases.any(func(b): return b.global_position.distance_to(at) < 700.0)
+	if not defending:
+		for p in game.get_tree().get_nodes_in_group("planets"):
+			if p.owner_id == pid and p.global_position.distance_to(at) < 700.0:
+				defending = true
+				break
+	if not defending:
+		for grp in ["mining_stations", "depots", "forts"]:
+			if game.get_tree().get_nodes_in_group(grp).any(func(e): return e.owner_id == pid and e.global_position.distance_to(at) < 600.0):
+				defending = true
+				break
+	if defending:
+		bonus += OBJ_DEFEND
+	if enemy_t < own_t * 0.3:
+		bonus += OBJ_FINISH
+	return bonus
+
+func _preserve(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array, v: Vision) -> void:
+	if v == null or Game.now() < st.get("next_preserve", 0.0):
+		return
+	st["next_preserve"] = Game.now() + PRESERVE_EVERY
+	# Local fights: warships with an enemy in sight, grouped by area.
+	var groups := {}
+	for s in war:
+		if _held_back(st, s) or v.enemy_near(s.global_position, FIGHT_RANGE) == 0:
+			continue
+		var key := Vector2i((s.global_position / 800.0).round())
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(s)
+	for key in groups:
+		var g: Array = groups[key]
+		var c := Vector2.ZERO
+		for s in g:
+			c += s.global_position
+		c /= g.size()
+		var enemy := _defence_at(pid, c, game)
+		var pw_e: float = enemy.x * enemy.y
+		if pw_e <= 0.0:
+			continue
+		var own := _own_power(pid, g, c, game)
+		var obj := _objective(pid, c, own.y, enemy.y, game, v)
+		if obj == INF:
+			continue
+		var odds: float = sqrt(own.x * own.y / pw_e)
+		var left := 0.0
+		var full := 0.0
+		for s in g:
+			left += s.hp + s.armor + s.shield
+			full += s.max_hp + s.max_armor + s.max_shield
+		var battered: bool = left < full * PRESERVE_BATTERED and odds < 1.2
+		if odds * (1.0 + obj) < PRESERVE_WEIGHT or battered:
+			var to := _safe_rally(pid, st, game, base, c)
+			for s in g:
+				s.order_move(to + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
+				_hold(st, s, false)
+			st["retreats"] = st.get("retreats", 0) + 1
+			st["regroup_until"] = Game.now() + REGROUP_FOR
+			game.stats.count(pid, "ai_retreats")
+			_flog(pid, "retreat: %d warships from (%d,%d), odds %.2f obj %.1f%s" % [g.size(), c.x, c.y, odds, obj, " battered" if battered else ""])
+			continue
+		# Winning: the worst-hurt ships go home while the rest still win.
+		var keep := g.duplicate()
+		for s in g:
+			if _tough_frac(s) >= PEEL_AT or keep.size() <= 1:
+				continue
+			var rest := keep.filter(func(o): return o != s)
+			var p2 := _own_power(pid, rest, c, game)
+			if sqrt(p2.x * p2.y / pw_e) * (1.0 + obj) >= PRESERVE_WEIGHT * 1.2:
+				keep = rest
+				var home := game.nearest_starbase(pid, s.global_position)
+				var to: Vector2 = home.global_position if home and v.enemy_near(home.global_position, 600.0) == 0 else _safe_rally(pid, st, game, base, c)
+				s.order_move(to + Vector2(randf_range(-60, 60), randf_range(-60, 60)))
+				_hold(st, s, true)
+				game.stats.count(pid, "ai_peels")
