@@ -240,9 +240,24 @@ static func call_scene(id: String, img: Image) -> void:
 				_dashes(img, sh[1], sh[2], Color("ff4a3a", 0.8))
 				_burst(img, sh[1], 4.0, Color("fff2b0"))
 		"graviton_shunts":
-			_sprite(img, "ship_destroyer", Vector2(20, 42), 24.0)
-			_beam(img, Vector2(26, 36), Vector2(48, 14), Color("c9b6ff"), 1.5)
-			_burst(img, Vector2(48, 14), 5.0, Color("ffd84a"))
+			# Space-grid dimpled by the shunt around a small ship; shots slide off.
+			var gc := Vector2(36, 32)
+			var dv := Color("c9b6ff")
+			for k in range(0, 6):
+				var ph := []
+				var pv := []
+				for st in range(0, 33):
+					var qh := Vector2(5 + st * 1.7, 8 + k * 10.0)
+					var qv := Vector2(8 + k * 10.0, 5 + st * 1.7)
+					ph.append(qh + (qh - gc).normalized() * 6.0 * exp(-(qh - gc).length() / 9.0))
+					pv.append(qv + (qv - gc).normalized() * 6.0 * exp(-(qv - gc).length() / 9.0))
+				for pts in [ph, pv]:
+					for st in pts.size() - 1:
+						_line(img, pts[st], pts[st + 1], 0.8, Color(dv, 0.45))
+			_ring(img, gc, 8.0, 1.4, dv)
+			_sprite(img, "ship_destroyer", gc, 14.0)
+			_bent(img, Vector2(6, 28), Vector2(1.5, 0.0), gc, 28.0, Color("ff4a3a"))
+			_bent(img, Vector2(6, 10), Vector2(1.4, 0.6), gc, 28.0, Color("ff4a3a"))
 		"iron_umbrella":
 			for q in [Vector2(18, 44), Vector2(32, 48), Vector2(46, 44)]:
 				_sprite(img, "ship_corvette", q, 14.0)
@@ -654,3 +669,19 @@ static func _honeycomb(img: Image, c: Vector2, R: float, cell: float, imp: Vecto
 				col = col.lerp(Color.WHITE, hit)
 			_hex(img, q, r, 0.9, Color(col, a))
 	_ring(img, c, R + 0.5, 1.4, Color("e8fbff"))
+
+## Graviton Shunts: a shot's path bent away from `center` (repelled, speed
+## kept), drawn until it leaves the tile.
+static func _bent(img: Image, start: Vector2, vel: Vector2, center: Vector2, g: float, col: Color) -> void:
+	var p := start
+	var v := vel
+	for k in 80:
+		var r := p - center
+		v += r.normalized() * g / maxf(r.length_squared(), 40.0)
+		v = v.normalized() * vel.length()
+		var n := p + v
+		_line(img, p, n, 1.6, col)
+		p = n
+		if p.x < 5 or p.x > 59 or p.y < 5 or p.y > 59:
+			break
+	_disc(img, p, 1.6, col.lightened(0.4))
