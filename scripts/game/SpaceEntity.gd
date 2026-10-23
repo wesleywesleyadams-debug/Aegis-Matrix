@@ -64,7 +64,7 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		if Game.instance.is_hostile(owner_id, _from.owner_id):
 			_killer = _from.owner_id
 	# Deflectors (Defense) soak a slice of everything before the layers see it.
-	# Each deflector tech cuts its own share off (all three: -24%). Worlds
+	# Each deflector tech cuts its own share off (all three: -20%). Worlds
 	# are not affected (Defense techs are for ships and constructs only).
 	if Game.instance:
 		amount *= maxf(0.1, 2.0 - Game.instance.mod(owner_id, "damage_taken"))
