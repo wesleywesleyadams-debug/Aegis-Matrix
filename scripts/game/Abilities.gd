@@ -84,8 +84,13 @@ static func emp_try(target: Object, from: Object, profile: Dictionary) -> void:
 	if now < float(from.emp_ready_at):
 		return
 	from.emp_ready_at = now + EMP_SHIP_CD
-	target.set("shield_off_until", now + EMP_TIME)
-	target.call("queue_redraw")
+	# A Radiation Sail Array is EMP'd with its whole pool (touching bubbles).
+	var hit: Array = [target]
+	if target is Ship and target.def.has("solar_sail"):
+		hit = sail_cluster(target, true)
+	for o in hit:
+		o.set("shield_off_until", now + EMP_TIME)
+		o.call("queue_redraw")
 
 static func sail_cover(e: Node2D, owner_only: bool = true) -> Node2D:
 	var oid = e.get("owner_id")
@@ -147,20 +152,16 @@ static func sail_absorb(e: Node2D, amount: float, from: Node2D, profile: Diction
 		o.queue_redraw()
 	# A Disruptor hit soaked by the pool EMPs the arrays that took it.
 	if soak > 0.0 and profile.get("emp", false) and is_instance_valid(from):
-		var ready = from.get("emp_ready_at")
-		if ready != null and Game.now() >= float(ready):
-			for o in pool:
-				o.shield_off_until = Game.now() + EMP_TIME
-				o.queue_redraw()
-			from.emp_ready_at = Game.now() + EMP_SHIP_CD
+		emp_try(rsa, from, profile)
 	return past + rest - soak / m
 
 ## Every charged array of the same side linked to `rsa` through touching
 ## bubbles (including rsa): together they form one mega shield.
-static func sail_cluster(rsa: Node2D) -> Array:
+## `include_off`: also arrays whose shields are EMP'd (to EMP a whole pool).
+static func sail_cluster(rsa: Node2D, include_off: bool = false) -> Array:
 	var all: Array = []
 	for o in Game.instance.job_ships.get("radiation_sail", []):
-		if is_instance_valid(o) and o.is_alive() and o.shield > 0.0 and o.owner_id == rsa.owner_id and not emp_on(o):
+		if is_instance_valid(o) and o.is_alive() and o.shield > 0.0 and o.owner_id == rsa.owner_id and (include_off or not emp_on(o)):
 			all.append(o)
 	var out: Array = [rsa]
 	var i := 0
