@@ -440,15 +440,15 @@ const TECHS := {
 		"effects": {"max_pop": 0.30, "pop_bonus": 0.20}, "desc": "+30% pop cap; pop output bonus cap +0.20x."},
 	# --- Weapons: reach and rate of fire, alongside the damage line.
 	"targeting_arrays": {"name": "Quantum Lenses", "group": "weapons", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 50.0,
-		"effects": {"range": 0.15}, "desc": "+15% weapon range: ships and starbases."},
+		"effects": {"range": 0.15}, "desc": "+15% weapon range: ships, starbases, outposts."},
 	"autoloaders": {"name": "Autoloaders", "group": "weapons", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 55.0,
 		"effects": {"fire_rate": 0.15}, "desc": "+15% rate of fire: ships and starbases."},
 	"beam_focusing": {"name": "Beam Focusing", "group": "weapons", "tier": 2, "requires": ["targeting_arrays"], "cost": {"spice": 60}, "time": 85.0,
-		"effects": {"range": 0.20}, "desc": "+20% weapon range: ships and starbases."},
+		"effects": {"range": 0.20}, "desc": "+20% weapon range: ships, starbases, outposts."},
 	"heavy_mounts": {"name": "Heavy Mounts", "group": "weapons", "tier": 2, "requires": ["autoloaders"], "cost": {"spice": 60}, "time": 90.0,
 		"effects": {"fire_rate": 0.20}, "desc": "+20% rate of fire: ships and starbases."},
 	"capital_batteries": {"name": "Capital Batteries", "group": "weapons", "tier": 3, "requires": ["beam_focusing"], "cost": {"spice": 240}, "time": 235.0,
-		"effects": {"range": 0.35}, "desc": "+35% weapon range: ships and starbases."},
+		"effects": {"range": 0.35}, "desc": "+35% weapon range: ships, starbases, outposts."},
 
 	# --- Constructs: what you build rather than fly.
 	"garrison_guns": {"name": "Garrison Guns", "group": "constructs", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 50.0,
@@ -462,7 +462,7 @@ const TECHS := {
 	"forward_bases": {"name": "Forward Bases", "group": "constructs", "tier": 2, "requires": ["orbital_yards"], "cost": {"spice": 60}, "time": 100.0,
 		"effects": {"build_speed": 0.15, "construct_speed": 0.15}, "desc": "Ships and constructs are built 15% faster."},
 	"citadel_protocols": {"name": "Citadel Protocols", "group": "constructs", "tier": 3, "requires": ["reinforced_docks"], "cost": {"spice": 240}, "time": 245.0,
-		"effects": {"structure_shield": 0.50, "structure_range": 0.15}, "desc": "+50% construct shields, +15% starbase weapon range."},
+		"effects": {"structure_shield": 0.50, "structure_range": 0.15}, "desc": "+50% construct shields, +15% starbase and outpost weapon range."},
 
 	# --- Worlds: feeding, growing and holding colonies.
 	"colony_pods": {"name": "Colony Pods", "group": "worlds", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 40.0,
@@ -609,9 +609,9 @@ const TECHS := {
 	"mod_proton_torpedoes": {"name": "Proton Torpedoes", "group": "mods", "mod": "corvette", "tier": 1, "requires": [], "cost": {"spice": 50}, "time": 60.0,
 		"effects": {"mod_corvette": 1.0}, "desc": "Heavy torpedoes; x2-4 vs big hulls."},
 	"mod_kinetic_repeaters": {"name": "Kinetic Repeaters", "group": "mods", "mod": "corvette", "tier": 2, "requires": [], "cost": {"spice": 50}, "time": 60.0,
-		"effects": {"mod_corvette": 1.0}, "desc": "3x fire rate, 40% damage per slug, -25% range."},
+		"effects": {"mod_corvette": 1.0}, "desc": "3x fire rate, 46% damage per slug, -25% range."},
 	"mod_arc_emitters": {"name": "Arc Emitters", "group": "mods", "mod": "corvette", "tier": 3, "requires": [], "cost": {"spice": 50}, "time": 60.0,
-		"effects": {"mod_corvette": 1.0}, "desc": "Chains to 2 more enemies (58/21/21%)."},
+		"effects": {"mod_corvette": 1.0}, "desc": "Chains to 2 more enemies (74/26/26%)."},
 	"mod_flak_cannons": {"name": "Flak Cannons", "group": "mods", "mod": "destroyer", "tier": 1, "requires": ["destroyers"], "cost": {"spice": 60}, "time": 75.0,
 		"effects": {"mod_destroyer": 1.0}, "desc": "Shells burst, hitting all enemies within 20."},
 	"mod_cluster_bombs": {"name": "Cluster Bombs", "group": "mods", "mod": "destroyer", "tier": 2, "requires": ["destroyers"], "cost": {"spice": 60}, "time": 75.0,
@@ -812,7 +812,7 @@ const MOD_WEAPONS := {
 	"mod_cluster_bombs": {"dmg": 0.45, "weapon": "bomblet", "cd": 3.092, "count": 3, "fan": [10.0, 20.0]},
 	"mod_ion_lance": {"weapon": "beam", "dmg": 0.58, "beam": [0.15, 1.85, 4.0]},
 	"mod_rail_cannons": {"weapon": "rail", "dmg": 3.6, "cd": 4.0, "range": 1.4},
-	# pd: shoots down ordnance within 160 first, then enemy drones in weapon
+	# pd: shoots down ordnance within 220 first, then enemy drones in weapon
 	# range (x2 damage to them, Ship.PD_DRONE_MULT), then ships.
 	"mod_point_defense_lattice": {"dmg": 0.91, "pd": 220.0},
 	"mod_homing_missiles": {"weapon": "missile", "cd": 2.577, "dmg": 0.54, "count": 2, "range": 1.2},

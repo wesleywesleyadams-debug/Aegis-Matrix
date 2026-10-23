@@ -532,7 +532,7 @@ func _page_variants() -> void:
 		var vd: Dictionary = Defs.VARIANTS[v]
 		var effect := ""
 		if vd.get("emp", false):
-			effect = "EMP: shields off 5 s"
+			effect = "EMP: shields off %d s" % int(Abilities.EMP_TIME)
 		elif vd["pierce"] >= 2:
 			effect = "ignores shields and armor"
 		elif vd["pierce"] == 1:
@@ -586,7 +586,7 @@ func _page_mods() -> void:
 	_heading("Weapon Mods")
 	_para("Mods change what a ship class fires: one per class at a time. Researching another replaces it (the old one keeps working until the new one is done).")
 	_pic("mod_toggle", "Click a Mod's card (or its name under the clock) to switch it off and on.", Vector2(460, 150))
-	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x3.0).")
+	_para("A Mod sets the weapon's shape; a depot variant still sets its damage (a Plasma torpedo hits shields x%s)." % String.num(float(Defs.VARIANTS["plasma"]["vs"]["shield"]), 1))
 	_para("What each Mod costs and does, in numbers: see Research > Mods.")
 	var coming: Array = []
 	for id in Defs.TECHS:
@@ -622,7 +622,7 @@ func _page_mods() -> void:
 	var ilb: Array = Defs.MOD_WEAPONS["mod_ion_lance"]["beam"]
 	var ild: float = float(Defs.MOD_WEAPONS["mod_ion_lance"]["dmg"])
 	_para("Ion Lance: each turret holds a continuous beam on its target once aimed (within 8 degrees), with no reload. Damage ramps the longer it stays on one target, from %d%% to %d%% of a laser's damage rate over %d s, and starts over on a new target: strong on one big hull, weak against swarms." % [int(round(ilb[0] * ild * 100.0)), int(round(ilb[1] * ild * 100.0)), int(ilb[2])])
-	_para("Tractor Beams: the carrier's turrets fire no lasers. Each holds a beam on an enemy ship or drone up to %dx weapon range away, which burns it harder the closer it is: x%.2f a laser's damage rate at the beam's full reach, rising to x%.2f once dragged in to where the pull stops (it doesn't ramp over time like the Ion Lance), and drags it toward the carrier at %d per second (x4 drones, x3 corvettes, x2 destroyers, x0.5 carriers) until it is at 52%% of the guns' range. The beam doesn't slow its target. Missile Barrage: a %d-missile salvo every %d s at +%d%% range." % [int(trb[1]), float(trb[2]) * float(Defs.MOD_WEAPONS["mod_tractor_beams"]["dmg"]), float(trb[3]) * float(Defs.MOD_WEAPONS["mod_tractor_beams"]["dmg"]), int(trb[0]), 4 * int(Defs.MOD_WEAPONS["mod_missile_barrage"]["count"]), int(Defs.MOD_WEAPONS["mod_missile_barrage"]["cd"]), int((Defs.MOD_WEAPONS["mod_missile_barrage"]["range"] - 1.0) * 100)])
+	_para("Tractor Beams: the carrier's turrets fire no lasers. Each holds a beam on an enemy ship or drone up to %dx weapon range away, which burns it harder the closer it is: x%.2f a laser's damage rate at the beam's full reach, rising to x%.2f once dragged in to where the pull stops (it doesn't ramp over time like the Ion Lance), and drags it toward the carrier at %d per second (%s) until it is at %d%% of the guns' range. The beam doesn't slow its target. Missile Barrage: a %d-missile salvo every %d s at +%d%% range." % [int(trb[1]), float(trb[2]) * float(Defs.MOD_WEAPONS["mod_tractor_beams"]["dmg"]), float(trb[3]) * float(Defs.MOD_WEAPONS["mod_tractor_beams"]["dmg"]), int(trb[0]), _tractor_pulls(), int(round(Ship.TRACTOR_STOP * 100.0)), 4 * int(Defs.MOD_WEAPONS["mod_missile_barrage"]["count"]), int(Defs.MOD_WEAPONS["mod_missile_barrage"]["cd"]), int((Defs.MOD_WEAPONS["mod_missile_barrage"]["range"] - 1.0) * 100)])
 	var tb: float = float(Defs.MOD_WEAPONS["mod_proton_torpedoes"]["dmg"])
 	var tcd: float = float(Defs.MOD_WEAPONS["mod_proton_torpedoes"]["cd"])
 	_para("Proton Torpedoes are built to hunt big hulls. Each torpedo hits for %d%% of a laser shot, times the bonus below, and reloads %dx slower than a laser. They steer gently, so a ship that turns hard can shake one off." % [int(round(tb * 100.0)), int(tcd)])
@@ -755,7 +755,7 @@ func _page_research() -> void:
 	_para("The cost is paid gradually while the project runs, not up front. If you run out of spice, progress stalls until you have more.")
 	_para("In single player the match waits while the research screen is open. It opens by itself at the start of a match (on Warships) and whenever a project finishes with nothing else running (on that tech's tab), so research never sits idle unnoticed.")
 	_heading("Tiers and requirements", EDGE_LIT)
-	_para("Each tab is a grid: one row per line of upgrades, one column per tier. A tech needs the one before it in its row (the padlock on a card names it); Spice Navigation needs either of two. Tier 1 costs energy only and takes under a minute; tier 2 adds spice and costs about twice as much; tier 3 costs around five times tier 2 and takes about four minutes, so a tier 3 project is a real commitment.")
+	_para("Each tab is a grid: one row per line of upgrades, one column per tier. A tech needs the one before it in its row (the padlock on a card names it); Spice Navigation needs either of two. All of it is paid in spice. Tier 2 costs about three times tier 1, and tier 3 about four times tier 2 and around four minutes, so a tier 3 project is a real commitment.")
 	_para("Bonuses of the same kind add together: three damage techs of +20%, +25% and +30% give +75% (x1.75). Different kinds multiply: damage times rate of fire times a ship's mark.")
 	var trows: Array = []
 	for tab in SUBPAGES["research"]:
@@ -836,7 +836,7 @@ func _tech_caption(id: String) -> String:
 			return "+%d%% weapon damage%s.%s %s" % [_pct(id, "damage"), _cum_text(id, "damage"), mid, why]
 		"targeting_arrays", "beam_focusing", "capital_batteries":
 			var why2: String = {"targeting_arrays": "Cheap; best for fleets that stand off (cruisers, Rail Cannons).", "beam_focusing": "Also lets starbases cover more of the space around them.", "capital_batteries": "Late game: with Citadel Protocols a starbase outranges most fleets."}[id]
-			var mid2 := " It reaches every ship, starbase and Frontier Outpost (Mining Stations keep theirs), and multiplies a Mod's own range: with the whole line Rail Cannons' x1.4 becomes x%.2f. Longer reach gives you the first volley and lets you kite slower fleets." % (1.4 * (1.0 + _tot("range"))) if int(t["tier"]) == 1 else ""
+			var mid2 := " It reaches every ship, starbase and Frontier Outpost (Mining Stations keep theirs), and multiplies a Mod's own range: with the whole line Rail Cannons' x%s becomes x%.2f. Longer reach gives you the first volley and lets you kite slower fleets." % [String.num(float(Defs.MOD_WEAPONS["mod_rail_cannons"]["range"])), float(Defs.MOD_WEAPONS["mod_rail_cannons"]["range"]) * (1.0 + _tot("range"))] if int(t["tier"]) == 1 else ""
 			return "+%d%% weapon range%s.%s %s" % [_pct(id, "range"), _cum_text(id, "range"), mid2, why2]
 		"autoloaders", "heavy_mounts", "scatter_arrays":
 			var why3: String = {"autoloaders": "Worth about as much as a damage tech; take whichever is cheaper first.", "heavy_mounts": "Best with many small guns: corvette swarms, Kinetic Repeaters, Flak.", "scatter_arrays": "The fast-gun end of the tier-3 choice (Lance Batteries is the heavy-gun end)."}[id]
@@ -845,7 +845,7 @@ func _tech_caption(id: String) -> String:
 		"overcharged_coils": return "%d%% of each hit ignores enemy shields and goes straight on to armor. Strongest against cruisers, carriers and starbases (shield-heavy); no help once a target's shields are down. Slip already skips shields, and a Disruptor's EMP switches them off, so it adds little to those." % _pct(id, "shield_pierce")
 		"burst_cyclers": return "%d%% of what reaches the armor skips it and hits the hull. Best against destroyers and carriers, which carry the most armor. With Overcharged Coils a laser shot gets a quarter past each of the first two layers." % _pct(id, "armor_pierce")
 		"hullbreaker_rounds": return "Damage that reaches the hull is x%.2f. Every kill ends on the hull, so it helps against everything, most against hull-heavy corvettes and anything already stripped. Pairs with the two piercing techs, which push more of each shot onto the hull." % (1.0 + float(e["hull_damage"]))
-		"target_prediction": return "Unguided shots aim where a moving target will be, not where it is. Without it fast ships (corvettes, speed %d) dodge much of the fire aimed at them at range. Homing weapons don't need it. Cheap: worth it whenever you fight anything fast." % int(Defs.SHIPS["corvette"]["speed"])
+		"target_prediction": return "Unguided shots aim where a moving target will be, not where it is, led on its smoothed course: a ship braking hard is expected to stop, and one coming straight at the shooter is led less. Without it fast ships (corvettes, speed %d) dodge much of the fire aimed at them at range. Homing weapons don't need it. Cheap: worth it whenever you fight anything fast." % int(Defs.SHIPS["corvette"]["speed"])
 		"gyro_stabilizers": return "No accuracy loss on the move. Without it a ship firing at full speed lands only about %d%% of its shots (less loss the slower it goes). Essential for kiting, chasing and fighting while retreating." % int(round(Ship.MOVING_ACCURACY * 100.0))
 		"overkill_awareness": return "Your side keeps count of the damage already in flight at each enemy. When those shots will finish it, the other guns (turrets, corvettes' fixed guns, starbases, outposts and Mining Stations) pick the nearest enemy that is not already doomed instead of adding more; if every enemy in reach is doomed they fire anyway, and a target whose doomed shots miss is taken up again. Ships hunting for a target pass over doomed ones too. Area shots (bombs, blasts) are not counted. Worth it in big fights with many guns on many small targets (corvette swarms, mixed fleets), where piled-on volleys waste the most; little help against a few large hulls."
 		# --- Defense
@@ -889,12 +889,12 @@ func _tech_caption(id: String) -> String:
 			return "+%d%% population cap on every world%s, and population's output bonus can rise %.2fx higher. %s" % [_pct(id, "max_pop"), extra, float(e["pop_bonus"]), w8]
 		"colony_pods": return "New colonies start with %d pops instead of %d. Growth counts pairs of pops, so a new colony also grows twice as fast at first. Worth it if you plan several colonies." % [int(Defs.START_POP * (1.0 + float(e["colony_pop"]))), int(Defs.START_POP)]
 		"planetary_shields", "planetary_citadels":
-			var s2 := "+%d%% planetary shield (%d base, +%d per Defense Battery), multiplied with the Defense shield line. Bombardment must break the shield before it kills pops, and the shield refills after %d s without hits." % [_pct(id, "planet_shield"), int(Planet.PLANET_SHIELD), int(Defs.BATTERY_SHIELD), int(Defs.SHIELD_REGEN_DELAY)]
+			var s2 := "+%d%% planetary shield (%d base, +%d per Defense Battery; the Defense tab's shield line does not apply to worlds). Bombardment must break the shield before it kills pops, and the shield refills after %d s without hits." % [_pct(id, "planet_shield"), int(Planet.PLANET_SHIELD), int(Defs.BATTERY_SHIELD), int(Defs.SHIELD_REGEN_DELAY)]
 			if e.has("planet_damage"):
 				s2 += " Batteries also hit +%d%%." % _pct(id, "planet_damage")
 			return s2 + " Worth it when the enemy raids your worlds."
 		"solar_collectors", "plasma_reactors", "dark_matter":
-			var why5: String = {"solar_collectors": "Cheap fuel savings from the first Power Plant on.", "plasma_reactors": "Worth it once ship and building upkeep start eating your energy.", "dark_matter": "The big one: with all three, each mineral of fuel buys about 1.9x the energy."}[id]
+			var why5: String = {"solar_collectors": "Cheap fuel savings from the first Power Plant on.", "plasma_reactors": "Worth it once ship and building upkeep start eating your energy.", "dark_matter": "The big one: with all three, each mineral of fuel buys about %.1fx the energy." % (1.0 + _tot("energy"))}[id]
 			var mid5 := " Energy pays for ship, construct and building upkeep and shield regeneration." if int(t["tier"]) == 1 else ""
 			return "+%d%% energy from Power Plants and Radiation Sail Arrays%s ; the extra energy burns no fuel, so each mineral of fuel goes further.%s %s" % [_pct(id, "energy"), _cum_text(id, "energy"), mid5, why5]
 		# --- Logistics
@@ -914,6 +914,10 @@ func _tech_caption(id: String) -> String:
 		"spice_navigation": return "Your ships take %d%% less radiation inside a spice nebula (not from a star). Needs Gas Skimming or Convoy Protocols. Worth it if skimmers or fleets spend time in nebulae." % int(round((1.0 - Abilities.SPICE_NAV_RADIATION) * 100.0))
 	return t["desc"]
 
+## Tractor Beams' pull by target, from Ship's constants.
+func _tractor_pulls() -> String:
+	return "x%s drones, x%s corvettes, x%s destroyers, x%s carriers" % [String.num(Ship.TRACTOR_PULL_DRONE), String.num(float(Ship.TRACTOR_PULL_MULT["corvette"])), String.num(float(Ship.TRACTOR_PULL_MULT["destroyer"])), String.num(Ship.TRACTOR_PULL_CARRIER)]
+
 ## A Mod's caption, from Defs.MOD_WEAPONS.
 func _mod_caption(id: String) -> String:
 	var m: Dictionary = Defs.MOD_WEAPONS.get(id, {})
@@ -931,7 +935,7 @@ func _mod_caption(id: String) -> String:
 		"mod_rail_cannons": return "A heavy slug every %.0fx the reload for %d%% of a laser shot: about %d%% of a laser's damage over time, at %d%% range. Best against big hulls from beyond their reach." % [float(m["cd"]), dm, int(round(float(m["dmg"]) / float(m["cd"]) * 100.0)), int(round(float(m["range"]) * 100.0))]
 		"mod_point_defense_lattice": return "Needle lasers: each turret first shoots down enemy ordnance within %d (bouncing on to %d more), then drones (x%d damage), and only then ships at %d%% damage. The hard counter to missiles, torpedoes, bombs and drones." % [int(m["pd"]), Game.PD_BOUNCES, int(Ship.PD_DRONE_MULT), dm]
 		"mod_interceptor_drones": return "The turrets stand down; the carrier launches up to %d drones (%d hull each) that fight within %d of it and die with it. Weaker against heavy hulls (x%s vs carriers). Flak and Point-Defense counter them." % [int(m["drones"][0]), int(Drone.HULL), int(m["drones"][1]), String.num(m["vs_class"]["carrier"])]
-		"mod_tractor_beams": return "No lasers: each turret holds a beam on an enemy ship or drone up to %dx weapon range away, drags it toward the carrier at %d per second (x4 drones, x3 corvettes, x2 destroyers, x0.5 carriers) and burns it, harder the closer it is (x%.2f a laser's damage rate at full reach, x%.2f once pulled in to 52%% of range; no ramp over time). Beams never miss and all four hold at once. Pulls kiters and runners into your fleet." % [int(m["tractor"][1]), int(m["tractor"][0]), float(m["tractor"][2]) * float(m["dmg"]), float(m["tractor"][3]) * float(m["dmg"])]
+		"mod_tractor_beams": return "No lasers: each turret holds a beam on an enemy ship or drone up to %dx weapon range away, drags it toward the carrier at %d per second (%s) and burns it, harder the closer it is (x%.2f a laser's damage rate at full reach, x%.2f once pulled in to %d%% of range; no ramp over time). Beams never miss and all four hold at once. Pulls kiters and runners into your fleet." % [int(m["tractor"][1]), int(m["tractor"][0]), _tractor_pulls(), float(m["tractor"][2]) * float(m["dmg"]), float(m["tractor"][3]) * float(m["dmg"]), int(round(Ship.TRACTOR_STOP * 100.0))]
 		"mod_missile_barrage": return "A %d-missile salvo every %d s at +%d%% range, each missile %d%% of a laser shot: the longest reach a carrier has. A strong opener; Point-Defense thins it." % [4 * int(m["count"]), int(m["cd"]), int(round((float(m["range"]) - 1.0) * 100.0)), dm]
 	return Defs.TECHS[id]["desc"]
 
