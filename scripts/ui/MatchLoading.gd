@@ -14,8 +14,10 @@ const MAIN := "res://scenes/Main.tscn"
 const SCENES := ["scene_1_carrier_nebula", "scene_2_starbase_construction", "scene_3_inhibitor_emp",
 	"scene_4_warp_gate", "scene_5_gas_giant_mining", "scene_6_frontier_outpost"]
 ## Scenes whose art leaves the tip block's usual spot (bottom-right) covered
-## by a big subject: scene name -> [rule x, text width, font size].
-const TIP_SPOT := {"scene_2_starbase_construction": [1300.0, 560.0, 24]}
+## by a big subject: scene name -> [rule x, text width, font size, optional
+## upward shift in px (moves the whole block up from its bottom anchor)].
+const TIP_SPOT := {"scene_2_starbase_construction": [1300.0, 560.0, 24],
+	"scene_5_gas_giant_mining": [640.0, 520.0, 24, 570.0]}
 const MIN_TIME := 1.2
 const TYPE_LABEL := {"human": "HUMAN", "ai": "AI", "neural": "NEURAL AI"}
 
@@ -112,20 +114,21 @@ func _build() -> void:
 	# Tip.
 	var spot: Array = TIP_SPOT.get(scene_name, [980.0, 870.0, 26])
 	var tx: float = spot[0]
+	var ty: float = -float(spot[3]) if spot.size() > 3 else 0.0
 	var rule := ColorRect.new()
 	rule.color = Color(0.24, 0.43, 0.24)
 	rule.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	rule.position = Vector2(tx, -330)
+	rule.position = Vector2(tx, -330 + ty)
 	rule.size = Vector2(2, 170)
 	_root.add_child(rule)
 	var tip_head := LoadingUI.label("TIP", 24, LoadingUI.SOLAR)
 	tip_head.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	tip_head.position = Vector2(tx + 30.0, -334)
+	tip_head.position = Vector2(tx + 30.0, -334 + ty)
 	_root.add_child(tip_head)
 	var tip := LoadingUI.label(LoadingTips.random_tip(), int(spot[2]), Color(0.8, 0.84, 0.76))
 	tip.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tip.position = Vector2(tx + 30.0, -294)
+	tip.position = Vector2(tx + 30.0, -294 + ty)
 	tip.size = Vector2(float(spot[1]), 150)
 	_root.add_child(tip)
 	var parts := LoadingUI.progress(_root, 1760.0, 90.0)
