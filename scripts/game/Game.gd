@@ -204,8 +204,6 @@ func _ready() -> void:
 		_start_demo()
 		return
 	# No account controls during a match.
-	SignedInLabel.visible = false
-	tree_exiting.connect(func(): SignedInLabel.visible = true)
 	# Sims and training run on their own clock, not the player's pacing.
 	Engine.time_scale = 1.0 if OS.get_environment("SL_SIM") != "" else HUD.TIME_RATE
 	RenderingServer.set_default_clear_color(Color("07060f"))
