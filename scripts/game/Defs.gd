@@ -589,7 +589,7 @@ const TECHS := {
 		"effects": {"armor_total": 0.15}, "desc": "+15% of total HP as armor: ships and constructs."},
 	"reinforced_frames": {"name": "Reinforced Frames", "group": "defense", "line": "hull", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
 		"effects": {"hull_total": 0.07}, "desc": "+7% of total HP as hull: ships and constructs."},
-	"nanite_plating": {"name": "Nanite Plating", "group": "defense", "line": "hull", "tier": 2, "requires": ["reinforced_frames"], "cost": {"spice": 90}, "time": 180.0,
+	"nanite_plating": {"name": "Living Metals", "group": "defense", "line": "hull", "tier": 2, "requires": ["reinforced_frames"], "cost": {"spice": 90}, "time": 180.0,
 		"effects": {"hull_total": 0.08}, "desc": "+8% of total HP as hull: ships and constructs."},
 	"adaptive_hulls": {"name": "Adaptive Hulls", "group": "defense", "line": "hull", "tier": 3, "requires": ["nanite_plating"], "cost": {"spice": 300}, "time": 260.0,
 		"effects": {"hull_total": 0.15}, "desc": "+15% of total HP as hull: ships and constructs."},
