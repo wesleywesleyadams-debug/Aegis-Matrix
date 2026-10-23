@@ -24,13 +24,131 @@ const GROUP_COLORS := {
 const COLOR_ICONS := ["aegis_matrix", "adaptive_hulls", "glance_plates", "graviton_shunts", "living_metals", "phase_shields", "crystal_prisms", "reinforced_frames", "iron_umbrella", "ion_cannons", "particle_lances", "starfire_batteries", "targeting_arrays", "beam_focusing", "capital_batteries", "autoloaders", "heavy_mounts", "scatter_arrays", "overcharged_coils", "burst_cyclers", "hullbreaker_rounds", "target_prediction", "gyro_stabilizers", "overkill_awareness"]
 
 static var _cache := {}
+## Icons painted ahead of time by warm_up()'s worker thread, waiting to be
+## turned into textures on the main thread. Painting every icon takes ~2 s,
+## which froze the game when the research screen or Codex built them all at
+## once.
+static var _painted := {}
+static var _mutex := Mutex.new()
+## Decoded RGBA8 copies of the game sprites the icons draw, so a worker
+## thread never has to read a texture back.
+static var _sources := {}
+static var _warm_task := -1
 
 static func icon(id: String) -> Texture2D:
 	if _cache.has(id):
 		return _cache[id]
-	var tex := ImageTexture.create_from_image(_paint(id))
+	_mutex.lock()
+	var img: Image = _painted.get(id)
+	_mutex.unlock()
+	if img == null and _warm_task != -1:
+		# The worker paints in table order and is already under way since
+		# boot: let it finish rather than painting the same icons twice.
+		WorkerThreadPool.wait_for_task_completion(_warm_task)
+		_warm_task = -2
+		_mutex.lock()
+		img = _painted.get(id)
+		_mutex.unlock()
+	if img == null:
+		_prefetch_sources()
+		img = _paint(id)
+	var tex := ImageTexture.create_from_image(img)
 	_cache[id] = tex
 	return tex
+
+## Paints every tech icon on a worker thread so opening the research screen
+## or the Codex never stalls. Call once from the main thread (HUD._ready).
+static func warm_up() -> void:
+	if _warm_task != -1:
+		return
+	_prefetch_sources()
+	var dir := _cache_dir()
+	_warm_task = WorkerThreadPool.add_task(_warm_all.bind(dir), false, "TechIcons.warm_up")
+
+## Painted icons are also kept on disk under a key made from the painting
+## code and the tech table, so later launches just read them back; any
+## change to the art (or to the techs) gives a new key and repaints.
+const DISK_CACHE := "user://icon_cache/"
+
+static func _cache_dir() -> String:
+	var key := FileAccess.get_md5("res://scripts/ui/TechIcons.gd") + FileAccess.get_md5("res://scripts/ui/TechScenes.gd")
+	if key == "":
+		key = str(ProjectSettings.get_setting("application/config/version", ""))
+	key += str(Defs.TECHS) + str(Defs.team_color(1)) + str(SIZE)
+	var dir := DISK_CACHE + key.md5_text() + "/"
+	if not DirAccess.dir_exists_absolute(dir):
+		# Old keys are stale art: clear them out.
+		for old in (DirAccess.get_directories_at(DISK_CACHE) if DirAccess.dir_exists_absolute(DISK_CACHE) else PackedStringArray()):
+			var od := DISK_CACHE + old + "/"
+			for f in DirAccess.get_files_at(od):
+				DirAccess.remove_absolute(od + f)
+			DirAccess.remove_absolute(od)
+		DirAccess.make_dir_recursive_absolute(dir)
+	return dir
+
+static func _warm_all(dir: String) -> void:
+	for id in Defs.TECHS.keys():
+		_mutex.lock()
+		var done: bool = _painted.has(id)
+		_mutex.unlock()
+		if done:
+			continue
+		var path: String = dir + str(id) + ".png"
+		var img: Image = null
+		if FileAccess.file_exists(path):
+			img = Image.load_from_file(path)
+			if img and img.get_format() != Image.FORMAT_RGBA8:
+				img.convert(Image.FORMAT_RGBA8)
+		if img == null or img.get_width() != SIZE:
+			img = _paint(id)
+			img.save_png(path)
+		_mutex.lock()
+		_painted[id] = img
+		_mutex.unlock()
+
+## Loads (main thread) every sprite an icon may draw.
+static func _prefetch_sources() -> void:
+	if not _sources.is_empty():
+		return
+	var names := ["asteroid_0", "asteroid_big_0", "asteroid_big_1", "bld_battery", "bld_habitat",
+		"ship_carrier", "ship_corvette", "ship_cruiser", "ship_depot_plazer", "ship_destroyer",
+		"ship_frontier_outpost", "ship_miner", "ship_mining_station", "ship_skimmer",
+		"ship_warp_gate", "starbase"]
+	for id in Defs.TECHS:
+		for fx in Defs.TECHS[id].get("effects", {}):
+			var e := str(fx)
+			if e.begins_with("unlock_") or e.begins_with("mark_") or e.begins_with("mod_"):
+				names.append(_sprite_for(e))
+	for n in names:
+		for nm in [n, n + "_team"]:
+			if _sources.has(nm):
+				continue
+			var img: Image = null
+			if ResourceLoader.exists(Defs.PIXEL + nm + ".png"):
+				var tex := Defs.tex(nm)
+				if tex:
+					img = tex.get_image()
+			if img:
+				img = img.duplicate()
+				if img.is_compressed():
+					img.decompress()
+				img.convert(Image.FORMAT_RGBA8)
+			_sources[nm] = img
+
+## A fresh RGBA8 copy of a sprite, or null when it does not exist.
+static func source(tex_name: String) -> Image:
+	if _sources.has(tex_name):
+		var img: Image = _sources[tex_name]
+		return img.duplicate() if img else null
+	# Not prefetched: only safe on the main thread, as before.
+	var tex := Defs.tex(tex_name) if ResourceLoader.exists(Defs.PIXEL + tex_name + ".png") else null
+	if tex == null or tex.get_image() == null:
+		return null
+	var src := tex.get_image().duplicate()
+	if src.is_compressed():
+		src.decompress()
+	src.convert(Image.FORMAT_RGBA8)
+	return src
 
 static func _paint(id: String) -> Image:
 	var t: Dictionary = Defs.TECHS.get(id, {})
@@ -186,29 +304,17 @@ static func _sprite_for(effect: String) -> String:
 	return "ship_" + what
 
 static func _sprite(img: Image, tex_name: String) -> void:
-	var tex := Defs.tex(tex_name)
-	if tex == null:
-		return
-	var src := tex.get_image()
+	var src := source(tex_name)
 	if src == null:
 		return
-	src = src.duplicate()
-	if src.is_compressed():
-		src.decompress()
-	src.convert(Image.FORMAT_RGBA8)
 	# Fit inside the tile, crisp.
 	var room := 44.0 * K
 	var k: float = room / maxf(src.get_width(), src.get_height())
 	var w := maxi(1, int(src.get_width() * k))
 	var h := maxi(1, int(src.get_height() * k))
 	src.resize(w, h, Image.INTERPOLATE_NEAREST)
-	var team := Defs.tex(tex_name + "_team")
-	var tim: Image = null
-	if team:
-		tim = team.get_image().duplicate()
-		if tim.is_compressed():
-			tim.decompress()
-		tim.convert(Image.FORMAT_RGBA8)
+	var tim := source(tex_name + "_team")
+	if tim:
 		tim.resize(w, h, Image.INTERPOLATE_NEAREST)
 	var ox := (SIZE - w) / 2
 	var oy := (SIZE - h) / 2 + int(2 * K)

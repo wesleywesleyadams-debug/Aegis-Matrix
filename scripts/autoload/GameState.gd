@@ -250,6 +250,10 @@ func account_settings_path() -> String:
 func _ready() -> void:
 	load_settings()
 	_enforce_fullscreen()
+	# Paint the tech icons on a worker thread now, so the match's research
+	# screen and the Codex find them ready instead of stalling ~2 s.
+	if DisplayServer.get_name() != "headless":
+		TechIcons.warm_up()
 
 ## Re-asserts borderless fullscreen in code, on top of the [display]
 ## project settings (window/size/mode=3, window/size/borderless=true) --

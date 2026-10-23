@@ -88,6 +88,8 @@ void fragment() {
 }
 """
 
+static var _gas_shader: Shader
+
 func _ready() -> void:
 	add_to_group("storms")
 	z_index = -1
@@ -99,9 +101,11 @@ func _ready() -> void:
 	_gas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_gas.show_behind_parent = true
 	var mat := ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = GAS_SHADER
-	mat.shader = sh
+	# One shared Shader: compiled once, not once per storm.
+	if _gas_shader == null:
+		_gas_shader = Shader.new()
+		_gas_shader.code = GAS_SHADER
+	mat.shader = _gas_shader
 	mat.set_shader_parameter("half_size", half)
 	mat.set_shader_parameter("seed", float(seed_value % 997))
 	_gas.material = mat
