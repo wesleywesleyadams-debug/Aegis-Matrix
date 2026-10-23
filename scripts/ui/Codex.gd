@@ -856,7 +856,7 @@ func _tech_caption(id: String) -> String:
 		"reinforced_frames", "living_metals", "adaptive_hulls":
 			var w6: String = {"reinforced_frames": "Hull is the last layer, the one Ravagers and Rupture Charges hit hardest, so this blunts both. Since the bonus is a share of all three layers, it helps every class equally.", "living_metals": "Harvesters gain too, and with Convoy Protocols a harvester's extra shields and armor grow with its hull.", "adaptive_hulls": "The biggest step; hull is the layer Ravagers hit hardest."}[id]
 			return "Every ship and construct gains hull equal to %d%% of its total base HP (hull + armor + shields). %s" % [_pct(id, "hull_total"), w6]
-		"defense_network", "steel_canopy", "iron_umbrella":
+		"glance_plates", "steel_canopy", "iron_umbrella":
 			var why4: String = "Cheap: the best defense for the price." if int(t["tier"]) == 1 else ("Worth it once the fleet is most of your spending." if int(t["tier"]) == 2 else "Expensive, but no layer tech gives as much in one step.")
 			return "-%d%% damage taken by every ship and construct, before shields. Deflectors add together: all three cut %d%% of every hit, radiation included. Worlds are not covered. %s" % [_pct(id, "damage_taken"), int(round(_tot("damage_taken") * 100.0)), why4]
 		# --- Constructs
