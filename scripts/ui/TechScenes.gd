@@ -315,10 +315,18 @@ static func call_scene(id: String, img: Image) -> void:
 			_bent(img, Vector2(6, 28), Vector2(1.5, 0.0), gc, 28.0, Color("ff4a3a"))
 			_bent(img, Vector2(6, 10), Vector2(1.4, 0.6), gc, 28.0, Color("ff4a3a"))
 		"iron_umbrella":
-			for q in [Vector2(18, 44), Vector2(32, 48), Vector2(46, 44)]:
-				_sprite(img, "ship_corvette", q, 14.0)
-			_arc(img, Vector2(32, 50), 28.0, PI, TAU, 3.0, Color("c9b6ff"))
-		# ---------------------------------------------------------- weapons
+			# A1: bolts end in clean flashes on the canopy, violet ripples spreading
+			# from each hit.
+			_umbrella_base(img)
+			for x in [14.0, 24.0, 36.0, 47.0]:
+				var p := Vector2(x, _dome_y(x) - 0.5)
+				var from := p + Vector2(-4, -12)
+				_line(img, from, p, 2.2, Color("6a0e08"))
+				_line(img, from, p, 1.2, SHOT)
+				for k in 2:
+					_arc(img, p, 3.0 + k * 2.5, PI + 0.3, TAU - 0.3, 1.0, Color(DF[3], 0.9 - k * 0.35))
+				_burst(img, p, 3.0, FLASH)
+				_disc(img, p, 1.2, Color.WHITE)
 		"ion_cannons":
 			_barrel(img, Vector2(8, 46), Vector2(30, 30), 6.0)
 			_beam(img, Vector2(32, 28), Vector2(56, 12), Color("7fd8ff"), 3.0)
@@ -915,3 +923,73 @@ static func _joint(img: Image, c: Vector2, r: float, t: Array) -> void:
 	_disc(img, c + Vector2(-0.3, -0.3) * r, r * 0.6, t[2])
 	_disc(img, c, r * 0.35, t[0])
 	_put(img, int(c.x - r * 0.5), int(c.y - r * 0.5), t[4])
+
+## Deflector tones (c9b6ff): outline, deep, body, light, highlight.
+const DF := [Color("1a0f30"), Color("4a3488"), Color("8a72d8"), Color("c9b6ff"), Color("f6f0ff")]
+
+## An umbrella canopy seen from the side: tip at `tip`, rim spanning
+## `half` either side at `rim_y`, `n` panels alternating tones, iron ribs,
+## scalloped rim and a highlight on the lit panels.
+static func _canopy(img: Image, tip: Vector2, half: float, rim_y: float, n: int) -> void:
+	# ribs curve out and down from the tip like a dome
+	var ribs := []
+	for i in n + 1:
+		var t := float(i) / n
+		var u := 2.0 * t - 1.0
+		var end := Vector2(tip.x + half * u, rim_y + 3.0 * u * u)
+		var pts := []
+		for k in 9:
+			var f := k / 8.0
+			var q := tip.lerp(end, f)
+			q.y -= sin(f * PI) * (rim_y - tip.y) * 0.32 * (1.0 - 0.3 * absf(u))
+			pts.append(q)
+		ribs.append(pts)
+	# silhouette outline
+	var outline := []
+	for i in n + 1:
+		outline.append(ribs[i][8] + Vector2(0, 1.4))
+	var left: Array = ribs[0].duplicate()
+	var right: Array = ribs[n].duplicate()
+	right.reverse()
+	_poly(img, left + outline + right, DF[0])
+	for i in n:
+		var a2: Array = ribs[i]
+		var b2: Array = ribs[i + 1].duplicate()
+		b2.reverse()
+		var col: Color = DF[3] if i < n / 2 and i % 2 == 0 else (DF[2] if i % 2 == 0 else DF[1])
+		_poly(img, a2 + b2, col)
+		var mid: Vector2 = (ribs[i][8] + ribs[i + 1][8]) * 0.5 + Vector2(0, -1.8)
+		_poly(img, [ribs[i][8], mid, ribs[i + 1][8]], DF[0])
+	for i in n + 1:
+		for k in 8:
+			_line(img, ribs[i][k], ribs[i][k + 1], 1.0, STEEL[3] if i <= n / 2 else STEEL[2])
+		_disc(img, ribs[i][8], 1.2, STEEL[3])
+	for k in 4:
+		_line(img, ribs[1][k] + Vector2(0.8, 0.6), ribs[1][k + 1] + Vector2(0.8, 0.6), 1.0, DF[4])
+	_disc(img, tip, 1.8, STEEL[3])
+	_put(img, int(tip.x - 1), int(tip.y - 1), STEEL[4])
+
+const UT := Vector2(32, 12)
+
+const UH := 27.0
+
+const URIM := 32.0
+
+## Top of the canopy at x (matches _canopy(UT, UH, URIM, n)).
+static func _dome_y(x: float) -> float:
+	var best := 999.0
+	for i in 81:
+		var u := 2.0 * i / 80.0 - 1.0
+		var end := Vector2(UT.x + UH * u, URIM + 3.0 * u * u)
+		for k in 33:
+			var f := k / 32.0
+			var q := UT.lerp(end, f)
+			q.y -= sin(f * PI) * (URIM - UT.y) * 0.32 * (1.0 - 0.3 * absf(u))
+			if absf(q.x - x) < 0.6:
+				best = minf(best, q.y)
+	return best
+
+static func _umbrella_base(img: Image) -> void:
+	for q in [Vector2(19, 47), Vector2(39, 50)]:
+		_sprite(img, "ship_corvette", q, 17.0)
+	_canopy(img, UT, UH, URIM, 8)
