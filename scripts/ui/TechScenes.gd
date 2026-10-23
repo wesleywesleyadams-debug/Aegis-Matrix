@@ -181,9 +181,13 @@ static func call_scene(id: String, img: Image) -> void:
 			_ring(img, C, 22.0, 2.0, Color("7fd8ff", 0.9))
 			_ring(img, C, 18.0, 1.5, Color("b0f0ff", 0.5))
 		"aegis_matrix":
-			_sprite(img, "ship_cruiser", C, 30.0)
-			for k in 6:
-				_hex(img, C + Vector2.from_angle(TAU * k / 6.0) * 18.0, 7.0, 1.2, Color("7fd8ff", 0.85))
+			# The matrix itself: a glowing geodesic globe taking a hit.
+			_disc(img, C, 24.0, Color("0d2a44", 0.9))
+			var imp := C + Vector2.from_angle(-2.3) * 24.0
+			_honeycomb(img, C, 24.0, 4.4, imp, 0.45)
+			_line(img, imp + Vector2(-12, -9), imp + Vector2(-2, -1.5), 2.0, Color("ff4a3a"))
+			_burst(img, imp, 6.0, Color("fff2b0"))
+			_disc(img, imp, 2.2, Color.WHITE)
 		"composite_plating":
 			for k in 3:
 				_plate(img, Vector2(14 + k * 6, 14 + k * 6), Vector2(34, 26), Color("8a5a5a").lightened(k * 0.15))
@@ -609,3 +613,25 @@ static func _hex(img: Image, c: Vector2, r: float, w: float, col: Color) -> void
 
 static func _burst(img: Image, c: Vector2, r: float, col: Color) -> void:
 	TechIcons._burst(img, c * K, r * K, col)
+
+## Aegis Matrix: hex cells laid on a globe of radius R around c, packed and
+## brightened toward the rim; cells near `imp` (a hit) flare white.
+static func _honeycomb(img: Image, c: Vector2, R: float, cell: float, imp: Vector2, inner_a: float) -> void:
+	var dx := cell * 1.5
+	var dy := cell * sqrt(3.0)
+	for i in range(-9, 10):
+		for j in range(-9, 10):
+			var p := Vector2(i * dx, j * dy + (dy * 0.5 if absi(i) % 2 == 1 else 0.0))
+			var d := p.length() / R
+			if d > 0.98 or (inner_a < 0.2 and d < 0.5):
+				continue
+			var q := c + p.normalized() * sin(d * PI * 0.5) * R if p.length() > 0.01 else c
+			var r := cell * lerpf(1.0, 0.55, d * d)
+			var a := lerpf(inner_a, 1.0, pow(d, 2.0))
+			var col := Color("7fd8ff").lerp(Color("e8fbff"), pow(d, 3.0))
+			if imp != Vector2.ZERO:
+				var hit := clampf(1.0 - q.distance_to(imp) / 10.0, 0.0, 1.0)
+				a = maxf(a, hit)
+				col = col.lerp(Color.WHITE, hit)
+			_hex(img, q, r, 0.9, Color(col, a))
+	_ring(img, c, R + 0.5, 1.4, Color("e8fbff"))

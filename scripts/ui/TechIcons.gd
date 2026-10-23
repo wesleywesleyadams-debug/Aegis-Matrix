@@ -20,6 +20,9 @@ const GROUP_COLORS := {
 	"mods": Color("c77dff"),
 }
 
+## Non-Mod techs whose (redesigned) art is shown in full colour.
+const COLOR_ICONS := ["aegis_matrix"]
+
 static var _cache := {}
 
 static func icon(id: String) -> Texture2D:
@@ -40,7 +43,7 @@ static func _paint(id: String) -> Image:
 		_sprite(art, _sprite_for(main_fx))
 		drawn = true
 	if drawn:
-		_plaque(img, art, BORDER_COLORS.get(t.get("group", ""), GOLD), t.has("mod"))
+		_plaque(img, art, BORDER_COLORS.get(t.get("group", ""), GOLD), t.has("mod") or COLOR_ICONS.has(id))
 		if main_fx.begins_with("mark_"):
 			# As many chevrons as the ship itself shows at that mark (Mk I
 			# has one, so Mk II two ... Mk IV four).
