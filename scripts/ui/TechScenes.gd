@@ -25,6 +25,7 @@ static func has_method_scene(id: String) -> bool:
 
 ## id -> painter. Written as a lookup so a missing scene is just a missing key.
 const SCENES := [
+	"destroyers",
 	"garrison_guns", "orbital_yards", "modular_frames", "depots", "reinforced_docks", "forward_bases",
 	"outposts", "rapid_assembly", "citadel_protocols", "warp_gates", "shipyard_networks", "orbital_elevators",
 	"phase_shields", "crystal_prisms", "aegis_matrix", "composite_plating", "reactive_armor", "neutronium_armor",
@@ -45,6 +46,11 @@ const SCENES := [
 
 static func call_scene(id: String, img: Image) -> void:
 	match id:
+		# ---------------------------------------------------------- warships
+		"destroyers":
+			# The destroyer itself, its real hull art at 1:1 pixels in green,
+			# turrets on their plates, its two engines lit.
+			_ship_art(img, "destroyer", Vector2(34, 32), Color("6fe07a"))
 		# ---------------------------------------------------------- mods
 		# The class's hull small in a corner, its new weapon doing its thing.
 		"mod_proton_torpedoes":
@@ -731,6 +737,65 @@ static func _space(img: Image, seed_v: int) -> void:
 		var x := rng.randi_range(6, S - 7)
 		var y := rng.randi_range(6, S - 7)
 		img.set_pixel(x, y, Color(1, 1, 1, rng.randf_range(0.25, 0.8)))
+
+## A warship's real hull art drawn at exactly one art pixel per icon pixel
+## (no resampling), centred at c: a lit engine at each stern,
+## a drop shadow, the hull in `team` colour, and its turret sprites placed
+## and sized as Ship.gd does in game.
+static func _ship_art(img: Image, cls: String, c: Vector2, team: Color) -> void:
+	var hull: Image = Defs.tex("ship_" + cls).get_image().duplicate()
+	var tm: Image = Defs.tex("ship_" + cls + "_team").get_image().duplicate()
+	var tur: Image = Defs.tex("ship_turret").get_image().duplicate()
+	for im in [hull, tm, tur]:
+		if im.is_compressed():
+			im.decompress()
+		im.convert(Image.FORMAT_RGBA8)
+	var w := hull.get_width()
+	var h := hull.get_height()
+	var o := Vector2i(int(c.x * K) - w / 2, int(c.y * K) - h / 2)
+	# Engine glows: each run of solid pixels in the stern column.
+	var sx := 0
+	while sx < w and not range(h).any(func(y): return hull.get_pixel(sx, y).a > 0.5):
+		sx += 1
+	var start := -1
+	for y in h + 1:
+		var solid: bool = y < h and hull.get_pixel(sx, y).a > 0.5
+		if solid and start < 0:
+			start = y
+		elif not solid and start >= 0:
+			var e := Vector2(o.x + sx - 1, o.y + (start + y - 1) / 2.0) / K
+			_disc(img, e, 1.8, Color(SF[2], 0.85))
+			_disc(img, e, 1.0, SF[4])
+			start = -1
+	var Z := TechIcons.SIZE
+	var put := func(x: int, y: int, col: Color) -> void:
+		if x >= 0 and y >= 0 and x < Z and y < Z:
+			img.set_pixel(x, y, img.get_pixel(x, y).blend(col))
+	for y in h:
+		for x in w:
+			if hull.get_pixel(x, y).a > 0.5:
+				put.call(o.x + x + 2, o.y + y + 2, Color(0, 0, 0, 0.6))
+	for y in h:
+		for x in w:
+			var col := hull.get_pixel(x, y)
+			var t := tm.get_pixel(x, y)
+			if t.a > 0.0:
+				col = team * t.r
+				col.a = 1.0
+			if col.a > 0.0:
+				put.call(o.x + x, o.y + y, col)
+	var d: Dictionary = Defs.SHIPS[cls]
+	var ts := float(d.get("turret_scale", 1.0))
+	var tw := int(round(tur.get_width() * ts))
+	var th := int(round(tur.get_height() * ts))
+	for m in d.get("turrets", []):
+		var cx := o.x + w / 2.0 + (float(m[0]) - 0.5) * w
+		var cy := o.y + h / 2.0 + float(m[1]) * h
+		for y in th:
+			for x in tw:
+				var col := tur.get_pixel(int(x / ts), int(y / ts))
+				if col.a > 0.0:
+					put.call(int(cx - tw / 2.0) + x, int(cy - th / 2.0) + y, col)
 
 static func _sprite(img: Image, tex_name: String, c: Vector2, box: float) -> void:
 	c *= K
