@@ -415,14 +415,34 @@ static func call_scene(id: String, img: Image) -> void:
 				var a := PI * 0.25 + k * PI / 2.0
 				_joint(img, c + Vector2.from_angle(a) * 17.0, 2.6, STEEL)
 		"target_prediction":
-			# A shot aimed at the reticle ahead of the ship, not at the ship.
-			_sprite(img, "ship_corvette", Vector2(22, 44), 16.0)
+			# Z: a chunky targeting scope - a beveled steel unit with a glowing
+			# screen: grid, a blip, its predicted arc and the lead marker.
+			var a := Vector2(6, 10)
+			var b := Vector2(54, 46)
+			_box(img, a - Vector2(1, 1), b + Vector2(1, 1), STEEL[0])
+			_box(img, a, b, STEEL[2])
+			_box(img, a, Vector2(b.x, a.y + 2), STEEL[3])
+			_line(img, a + Vector2(1, 0.5), Vector2(b.x - 1, a.y + 0.5), 1.0, STEEL[4])
+			_box(img, Vector2(a.x, b.y - 2), b, STEEL[1])
+			var sa := a + Vector2(4, 4)
+			var sb := b - Vector2(4, 5)
+			_box(img, sa - Vector2(1, 1), sb + Vector2(1, 1), STEEL[0])
+			_box(img, sa, sb, Color("04121c"))
+			for x in range(int(sa.x) + 6, int(sb.x), 7):
+				_line(img, Vector2(x, sa.y), Vector2(x, sb.y), 1.0, Color(QCYAN, 0.08))
+			for y in range(int(sa.y) + 6, int(sb.y), 7):
+				_line(img, Vector2(sa.x, y), Vector2(sb.x, y), 1.0, Color(QCYAN, 0.08))
+			var pts := []
+			for k in 11:
+				var t := k / 10.0
+				pts.append(Vector2(lerpf(sa.x + 4, sb.x - 6, t), sb.y - 6.0 - sin(t * PI * 0.8) * 16.0))
 			for k in 4:
-				_line(img, Vector2(28 + k * 6, 38 - k * 5), Vector2(31 + k * 6, 35 - k * 5), 1.0, Color("b0f0ff"))
-			_ring(img, Vector2(50, 16), 8.0, 1.5, Color("ff6a4a"))
-			_line(img, Vector2(50, 6), Vector2(50, 26), 1.0, Color("ff6a4a"))
-			_line(img, Vector2(40, 16), Vector2(60, 16), 1.0, Color("ff6a4a"))
-			_beam(img, Vector2(6, 58), Vector2(48, 18), Color("ffd84a"), 1.5)
+				_disc(img, pts[k], 0.9, Color(QL[3], 0.4 + k * 0.12))
+			_disc(img, pts[4], 2.2, QL[3])
+			for k in range(5, 10, 1):
+				if k % 2 == 1:
+					_line(img, pts[k], pts[k + 1], 1.2, QCYAN)
+			_lead_pip(img, pts[10], 1.8)
 		"gyro_stabilizers":
 			_ring(img, Vector2(32, 32), 20.0, 2.5, Color("8a95b8"))
 			_ellipse(img, Vector2(32, 32), Vector2(20, 7), Color("6a7596"))
@@ -1372,3 +1392,9 @@ static func _hull_panel(img: Image, a: Vector2, b: Vector2) -> void:
 	_box(img, a + Vector2(1, 1), b - Vector2(2, 2), HU[2])
 	_line(img, a + Vector2(1, 0.5), Vector2(b.x - 2, a.y + 0.5), 1.0, HU[4])
 	_line(img, a + Vector2(0.5, 1), Vector2(a.x + 0.5, b.y - 2), 1.0, HU[3])
+
+static func _lead_pip(img: Image, p: Vector2, r: float) -> void:
+	_disc(img, p, r * 2.2, Color(QCYAN, 0.18))
+	_disc(img, p, r * 1.4, Color(QCYAN, 0.45))
+	_disc(img, p, r, QCYAN)
+	_disc(img, p, r * 0.45, Color.WHITE)
