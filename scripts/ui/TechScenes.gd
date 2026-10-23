@@ -28,7 +28,7 @@ const SCENES := [
 	"garrison_guns", "orbital_yards", "modular_frames", "depots", "reinforced_docks", "forward_bases",
 	"outposts", "rapid_assembly", "citadel_protocols", "warp_gates", "shipyard_networks", "orbital_elevators",
 	"phase_shields", "crystal_prisms", "aegis_matrix", "composite_plating", "reactive_armor", "neutronium_armor",
-	"reinforced_frames", "living_metals", "adaptive_hulls", "glance_plates", "steel_canopy", "iron_umbrella",
+	"reinforced_frames", "living_metals", "adaptive_hulls", "glance_plates", "graviton_shunts", "iron_umbrella",
 	"ion_cannons", "particle_lances", "capital_batteries", "targeting_arrays", "beam_focusing", "lance_batteries",
 	"autoloaders", "heavy_mounts", "scatter_arrays", "overcharged_coils", "burst_cyclers", "dark_matter",
 	"solar_collectors", "plasma_reactors", "hullbreaker_rounds",
@@ -216,7 +216,7 @@ static func call_scene(id: String, img: Image) -> void:
 			_sprite(img, "ship_corvette", C, 22.0)
 			for q in [Vector2(14, 14), Vector2(50, 18), Vector2(48, 48), Vector2(16, 46), Vector2(32, 10)]:
 				_burst(img, q, 4.5, Color("c9b6ff"))
-		"steel_canopy":
+		"graviton_shunts":
 			_sprite(img, "ship_destroyer", Vector2(20, 42), 24.0)
 			_beam(img, Vector2(26, 36), Vector2(48, 14), Color("c9b6ff"), 1.5)
 			_burst(img, Vector2(48, 14), 5.0, Color("ffd84a"))
