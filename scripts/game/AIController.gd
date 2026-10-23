@@ -2162,6 +2162,10 @@ const ATTACK_EDGE := 1.15
 ## falling (with the rest) ends the match.
 const FINISH_EDGE := 2.0
 
+## Upkeep-capped (the fleet can't grow any more): waiting gains nothing, so
+## attack / commit at this smaller edge instead of ATTACK_EDGE / COMMIT_EDGE.
+const CAPPED_EDGE := 0.95
+
 func _attack_goal(pid: int, from: Vector2, game: Game) -> Vector2:
 	if _state.get(pid, {}).get("finishing", false):
 		var kill := _finish_target(pid, from, game)
@@ -2276,7 +2280,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 		mode = "recover"
 	elif threat or theirs > mine * 1.3:
 		mode = "build_up"
-	elif mine > theirs * ATTACK_EDGE and war.size() >= 8:
+	elif mine > theirs * (CAPPED_EDGE if st.get("upkeep_capped", false) else ATTACK_EDGE) and war.size() >= 8:
 		mode = "attack"
 	# Clearly winning: finish it, however small the fleet.
 	elif mine > theirs * FINISH_EDGE and war.size() >= 2:
@@ -2312,7 +2316,7 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 	elif not was:
 		# With no enemy fleet seen lately, a smaller army can finish the job.
 		var cmin := COMMIT_MIN if theirs > 400.0 else COMMIT_MIN / 2
-		commit = Game.now() >= COMMIT_AFTER and war.size() >= cmin and mine > known * COMMIT_EDGE and not energy_starved
+		commit = Game.now() >= COMMIT_AFTER and war.size() >= cmin and mine > known * (CAPPED_EDGE if st.get("upkeep_capped", false) else COMMIT_EDGE) and not energy_starved
 	elif war.size() < (COMMIT_MIN / 2 if theirs > 400.0 else 2) or energy_starved or (mine < known * COMMIT_DROP and war.size() < st.get("commit_peak", 0) * 0.6):
 		commit = false
 	# (The edge alone doesn't end it: its picture of the enemy remembers
