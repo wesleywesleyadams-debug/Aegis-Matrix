@@ -191,9 +191,19 @@ static func call_scene(id: String, img: Image) -> void:
 				_arc(img, hit, 4.0 + k * 3.5, 1.7, 4.0, 1.0, Color(SH[3], 0.9 - k * 0.25))
 			_impact(img, hit, Vector2(60, 4))
 		"crystal_prisms":
-			_sprite(img, "ship_destroyer", C, 28.0)
-			_ring(img, C, 22.0, 2.0, Color("7fd8ff", 0.9))
-			_ring(img, C, 18.0, 1.5, Color("b0f0ff", 0.5))
+			# The big prism with two small satellite crystals orbiting it; the
+			# split rays pass between them.
+			var c := Vector2(26, 34)
+			var entry := c + Vector2(-5, -3)
+			_impact(img, entry, Vector2(2, 12))
+			for k in 5:
+				_ray(img, c + Vector2(6, 1), c + Vector2(6, 1) + Vector2.from_angle(-0.5 + k * 0.25) * 28.0, 1.5, SPECTRUM[k])
+			_crystal_rich(img, c, 15.0, 7.0, -1.25)
+			_crystal(img, Vector2(46, 12), 5.0, 2.4, -1.0)
+			_crystal(img, Vector2(14, 54), 4.5, 2.2, -1.5)
+			_arc(img, c, 26.0, -1.45, -1.0, 1.0, Color(SH[3], 0.5))
+			_arc(img, c, 26.0, 1.75, 2.15, 1.0, Color(SH[3], 0.5))
+			_disc(img, entry, 1.8, Color.WHITE)
 		"aegis_matrix":
 			# The matrix itself: a glowing geodesic globe taking a hit.
 			_disc(img, C, 24.0, Color("0d2a44", 0.9))
@@ -811,3 +821,50 @@ static func _impact(img: Image, at: Vector2, from: Vector2) -> void:
 	_line(img, from, at, 1.4, SHOT)
 	_burst(img, at, 5.0, FLASH)
 	_disc(img, at, 1.8, Color.WHITE)
+
+const SPECTRUM := [Color("ff8ac4"), Color("ffd86a"), Color("8cff9e"), Color("6fd4ff"), Color("b89cff")]
+
+## A faceted shield crystal (elongated hex prism) centred at c, long axis
+## along `ang`: dark outline, light left facet, mid right facet, a deep
+## core sliver, one white highlight edge.
+static func _crystal(img: Image, c: Vector2, h: float, w: float, ang: float) -> void:
+	var u := Vector2.from_angle(ang)
+	var v := u.orthogonal()
+	var tip := c + u * h
+	var tail := c - u * h
+	var l1 := c + u * h * 0.45 - v * w
+	var l2 := c - u * h * 0.45 - v * w
+	var r1 := c + u * h * 0.45 + v * w
+	var r2 := c - u * h * 0.45 + v * w
+	var grow := func(pts: Array, d: float) -> Array:
+		var out := []
+		for p in pts:
+			out.append(c + (p - c) * d)
+		return out
+	_poly(img, grow.call([tip, r1, r2, tail, l2, l1], 1.0 + 1.4 / h), SH[0])
+	_poly(img, [tip, l1, l2, tail, c - v * w * 0.1], SH[3])
+	_poly(img, [tip, r1, r2, tail, c - v * w * 0.1], SH[2])
+	_poly(img, [tip, c + v * w * 0.35, tail, c - v * w * 0.1], SH[1])
+	_line(img, l1, l2, 1.0, SH[4])
+	_line(img, tip, l1, 1.0, SH[4])
+
+## A tapering light ray: a wedge from width w at a to a point at b, solid
+## for the first 60% then a paler tail, a bead at the tip.
+static func _ray(img: Image, a: Vector2, b: Vector2, w: float, col: Color) -> void:
+	var n := (b - a).normalized().orthogonal()
+	var m := a.lerp(b, 0.6)
+	_poly(img, [a + n * w, m + n * w * 0.6, m - n * w * 0.6, a - n * w], col)
+	_poly(img, [m + n * w * 0.6, b, m - n * w * 0.6], Color(col, 0.55))
+	_disc(img, b, 1.2, col.lightened(0.5))
+
+## A richer crystal: _crystal plus an extra bevel facet, an inner cyan
+## glow and star glints on the tip.
+static func _crystal_rich(img: Image, c: Vector2, h: float, w: float, ang: float) -> void:
+	_crystal(img, c, h, w, ang)
+	var u := Vector2.from_angle(ang)
+	var v := u.orthogonal()
+	_poly(img, [c + u * h * 0.45 - v * w * 0.55, c - u * h * 0.2 - v * w * 0.55, c - u * h * 0.1 - v * w * 0.15, c + u * h * 0.5 - v * w * 0.15], SH[4])
+	_disc(img, c + v * w * 0.15, w * 0.32, Color(SH[3], 0.45))
+	var t := c + u * h
+	_line(img, t + Vector2(-2.5, 0), t + Vector2(2.5, 0), 1.0, Color.WHITE)
+	_line(img, t + Vector2(0, -2.5), t + Vector2(0, 2.5), 1.0, Color.WHITE)
