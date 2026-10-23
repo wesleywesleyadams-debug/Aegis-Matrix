@@ -529,12 +529,12 @@ const TECHS := {
 		"effects": {"harvest": 0.25, "cargo": 0.25}, "desc": "Harvesters gather 25% faster, carry +25% per load."},
 
 	# --- Defense: the Deflectors line (id "deflectors"), soaking damage before the layers see it.
-	"glance_plates": {"name": "Glance Plates", "group": "defense", "line": "deflectors", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 50.0,
-		"effects": {"damage_taken": 0.07}, "desc": "-7% damage taken: ships and constructs."},
-	"graviton_shunts": {"name": "Graviton Shunts", "group": "defense", "line": "deflectors", "tier": 2, "requires": ["glance_plates"], "cost": {"spice": 60}, "time": 90.0,
-		"effects": {"damage_taken": 0.08}, "desc": "-8% damage taken: ships and constructs."},
-	"iron_umbrella": {"name": "Iron Umbrella", "group": "defense", "line": "deflectors", "tier": 3, "requires": ["graviton_shunts"], "cost": {"spice": 240}, "time": 235.0,
-		"effects": {"damage_taken": 0.15}, "desc": "-15% damage taken: ships and constructs."},
+	"glance_plates": {"name": "Glance Plates", "group": "defense", "line": "deflectors", "tier": 1, "requires": [], "cost": {"spice": 40}, "time": 160.0,
+		"effects": {"damage_taken": 0.06}, "desc": "-6% damage taken: ships, constructs and worlds."},
+	"graviton_shunts": {"name": "Graviton Shunts", "group": "defense", "line": "deflectors", "tier": 2, "requires": ["glance_plates"], "cost": {"spice": 120}, "time": 240.0,
+		"effects": {"damage_taken": 0.07}, "desc": "-7% damage taken: ships, constructs and worlds."},
+	"iron_umbrella": {"name": "Iron Umbrella", "group": "defense", "line": "deflectors", "tier": 3, "requires": ["graviton_shunts"], "cost": {"spice": 360}, "time": 310.0,
+		"effects": {"damage_taken": 0.11}, "desc": "-11% damage taken: ships, constructs and worlds."},
 
 	# Hull line: the warship classes unlock one after the other.
 	"depots": {"name": "Depots", "group": "constructs", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 60.0,

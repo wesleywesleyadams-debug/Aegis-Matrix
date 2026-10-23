@@ -63,8 +63,9 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		Game.instance.note_attack(owner_id, _from.owner_id)
 		if Game.instance.is_hostile(owner_id, _from.owner_id):
 			_killer = _from.owner_id
-	# Screens (Defense) soak a slice of everything before the layers see it.
-	# Each screen tech cuts its own share off (all three: -52%).
+	# Deflectors (Defense) soak a slice of everything before the layers see it.
+	# Each deflector tech cuts its own share off (all three: -24%). Worlds
+	# apply the same cut in Planet.take_damage.
 	if Game.instance:
 		amount *= maxf(0.1, 2.0 - Game.instance.mod(owner_id, "damage_taken"))
 	# Under a Radiation Sail Array's bubble, the pooled solar shield takes

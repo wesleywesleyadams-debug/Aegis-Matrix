@@ -4697,6 +4697,13 @@ func _duel() -> void:
 			_on_tech_done(pid, dmod)
 			for r9 in Defs.TECHS[dmod]["cost"]:
 				tech += float(Defs.TECHS[dmod]["cost"][r9])
+		# "class:mark:mod:tech+tech" gives only this side those techs, and
+		# pays for their research like a Mod (the mod field may be empty).
+		for dt in (sp[3].split("+", false) if sp.size() > 3 else PackedStringArray()):
+			researched[pid][dt] = true
+			_on_tech_done(pid, dt)
+			for r9 in Defs.TECHS[dt]["cost"]:
+				tech += float(Defs.TECHS[dt]["cost"][r9])
 		var n := maxi(1, int(round((budget - tech) / unit)))
 		print("DUEL_SIDE %s: %d ships at %d each + %d research" % [t, n, int(unit), int(tech)])
 		var dir := -1.0 if i == 0 else 1.0
