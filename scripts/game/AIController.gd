@@ -540,6 +540,46 @@ func _enemy_spots(pid: int, game: Game, v: Vision) -> Array:
 # counter-value against the seen enemy mix, extra yards and stations, the
 # savings reserve, and the upkeep brake.
 
+## PRODUCTION protocol: needs -> budget buckets -> the home yard's best item.
+## Bucket weights start at PROD_BASE and shift with the situation this side
+## can see: under threat -> military; safe but behind on worlds -> economy and
+## expansion; clearly ahead -> military to close the game.
+const PROD_BASE := {"military": 1.0, "economy": 1.1, "expansion": 1.0, "support": 0.6}
+const PROD_THREAT_MIL := 2.0
+const PROD_BEHIND_ECO := 1.5
+const PROD_AHEAD_MIL := 1.5
+## Own warship toughness over the known enemy fleet's that counts as ahead.
+const PROD_AHEAD_RATIO := 1.5
+## Spare minerals above SPARE_MINERALS: warships score this much higher.
+const PROD_RICH_MULT := 2.5
+## The single Scout outranks everything while it is missing.
+const PROD_SCOUT_SCORE := 10.0
+## A savings goal (starbase / gate) may hold back hulls this long before it
+## is dropped for SAVE_COOLDOWN seconds, so ships keep flowing.
+const SAVE_DEADLINE := 150.0
+const SAVE_COOLDOWN := 90.0
+
+func _budget_weights(pid: int, st: Dictionary, game: Game, v: Vision) -> Dictionary:
+	var w: Dictionary = PROD_BASE.duplicate()
+	var mine: float = st.get("mine_power", 0.0)
+	var theirs: float = st.get("theirs_power", 0.0)
+	var own_w := 0
+	var their_w := 0
+	for p in game.get_tree().get_nodes_in_group("planets"):
+		var o: int = v.known_owner(p) if v else p.owner_id
+		if o == pid:
+			own_w += 1
+		elif o > 0 and game.is_hostile(pid, o):
+			their_w += 1
+	if st.get("threat", false):
+		w["military"] *= PROD_THREAT_MIL
+	elif their_w > own_w:
+		w["economy"] *= PROD_BEHIND_ECO
+		w["expansion"] *= PROD_BEHIND_ECO
+	if mine > maxf(theirs, 400.0) * PROD_AHEAD_RATIO:
+		w["military"] *= PROD_AHEAD_MIL
+	return w
+
 ## PRODUCTION protocol (home yard): the support hulls and warships the
 ## home starbase queues, in priority order.
 func _production_home_yard(cx: Ctx) -> void:
@@ -558,38 +598,49 @@ func _production_home_yard(cx: Ctx) -> void:
 	var colonists: Array = cx.colonists
 	var nn = cx.nn
 	var mode: String = cx.mode
-	# Builds: only queue when stockpiles can roughly cover the next item.
-	if nn == null and base.queue.size() < 2:
-		var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game))
-		var rich_pick: String = _pick_warship(pid, game, st) if _spare(pid, st, game, "minerals") > SPARE_MINERALS and mode != "recover" and not _yard_besieged(pid, st, base, v) else ""
-		if rich_pick != "":
-			# Minerals piling up: a warship before the support hulls.
-			base.enqueue(rich_pick)
-		elif miners.size() + base.queue.count("miner") < _target_miners(pid, st, game, v):
-			base.enqueue("miner")
-		# (Not while it can't pay the skimmer's spice, or just after one was
-		# cancelled for stalling: re-queueing it at once kept two unpayable
-		# skimmers at the head of the queue and blocked every other build.)
-		elif (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < (3 if st.get("crust_low", false) else 2) 				and res["spice"] >= float(Defs.SHIPS["skimmer"]["cost"].get("spice", 0)) * 1.1 and Game.now() >= st.get("blocked", {}).get("skimmer", -1.0):
-			base.enqueue("skimmer")
-		# Jobs: a Scout for sensors, a Repair Tender once the fleet is sizable,
-		# a Radiation Sail Array where the system has radiation hazards to fight in.
-		# Always one Scout: it explores, then patrols.
-		elif v and _count_role(ships, base, "scout") == 0 and base.can_queue("scout") == "":
-			base.enqueue("scout")
-		# (Two for a fortress assault, see _press_attack.)
-		elif war.size() >= (4 if st.get("overwhelm", false) else 8) and _count_type(ships, base, "tender") < (2 if st.get("overwhelm", false) else 1) and base.can_queue("tender") == "" and res["spice"] >= 15.0:
-			base.enqueue("tender")
-		elif war.size() >= 6 and _hazardous(game) and _count_type(ships, base, "heatshield") == 0 and base.can_queue("heatshield") == "" and res["spice"] >= 15.0:
-			base.enqueue("heatshield")
-		# Keep colonizing unless enemies are actually at our worlds (being
-		# outgunned elsewhere isn't a reason to stop growing).
-		elif free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= float(Defs.SHIPS["colony"]["cost"].get("spice", 0)):
-			base.enqueue("colony")
-		elif mode != "recover" and not _yard_besieged(pid, st, base, v):
-			var pick := _pick_warship(pid, game, st)
-			if pick != "" and _spare(pid, st, game, "minerals") >= Defs.SHIPS[pick]["cost"]["minerals"] * 0.5:
-				base.enqueue(pick)
+	# The learned commander builds for itself.
+	if nn != null or base.queue.size() >= 2:
+		return
+	var w := _budget_weights(pid, st, game, v)
+	st["budget"] = w
+	# Candidates for the home yard, each scored bucket weight x urgency;
+	# the best affordable one is queued (other yards build warships).
+	var cands: Array = []   # [score, item]
+	# Intel: exactly one Scout - built only while none is alive or queued.
+	if v and _count_role(ships, base, "scout") == 0 and base.can_queue("scout") == "":
+		cands.append([PROD_SCOUT_SCORE, "scout"])
+	var target := _target_miners(pid, st, game, v)
+	var have_m: int = miners.size() + base.queue.count("miner")
+	if have_m < target:
+		cands.append([w["economy"] * (1.0 + float(target - have_m) / maxf(target, 1)), "miner"])
+	# (Not while it can't pay the skimmer's spice, or just after one was
+	# cancelled for stalling: re-queueing it at once kept two unpayable
+	# skimmers at the head of the queue and blocked every other build.)
+	if (giant or neb_spot != Vector2.INF) and game.has_tech(pid, "gas_skimming") and skimmers.size() + base.queue.count("skimmer") < (3 if st.get("crust_low", false) else 2) \
+			and res["spice"] >= float(Defs.SHIPS["skimmer"]["cost"].get("spice", 0)) * 1.1 and Game.now() >= st.get("blocked", {}).get("skimmer", -1.0):
+		cands.append([w["economy"] * 0.9, "skimmer"])
+	# Support: a Repair Tender once the fleet is sizable (two for a fortress
+	# assault), a Radiation Sail Array where radiation hazards are fought in.
+	if war.size() >= (4 if st.get("overwhelm", false) else 8) and _count_type(ships, base, "tender") < (2 if st.get("overwhelm", false) else 1) and base.can_queue("tender") == "" and res["spice"] >= 15.0:
+		cands.append([w["support"], "tender"])
+	if war.size() >= 6 and _hazardous(game) and _count_type(ships, base, "heatshield") == 0 and base.can_queue("heatshield") == "" and res["spice"] >= 15.0:
+		cands.append([w["support"] * 0.8, "heatshield"])
+	# Expansion: keep colonizing unless enemies are at our worlds.
+	var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game))
+	if free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= float(Defs.SHIPS["colony"]["cost"].get("spice", 0)):
+		cands.append([w["expansion"] * 1.2, "colony"])
+	# Military: the counter-picked class, if the minerals above the
+	# savings goal cover half of it (it pays the rest while it builds).
+	if mode != "recover" and not _yard_besieged(pid, st, base, v):
+		var pick := _pick_warship(pid, game, st)
+		var spare := _spare(pid, st, game, "minerals")
+		if pick != "" and spare >= Defs.SHIPS[pick]["cost"]["minerals"] * 0.5:
+			# Minerals piling up: warships ahead of everything but the scout.
+			cands.append([w["military"] * (PROD_RICH_MULT if spare > SPARE_MINERALS else 1.0), pick])
+	if cands.is_empty():
+		return
+	cands.sort_custom(func(a, b): return a[0] > b[0])
+	base.enqueue(cands[0][1])
 
 func _pick_warship(pid: int, game: Game, st: Dictionary = {}) -> String:
 	# Any class it has unlocked, with no caps. The richer it is, the more it
@@ -1027,6 +1078,21 @@ func _update_reserve(pid: int, st: Dictionary, game: Game, fleet: int) -> void:
 			and _upkeep_fits(pid, game, Defs.STARBASE["upkeep"], Defs.UPKEEP_WEIGHT["starbase"]) \
 			and _yard_site(pid, game, bases.map(func(b): return b.global_position)) != Vector2.INF:
 		pick = "starbase"
+	# Savings goals have a deadline: one not reached in SAVE_DEADLINE is
+	# dropped for SAVE_COOLDOWN so the yards keep building meanwhile.
+	if Game.now() < st.get("save_block_until", -1.0):
+		pick = ""
+	elif pick == "":
+		st.erase("save_since")
+	else:
+		if pick != st.get("reserve_for", "") or not st.has("save_since"):
+			st["save_since"] = Game.now()
+		var cost: Dictionary = Defs.WARP_GATE["cost"] if pick == "gate" else Defs.STARBASE["cost"]
+		if float(res["minerals"]) < float(cost["minerals"]) and Game.now() - float(st["save_since"]) > SAVE_DEADLINE:
+			_flog(pid, "savings for %s dropped after %ds (minerals %d)" % [pick, int(SAVE_DEADLINE), int(res["minerals"])])
+			st["save_block_until"] = Game.now() + SAVE_COOLDOWN
+			st.erase("save_since")
+			pick = ""
 	st["reserve_for"] = pick
 	st["reserve"] = (Defs.WARP_GATE["cost"] if pick == "gate" else Defs.STARBASE["cost"] if pick == "starbase" else {}).duplicate()
 
@@ -2216,6 +2282,8 @@ func _rethink(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array) 
 	elif mine > theirs * FINISH_EDGE and war.size() >= 2:
 		mode = "attack"
 	st["finishing"] = mine > theirs * FINISH_EDGE
+	st["mine_power"] = mine
+	st["theirs_power"] = theirs
 	st["threat"] = threat
 	# Commit to a decisive attack when clearly ahead of everything it knows
 	# of (warships seen lately plus the starbases and outposts it has seen);
@@ -2949,6 +3017,8 @@ const OBJ_GAME_WIN := 0.5
 const OBJ_DEFEND := 0.3
 
 const OBJ_FINISH := 0.3
+## Bonus while this side is far ahead overall (overwhelm / finishing).
+const OBJ_AHEAD := 0.4
 
 ## A group this battered (share of its toughness left) leaves an even fight.
 const PRESERVE_BATTERED := 0.4
@@ -3081,6 +3151,10 @@ func _preserve(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array,
 		var obj := _objective(pid, c, own.y, enemy.y, game, v)
 		if obj == INF:
 			continue
+		# Clearly ahead overall: press on through rougher local odds to close
+		# the game (losses are replaced faster than the enemy's).
+		if st.get("overwhelm", false) or st.get("finishing", false):
+			obj += OBJ_AHEAD
 		var odds: float = sqrt(own.x * own.y / pw_e)
 		var left := 0.0
 		var full := 0.0
