@@ -2,8 +2,8 @@ class_name WeaponsDepot
 extends SpaceEntity
 ## Weapons Depot (Defs.WEAPONS_DEPOT): a Constructor builds it as a site paid
 ## over time, like a starbase. Every depot is built for one variant
-## (Defs.VARIANTS): a Plasma Depot refits generalists into Plasma ships, a Slip
-## Depot into Slip ships, and so on.
+## (Defs.VARIANTS): a Plasma Depot refits generalists into Plasma ships, a Disruptor
+## Depot into Disruptor ships, and so on.
 ##
 ## Ships tasked to a depot fly in and dock (Defs.WEAPONS_DEPOT.capacity at a
 ## time). A docked ship is hidden and safe inside, and is refitted

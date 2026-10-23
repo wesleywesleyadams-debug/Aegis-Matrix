@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://qi1ibrlwjsxs"
-path="res://.godot/imported/ship_depot_slip.png-31b31d24a3e1ae32a8f67cd0ce210044.ctex"
+uid="uid://bw4rd1tgs0pgv"
+path="res://.godot/imported/ship_depot_scrambler_team.png-30d473f2bd61d2def9f98eb12cdc3811.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/pixel/ship_depot_slip.png"
-dest_files=["res://.godot/imported/ship_depot_slip.png-31b31d24a3e1ae32a8f67cd0ce210044.ctex"]
+source_file="res://assets/pixel/ship_depot_scrambler_team.png"
+dest_files=["res://.godot/imported/ship_depot_scrambler_team.png-30d473f2bd61d2def9f98eb12cdc3811.ctex"]
 
 [params]
 

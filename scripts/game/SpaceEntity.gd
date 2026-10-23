@@ -26,7 +26,7 @@ var selected: bool = false:
 const ARMOR_COLOR := Color("ff4a4a")
 
 var _last_hit_time: float = -100.0
-## Disruptor EMP (Abilities.emp_try): shields off until this time.
+## Scrambler EMP (Abilities.emp_try): shields off until this time.
 var shield_off_until: float = -100.0
 ## When this entity may EMP again (one cooldown for all its weapons).
 var emp_ready_at: float = -100.0
@@ -89,7 +89,7 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		_siege_frac -= floorf(_siege_frac)
 	var vs: Dictionary = profile.get("vs", {})
 	var pierce: int = profile.get("pierce", 0)
-	# EMP'd (Disruptor): the shield layer blocks nothing, for anyone's shots.
+	# EMP'd (Scrambler): the shield layer blocks nothing, for anyone's shots.
 	if Abilities.emp_on(self):
 		pierce = maxi(pierce, 1)
 	var rest := amount

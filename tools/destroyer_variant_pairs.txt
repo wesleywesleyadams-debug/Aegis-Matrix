@@ -22,14 +22,6 @@ reaver_destroyer:1,destroyer:1
 destroyer:1,reaver_destroyer:1
 reaver_destroyer:1,destroyer:1
 destroyer:1,reaver_destroyer:1
-slip_destroyer:1,destroyer:1
-destroyer:1,slip_destroyer:1
-slip_destroyer:1,destroyer:1
-destroyer:1,slip_destroyer:1
-slip_destroyer:1,destroyer:1
-destroyer:1,slip_destroyer:1
-slip_destroyer:1,destroyer:1
-destroyer:1,slip_destroyer:1
 disruptor_destroyer:1,destroyer:1
 destroyer:1,disruptor_destroyer:1
 disruptor_destroyer:1,destroyer:1
@@ -38,3 +30,11 @@ disruptor_destroyer:1,destroyer:1
 destroyer:1,disruptor_destroyer:1
 disruptor_destroyer:1,destroyer:1
 destroyer:1,disruptor_destroyer:1
+scrambler_destroyer:1,destroyer:1
+destroyer:1,scrambler_destroyer:1
+scrambler_destroyer:1,destroyer:1
+destroyer:1,scrambler_destroyer:1
+scrambler_destroyer:1,destroyer:1
+destroyer:1,scrambler_destroyer:1
+scrambler_destroyer:1,destroyer:1
+destroyer:1,scrambler_destroyer:1

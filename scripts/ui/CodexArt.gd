@@ -279,8 +279,8 @@ const VARIANT_USE := {
 	"plasma": [["ship_cruiser", "ship_carrier"], ["ship_corvette", "ship_destroyer"]],
 	"breacher": [["ship_destroyer"], ["ship_cruiser"]],
 	"reaver": [["ship_corvette", "planet_terran_s"], ["ship_carrier"]],
-	"slip": [["ship_cruiser"], ["ship_destroyer", "ship_corvette"]],
-	"disruptor": [["ship_carrier", "ship_cruiser"], ["ship_corvette", "ship_destroyer"]],
+	"disruptor": [["ship_cruiser"], ["ship_destroyer", "ship_corvette"]],
+	"scrambler": [["ship_carrier", "ship_cruiser"], ["ship_corvette", "ship_destroyer"]],
 }
 
 func _draw_use(v: String) -> void:
@@ -308,5 +308,5 @@ func _k_use_generalist() -> void: _draw_use("generalist")
 func _k_use_plasma() -> void: _draw_use("plasma")
 func _k_use_breacher() -> void: _draw_use("breacher")
 func _k_use_reaver() -> void: _draw_use("reaver")
-func _k_use_slip() -> void: _draw_use("slip")
 func _k_use_disruptor() -> void: _draw_use("disruptor")
+func _k_use_scrambler() -> void: _draw_use("scrambler")

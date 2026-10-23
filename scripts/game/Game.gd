@@ -2951,7 +2951,7 @@ func _enter_dev_capture() -> void:
 			var k: String = "cruiser" if i < 2 else ("destroyer" if i < 8 else "corvette")
 			# SL_MIXVARIANTS: every variant and mark on show, for the chevrons.
 			if OS.get_environment("SL_MIXVARIANTS") != "":
-				var vs9 := ["", "plasma_", "breacher_", "reaver_", "slip_", "disruptor_"]
+				var vs9 := ["", "plasma_", "breacher_", "reaver_", "disruptor_", "scrambler_"]
 				k = vs9[i % 6] + k
 				for m9 in range(2, 5):
 					for c9 in ["corvette", "destroyer"]:
@@ -3137,7 +3137,7 @@ func _enter_dev_capture() -> void:
 		# Dev: shot colors. Rows of generalist, Ion, Breacher and Ravager corvettes
 		# fire at enemy destroyers.
 		var foe := 3 - player_id
-		var kinds := ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette", "slip_corvette", "disruptor_corvette"] if OS.get_environment("SL_SHOTS_ALL") != "" else ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette"]
+		var kinds := ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette", "disruptor_corvette", "scrambler_corvette"] if OS.get_environment("SL_SHOTS_ALL") != "" else ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette"]
 		for i in kinds.size():
 			var y := (420.0 if kinds.size() > 4 else 560.0) + i * 70.0
 			for j in 8:
@@ -3741,7 +3741,7 @@ func _enter_dev_capture() -> void:
 		await get_tree().process_frame
 		print("KEYS after reset: Q=%s first key=%s" % [str(hud.press_panel_key(KEY_Q)), OS.get_keycode_string(HUD.panel_keys()[0])])
 	if OS.get_environment("SL_SHOT_OPEN") == "depot":
-		# Dev: a Constructor builds a Weapons Depot, two corvettes refit to Slip,
+		# Dev: a Constructor builds a Weapons Depot, two corvettes refit to Disruptor,
 		# then a refit of a specialist is refused.
 		var home := nearest_starbase(player_id, Vector2.ZERO)
 		resources[player_id]["minerals"] = 2000.0
@@ -3764,7 +3764,7 @@ func _enter_dev_capture() -> void:
 			dep2.cancel(cvs[2])
 			print("DEPOT after cancel: bays ", dep2.bays.size(), " ejected type ", cvs[2].ship_type, " docked ", cvs[2].docked))
 		get_tree().create_timer(85.0).timeout.connect(func():
-			print("DEPOT refitted: ", cvs.map(func(c): return c.ship_type if is_instance_valid(c) else "gone"), "  can refit again: ", cvs[0].can_refit("slip"))
+			print("DEPOT refitted: ", cvs.map(func(c): return c.ship_type if is_instance_valid(c) else "gone"), "  can refit again: ", cvs[0].can_refit("disruptor"))
 			center_on(site))
 	if OS.get_environment("SL_SHOT_OPEN") == "variants":
 		# Dev: base damage each variant needs to destroy each generalist,

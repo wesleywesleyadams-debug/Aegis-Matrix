@@ -8,8 +8,8 @@ var target: Node2D # a SpaceEntity or a Planet being bombarded
 var damage: float
 ## Damage vs defense layers (Defs.damage_profile of the shooter).
 var profile: Dictionary = {}
-## Slip shots (skip shields, hit armor and hull) are orange.
-const SLIP_SHOT := Color("ff7a14")
+## Disruptor shots (skip shields, hit armor and hull) are orange.
+const DISRUPTOR_SHOT := Color("ff7a14")
 var speed: float
 var homing: bool
 var weak_lock := false
@@ -150,12 +150,12 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 		if from.def.has("variant"):
 			modulate = Defs.VARIANTS[from.def["variant"]]["color"].lightened(0.15)
 			# Shots that bypass layers are colored by the layers they do hit:
-			# Slip (hull only) is orange, its lasers V-shaped; torpedoes stay
-			# round. Disruptor keeps its own purple.
+			# Disruptor (hull only) is orange, its lasers V-shaped; torpedoes stay
+			# round. Scrambler keeps its own purple.
 			if profile["pierce"] > 0:
 				if weapon == "laser":
 					texture = Defs.tex("bolt_v")
-				modulate = SLIP_SHOT
+				modulate = DISRUPTOR_SHOT
 	global_position = src
 	# Target Prediction: aim where a moving target will be when the shot gets
 	# there; without it, at where it is now. Guided shots steer for

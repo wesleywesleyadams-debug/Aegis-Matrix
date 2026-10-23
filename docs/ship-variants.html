@@ -20,7 +20,7 @@
     --armor: #ff4a4a;
     --hull: #58e07a;
     --slip: #ffa43a;
-    --disruptor: #b06cff;
+    --scrambler: #b06cff;
     --gen: #ffd84a;
     --spice: #ff9a2e;
   }
@@ -227,7 +227,7 @@
       </div>
 
       <div class="card" style="--c: var(--slip)">
-        <header><h3>Slip</h3><span class="dmg">65% base · ignores shields</span></header>
+        <header><h3>Disruptor</h3><span class="dmg">65% base · ignores shields</span></header>
         <svg class="mark" viewBox="0 0 120 26" width="100%" height="26" role="img" aria-label="Twin dashed side stripes">
           <g fill="#4fb4ff">
             <rect x="10" y="6" width="9" height="3"/><rect x="25" y="6" width="9" height="3"/><rect x="40" y="6" width="9" height="3"/><rect x="55" y="6" width="9" height="3"/><rect x="70" y="6" width="9" height="3"/>
@@ -239,8 +239,8 @@
         <div class="meta">Shots: <b>orange V-shots</b> · two stripes either side of the spine</div>
       </div>
 
-      <div class="card" style="--c: var(--disruptor)">
-        <header><h3>Disruptor</h3><span class="dmg">40% base · ignores shields + armor</span></header>
+      <div class="card" style="--c: var(--scrambler)">
+        <header><h3>Scrambler</h3><span class="dmg">40% base · ignores shields + armor</span></header>
         <svg class="mark" viewBox="0 0 120 26" width="100%" height="26" role="img" aria-label="V chevrons down the spine">
           <g fill="none" stroke="#4fb4ff" stroke-width="3">
             <path d="M14 7 l8 6 l-8 6"/><path d="M34 7 l8 6 l-8 6"/><path d="M54 7 l8 6 l-8 6"/><path d="M74 7 l8 6 l-8 6"/><path d="M94 7 l8 6 l-8 6"/>
@@ -283,14 +283,14 @@
             <figcaption>Reaver</figcaption>
           </figure>
           <figure class="ship" style="--c: #ffa43a">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAATJJREFUOI2tlL1KA0EURs9IwGqmSJHGWRFMkcpYbpFi7QIpbCwErcUH8AlsbAQ7fQIbSyGWulGE1UZjlSKEoBuLhAhuKquxCJtszA+bNV81d2Y497v3DgMRKakNi5KS2mxfG/Nf6FI0+PnusHX5gZI6MTgVDQrdJ+jCkesBUHJsE/R8MTfwr5vKwwsAZdej5NgGIC5YKKlN2fU4ba3MvHi3Z43tTUqSAigsn1BpFCeC3qpVNvL5QRta68PEB5Y1UlnQ80WKmArbcHF8TnZ3H+i3JKqSYxuhpDbFncOpoGa9xlo2x/P9zdjZV/t9JA56vhBKapPOrJI/e5zpMG4PBQynHDpt1msAtD8bAxexpxwulNQmt+kMQGFJid5hqG460we9unO5mgoE6NxeJQJN1CJ+m18O+HhG+HGDIgAAAABJRU5ErkJggg==" alt="Slip Corvette">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAATJJREFUOI2tlL1KA0EURs9IwGqmSJHGWRFMkcpYbpFi7QIpbCwErcUH8AlsbAQ7fQIbSyGWulGE1UZjlSKEoBuLhAhuKquxCJtszA+bNV81d2Y497v3DgMRKakNi5KS2mxfG/Nf6FI0+PnusHX5gZI6MTgVDQrdJ+jCkesBUHJsE/R8MTfwr5vKwwsAZdej5NgGIC5YKKlN2fU4ba3MvHi3Z43tTUqSAigsn1BpFCeC3qpVNvL5QRta68PEB5Y1UlnQ80WKmArbcHF8TnZ3H+i3JKqSYxuhpDbFncOpoGa9xlo2x/P9zdjZV/t9JA56vhBKapPOrJI/e5zpMG4PBQynHDpt1msAtD8bAxexpxwulNQmt+kMQGFJid5hqG460we9unO5mgoE6NxeJQJN1CJ+m18O+HhG+HGDIgAAAABJRU5ErkJggg==" alt="Disruptor Corvette">
             <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><path d="M24 2 l7 5 l-7 5" fill="none" stroke="#ffa43a" stroke-width="2.5"/><path d="M33 2 l7 5 l-7 5" fill="none" stroke="#ffa43a" stroke-width="2.5" opacity="0.55"/></svg></div>
-            <figcaption>Slip</figcaption>
+            <figcaption>Disruptor</figcaption>
           </figure>
           <figure class="ship" style="--c: #b06cff">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAAVZJREFUOI2tlLFLw0AUh7+I4HQ3VChIUgd1cNOlGNAhboUIpeDg4CyuQp26Cd0EN/0DxMVFkHYTqahYcdA6dSilqHFoqVCdOp1DTEybFmztb7r37u57v3t3HAQkhaEYlaQwVPJcqf9Cx4JBu9Vg9eQVKYyhwePBYKV5D01IF4oA2JapPr/etIGB3W6urh8ByBeK2JapAP4K1qQwVP7H0b6jE6/mOhY8zKyR1h1sywxt7lVEk8JQrbsk2YuEDwhCn0sl2qkMad0BwJnV/bmtWCxUoKOHAPFqjpvJJbefgVy25eaO9g6Z29gE3JYEZVum0qQwVGJ920+2UxkmzrJ+XKuUmdo9prSzHDryR/0l5FCTwlCR6DQACwe3fWHdmz1Ad06D31v2nNYqZQDq71Uf9Odb9gZSGGp+0fJB3pGGeoeempGoC3oqDOSqLxCgcXk6FKinRvHbfANAc5PkGQtQFQAAAABJRU5ErkJggg==" alt="Disruptor Corvette">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAPCAYAAADkmO9VAAAAAXNSR0IArs4c6QAAAVZJREFUOI2tlLFLw0AUh7+I4HQ3VChIUgd1cNOlGNAhboUIpeDg4CyuQp26Cd0EN/0DxMVFkHYTqahYcdA6dSilqHFoqVCdOp1DTEybFmztb7r37u57v3t3HAQkhaEYlaQwVPJcqf9Cx4JBu9Vg9eQVKYyhwePBYKV5D01IF4oA2JapPr/etIGB3W6urh8ByBeK2JapAP4K1qQwVP7H0b6jE6/mOhY8zKyR1h1sywxt7lVEk8JQrbsk2YuEDwhCn0sl2qkMad0BwJnV/bmtWCxUoKOHAPFqjpvJJbefgVy25eaO9g6Z29gE3JYEZVum0qQwVGJ920+2UxkmzrJ+XKuUmdo9prSzHDryR/0l5FCTwlCR6DQACwe3fWHdmz1Ad06D31v2nNYqZQDq71Uf9Odb9gZSGGp+0fJB3pGGeoeempGoC3oqDOSqLxCgcXk6FKinRvHbfANAc5PkGQtQFQAAAABJRU5ErkJggg==" alt="Scrambler Corvette">
             <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><path d="M24 2 l7 5 l-7 5" fill="none" stroke="#b06cff" stroke-width="2.5"/><path d="M33 2 l7 5 l-7 5" fill="none" stroke="#b06cff" stroke-width="2.5" opacity="0.55"/></svg></div>
-            <figcaption>Disruptor</figcaption>
+            <figcaption>Scrambler</figcaption>
           </figure>
         </div>
       </div>
@@ -318,14 +318,14 @@
             <figcaption>Reaver</figcaption>
           </figure>
           <figure class="ship" style="--c: #ffa43a">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAbtJREFUSIm1lT1II0EYhp+VVAe7YOAEYbEStDJanCyocS1sXCVXWihne/Wd14iVnZYGbANiY2HhzxVXSNRCveYuVilCEC94kD8wqazGItl1Nm5mEzBvNTPfz/t+880PKGDoplDZewJDN0XiWIhekfepjM9PJeYO/mHo5rsLiKiM05VbqMD39A0Ajm2JWr2gtfMPEyfHRjoJuLj6A8BZ+gbHtny+bjJDN8VZU2A7yMIjqgCX0MVuMkWrryxkN5niPpel+JhXCgDQDN0UT9cJPueToc5h+JQ/BWB782ug/c1Wy0Eq3GUyjMVi3vykLOgfsVhb+thYiC+SS536dsWxLW/strRWL2jKw9Upvn3ZYHh5BYB5/C0KaqNjW8IjvstkQgnuc1nfvFytAjAV/QC/jhp5gN+XPz2f7c2HN3lq9YKmGbopRsdtBtf3Q4nD8H9nFYDs33SgXe6xZuimiA4MBTpOxhe8sVtt64mtFl8r+rG1B8DszERgPse2PHLvDgY5jo7bvnnxMe8jkqtQFSCL9O6xHCxDFuNWKQe2orne3cvVDpXoQIOw2TPVc9mJXUbodSqdH3aV8F3Qy//4BehUxMU+WT3RAAAAAElFTkSuQmCC" alt="Slip Destroyer">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAbtJREFUSIm1lT1II0EYhp+VVAe7YOAEYbEStDJanCyocS1sXCVXWihne/Wd14iVnZYGbANiY2HhzxVXSNRCveYuVilCEC94kD8wqazGItl1Nm5mEzBvNTPfz/t+880PKGDoplDZewJDN0XiWIhekfepjM9PJeYO/mHo5rsLiKiM05VbqMD39A0Ajm2JWr2gtfMPEyfHRjoJuLj6A8BZ+gbHtny+bjJDN8VZU2A7yMIjqgCX0MVuMkWrryxkN5niPpel+JhXCgDQDN0UT9cJPueToc5h+JQ/BWB782ug/c1Wy0Eq3GUyjMVi3vykLOgfsVhb+thYiC+SS536dsWxLW/strRWL2jKw9Upvn3ZYHh5BYB5/C0KaqNjW8IjvstkQgnuc1nfvFytAjAV/QC/jhp5gN+XPz2f7c2HN3lq9YKmGbopRsdtBtf3Q4nD8H9nFYDs33SgXe6xZuimiA4MBTpOxhe8sVtt64mtFl8r+rG1B8DszERgPse2PHLvDgY5jo7bvnnxMe8jkqtQFSCL9O6xHCxDFuNWKQe2orne3cvVDpXoQIOw2TPVc9mJXUbodSqdH3aV8F3Qy//4BehUxMU+WT3RAAAAAElFTkSuQmCC" alt="Disruptor Destroyer">
             <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><path d="M24 2 l7 5 l-7 5" fill="none" stroke="#ffa43a" stroke-width="2.5"/><path d="M33 2 l7 5 l-7 5" fill="none" stroke="#ffa43a" stroke-width="2.5" opacity="0.55"/></svg></div>
-            <figcaption>Slip</figcaption>
+            <figcaption>Disruptor</figcaption>
           </figure>
           <figure class="ship" style="--c: #b06cff">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAgJJREFUSIm1lT9oE1Ecxz+RgNPdkEqw5tCSZuhio0ObDFbPoSCmUpx0sODa2eoiTtKlRSi0IAiFgriIIGjjJOXUgtEO2j9DhhiCNi1NGuHaqdM5XN/1vV7uYqD5wsG73/v+ft/v78d7dxACXTOcsP2OQNcMZ/Sd43RK/FTY5oFd5/qrP+iaceIGomGbVxrfoAETVgGAnJl19vY3I0H8Vubk3Oj/JHz68gOAvFUgZ2YVriima4aTPzQYBNl4NCxBCArMzi1wnCsbmZ1boFIqUtsqhxoAiOia4dhfR5n8eIOV5AgD5UWFIMfWVlfpT6e92Ptdh7ODt5hIVBWjU0/Gm4rJo1YO10B5kZXkCO3EDuw61d4E1d4EqftuLG8VvEeGfEiVjgWWuzLuwZKw3JVBX3pBfzqtxADW38yQunsPgOGdX0retaHLvs5zZvZI+M6zbreD2485/XZSIYpYpVSkJ9XnxTbmH3DmosmF6prC//75g7f+W/vtE97b34xEATLjNmDT/fAl29NjXvEwI9vTYxCLs7tusbPhjjR+LhkoJgTFOqJrhhOLn29KHLx601tXSkUA34mVRR49fQ40Hy+4Ixbi3h1sRuy7ZCrvta2yrxv5Hgc1IJv07rGcLEM2I7qUE4/jMN7elysIjVjcFfxp+RJbFW6FUGGA+tLrtgqeCDr5P/4HDEn8JcE1v2AAAAAASUVORK5CYII=" alt="Disruptor Destroyer">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAARCAYAAADKZhx3AAAAAXNSR0IArs4c6QAAAgJJREFUSIm1lT9oE1Ecxz+RgNPdkEqw5tCSZuhio0ObDFbPoSCmUpx0sODa2eoiTtKlRSi0IAiFgriIIGjjJOXUgtEO2j9DhhiCNi1NGuHaqdM5XN/1vV7uYqD5wsG73/v+ft/v78d7dxACXTOcsP2OQNcMZ/Sd43RK/FTY5oFd5/qrP+iaceIGomGbVxrfoAETVgGAnJl19vY3I0H8Vubk3Oj/JHz68gOAvFUgZ2YVriima4aTPzQYBNl4NCxBCArMzi1wnCsbmZ1boFIqUtsqhxoAiOia4dhfR5n8eIOV5AgD5UWFIMfWVlfpT6e92Ptdh7ODt5hIVBWjU0/Gm4rJo1YO10B5kZXkCO3EDuw61d4E1d4EqftuLG8VvEeGfEiVjgWWuzLuwZKw3JVBX3pBfzqtxADW38yQunsPgOGdX0retaHLvs5zZvZI+M6zbreD2485/XZSIYpYpVSkJ9XnxTbmH3DmosmF6prC//75g7f+W/vtE97b34xEATLjNmDT/fAl29NjXvEwI9vTYxCLs7tusbPhjjR+LhkoJgTFOqJrhhOLn29KHLx601tXSkUA34mVRR49fQ40Hy+4Ixbi3h1sRuy7ZCrvta2yrxv5Hgc1IJv07rGcLEM2I7qUE4/jMN7elysIjVjcFfxp+RJbFW6FUGGA+tLrtgqeCDr5P/4HDEn8JcE1v2AAAAAASUVORK5CYII=" alt="Scrambler Destroyer">
             <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><path d="M24 2 l7 5 l-7 5" fill="none" stroke="#b06cff" stroke-width="2.5"/><path d="M33 2 l7 5 l-7 5" fill="none" stroke="#b06cff" stroke-width="2.5" opacity="0.55"/></svg></div>
-            <figcaption>Disruptor</figcaption>
+            <figcaption>Scrambler</figcaption>
           </figure>
         </div>
       </div>
@@ -353,14 +353,14 @@
             <figcaption>Reaver</figcaption>
           </figure>
           <figure class="ship" style="--c: #ffa43a">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAodJREFUSInNVz1s00AU/gwWnWyJBnWJAwhFgoVUDKUZWkgHpIiggtRKRQoIxnZG6oKYqqoSsDVS1yxdurAAE0rMj0SBgTgsRoqi0qYgxSRVkimTGegd58udHZS46je99+7u8+f3zu/OCnyga4bb7tQU1ufnsONhQEqua4Y7s7mHYjZGYzObez3zitlYqCJVv8Fuy6GiitkYui2Hjh1838bpi8mwdFGcCJrQbTkeoUcN3wxONT5Ru1ywMDE+/te2LDQrNvT9crjqECBQhsSh0J2K3dd80cclgmgvq/9DwGN2bgF2yaTrRQ/QNcN9ZW73xZdJJV2eQ/UjePv+ayApuzaTSgpfdD2X9/h85us/q1J+FQCmRtaw+iYdKEYE9iVYsc/3o9ROVF/2rCPbBACePlkC4FPiYWE9l6cP7kZODYVT0TXDXV7ZwJcLt4ZCKMMEk8WyZXkyeH36CgAgk/rXV0k2FV0z3NbH24El5kl5n499iEzSOGlX8YfeJFTy3tIToURsu1NThlriIDx68Bjxu/eof4Mb5/dzJpV0FV0z3PT8YiD5TsXG+fglqc/HfkQTNH6Oa+iitQDw+d1rajfru2h3agot8Z1qLlDkIBh5sSoVSIQ167s0RvYgLfGvZ/cBQPhmIlLWF50ojdExakeadSEfAREmbTOTSy3hQplY0VzA23BPMgIHgaJrhjs6dlY4ePXaTakYkSi2RCyWVzY8vl+b4bOoAPKzOD2/GHghsEsmtWVnsSwBPMiHwcZUP2Je3OzcArVJFuyS6XujPhwb7DYTNgb5JfAV2OA2Ons6HERdtBk/LPSdQaewhTOXU9T//c0MQU4vAgU6hS1q86KOQqTv3jgO/8V/AN8VOtotY9ybAAAAAElFTkSuQmCC" alt="Slip Cruiser">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAodJREFUSInNVz1s00AU/gwWnWyJBnWJAwhFgoVUDKUZWkgHpIiggtRKRQoIxnZG6oKYqqoSsDVS1yxdurAAE0rMj0SBgTgsRoqi0qYgxSRVkimTGegd58udHZS46je99+7u8+f3zu/OCnyga4bb7tQU1ufnsONhQEqua4Y7s7mHYjZGYzObez3zitlYqCJVv8Fuy6GiitkYui2Hjh1838bpi8mwdFGcCJrQbTkeoUcN3wxONT5Ru1ywMDE+/te2LDQrNvT9crjqECBQhsSh0J2K3dd80cclgmgvq/9DwGN2bgF2yaTrRQ/QNcN9ZW73xZdJJV2eQ/UjePv+ayApuzaTSgpfdD2X9/h85us/q1J+FQCmRtaw+iYdKEYE9iVYsc/3o9ROVF/2rCPbBACePlkC4FPiYWE9l6cP7kZODYVT0TXDXV7ZwJcLt4ZCKMMEk8WyZXkyeH36CgAgk/rXV0k2FV0z3NbH24El5kl5n499iEzSOGlX8YfeJFTy3tIToURsu1NThlriIDx68Bjxu/eof4Mb5/dzJpV0FV0z3PT8YiD5TsXG+fglqc/HfkQTNH6Oa+iitQDw+d1rajfru2h3agot8Z1qLlDkIBh5sSoVSIQ167s0RvYgLfGvZ/cBQPhmIlLWF50ojdExakeadSEfAREmbTOTSy3hQplY0VzA23BPMgIHgaJrhjs6dlY4ePXaTakYkSi2RCyWVzY8vl+b4bOoAPKzOD2/GHghsEsmtWVnsSwBPMiHwcZUP2Je3OzcArVJFuyS6XujPhwb7DYTNgb5JfAV2OA2Ons6HERdtBk/LPSdQaewhTOXU9T//c0MQU4vAgU6hS1q86KOQqTv3jgO/8V/AN8VOtotY9ybAAAAAElFTkSuQmCC" alt="Disruptor Cruiser">
             <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><circle cx="30" cy="7" r="5" fill="#ffa43a"/><circle cx="30" cy="7" r="2" fill="#fff" opacity="0.85"/></svg></div>
-            <figcaption>Slip</figcaption>
+            <figcaption>Disruptor</figcaption>
           </figure>
           <figure class="ship" style="--c: #b06cff">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAsVJREFUSInNlz9oE1Ecx7+JwUx3YqOlkESkBHQxpUPTDKlNBSGYtlJaqBAFJ2lnwaU4SRDUrYWuWTrYpYOmkyRnFZqmg7m4nBBLTVOriUlJMmU6h/Y97s+7u0h6xS8c/N7v/d7vfd7fu3PARDznk1vtikNZ1sYo6+2QYXKe88kTawfIJvzUN7F2oIvLJvy2QrrMKjvNGoXKJvzoNGu07vhbDpdvhO3ionJaBXSaNRXoect0BiP1HWoXMyJGhoZObFFEoySBPyzaSwcLQCMFT0H3S1JX8azDxRJrL7v+JYFW07PzkAoCbc/qgOd8clrIdZUvHg3L2hwuswQfP32xTKpsG4+GmQNdXkmpytqZr/7cM8zvAoCI+yWSH2KWMCwpB6GEfXPopXZw772uHdkmAPDq+SIAkyU+Ky2vpGjHHc/FM8npBEBnb3dwUhfQi8996WpXEGkhh7SQA8/5ZPKQOgfP+eTm9n0V5IhmSXYHJ+HeSKqWxSiO+D57Rikk8QUeqwdRSqnbj48NUzseDaPVrjh0gCS58g5k+YqiiNadJ4Y+AkgUqe9gNbuNwIOH1Hf393cYaXxsGPFo+GQGY3MLtKIzswT3RlIV3JlZwtHrR7geuGkZR3w/vEEAwEBoShe3X5JUuYjyW5vUblTLaLUrDicAvH161FWnWmAr30BoCr/y73QgLLD81iYa1TJ9yImmSzy62AQA5shYo1aWWW+Uel8/tT2NqimgVBAAmFwzBE7bmREsKxZQX7gXFIC9yMFzPrmv/xqzMnT7niEMC6pRLTNjnr1YVZWLoqi6EcjpJSdXBQgYv4tjcwuWHwRkeQDjd7HRBGil3HtELrPEWrjp2Xlqk1mQCoLpF/VpXW9fM3arl18CU8C6ZqMrL99jr4yW5jK2Q13PYC2zjiu3orT856tgA45eloC1zDq1tVDnAWm6N/6H/+K/c/RrxLTcny0AAAAASUVORK5CYII=" alt="Disruptor Cruiser">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAYAAABD2GxlAAAAAXNSR0IArs4c6QAAAsVJREFUSInNlz9oE1Ecx7+JwUx3YqOlkESkBHQxpUPTDKlNBSGYtlJaqBAFJ2lnwaU4SRDUrYWuWTrYpYOmkyRnFZqmg7m4nBBLTVOriUlJMmU6h/Y97s+7u0h6xS8c/N7v/d7vfd7fu3PARDznk1vtikNZ1sYo6+2QYXKe88kTawfIJvzUN7F2oIvLJvy2QrrMKjvNGoXKJvzoNGu07vhbDpdvhO3ionJaBXSaNRXoect0BiP1HWoXMyJGhoZObFFEoySBPyzaSwcLQCMFT0H3S1JX8azDxRJrL7v+JYFW07PzkAoCbc/qgOd8clrIdZUvHg3L2hwuswQfP32xTKpsG4+GmQNdXkmpytqZr/7cM8zvAoCI+yWSH2KWMCwpB6GEfXPopXZw772uHdkmAPDq+SIAkyU+Ky2vpGjHHc/FM8npBEBnb3dwUhfQi8996WpXEGkhh7SQA8/5ZPKQOgfP+eTm9n0V5IhmSXYHJ+HeSKqWxSiO+D57Rikk8QUeqwdRSqnbj48NUzseDaPVrjh0gCS58g5k+YqiiNadJ4Y+AkgUqe9gNbuNwIOH1Hf393cYaXxsGPFo+GQGY3MLtKIzswT3RlIV3JlZwtHrR7geuGkZR3w/vEEAwEBoShe3X5JUuYjyW5vUblTLaLUrDicAvH161FWnWmAr30BoCr/y73QgLLD81iYa1TJ9yImmSzy62AQA5shYo1aWWW+Uel8/tT2NqimgVBAAmFwzBE7bmREsKxZQX7gXFIC9yMFzPrmv/xqzMnT7niEMC6pRLTNjnr1YVZWLoqi6EcjpJSdXBQgYv4tjcwuWHwRkeQDjd7HRBGil3HtELrPEWrjp2Xlqk1mQCoLpF/VpXW9fM3arl18CU8C6ZqMrL99jr4yW5jK2Q13PYC2zjiu3orT856tgA45eloC1zDq1tVDnAWm6N/6H/+K/c/RrxLTcny0AAAAASUVORK5CYII=" alt="Scrambler Cruiser">
             <div class="shot"><svg viewBox="0 0 60 14" width="60" height="14" aria-hidden="true"><circle cx="30" cy="7" r="5" fill="#b06cff"/><circle cx="30" cy="7" r="2" fill="#fff" opacity="0.85"/></svg></div>
-            <figcaption>Disruptor</figcaption>
+            <figcaption>Scrambler</figcaption>
           </figure>
         </div>
       </div>
@@ -374,7 +374,7 @@
     <div class="scroll">
       <table>
         <thead>
-          <tr><th>Target</th><th style="color:var(--shield)">Plasma</th><th style="color:var(--armor)">Breacher</th><th style="color:var(--hull)">Reaver</th><th style="color:var(--slip)">Slip</th><th style="color:var(--disruptor)">Disruptor</th></tr>
+          <tr><th>Target</th><th style="color:var(--shield)">Plasma</th><th style="color:var(--armor)">Breacher</th><th style="color:var(--hull)">Reaver</th><th style="color:var(--slip)">Disruptor</th><th style="color:var(--scrambler)">Scrambler</th></tr>
         </thead>
         <tbody>
           <tr><td class="lead">Corvette <span class="meta">hull-heavy</span></td><td>1.08</td><td class="worst">1.14</td><td class="best">0.91</td><td class="worst">1.16</td><td class="worst">1.47</td></tr>
@@ -386,8 +386,8 @@
     </div>
     <ul>
       <li><b style="color:var(--hull)">Reaver</b> — corvette swarms and starbases.</li>
-      <li><b style="color:var(--shield)">Plasma</b> and <b style="color:var(--slip)">Slip</b> — shield-heavy fleets; Slip also beats shield regeneration.</li>
-      <li><b style="color:var(--armor)">Breacher</b> and <b style="color:var(--disruptor)">Disruptor</b> — armor-heavy Cruisers.</li>
+      <li><b style="color:var(--shield)">Plasma</b> and <b style="color:var(--slip)">Disruptor</b> — shield-heavy fleets; Disruptor also beats shield regeneration.</li>
+      <li><b style="color:var(--armor)">Breacher</b> and <b style="color:var(--scrambler)">Scrambler</b> — armor-heavy Cruisers.</li>
       <li>Wrong target: 5–46% worse than a plain generalist. Scouting decides.</li>
     </ul>
   </section>
@@ -395,7 +395,7 @@
   <section>
     <div class="eyebrow">Weapons Depots</div>
     <h2>Five depots, one per variant</h2>
-    <p class="sub">Starbases build generalists only. Every specialist is refitted at a depot built for that variant: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships. A depot wears its owner's color and carries its variant's marking pattern.</p>
+    <p class="sub">Starbases build generalists only. Every specialist is refitted at a depot built for that variant: a Plasma Depot makes Plasma ships, a Disruptor Depot Disruptor ships. A depot wears its owner's color and carries its variant's marking pattern.</p>
     <div class="cards">
       <div class="card" style="--c: var(--edge-lit)">
         <header><h3>Building one</h3><span class="dmg">250 minerals · 20 spice</span></header>

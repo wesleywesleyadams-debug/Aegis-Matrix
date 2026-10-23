@@ -1185,28 +1185,28 @@ func _gen_job_ships() -> void:
 ## Specialist variants (Defs.VARIANTS) of the generalist warships: the base
 ## sprite with markings in the variant's color: a glowing emitter at the
 ## nose, a stripe down the spine and lit wingtips, so a Plasma Corvette reads
-## differently from a Slip or Disruptor Corvette at a glance.
+## differently from a Disruptor or Scrambler Corvette at a glance.
 const VARIANT_COLORS := {
 	"plasma": [Color("1d5f8a"), Color("7fd8ff"), Color("e6fbff")],
 	"breacher": [Color("7a1414"), Color("ff4a4a"), Color("ffc8c8")],
 	"reaver": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
-	"slip": [Color("8a4a10"), Color("ffa43a"), Color("ffe0b0")],
-	"disruptor": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
+	"disruptor": [Color("8a4a10"), Color("ffa43a"), Color("ffe0b0")],
+	"scrambler": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
 }
 const VARIANT_BASES := {
-	"corvette": ["plasma", "breacher", "reaver", "slip", "disruptor"],
-	"destroyer": ["plasma", "breacher", "reaver", "slip", "disruptor"],
-	"cruiser": ["plasma", "breacher", "reaver", "slip", "disruptor"],
-	"carrier": ["plasma", "breacher", "reaver", "slip", "disruptor"],
+	"corvette": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
+	"destroyer": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
+	"cruiser": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
+	"carrier": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
 }
 
 ## Each variant is told apart by how its hull is TRIMMED along the edges,
 ## not by a marking painted on it: a generalist is blocky, a Plasma hull is
-## rounded, a Breacher ribbed, a Reaver toothed, a Slip swept and a
-## Disruptor serrated. The trim is cut into the silhouette itself and its
+## rounded, a Breacher ribbed, a Reaver toothed, a Disruptor swept and a
+## Scrambler serrated. The trim is cut into the silhouette itself and its
 ## outermost pixel is team-colored, so the shape reads at any zoom and in
 ## the owner's color.
-const TRIM_STYLES := ["blocky", "plasma", "breacher", "reaver", "slip", "disruptor"]
+const TRIM_STYLES := ["blocky", "plasma", "breacher", "reaver", "disruptor", "scrambler"]
 
 func _gen_variants() -> void:
 	# Variants share their class's hull (their mark chevrons carry the
@@ -1320,13 +1320,13 @@ func _trim_variant(hull: Image, tim: Image, style: String, unit: int = 1) -> voi
 					else:
 						for k in maxi(1, unit):
 							cut.call(x, y - dir * k)
-				"slip":
+				"disruptor":
 					# Swept: fins that rake further out toward the stern.
 					if step % 4 == 0:
 						var rake: int = unit + int(round((1.0 - float(x) / maxf(nose, 1)) * deep))
 						for k in rake:
 							add.call(x, y + dir * (k + 1))
-				"disruptor":
+				"scrambler":
 					# Serrated: notches bitten out of the edge. Kept shallower than
 					# the raised styles — a deep bite on a big hull stops reading as
 					# trim and starts reading as battle damage.
@@ -1595,7 +1595,7 @@ func _gen_hull_marks() -> void:
 # ---------------------------------------------------------------- layer art
 
 ## "bolt_v": a V-shaped laser (a chevron pointing the way it flies) for
-## shots that bypass defense layers (Slip, Disruptor); white, tinted in game.
+## shots that bypass defense layers (Disruptor, Scrambler); white, tinted in game.
 ## Layer icons (12x12, in Defs.LAYER_COLORS): shields = a bubble dome,
 ## armor = a riveted plate, hull = a ship's frame.
 func _gen_layer_art() -> void:

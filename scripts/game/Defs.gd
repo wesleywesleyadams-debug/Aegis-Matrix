@@ -184,7 +184,7 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 
 ## Weapons Depot: built by a Constructor like a starbase (paid over
 ## build_time). Each depot is built for ONE variant (Defs.VARIANTS) and refits
-## generalists into it: a Plasma Depot makes Plasma ships, a Slip Depot Slip ships.
+## generalists into it: a Plasma Depot makes Plasma ships, a Disruptor Depot Disruptor ships.
 ## Ships fly in, dock (CAPACITY at a time, hidden and safe inside) and are
 ## refitted automatically as minerals allow; each hull has its own refit cost
 ## and time (see SHIPS "refit"). A specialist can never be refitted again.
@@ -675,7 +675,7 @@ const STAR_TYPES := {
 }
 
 ## Every buildable ship: the base designs plus their specialist variants
-## (see VARIANTS), e.g. "slip_corvette".
+## (see VARIANTS), e.g. "disruptor_corvette".
 static var SHIPS: Dictionary = _with_variants()
 
 ## Hull marks: every warship class starts Mk I and is upgraded a mark at
@@ -735,9 +735,9 @@ static func marked_name(ship_type: String, level: int) -> String:
 ## shields, armor and hull alike. Specialists are variants of a generalist:
 ##   bonus  - 80% base damage, x2.5-3.0 against one layer (x2.2 for hull, the
 ##            biggest layer on most ships)
-##   pierce - skip layers entirely: 2 = shields and armor (Slip, 35% base
+##   pierce - skip layers entirely: 2 = shields and armor (Disruptor, 35% base
 ##            damage)
-##   emp    - Disruptor (80% base damage): hits switch the target's shields
+##   emp    - Scrambler (80% base damage): hits switch the target's shields
 ##            off for Abilities.EMP_TIME (see Abilities.emp_try)
 ## All variants cost the same as their generalist. Balance: vs the
 ## generalists' distinct profiles (corvette hull-heavy, destroyer
@@ -760,17 +760,17 @@ const VARIANTS := {
 		"desc": "81% base damage, x2.5 against armor."},
 	"reaver": {"label": "Ravager", "vs": {"hull": 2.2}, "pierce": 0, "damage": 0.83, "cost": 1.0, "color": Color("58e07a"),
 		"desc": "83% base damage, x2.2 against hull."},
-	"slip": {"label": "Slip", "vs": {}, "pierce": 2, "damage": 0.36, "cost": 1.0, "color": Color("ff7a14"),
+	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.36, "cost": 1.0, "color": Color("ff7a14"),
 		"desc": "Shots skip shields and armor and hit the hull, at 36% base damage."},
-	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 0, "damage": 0.83, "emp": true, "cost": 1.0, "color": Color("b06cff"),
+	"scrambler": {"label": "Scrambler", "vs": {}, "pierce": 0, "damage": 0.83, "emp": true, "cost": 1.0, "color": Color("b06cff"),
 		"desc": "83% base damage. Each hit EMPs the target: its shields go down for 5 s (they block nothing and don't recharge), then come back at the value they had. A ship can EMP once per 4 s divided by its gun count (corvette 4 s, carrier 1 s)."},
 }
 ## Which variants each generalist has so far.
 const VARIANTS_OF := {
-	"corvette": ["plasma", "breacher", "reaver", "slip", "disruptor"],
-	"destroyer": ["plasma", "breacher", "reaver", "slip", "disruptor"],
-	"cruiser": ["plasma", "breacher", "reaver", "slip", "disruptor"],
-	"carrier": ["plasma", "breacher", "reaver", "slip", "disruptor"],
+	"corvette": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
+	"destroyer": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
+	"cruiser": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
+	"carrier": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
 }
 
 static func _with_variants() -> Dictionary:
@@ -868,7 +868,7 @@ static func kill_cost(shield: float, armor_v: float, hull: float, variant: Strin
 	var vd: Dictionary = VARIANTS.get(variant, {"vs": {}, "pierce": 0, "damage": 1.0})
 	var vs: Dictionary = vd["vs"]
 	var need := hull / float(vs.get("hull", 1.0))
-	# Disruptor: after its first hit the EMP keeps the shields off, so (as an
+	# Scrambler: after its first hit the EMP keeps the shields off, so (as an
 	# approximation) its fire goes to armor and hull as if shields were skipped.
 	var pr := int(vd["pierce"])
 	if vd.get("emp", false):
