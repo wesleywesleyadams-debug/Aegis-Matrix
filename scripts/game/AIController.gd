@@ -630,7 +630,7 @@ func _production_home_yard(cx: Ctx) -> void:
 	if war.size() >= 6 and _hazardous(game) and _count_type(ships, base, "heatshield") == 0 and base.can_queue("heatshield") == "" and res["spice"] >= 15.0:
 		cands.append([w["support"] * 0.8, "heatshield"])
 	# Expansion: keep colonizing unless enemies are at our worlds.
-	var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game))
+	var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game) and p.is_habitable())
 	if free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2 and res["spice"] >= float(Defs.SHIPS["colony"]["cost"].get("spice", 0)):
 		cands.append([w["expansion"] * 1.2, "colony"])
 	# Military: the counter-picked class, if the minerals above the
