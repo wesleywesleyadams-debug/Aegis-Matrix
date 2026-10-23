@@ -340,8 +340,20 @@ static func call_scene(id: String, img: Image) -> void:
 				var d := Vector2.from_angle(-1.8 + k * 0.7)
 				_put(img, int(c.x + d.x * 22.0), int(c.y + d.y * 22.0), IO[3])
 		"particle_lances":
-			_barrel(img, Vector2(6, 50), Vector2(22, 38), 5.0)
-			_beam(img, Vector2(24, 36), Vector2(60, 8), Color("ff6a4a"), 1.5)
+			# A2: a chunk of layered hull armour; the lance burns through and
+			# molten metal drips from the wound.
+			var lay := [STEEL[1], Color("6e6250"), Color("7a1616"), STEEL[1]]
+			var h := Vector2(28, 34)
+			_lance(img, h, Vector2(62, 10), 3.0)
+			_thick_plate(img, Vector2(14, 18), 28.0, 32.0, 5.0, STEEL, lay)
+			_spray(img, Vector2(48, 22), -0.6)
+			for k in 3:
+				var x := 25.0 + k * 3.0
+				var len := 4.0 + (k % 2) * 5.0
+				_line(img, Vector2(x, 37), Vector2(x, 37 + len), 1.6, PL[2])
+				_disc(img, Vector2(x, 38 + len), 1.2, PL[3])
+			_molten_hole(img, h, 3.0)
+			_lance(img, Vector2(0, 56), h, 4.4)
 		"capital_batteries":
 			_disc(img, Vector2(26, 40), 12.0, Color("6a7596"))
 			_barrel(img, Vector2(26, 36), Vector2(52, 18), 4.0)
@@ -1040,4 +1052,57 @@ static func _cannon(img: Image, a: Vector2, b: Vector2, w: float, coils: int = 3
 	_line(img, b - d.orthogonal() * (w * 0.9), b + d.orthogonal() * (w * 0.9), 3.0, STEEL[0])
 	_line(img, b - d.orthogonal() * (w * 0.8), b + d.orthogonal() * (w * 0.8), 1.8, STEEL[3])
 
+## Particle-lance tones (hot amber): outline, deep, body, light, highlight.
+const PL := [Color("2e1204"), Color("a8460e"), Color("ff8a2a"), Color("ffc880"), Color("fff6e0")]
 
+## A lance of particles from a (base, w wide) to a needle point at b:
+## halo, outlined body, light inner blade, white core, particles flecking it.
+static func _lance(img: Image, a: Vector2, b: Vector2, w: float) -> void:
+	var d := (b - a).normalized()
+	var n := d.orthogonal()
+	_poly(img, [a + n * (w + 2.0), b + d * 2.0, a - n * (w + 2.0)], Color(PL[2], 0.25))
+	_poly(img, [a + n * (w + 0.9), b + d * 1.2, a - n * (w + 0.9)], PL[0])
+	_poly(img, [a + n * w, b, a - n * w], PL[2])
+	_poly(img, [a + n * w * 0.55, b - d * 1.0, a - n * w * 0.2], PL[3])
+	_line(img, a, b - d * 2.0, 1.0, PL[4])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for k in 7:
+		var t := rng.randf_range(0.05, 0.8)
+		var side := rng.randf_range(-1.0, 1.0) * w * (1.0 - t) * 1.8
+		_put(img, int(a.lerp(b, t).x + n.x * side), int(a.lerp(b, t).y + n.y * side), PL[4] if k % 2 == 0 else PL[3])
+
+## A thick plate seen slightly in 3/4: front face at `a` (w x h), a lit top
+## face and a dark side face `th` deep, rivets with glints on the front.
+static func _thick_plate(img: Image, a: Vector2, w: float, h: float, th: float, t: Array, layers: Array = []) -> void:
+	var dd := Vector2(th, -th * 0.6)
+	var b := a + Vector2(w, h)
+	var tr := Vector2(b.x, a.y)
+	var bl := Vector2(a.x, b.y)
+	_poly(img, [a - Vector2(1, 1), a + dd + Vector2(0, -1), tr + dd + Vector2(1, -1), b + dd + Vector2(1, 1), b + Vector2(1, 1), bl + Vector2(-1, 1)], t[0])
+	_poly(img, [a, a + dd, tr + dd, tr], t[3])
+	_poly(img, [tr, tr + dd, b + dd, b], t[1])
+	if not layers.is_empty():
+		for k in layers.size():
+			var f0 := float(k) / layers.size()
+			var f1 := float(k + 1) / layers.size()
+			_poly(img, [tr.lerp(b, f0), (tr + dd).lerp(b + dd, f0), (tr + dd).lerp(b + dd, f1), tr.lerp(b, f1)], layers[k])
+	_box(img, a, b, t[2])
+	_line(img, a + Vector2(0, 0.5), tr + Vector2(0, 0.5), 1.0, t[4])
+	_line(img, a + Vector2(0.5, 0), bl + Vector2(0.5, 0), 1.0, t[3])
+	for q in [a + Vector2(3.5, 3.5), tr + Vector2(-3.5, 3.5), bl + Vector2(3.5, -3.5), b - Vector2(3.5, 3.5)]:
+		_disc(img, q, 1.5, t[0])
+		_disc(img, q, 0.9, t[3])
+		_put(img, int(q.x - 0.5), int(q.y - 0.5), t[4])
+
+## A punched hole with a molten rim.
+static func _molten_hole(img: Image, c: Vector2, r: float) -> void:
+	_disc(img, c, r + 1.6, PL[1])
+	_disc(img, c, r + 0.8, PL[2])
+	_disc(img, c, r, PL[0])
+	_arc(img, c, r + 0.8, PI * 0.9, PI * 1.6, 1.0, PL[4])
+
+static func _spray(img: Image, p: Vector2, dir: float) -> void:
+	for k in 6:
+		var d := Vector2.from_angle(dir - 0.9 + k * 0.36)
+		_line(img, p + d * 3.0, p + d * (6.0 + (k % 3) * 2.0), 1.0, PL[3] if k % 2 == 0 else PL[4])
