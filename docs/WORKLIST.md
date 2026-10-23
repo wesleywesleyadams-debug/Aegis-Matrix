@@ -48,5 +48,7 @@ code or art. Last updated 2026-10-23.
 - **[balance] Constructs:** toughness and guns done (see Recently done). Still open: the cost lever for Weapons Depot / Warp Gate is untested in duels (SL_DUEL_BUDGET).
 - **[missing] "Claude plays a match via text"** (idea, 2026-10-17).
 
+- **[missing] Loading screens** (user request, 2026-10-23; after the preloading work): a boot screen and a match-loading screen. Each shows a large immersive pixel-art scene that changes every time (rotating set: fleets, classes, variants, constructs, worlds) to draw the player into the setting, plus logo/progress bar (boot) or system name, players and a lore/gameplay tip (match). Show mockups before applying.
+
 ## Cleanup
 
