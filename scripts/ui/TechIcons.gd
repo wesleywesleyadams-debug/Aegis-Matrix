@@ -178,7 +178,7 @@ static func _tile(img: Image, col: Color, seed_v: int) -> void:
 static func _sprite_for(effect: String) -> String:
 	var what := effect.get_slice("_", 1)
 	if what == "depot":
-		return "ship_depot_plasma"
+		return "ship_depot_plazer"
 	if what == "outpost":
 		return "ship_frontier_outpost"
 	if what == "warp":

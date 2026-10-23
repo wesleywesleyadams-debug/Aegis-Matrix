@@ -5,7 +5,7 @@ extends Node
 ## Game click handlers run, not the functions behind them. Prints "PT ..."
 ## lines and saves user://pt_<scenario>.png before quitting.
 ##   build   - Constructor panel: Frontier Outpost (click), Warp Gate
-##             (hotkey), Weapons Depot page -> Plasma Depot (click); each
+##             (hotkey), Weapons Depot page -> Plazer Depot (click); each
 ##             placed by left-clicking open space.
 ##   gate    - box-select warships, right-click an own Warp Gate, Eject one,
 ##             Eject all, garrison again, Warp hotkey + click 1,500 px away.
@@ -234,7 +234,7 @@ func _build() -> void:
 		cons.append(game.spawn_ship("constructor", game.player_id, c + Vector2(150 + 40 * i, 140)))
 	game.center_on(c + Vector2(200, 140))
 	await _frames(3)
-	var specs := [["Frontier Outpost", "outpost", "click"], ["Warp Gate", "gate", "key"], ["Plasma Depot", "depot", "page"]]
+	var specs := [["Frontier Outpost", "outpost", "click"], ["Warp Gate", "gate", "key"], ["Plazer Depot", "depot", "page"]]
 	var spots: Array = []
 	for i in 3:
 		var con: Ship = cons[i]
@@ -249,7 +249,7 @@ func _build() -> void:
 			# A different placement armed first: picking the depot must replace it.
 			await click_button("Frontier Outpost")
 			await click_button("Weapons Depot")
-			log_("depot page buttons: %s" % str(["Plasma Depot", "Rail Depot", "< Back"].map(func(l): return find_button(l) != null)))
+			log_("depot page buttons: %s" % str(["Plazer Depot", "Rail Depot", "< Back"].map(func(l): return find_button(l) != null)))
 			await click_button(spec[0])
 		log_("after %s button: placing_fort='%s' placing_depot=%s variant=%s" % [spec[0], game.placing_fort, str(game.placing_depot), game.placing_depot_variant])
 		var spot := open_spot(spec[1], c, 420.0, 0.6 + i * 0.9)

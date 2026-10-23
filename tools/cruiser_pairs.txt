@@ -1,7 +1,7 @@
-plasma_cruiser:1,cruiser:1
-cruiser:1,plasma_cruiser:1
-plasma_cruiser:1,cruiser:1
-cruiser:1,plasma_cruiser:1
+plazer_cruiser:1,cruiser:1
+cruiser:1,plazer_cruiser:1
+plazer_cruiser:1,cruiser:1
+cruiser:1,plazer_cruiser:1
 breacher_cruiser:1,cruiser:1
 cruiser:1,breacher_cruiser:1
 breacher_cruiser:1,cruiser:1

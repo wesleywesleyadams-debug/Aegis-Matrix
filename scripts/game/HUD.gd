@@ -2457,7 +2457,7 @@ func _add_constructor_buttons() -> void:
 	grid.add_child(st)
 
 	# One button for all six depots: it opens their page.
-	var dp := _panel_build_button("ship_depot_plasma", "Weapons Depot", Defs.WEAPONS_DEPOT["cost"], Defs.WEAPONS_DEPOT["build_time"],
+	var dp := _panel_build_button("ship_depot_plazer", "Weapons Depot", Defs.WEAPONS_DEPOT["cost"], Defs.WEAPONS_DEPOT["build_time"],
 		"Opens the six depot types. Each depot refits generalist warships into one variant.")
 	if depot_locked:
 		dp.disabled = true

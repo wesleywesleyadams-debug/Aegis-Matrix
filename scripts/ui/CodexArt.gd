@@ -197,7 +197,7 @@ func _k_depot() -> void:
 	_text("generalist", Vector2(55, 108), Defs.GENERALIST_SHOT)
 	_arrow(Vector2(85, 65), Vector2(160, 65))
 	_text("right-click", Vector2(122, 55), DIM, 11)
-	var dep := "ship_depot_plasma" if ResourceLoader.exists(Defs.PIXEL + "ship_depot_plasma.png") else "ship_depot_base"
+	var dep := "ship_depot_plazer" if ResourceLoader.exists(Defs.PIXEL + "ship_depot_plazer.png") else "ship_depot_base"
 	_sprite(dep, Vector2(215, 65), 70, YOU)
 	_text("Weapons Depot", Vector2(215, 118), INK)
 	_text("docks, pays minerals, waits", Vector2(215, 135), DIM, 11)
@@ -276,7 +276,7 @@ func _k_radiation() -> void:
 ## (ticked), with the targets to avoid crossed out underneath.
 const VARIANT_USE := {
 	"generalist": [["ship_corvette", "ship_destroyer", "ship_cruiser", "starbase"], []],
-	"plasma": [["ship_cruiser", "ship_carrier"], ["ship_corvette", "ship_destroyer"]],
+	"plazer": [["ship_cruiser", "ship_carrier"], ["ship_corvette", "ship_destroyer"]],
 	"breacher": [["ship_destroyer"], ["ship_cruiser"]],
 	"reaver": [["ship_corvette", "planet_terran_s"], ["ship_carrier"]],
 	"disruptor": [["ship_cruiser"], ["ship_destroyer", "ship_corvette"]],
@@ -305,7 +305,7 @@ func _draw_use(v: String) -> void:
 			_cross(p, 14)
 
 func _k_use_generalist() -> void: _draw_use("generalist")
-func _k_use_plasma() -> void: _draw_use("plasma")
+func _k_use_plazer() -> void: _draw_use("plazer")
 func _k_use_breacher() -> void: _draw_use("breacher")
 func _k_use_reaver() -> void: _draw_use("reaver")
 func _k_use_disruptor() -> void: _draw_use("disruptor")

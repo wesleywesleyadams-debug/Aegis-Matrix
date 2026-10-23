@@ -160,7 +160,7 @@ static func _queued_entry(o: Dictionary, rocks: Dictionary, planets: Dictionary)
 		"bombard":
 			return ["order_bombard", [planets[o["target"]]]] if planets.has(o.get("target", "")) else []
 		"refit":
-			return ["order_refit", [str(o.get("variant", "plasma"))]]
+			return ["order_refit", [str(o.get("variant", "plazer"))]]
 	return []
 
 ## What a ship was doing, in a form that survives a reload.
@@ -347,7 +347,7 @@ static func apply(game: Game, data: Dictionary) -> bool:
 		var dp := WeaponsDepot.new()
 		dp.owner_id = int(d["owner"])
 		dp.under_construction = bool(d.get("under_construction", false))
-		dp.variant = str(d.get("variant", "plasma"))
+		dp.variant = str(d.get("variant", "plazer"))
 		dp.construct_progress = float(d.get("construct_progress", 0.0))
 		dp.position = _p(d["pos"])
 		game.starbases_root.add_child(dp)

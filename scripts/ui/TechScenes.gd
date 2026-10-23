@@ -131,7 +131,7 @@ static func call_scene(id: String, img: Image) -> void:
 			for k in 3:
 				_wing(img, Vector2(10 + k * 16, 16 + k * 4), 12.0, 32.0 - k * 4.0, Color("8a95b8").lerp(Color("c8d2ea"), k * 0.3))
 		"depots":
-			_sprite(img, "ship_depot_plasma", C, 40.0)
+			_sprite(img, "ship_depot_plazer", C, 40.0)
 		"reinforced_docks":
 			_sprite(img, "starbase", C, 30.0)
 			for a in [0.0, PI / 2.0, PI, PI * 1.5]:

@@ -37,7 +37,7 @@ its generalist.**
 | Variant | Effect | Base damage | Shots | Markings |
 |---|---|---|---|---|
 | Generalist | full damage to all layers | 100% | yellow lasers | none |
-| **Plasma** | x3.0 vs **shields** | 79% | light blue | one solid line down the spine |
+| **Plazer** | x3.0 vs **shields** | 79% | light blue | one solid line down the spine |
 | **Breacher** | x2.5 vs **armor** | 81% | red | two ribs across the hull |
 | **Ravager** | x2.2 vs **hull** | 83% | green | saw teeth along both edges |
 | **Disruptor** | **ignores shields and armor** (hull only) | 36% | orange V-shots | two stripes either side of the spine |
@@ -47,7 +47,7 @@ Hull markings are always drawn in the owner's player color, so the pattern alone
 names the variant (one line, two ribs, saw teeth, two stripes, chevrons); the
 shot color names the layer it hits. Cruisers fire
 torpedoes in the same colors (only lasers get the V shape). Against planets,
-piercing (Disruptor) shots skip the planetary shield, a Inhibitor's EMP switches it off, Plasma hits it harder, and Ravager kills
+piercing (Disruptor) shots skip the planetary shield, a Inhibitor's EMP switches it off, Plazer hits it harder, and Ravager kills
 population faster.
 
 ## Which variant against what
@@ -55,7 +55,7 @@ population faster.
 Base damage needed to destroy a target, relative to a generalist
 (1.00 = the same, lower = kills faster):
 
-| Target | Plasma | Breacher | Ravager | Disruptor | Inhibitor |
+| Target | Plazer | Breacher | Ravager | Disruptor | Inhibitor |
 |---|---|---|---|---|---|
 | Corvette (hull-heavy) | 1.08 | 1.14 | **0.91** | 1.47 | see note |
 | Destroyer (shield-heavy) | **0.93** | 1.16 | 1.01 | 1.00 | see note |
@@ -67,7 +67,7 @@ like an 80%-damage shot that skips shields; the in-game Codex table computes
 this live (Defs.kill_cost).
 
 - Ravager: corvette swarms, starbases.
-- Plasma / Inhibitor: shield-heavy fleets; a Inhibitor's EMP also opens the shields for the rest of the fleet.
+- Plazer / Inhibitor: shield-heavy fleets; a Inhibitor's EMP also opens the shields for the rest of the fleet.
 - Breacher / Disruptor: armor-heavy fleets (Cruisers). Disruptor also ignores shield regeneration.
 - Wrong target: 5-46% worse than a plain generalist, so scouting decides.
 
@@ -77,8 +77,8 @@ Starbases build generalists only; every specialist is refitted at a depot.
 
 - Built by a **Constructor** (its panel buttons, or their grid keys): 250 minerals + 20
   spice over 30 s. No weapons, and losing one doesn't lose the match.
-- **There are five depot types, one per variant**: a Plasma Depot refits
-  generalists into Plasma ships, a Disruptor Depot into Disruptor ships, and so on. A depot
+- **There are five depot types, one per variant**: a Plazer Depot refits
+  generalists into Plazer ships, a Disruptor Depot into Disruptor ships, and so on. A depot
   wears its owner's color and carries its variant's marking pattern.
 - Send ships in by right-clicking the depot (or with the refit buttons in the
   ship panel). They fly in and **dock — 10 at a time, hidden and safe inside**

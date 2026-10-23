@@ -137,7 +137,7 @@ static func sail_absorb(e: Node2D, amount: float, from: Node2D, profile: Diction
 	if is_instance_valid(from) and from.get("owner_id") != null:
 		past = amount * clampf(Game.instance.mod(from.owner_id, "shield_pierce") - 1.0, 0.0, 1.0)
 	var rest := amount - past
-	# Plasma counts its bonus against solar shields like any shield.
+	# Plazer counts its bonus against solar shields like any shield.
 	var m: float = profile.get("vs", {}).get("shield", 1.0)
 	# Touching bubbles are one mega shield whose points are the sum of the
 	# arrays' (three full arrays: 300). A hit drains every array in

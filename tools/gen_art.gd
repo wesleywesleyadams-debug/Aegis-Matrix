@@ -1184,29 +1184,29 @@ func _gen_job_ships() -> void:
 
 ## Specialist variants (Defs.VARIANTS) of the generalist warships: the base
 ## sprite with markings in the variant's color: a glowing emitter at the
-## nose, a stripe down the spine and lit wingtips, so a Plasma Corvette reads
+## nose, a stripe down the spine and lit wingtips, so a Plazer Corvette reads
 ## differently from a Disruptor or Inhibitor Corvette at a glance.
 const VARIANT_COLORS := {
-	"plasma": [Color("1d5f8a"), Color("7fd8ff"), Color("e6fbff")],
+	"plazer": [Color("1d5f8a"), Color("7fd8ff"), Color("e6fbff")],
 	"breacher": [Color("7a1414"), Color("ff4a4a"), Color("ffc8c8")],
 	"reaver": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
 	"disruptor": [Color("8a4a10"), Color("ffa43a"), Color("ffe0b0")],
 	"inhibitor": [Color("1f6a2a"), Color("58e07a"), Color("d8ffd8")],
 }
 const VARIANT_BASES := {
-	"corvette": ["plasma", "breacher", "reaver", "disruptor", "inhibitor"],
-	"destroyer": ["plasma", "breacher", "reaver", "disruptor", "inhibitor"],
-	"cruiser": ["plasma", "breacher", "reaver", "disruptor", "inhibitor"],
-	"carrier": ["plasma", "breacher", "reaver", "disruptor", "inhibitor"],
+	"corvette": ["plazer", "breacher", "reaver", "disruptor", "inhibitor"],
+	"destroyer": ["plazer", "breacher", "reaver", "disruptor", "inhibitor"],
+	"cruiser": ["plazer", "breacher", "reaver", "disruptor", "inhibitor"],
+	"carrier": ["plazer", "breacher", "reaver", "disruptor", "inhibitor"],
 }
 
 ## Each variant is told apart by how its hull is TRIMMED along the edges,
-## not by a marking painted on it: a generalist is blocky, a Plasma hull is
+## not by a marking painted on it: a generalist is blocky, a Plazer hull is
 ## rounded, a Breacher ribbed, a Reaver toothed, a Disruptor swept and a
 ## Inhibitor serrated. The trim is cut into the silhouette itself and its
 ## outermost pixel is team-colored, so the shape reads at any zoom and in
 ## the owner's color.
-const TRIM_STYLES := ["blocky", "plasma", "breacher", "reaver", "disruptor", "inhibitor"]
+const TRIM_STYLES := ["blocky", "plazer", "breacher", "reaver", "disruptor", "inhibitor"]
 
 func _gen_variants() -> void:
 	# Variants share their class's hull (their mark chevrons carry the
@@ -1293,7 +1293,7 @@ func _trim_variant(hull: Image, tim: Image, style: String, unit: int = 1) -> voi
 					# or the silhouette is just a smooth bar.
 					if unit > 1 and step % 3 == 0:
 						add.call(x, y + dir)
-				"plasma":
+				"plazer":
 					# Rounded: shave the corners, so nothing on the hull ends
 					# square. On a big hull the shave goes deeper, which is
 					# what makes a carrier's edges read as curves.

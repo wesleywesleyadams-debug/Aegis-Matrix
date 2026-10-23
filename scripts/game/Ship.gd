@@ -736,7 +736,7 @@ var build_site: Vector2
 ## What a Constructor is building at build_site: "starbase" or "depot".
 var build_kind: String = "starbase"
 ## Which variant a depot being built will fit.
-var build_variant: String = "plasma"
+var build_variant: String = "plazer"
 ## Refit (see order_refit): the variant being fitted, the depot, and the
 ## refit time still to go.
 var refit_variant: String = ""
@@ -2502,7 +2502,7 @@ func order_build_fort(pos: Vector2, kind: String) -> void:
 	move_goal = pos
 	target = null
 
-func order_build_depot(pos: Vector2, v: String = "plasma") -> void:
+func order_build_depot(pos: Vector2, v: String = "plazer") -> void:
 	held = false
 	if def["role"] != "constructor":
 		return
