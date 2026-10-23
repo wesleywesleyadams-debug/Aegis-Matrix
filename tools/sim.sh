@@ -19,9 +19,9 @@ for sys in $SYS_LIST; do
 	done
 done | xargs -P "$JOBS" -L 1 sh -c '
 	SL_SIM="$1" SL_SIM_MINUTES="$MINUTES" SL_SYSTEM="$0" timeout 2400 "$G" --headless --path . --fixed-fps 60 res://scenes/Main.tscn 2>&1 | grep "SIM RESULT\|SCRIPT ERROR"
-	n=$(ls "$APPDATA/Godot/app_userdata/Star Lords/sims" | grep -c "_${LABEL}[0-9]*\.json")
+	n=$(ls "$APPDATA/Godot/app_userdata/Aegis Matrix/sims" | grep -c "_${LABEL}[0-9]*\.json")
 	echo "[$n / $TOTAL done]"
 '
-n=$(ls "$APPDATA/Godot/app_userdata/Star Lords/sims" | grep -c "_${LABEL}[0-9]*.json")
+n=$(ls "$APPDATA/Godot/app_userdata/Aegis Matrix/sims" | grep -c "_${LABEL}[0-9]*.json")
 [ "$n" -lt "$TOTAL" ] && echo "WARNING: only $n of $TOTAL matches finished (the rest hit the 40-minute real-time limit)"
 perl tools/sim_report.pl "$LABEL"

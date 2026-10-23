@@ -100,7 +100,7 @@ jobs:
             ./godot --headless --fixed-fps 60 --path . scenes/Main.tscn 2>&1 | tee log.txt | grep -E "SIM RESULT|SCRIPT ERROR" || true
           mkdir -p out
           cp log.txt out/${{ matrix.system }}_${{ matrix.run }}.log
-          cp ~/.local/share/Godot/app_userdata/"Star Lords"/sims/*.json out/ 2>/dev/null || cp ~/.local/share/godot/app_userdata/"Star Lords"/sims/*.json out/ 2>/dev/null || true
+          cp ~/.local/share/Godot/app_userdata/"Aegis Matrix"/sims/*.json out/ 2>/dev/null || cp ~/.local/share/godot/app_userdata/"Aegis Matrix"/sims/*.json out/ 2>/dev/null || true
       - name: Training game
         if: inputs.mode == 'nn_batch'
         run: |
@@ -110,7 +110,7 @@ jobs:
             ./godot --headless --fixed-fps 60 --path . res://scenes/Main.tscn 2>&1 | tee log.txt | grep -E "SIM RESULT|SCRIPT ERROR" || true
           mkdir -p out
           cp log.txt out/${{ matrix.tag }}.log
-          cp ~/.local/share/Godot/app_userdata/"Star Lords"/sims/*.json out/ 2>/dev/null || true
+          cp ~/.local/share/Godot/app_userdata/"Aegis Matrix"/sims/*.json out/ 2>/dev/null || true
       - name: Size grid
         if: inputs.mode == 'size_grid'
         run: |

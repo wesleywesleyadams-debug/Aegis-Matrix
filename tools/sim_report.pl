@@ -2,7 +2,7 @@
 # Summarizes user://sims/*_<label>N.json from tools/sim.sh.
 use strict; use warnings; use JSON::PP;
 my $label = shift // "b";
-my $dir = "$ENV{APPDATA}/Godot/app_userdata/Star Lords/sims";
+my $dir = "$ENV{APPDATA}/Godot/app_userdata/Aegis Matrix/sims";
 my %s;
 opendir(my $dh, $dir) or die "no $dir";
 my @files = map { "$dir/$_" } grep { /_\Q$label\E\d+\.json$/ } readdir($dh);

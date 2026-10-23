@@ -10,10 +10,10 @@ config_version=5
 
 [application]
 
-config/name="Stardust Dominion"
-config/use_custom_user_dir=true
-config/custom_user_dir_name="Godot/app_userdata/Star Lords"
+config/name="Aegis Matrix"
 run/main_scene="res://scenes/TitleMenu.tscn"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Godot/app_userdata/Aegis Matrix"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 

@@ -35,7 +35,7 @@ my $GODOT = $ENV{GODOT} // "/c/Users/whole/Downloads/Godot_v4.7.2-stable_win64.e
 my ($N_IN, $N_H, $N_OUT) = (43, 28, 20);
 my $NP = $N_H * $N_IN + $N_H + $N_OUT * $N_H + $N_OUT;
 
-my $USER = "$ENV{APPDATA}/Godot/app_userdata/Star Lords";
+my $USER = "$ENV{APPDATA}/Godot/app_userdata/Aegis Matrix";
 my $RL = $ENV{RL_DIR} // "$USER/rl";
 my $SIMS = "$USER/sims";
 mkdir $RL; mkdir $SIMS; mkdir "ai";

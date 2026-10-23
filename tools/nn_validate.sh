@@ -16,7 +16,7 @@ for sys in orion_reach vega_drift kharon_expanse tethys_cluster sable_verge; do
 	done
 done | xargs -P "$JOBS" -L 1 sh -c 'SL_SIM="$1" SL_SEED="$1" SL_NN_WEIGHTS="$W" SL_NN_SIDE="$2" SL_SIM_MINUTES=40 SL_SYSTEM="$0" timeout 2400 "$G" --headless --path . --fixed-fps 60 res://scenes/Main.tscn > /dev/null 2>&1'
 perl -MJSON::PP -e '
-	my ($label, $n) = @ARGV; my $dir = "$ENV{APPDATA}/Godot/app_userdata/Star Lords/sims"; my (%s, @tot);
+	my ($label, $n) = @ARGV; my $dir = "$ENV{APPDATA}/Godot/app_userdata/Aegis Matrix/sims"; my (%s, @tot);
 	for my $sys (qw(orion_reach vega_drift kharon_expanse tethys_cluster sable_verge)) {
 		for my $i (1 .. $n) {
 			my $f = "$dir/${sys}_$label$i.json"; open my $h, "<", $f or do { $s{$sys}[3]++; next }; local $/; my $r = decode_json(<$h>); close $h; unlink $f;
