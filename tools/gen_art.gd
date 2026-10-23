@@ -88,9 +88,9 @@ func _img(w: int, h: int) -> Image:
 	img.fill(Color(0, 0, 0, 0))
 	return img
 
-## Sprites drawn by hand (the D3 destroyer hull and its team mask): the
+## Sprites drawn by hand (the D3 destroyer and B4 corvette hulls and their team masks): the
 ## generator must never overwrite them.
-const HAND_ART := ["ship_destroyer", "ship_destroyer_team"]
+const HAND_ART := ["ship_destroyer", "ship_destroyer_team", "ship_corvette", "ship_corvette_team", "ship_cruiser", "ship_cruiser_team"]
 
 func _save(img: Image, name: String) -> void:
 	if name in HAND_ART:

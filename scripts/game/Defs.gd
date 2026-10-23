@@ -112,7 +112,7 @@ const BASE_SHIPS := {
 	},
 	"corvette": {
 		"name": "Corvette", "role": "warship",
-		"hp": 66.0, "armor": 50.0, "shield": 34.0, "speed": 125.0, "radius": 8.0,
+		"hp": 66.0, "armor": 50.0, "shield": 34.0, "speed": 125.0, "radius": 10.4, "size": 0.81,
 		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
 		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 8.0},
 	},
@@ -128,18 +128,18 @@ const BASE_SHIPS := {
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 264.0, "armor": 184.0, "shield": 352.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
+		"hp": 264.0, "armor": 184.0, "shield": 352.0, "speed": 55.0, "radius": 23.9, "size": 0.81,
 		"cost": {"minerals": 300}, "build_time": 80.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
-		"guns": 3, "turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 1.66, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
+		"guns": 3, "turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 0.81, "turrets": [[0.762, -0.014], [0.66, -0.35], [0.66, 0.32]],
 	},
 	"carrier": {
 		"name": "Carrier", "role": "warship", "requires": "carriers", "base": "carrier",
 		# About twice a cruiser in every dimension: slower across the map and
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one.
-		"hp": 552.0, "armor": 792.0, "shield": 1056.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
+		"hp": 552.0, "armor": 792.0, "shield": 1056.0, "speed": 38.0, "radius": 41.4, "size": 2.0,
 		"cost": {"minerals": 600}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 260.0, "sensor": 460.0,
 		"guns": 4,

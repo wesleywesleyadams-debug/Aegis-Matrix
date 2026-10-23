@@ -870,8 +870,8 @@ func _apply_visuals() -> void:
 	team.modulate = Defs.team_color(owner_id)
 	# The art is drawn at Defs.ART_SCALE and shown at 1/ART_SCALE, so a ship
 	# covers the same world space as before at twice the detail.
-	# "size" draws a class bigger than its art (destroyer 1.33x, cruiser
-	# 1.66x, carrier 2x); its radius in Defs is scaled to match.
+	# "size" scales each class so on-screen length tracks base toughness
+	# (corvette : destroyer : cruiser : carrier = 1 : 1.41 : 2.31 : 4); radius matches.
 	hull.scale = Vector2.ONE / Defs.ART_SCALE * float(Defs.SHIPS.get(ship_type, {}).get("size", 1.0))
 	team.scale = hull.scale
 	_apply_mark()
@@ -2114,7 +2114,14 @@ class MarkTag extends Node2D:
 		# The same small size on screen at any zoom.
 		var z: float = get_viewport().get_canvas_transform().get_scale().x
 		scale = Vector2.ONE / maxf(z, 0.01) * 1.6
-		global_position = host.global_position + Vector2(-host.radius - 6.0, host.radius * 0.3)
+		# Left of the hull art's actual extent at its current heading (the
+		# art reaches well past the radius), so it clears the thrusters.
+		var reach := host.radius
+		var hs: Sprite2D = host.hull_sprite
+		if hs and hs.texture:
+			var half := Vector2(hs.texture.get_width(), hs.texture.get_height()) * hs.scale.abs() * 0.5
+			reach = maxf(reach, absf(cos(host.rotation)) * half.x + absf(sin(host.rotation)) * half.y)
+		global_position = host.global_position + Vector2(-reach - 4.0, host.radius * 0.3)
 		visible = host.visible
 
 	func _draw() -> void:
