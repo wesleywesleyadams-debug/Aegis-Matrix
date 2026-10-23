@@ -575,9 +575,9 @@ const TECHS := {
 	# Defense lines (research screen's Defenses tab): shields, armor, hull. Each
 	# is three tiers of big, expensive upgrades for every ship and starbase,
 	# so which layer to invest in is a real strategic choice.
-	"deflectors": {"name": "Deflector Arrays", "group": "defense", "line": "shields", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
+	"deflectors": {"name": "Phase Shields", "group": "defense", "line": "shields", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
 		"effects": {"shield_total": 0.07, "world_shield": 0.20}, "desc": "+7% of total HP as shields; worlds +20%."},
-	"phase_shields": {"name": "Phase Shields", "group": "defense", "line": "shields", "tier": 2, "requires": ["deflectors"], "cost": {"spice": 90}, "time": 180.0,
+	"phase_shields": {"name": "Crystal Prisms", "group": "defense", "line": "shields", "tier": 2, "requires": ["deflectors"], "cost": {"spice": 90}, "time": 180.0,
 		"effects": {"shield_total": 0.08, "world_shield": 0.25}, "desc": "+8% of total HP as shields; worlds +25%."},
 	"aegis_matrix": {"name": "Aegis Matrix", "group": "defense", "line": "shields", "tier": 3, "requires": ["phase_shields"], "cost": {"spice": 300}, "time": 260.0,
 		"effects": {"shield_total": 0.15, "world_shield": 0.45}, "desc": "+15% of total HP as shields; worlds +45%."},
