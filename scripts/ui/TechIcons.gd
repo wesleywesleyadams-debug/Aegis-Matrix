@@ -54,7 +54,7 @@ static func _paint(id: String) -> Image:
 	var col: Color = GROUP_COLORS.get(t.get("group", ""), Color("a8b4d4"))
 	var line: String = t.get("line", "")
 	if line != "":
-		col = Defs.LAYER_COLORS.get(line.trim_suffix("s"), col) if line != "screens" else Color("c9b6ff")
+		col = Defs.LAYER_COLORS.get(line.trim_suffix("s"), col) if line != "deflectors" else Color("c9b6ff")
 	_tile(img, col, hash(id))
 	var keys: Array = t.get("effects", {}).keys()
 	var main: String = keys[0] if not keys.is_empty() else ""

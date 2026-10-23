@@ -847,16 +847,16 @@ func _tech_caption(id: String) -> String:
 		"gyro_stabilizers": return "No accuracy loss on the move. Without it a ship firing at full speed lands only about %d%% of its shots (less loss the slower it goes). Essential for kiting, chasing and fighting while retreating." % int(round(Ship.MOVING_ACCURACY * 100.0))
 		"overkill_awareness": return "Your side keeps count of the damage already in flight at each enemy. When those shots will finish it, the other guns (turrets, corvettes' fixed guns, starbases, outposts and Mining Stations) pick the nearest enemy that is not already doomed instead of adding more; if every enemy in reach is doomed they fire anyway, and a target whose doomed shots miss is taken up again. Ships hunting for a target pass over doomed ones too. Area shots (bombs, blasts) are not counted. Worth it in big fights with many guns on many small targets (corvette swarms, mixed fleets), where piled-on volleys waste the most; little help against a few large hulls."
 		# --- Defense
-		"deflectors", "phase_shields", "aegis_matrix":
-			var w4: String = {"deflectors": "Shields are the layer that comes back: they regenerate, for a little energy, once a ship stops taking hits, so this pays off over many fights. Shield-heavy classes gain the least, in proportion, since they already carry the most.", "phase_shields": "Also thickens planetary shields and a Radiation Sail Array's solar shield, which refills just as fast (each energy harvested charges a share of the maximum).", "aegis_matrix": "The biggest step; commit to it when most of your fleet's toughness is shields (cruisers, carriers, starbases)."}[id]
+		"phase_shields", "crystal_prisms", "aegis_matrix":
+			var w4: String = {"phase_shields": "Shields are the layer that comes back: they regenerate, for a little energy, once a ship stops taking hits, so this pays off over many fights. Shield-heavy classes gain the least, in proportion, since they already carry the most.", "crystal_prisms": "Also thickens planetary shields and a Radiation Sail Array's solar shield, which refills just as fast (each energy harvested charges a share of the maximum).", "aegis_matrix": "The biggest step; commit to it when most of your fleet's toughness is shields (cruisers, carriers, starbases)."}[id]
 			return "Every ship and construct gains shields equal to %d%% of its total base HP (hull + armor + shields). Worlds' planetary shields gain +%d%% of themselves. %s" % [_pct(id, "shield_total"), _pct(id, "world_shield"), w4]
 		"composite_plating", "reactive_armor", "neutronium_armor":
 			var w5: String = {"composite_plating": "Armor never regenerates; only a Repair Tender restores it, so it suits fleets that fight decisively or bring tenders. Worlds have none.", "reactive_armor": "Breachers and Burst Cyclers are the enemy's answer to it.", "neutronium_armor": "The biggest step; armor never comes back, so pair it with Repair Tenders."}[id]
 			return "Every ship and construct gains armor equal to %d%% of its total base HP (hull + armor + shields). %s" % [_pct(id, "armor_total"), w5]
-		"reinforced_frames", "nanite_plating", "adaptive_hulls":
-			var w6: String = {"reinforced_frames": "Hull is the last layer, the one Ravagers and Rupture Charges hit hardest, so this blunts both. Since the bonus is a share of all three layers, it helps every class equally.", "nanite_plating": "Harvesters gain too, and with Convoy Protocols a harvester's extra shields and armor grow with its hull.", "adaptive_hulls": "The biggest step; hull is the layer Ravagers hit hardest."}[id]
+		"reinforced_frames", "living_metals", "adaptive_hulls":
+			var w6: String = {"reinforced_frames": "Hull is the last layer, the one Ravagers and Rupture Charges hit hardest, so this blunts both. Since the bonus is a share of all three layers, it helps every class equally.", "living_metals": "Harvesters gain too, and with Convoy Protocols a harvester's extra shields and armor grow with its hull.", "adaptive_hulls": "The biggest step; hull is the layer Ravagers hit hardest."}[id]
 			return "Every ship and construct gains hull equal to %d%% of its total base HP (hull + armor + shields). %s" % [_pct(id, "hull_total"), w6]
-		"flak_screens", "point_defense", "aegis_umbrella":
+		"flak_deflectors", "defense_network", "iron_umbrella":
 			var why4: String = "Cheap: the best defense for the price." if int(t["tier"]) == 1 else ("Worth it once the fleet is most of your spending." if int(t["tier"]) == 2 else "Expensive, but no layer tech gives as much in one step.")
 			return "-%d%% damage taken by every ship and construct, before shields. Deflectors add together: all three cut %d%% of every hit, radiation included. Worlds are not covered. %s" % [_pct(id, "damage_taken"), int(round(_tot("damage_taken") * 100.0)), why4]
 		# --- Constructs
@@ -943,7 +943,7 @@ func _research_rows(g: String) -> Array:
 			return rows
 		"defense":
 			var out: Array = []
-			for line in ["shields", "armor", "hull", "screens"]:
+			for line in ["shields", "armor", "hull", "deflectors"]:
 				var ids: Array = ["", "", ""]
 				for id in Defs.TECHS:
 					if Defs.TECHS[id].get("line", "") == line:

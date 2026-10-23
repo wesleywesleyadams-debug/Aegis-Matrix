@@ -528,12 +528,12 @@ const TECHS := {
 	"logistics_command": {"name": "Logistics Command", "group": "logistics", "tier": 3, "requires": ["bulk_holds"], "cost": {"spice": 240}, "time": 225.0,
 		"effects": {"harvest": 0.25, "cargo": 0.25}, "desc": "Harvesters gather 25% faster, carry +25% per load."},
 
-	# --- Defense: the Deflectors line (id "screens"), soaking damage before the layers see it.
-	"flak_screens": {"name": "Flak Deflectors", "group": "defense", "line": "screens", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 50.0,
+	# --- Defense: the Deflectors line (id "deflectors"), soaking damage before the layers see it.
+	"flak_deflectors": {"name": "Flak Deflectors", "group": "defense", "line": "deflectors", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 50.0,
 		"effects": {"damage_taken": 0.07}, "desc": "-7% damage taken: ships and constructs."},
-	"point_defense": {"name": "Defense Network", "group": "defense", "line": "screens", "tier": 2, "requires": ["flak_screens"], "cost": {"spice": 60}, "time": 90.0,
+	"defense_network": {"name": "Defense Network", "group": "defense", "line": "deflectors", "tier": 2, "requires": ["flak_deflectors"], "cost": {"spice": 60}, "time": 90.0,
 		"effects": {"damage_taken": 0.08}, "desc": "-8% damage taken: ships and constructs."},
-	"aegis_umbrella": {"name": "Iron Umbrella", "group": "defense", "line": "screens", "tier": 3, "requires": ["point_defense"], "cost": {"spice": 240}, "time": 235.0,
+	"iron_umbrella": {"name": "Iron Umbrella", "group": "defense", "line": "deflectors", "tier": 3, "requires": ["defense_network"], "cost": {"spice": 240}, "time": 235.0,
 		"effects": {"damage_taken": 0.15}, "desc": "-15% damage taken: ships and constructs."},
 
 	# Hull line: the warship classes unlock one after the other.
@@ -575,11 +575,11 @@ const TECHS := {
 	# Defense lines (research screen's Defenses tab): shields, armor, hull. Each
 	# is three tiers of big, expensive upgrades for every ship and starbase,
 	# so which layer to invest in is a real strategic choice.
-	"deflectors": {"name": "Phase Shields", "group": "defense", "line": "shields", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
+	"phase_shields": {"name": "Phase Shields", "group": "defense", "line": "shields", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
 		"effects": {"shield_total": 0.07, "world_shield": 0.20}, "desc": "+7% of total HP as shields; worlds +20%."},
-	"phase_shields": {"name": "Crystal Prisms", "group": "defense", "line": "shields", "tier": 2, "requires": ["deflectors"], "cost": {"spice": 90}, "time": 180.0,
+	"crystal_prisms": {"name": "Crystal Prisms", "group": "defense", "line": "shields", "tier": 2, "requires": ["phase_shields"], "cost": {"spice": 90}, "time": 180.0,
 		"effects": {"shield_total": 0.08, "world_shield": 0.25}, "desc": "+8% of total HP as shields; worlds +25%."},
-	"aegis_matrix": {"name": "Aegis Matrix", "group": "defense", "line": "shields", "tier": 3, "requires": ["phase_shields"], "cost": {"spice": 300}, "time": 260.0,
+	"aegis_matrix": {"name": "Aegis Matrix", "group": "defense", "line": "shields", "tier": 3, "requires": ["crystal_prisms"], "cost": {"spice": 300}, "time": 260.0,
 		"effects": {"shield_total": 0.15, "world_shield": 0.45}, "desc": "+15% of total HP as shields; worlds +45%."},
 	"composite_plating": {"name": "Composite Plating", "group": "defense", "line": "armor", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
 		"effects": {"armor_total": 0.07}, "desc": "+7% of total HP as armor: ships and constructs."},
@@ -589,9 +589,9 @@ const TECHS := {
 		"effects": {"armor_total": 0.15}, "desc": "+15% of total HP as armor: ships and constructs."},
 	"reinforced_frames": {"name": "Reinforced Frames", "group": "defense", "line": "hull", "tier": 1, "requires": [], "cost": {"spice": 30}, "time": 120.0,
 		"effects": {"hull_total": 0.07}, "desc": "+7% of total HP as hull: ships and constructs."},
-	"nanite_plating": {"name": "Living Metals", "group": "defense", "line": "hull", "tier": 2, "requires": ["reinforced_frames"], "cost": {"spice": 90}, "time": 180.0,
+	"living_metals": {"name": "Living Metals", "group": "defense", "line": "hull", "tier": 2, "requires": ["reinforced_frames"], "cost": {"spice": 90}, "time": 180.0,
 		"effects": {"hull_total": 0.08}, "desc": "+8% of total HP as hull: ships and constructs."},
-	"adaptive_hulls": {"name": "Adaptive Hulls", "group": "defense", "line": "hull", "tier": 3, "requires": ["nanite_plating"], "cost": {"spice": 300}, "time": 260.0,
+	"adaptive_hulls": {"name": "Adaptive Hulls", "group": "defense", "line": "hull", "tier": 3, "requires": ["living_metals"], "cost": {"spice": 300}, "time": 260.0,
 		"effects": {"hull_total": 0.15}, "desc": "+15% of total HP as hull: ships and constructs."},
 	"solar_collectors": {"name": "Solar Collectors", "group": "worlds", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 45.0,
 		"effects": {"energy": 0.15}, "desc": "+15% energy from Power Plants and Sail Arrays; the extra burns no fuel."},

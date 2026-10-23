@@ -11,7 +11,12 @@ const VERSION := 1
 
 ## Techs replaced by another in the same slot: older saves get the new one.
 ## (Save migration: Defensive Fire became Overkill Awareness.)
-const RENAMED_TECHS := {"defensive_fire": "overkill_awareness"}
+## Old id -> current id, looked up once (not chained): "deflectors" and
+## "phase_shields" swap meaning, so both map in a single step.
+const RENAMED_TECHS := {"defensive_fire": "overkill_awareness",
+	"deflectors": "phase_shields", "phase_shields": "crystal_prisms",
+	"flak_screens": "flak_deflectors", "point_defense": "defense_network",
+	"aegis_umbrella": "iron_umbrella", "nanite_plating": "living_metals"}
 
 static func _v(p: Vector2) -> Array:
 	return [p.x, p.y]

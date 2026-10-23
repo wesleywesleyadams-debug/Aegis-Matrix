@@ -71,7 +71,7 @@ var _defs_tab: Button
 ## group id -> its tab button, so a dev capture can open any page.
 var _research_tabs := {}
 ## Layer icon per defense line (Defs.LAYER_COLORS).
-const LINE_ICONS := {"shields": "icon_layer_shield", "armor": "icon_layer_armor", "hull": "icon_layer_hull", "screens": "icon_layer_screens"}
+const LINE_ICONS := {"shields": "icon_layer_shield", "armor": "icon_layer_armor", "hull": "icon_layer_hull", "deflectors": "icon_layer_screens"}
 var _build_buttons := {}
 var _queue_row: HFlowContainer
 ## The minimap, so orders can be issued through it (see Minimap._gui_input).
@@ -820,7 +820,7 @@ func _build_research(root: Control) -> void:
 
 	# Defense: one row per layer line.
 	var def_rows: Array = []
-	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]], ["screens", "DEFLECTORS", Color("c9b6ff")]]:
+	for line in [["shields", "SHIELDS", Defs.LAYER_COLORS["shield"]], ["armor", "ARMOR", Defs.LAYER_COLORS["armor"]], ["hull", "HULL", Defs.LAYER_COLORS["hull"]], ["deflectors", "DEFLECTORS", Color("c9b6ff")]]:
 		var ids: Array = ["", "", ""]
 		for id in Defs.TECHS:
 			if Defs.TECHS[id].get("line", "") == line[0]:

@@ -27,8 +27,8 @@ static func has_method_scene(id: String) -> bool:
 const SCENES := [
 	"garrison_guns", "orbital_yards", "modular_frames", "depots", "reinforced_docks", "forward_bases",
 	"outposts", "rapid_assembly", "citadel_protocols", "warp_gates", "shipyard_networks", "orbital_elevators",
-	"deflectors", "phase_shields", "aegis_matrix", "composite_plating", "reactive_armor", "neutronium_armor",
-	"reinforced_frames", "nanite_plating", "adaptive_hulls", "flak_screens", "point_defense", "aegis_umbrella",
+	"phase_shields", "crystal_prisms", "aegis_matrix", "composite_plating", "reactive_armor", "neutronium_armor",
+	"reinforced_frames", "living_metals", "adaptive_hulls", "flak_deflectors", "defense_network", "iron_umbrella",
 	"ion_cannons", "particle_lances", "capital_batteries", "targeting_arrays", "beam_focusing", "lance_batteries",
 	"autoloaders", "heavy_mounts", "scatter_arrays", "overcharged_coils", "burst_cyclers", "dark_matter",
 	"solar_collectors", "plasma_reactors", "hullbreaker_rounds",
@@ -173,10 +173,10 @@ static func call_scene(id: String, img: Image) -> void:
 			_line(img, Vector2(32, 40), Vector2(32, 12), 1.5, Color("c8d2ea"))
 			_sprite(img, "ship_mining_station", Vector2(32, 12), 16.0)
 		# ---------------------------------------------------------- defense
-		"deflectors":
+		"phase_shields":
 			_sprite(img, "ship_destroyer", C, 30.0)
 			_arc(img, C, 22.0, -0.9, 0.9, 3.0, Color("7fd8ff"))
-		"phase_shields":
+		"crystal_prisms":
 			_sprite(img, "ship_destroyer", C, 28.0)
 			_ring(img, C, 22.0, 2.0, Color("7fd8ff", 0.9))
 			_ring(img, C, 18.0, 1.5, Color("b0f0ff", 0.5))
@@ -202,7 +202,7 @@ static func call_scene(id: String, img: Image) -> void:
 			_line(img, Vector2(10, 50), Vector2(52, 50), 2.0, Color("9aa6c4"))
 			for k in 3:
 				_line(img, Vector2(10 + k * 14, 14), Vector2(24 + k * 14, 50), 1.5, Color("6fe07a"))
-		"nanite_plating":
+		"living_metals":
 			_sprite(img, "ship_destroyer", C, 30.0)
 			for k in 24:
 				var a := float(k) * 2.4
@@ -212,15 +212,15 @@ static func call_scene(id: String, img: Image) -> void:
 			_hex(img, C + Vector2(-8, -6), 5.0, 1.2, Color("6fe07a"))
 			_hex(img, C + Vector2(4, 4), 5.0, 1.2, Color("6fe07a"))
 			_hex(img, C + Vector2(12, -6), 5.0, 1.2, Color("6fe07a"))
-		"flak_screens":
+		"flak_deflectors":
 			_sprite(img, "ship_corvette", C, 22.0)
 			for q in [Vector2(14, 14), Vector2(50, 18), Vector2(48, 48), Vector2(16, 46), Vector2(32, 10)]:
 				_burst(img, q, 4.5, Color("c9b6ff"))
-		"point_defense":
+		"defense_network":
 			_sprite(img, "ship_destroyer", Vector2(20, 42), 24.0)
 			_beam(img, Vector2(26, 36), Vector2(48, 14), Color("c9b6ff"), 1.5)
 			_burst(img, Vector2(48, 14), 5.0, Color("ffd84a"))
-		"aegis_umbrella":
+		"iron_umbrella":
 			for q in [Vector2(18, 44), Vector2(32, 48), Vector2(46, 44)]:
 				_sprite(img, "ship_corvette", q, 14.0)
 			_arc(img, Vector2(32, 50), 28.0, PI, TAU, 3.0, Color("c9b6ff"))
