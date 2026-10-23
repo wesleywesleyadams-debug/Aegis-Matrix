@@ -174,8 +174,22 @@ static func call_scene(id: String, img: Image) -> void:
 			_sprite(img, "ship_mining_station", Vector2(32, 12), 16.0)
 		# ---------------------------------------------------------- defense
 		"phase_shields":
-			_sprite(img, "ship_destroyer", C, 30.0)
-			_arc(img, C, 22.0, -0.9, 0.9, 3.0, Color("7fd8ff"))
+			# C: a ship in a bubble that is phasing in: the right half solid and
+			# lit by a hit, the left half still resolving as cyan scanlines.
+			_sprite(img, "ship_destroyer", C, 28.0)
+			for k in 15:
+				var y := 12.0 + k * 3.0
+				var dy := y - C.y
+				if absf(dy) >= 21.0:
+					continue
+				var hx := sqrt(21.0 * 21.0 - dy * dy)
+				_line(img, Vector2(C.x - hx, y), Vector2(C.x - hx + 3.0, y), 1.2, SH[3])
+				_line(img, Vector2(C.x - hx + 3.0, y), Vector2(C.x - 2.0, y), 1.0, Color(SH[2], 0.35))
+			_band_arc(img, C, 21.0, -PI * 0.5, PI * 0.5, 3.6, SH)
+			var hit := C + Vector2.from_angle(-0.6) * 22.0
+			for k in 3:
+				_arc(img, hit, 4.0 + k * 3.5, 1.7, 4.0, 1.0, Color(SH[3], 0.9 - k * 0.25))
+			_impact(img, hit, Vector2(60, 4))
 		"crystal_prisms":
 			_sprite(img, "ship_destroyer", C, 28.0)
 			_ring(img, C, 22.0, 2.0, Color("7fd8ff", 0.9))
@@ -776,3 +790,24 @@ static func _chrome_blob(img: Image, c: Vector2, r: float, lobes: Array, axis: V
 	_poly(img, shape.call(0.46, Vector2(-0.22, -0.24) * r), Color("b9c1cd"))
 	_arc(img, c + Vector2(0.05, 0.1) * r, r * 0.62, 0.3, 1.5, 1.0, Color("8d95a3"))
 	_disc(img, c + Vector2(-0.4, -0.4) * r, r * 0.16, Color.WHITE)
+
+# ------------------------------------------------ shared icon pieces
+const SHOT := Color("ff4a3a")
+const FLASH := Color("fff2b0")
+## Shield tones: outline, deep, body, light, highlight.
+const SH := [Color("0b2c44"), Color("1f6d9c"), Color("3fa8dc"), Color("7fd8ff"), Color("e8fbff")]
+
+## Crisp banded arc: outline, body, deep inner band, light outer band, highlight line.
+static func _band_arc(img: Image, c: Vector2, r: float, a0: float, a1: float, w: float, tones: Array) -> void:
+	_arc(img, c, r, a0, a1, w + 1.6, tones[0])
+	_arc(img, c, r, a0, a1, w, tones[2])
+	_arc(img, c, r - w * 0.28, a0, a1, w * 0.3, tones[1])
+	_arc(img, c, r + w * 0.22, a0, a1, w * 0.3, tones[3])
+	_arc(img, c, r + w * 0.3, a0 + 0.12, a1 - 0.35, 1.0, tones[4])
+
+## A red bolt from `from` stopped at `at` with a white-yellow flash.
+static func _impact(img: Image, at: Vector2, from: Vector2) -> void:
+	_line(img, from, at, 2.4, Color("6a0e08"))
+	_line(img, from, at, 1.4, SHOT)
+	_burst(img, at, 5.0, FLASH)
+	_disc(img, at, 1.8, Color.WHITE)
