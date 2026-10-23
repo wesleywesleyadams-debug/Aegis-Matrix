@@ -1,5 +1,5 @@
 class_name Defs
-## Static data for Stardust Dominion: resources, ship classes, stations, planet
+## Static data for Aegis Matrix: resources, ship classes, stations, planet
 ## types, and the tech tree. Ranges/speeds are in world pixels.
 ##
 ## Economy rules (see Game.pay_over_time): ship/starbase construction and

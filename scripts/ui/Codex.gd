@@ -464,7 +464,7 @@ func _pic(kind: String, caption: String, size: Vector2) -> void:
 	_body.add_child(col)
 
 func _page_overview() -> void:
-	_heading("Stardust Dominion")
+	_heading("Aegis Matrix")
 	_pic("lose", "Starbases build your ships and take in what harvesters haul; worlds feed and power everything.", Vector2(460, 150))
 	_plate([["starbase", "Starbase", EDGE_LIT], ["planet_terran_s", "Worlds"], ["ship_miner", "Harvesters"],
 		["ship_corvette", "Warships"], ["asteroid_0", "Belts"]], 68.0, true)

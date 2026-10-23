@@ -33,9 +33,9 @@ const BUILTIN_TRACKS := [
 	["cage_of_the_cryptid", "Cage of the Cryptid (Joth)"],
 	["unexpected_trouble", "Unexpected Trouble (section31)"],
 	["sentry", "Sentry (section31)"],
-	["game", "Stardust Dominion Synth: In-Game"],
-	["title", "Stardust Dominion Synth: Title"],
-	["lobby", "Stardust Dominion Synth: Lobby"],
+	["game", "Aegis Matrix Synth: In-Game"],
+	["title", "Aegis Matrix Synth: Title"],
+	["lobby", "Aegis Matrix Synth: Lobby"],
 ]
 ## Imported songs live here; their track id is "user:<file name>".
 const USER_DIR := "user://music"
