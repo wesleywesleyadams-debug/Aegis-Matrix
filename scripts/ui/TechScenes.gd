@@ -455,21 +455,17 @@ static func call_scene(id: String, img: Image) -> void:
 			for p in [c + Vector2(0, -21).rotated(0.2), c + Vector2(0, 21).rotated(0.2)]:
 				_joint(img, p, 2.0, STEEL)
 		"overkill_awareness":
-			# Two guns: one's bolts already converge on a crossed-out wreck
-			# (top), the other has switched to a fresh target (right).
-			_disc(img, Vector2(12, 50), 7.0, Color("6a7596"))
-			_barrel(img, Vector2(12, 48), Vector2(24, 36), 3.0)
-			_disc(img, Vector2(26, 56), 7.0, Color("6a7596"))
-			_barrel(img, Vector2(26, 54), Vector2(42, 48), 3.0)
-			_beam(img, Vector2(18, 30), Vector2(20, 22), Color("ffd84a"), 1.5)
-			_beam(img, Vector2(24, 28), Vector2(22, 20), Color("ffd84a"), 1.5)
-			_ring(img, Vector2(20, 14), 7.0, 1.5, Color("8a95b8"))
-			_line(img, Vector2(14, 8), Vector2(26, 20), 2.0, Color("ff4a4a"))
-			_line(img, Vector2(14, 20), Vector2(26, 8), 2.0, Color("ff4a4a"))
-			_beam(img, Vector2(44, 46), Vector2(52, 40), Color("ffd84a"), 1.5)
-			_ring(img, Vector2(52, 32), 8.0, 2.0, Color("ff6a4a"))
-			_line(img, Vector2(52, 22), Vector2(52, 42), 1.0, Color("ff6a4a"))
-			_line(img, Vector2(42, 32), Vector2(62, 32), 1.0, Color("ff6a4a"))
+			# V1: the iris in the middle; the doomed target in the left of the eye,
+			# the locked target in the right.
+			var c := Vector2(30, 30)
+			_eye(img, c, 9.0, 3.4)
+			_disc(img, c + Vector2(-4, -4), 1.3, Color.WHITE)
+			var t1 := Vector2(16.5, 29)
+			var t2 := Vector2(44, 30)
+			_blip(img, t1, 2.0, true)
+			_doomed(img, t1, 2.8)
+			_cblip(img, t2, 2.0)
+			_brackets(img, t2, 4.2, QCYAN)
 		"autoloaders":
 			# B: a spinning drum magazine seen end-on, rounds in every chamber, one
 			# kicked out of the loading gate.
@@ -1430,3 +1426,54 @@ static func _rotor(img: Image, c: Vector2, rx: float, ry: float) -> void:
 	_ellipse(img, c + Vector2(-rx * 0.15, -ry * 0.2), Vector2(rx * 0.7, ry * 0.6), STEEL[3])
 	_ellipse(img, c, Vector2(rx * 0.25, ry * 0.25), STEEL[0])
 	_ellipse(img, c, Vector2(rx * 0.15, ry * 0.15), QCYAN)
+
+## The steel-lidded targeting eye (Target Prediction Y); iris radius `ir`,
+## pupil radius `pr` (0 = none). Returns nothing; draw contents after.
+static func _eye(img: Image, c: Vector2, ir: float, pr: float) -> void:
+	var lid := []
+	for k in 25:
+		var t := k / 24.0
+		lid.append(Vector2(lerpf(4, 56, t), c.y - sin(t * PI) * 16.0))
+	for k in 25:
+		var t := 1.0 - k / 24.0
+		lid.append(Vector2(lerpf(4, 56, t), c.y + sin(t * PI) * 14.0))
+	var outl := []
+	var inner := []
+	for p in lid:
+		outl.append(c + (p - c) * 1.08)
+		inner.append(c + (p - c) * 0.82)
+	_poly(img, outl, STEEL[0])
+	_poly(img, lid, STEEL[2])
+	_poly(img, inner, Color("061420"))
+	_line(img, lid[3] + Vector2(1, 1.5), lid[12] + Vector2(0, 1.5), 1.0, STEEL[4])
+	_disc(img, c, ir + 1.0, QL[0])
+	_disc(img, c, ir, QL[1])
+	_disc(img, c + Vector2(-1, -1), ir * 0.78, QL[2])
+	if pr > 0.0:
+		_disc(img, c, pr, Color("05060c"))
+
+## A target blip.
+static func _blip(img: Image, p: Vector2, r: float, dim: bool) -> void:
+	_disc(img, p, r + 0.8, QL[0])
+	_disc(img, p, r, QL[1] if dim else QL[2])
+	_disc(img, p + Vector2(-r * 0.3, -r * 0.3), r * 0.45, QL[2] if dim else QL[4])
+
+## A bright cyan-white target blip (reads on the violet iris).
+static func _cblip(img: Image, p: Vector2, r: float) -> void:
+	_disc(img, p, r + 0.8, QL[0])
+	_disc(img, p, r, QCYAN)
+	_disc(img, p + Vector2(-r * 0.3, -r * 0.3), r * 0.45, Color.WHITE)
+
+## "Already doomed" mark: a small X.
+static func _doomed(img: Image, p: Vector2, s: float) -> void:
+	for d in [Vector2(1, 1), Vector2(1, -1)]:
+		_line(img, p - d * s, p + d * s, 2.2, Color("1a0a10"))
+		_line(img, p - d * s, p + d * s, 1.0, Color("ff6a8a"))
+
+## Corner brackets locking a target.
+static func _brackets(img: Image, p: Vector2, s: float, col: Color) -> void:
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			var q := p + Vector2(sx, sy) * s
+			_line(img, q, q - Vector2(sx * s * 0.5, 0), 1.0, col)
+			_line(img, q, q - Vector2(0, sy * s * 0.5), 1.0, col)
