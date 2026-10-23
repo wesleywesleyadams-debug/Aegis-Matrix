@@ -499,10 +499,24 @@ static func call_scene(id: String, img: Image) -> void:
 			_disc(img, hub + Vector2(-1, -1), 5.4, STEEL[2])
 			_joint(img, hub, 2.4, STEEL)
 		"overcharged_coils":
-			for k in 5:
-				_ellipse(img, Vector2(18 + k * 7, 32), Vector2(3, 12), Color("c87a3a"))
-			for q in [Vector2(16, 14), Vector2(48, 50), Vector2(52, 16)]:
-				_line(img, q, q + Vector2(4, 6), 1.5, Color("b0f0ff"))
+			# B: the coil itself: copper windings round a core, glowing past their
+			# limit, arcs leaping off, a bolt leaving its tip.
+			var a := Vector2(10, 50)
+			var b := Vector2(38, 22)
+			var d := (b - a).normalized()
+			var n := d.orthogonal()
+			_girder(img, a, b, 5.0, STEEL)
+			for k in 7:
+				var p := a.lerp(b, 0.12 + k * 0.12)
+				var hot := k / 6.0
+				var col: Color = COPPER[2].lerp(OC[3], hot)
+				_line(img, p + n * 6.0 - d * 1.0, p - n * 6.0 + d * 1.0, 3.2, COPPER[0])
+				_line(img, p + n * 5.4 - d * 1.0, p - n * 5.4 + d * 1.0, 2.0, col)
+				_line(img, p + n * 5.0 - d * 1.4, p + n * 1.0 - d * 1.2, 1.0, COPPER[4])
+			_oc_zap(img, a.lerp(b, 0.7) + n * 6.0, a.lerp(b, 0.75) + n * 13.0, 21)
+			_oc_zap(img, a.lerp(b, 0.85) - n * 6.0, a.lerp(b, 0.95) - n * 12.0, 22)
+			_disc(img, b + d * 2.0, 3.4, Color(OC[2], 0.5))
+			_oc_bolt(img, b + d * 2.0, b + d * 26.0, 2.6)
 		"burst_cyclers":
 			_disc(img, Vector2(18, 32), 10.0, Color("6a7596"))
 			for k in 3:
@@ -1271,3 +1285,26 @@ static func _tracer(img: Image, p: Vector2, dir: Vector2, len: float) -> void:
 	_line(img, p - dir * len, p, 2.2, Color(BR[2], 0.5))
 	_line(img, p - dir * len, p, 1.0, BR[3])
 	_disc(img, p, 1.0, BR[4])
+
+## Overcharge tones (electric yellow): outline, deep, body, light, highlight.
+const OC := [Color("2a2400"), Color("a89a10"), Color("ffe628"), Color("fff59a"), Color("ffffff")]
+
+const COPPER := [Color("2a1206"), Color("7a3a14"), Color("c8642a"), Color("f0a070"), Color("fff0e0")]
+
+## An overcharged bolt a -> b: fat glow, yellow body, white core.
+static func _oc_bolt(img: Image, a: Vector2, b: Vector2, w: float) -> void:
+	_line(img, a, b, w + 3.0, Color(OC[2], 0.3))
+	_line(img, a, b, w + 1.2, OC[1])
+	_line(img, a, b, w, OC[2])
+	_line(img, a, b, maxf(w * 0.4, 1.0), OC[4])
+
+## A jagged yellow crackle.
+static func _oc_zap(img: Image, a: Vector2, b: Vector2, seed_v: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	var n := (b - a).normalized().orthogonal()
+	var prev := a
+	for k in range(1, 5):
+		var q := a.lerp(b, k / 4.0) + (n * rng.randf_range(-2.0, 2.0) if k < 4 else Vector2.ZERO)
+		_line(img, prev, q, 1.0, OC[3] if k % 2 == 0 else OC[4])
+		prev = q
