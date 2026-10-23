@@ -2723,6 +2723,8 @@ const REGROUP_SHARE := 0.7
 const PRESERVE_EVERY := 2.0
 ## Enemies this close to a warship make it part of a fight.
 const FIGHT_RANGE := 600.0
+## Own warships this close to an engaged one fight as one group.
+const GROUP_RANGE := 900.0
 
 func _tough_frac(s: Ship) -> float:
 	return (s.hp + s.armor + s.shield) / maxf(s.max_hp + s.max_armor + s.max_shield, 1.0)
@@ -2802,17 +2804,20 @@ func _preserve(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array,
 	if v == null or Game.now() < st.get("next_preserve", 0.0):
 		return
 	st["next_preserve"] = Game.now() + PRESERVE_EVERY
-	# Local fights: warships with an enemy in sight, grouped by area.
-	var groups := {}
-	for s in war:
-		if _held_back(st, s) or v.enemy_near(s.global_position, FIGHT_RANGE) == 0:
+	# Local fights: warships with an enemy in sight, each with every free
+	# warship of ours within GROUP_RANGE of it (one fleet is one group, not
+	# split along a grid into fragments that each look outmatched).
+	var free := war.filter(func(s): return not _held_back(st, s))
+	var groups: Array = []
+	var taken := {}
+	for s in free:
+		if taken.has(s) or v.enemy_near(s.global_position, FIGHT_RANGE) == 0:
 			continue
-		var key := Vector2i((s.global_position / 800.0).round())
-		if not groups.has(key):
-			groups[key] = []
-		groups[key].append(s)
-	for key in groups:
-		var g: Array = groups[key]
+		var g: Array = free.filter(func(o): return not taken.has(o) and o.global_position.distance_to(s.global_position) < GROUP_RANGE)
+		for o in g:
+			taken[o] = true
+		groups.append(g)
+	for g: Array in groups:
 		var c := Vector2.ZERO
 		for s in g:
 			c += s.global_position
@@ -2843,11 +2848,11 @@ func _preserve(pid: int, st: Dictionary, game: Game, base: Starbase, war: Array,
 			_flog(pid, "retreat: %d warships from (%d,%d), odds %.2f obj %.1f%s" % [g.size(), c.x, c.y, odds, obj, " battered" if battered else ""])
 			continue
 		# Winning: the worst-hurt ships go home while the rest still win.
-		var keep := g.duplicate()
+		var keep: Array = g.duplicate()
 		for s in g:
 			if _tough_frac(s) >= PEEL_AT or keep.size() <= 1:
 				continue
-			var rest := keep.filter(func(o): return o != s)
+			var rest: Array = keep.filter(func(o): return o != s)
 			var p2 := _own_power(pid, rest, c, game)
 			if sqrt(p2.x * p2.y / pw_e) * (1.0 + obj) >= PRESERVE_WEIGHT * 1.2:
 				keep = rest
