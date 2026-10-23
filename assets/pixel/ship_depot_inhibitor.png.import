@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bw4rd1tgs0pgv"
-path="res://.godot/imported/ship_depot_scrambler_team.png-30d473f2bd61d2def9f98eb12cdc3811.ctex"
+uid="uid://b18nm5twyqlyx"
+path="res://.godot/imported/ship_depot_inhibitor.png-ca5bb0f04d8b30d681d848112a692397.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/pixel/ship_depot_scrambler_team.png"
-dest_files=["res://.godot/imported/ship_depot_scrambler_team.png-30d473f2bd61d2def9f98eb12cdc3811.ctex"]
+source_file="res://assets/pixel/ship_depot_inhibitor.png"
+dest_files=["res://.godot/imported/ship_depot_inhibitor.png-ca5bb0f04d8b30d681d848112a692397.ctex"]
 
 [params]
 

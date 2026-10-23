@@ -56,7 +56,7 @@ var starving: bool = false
 var siege_start_pop: float = 0.0
 var shield: float = 0.0
 var last_hit_time: float = -1000.0
-## Scrambler EMP (Abilities.emp_try): planetary shield off until this time.
+## Inhibitor EMP (Abilities.emp_try): planetary shield off until this time.
 var shield_off_until: float = -100.0
 ## Last time a hit got past the shield and killed pops (halts growth).
 var last_pop_hit_time: float = -1000.0

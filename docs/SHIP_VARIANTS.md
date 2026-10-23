@@ -41,13 +41,13 @@ its generalist.**
 | **Breacher** | x2.5 vs **armor** | 81% | red | two ribs across the hull |
 | **Ravager** | x2.2 vs **hull** | 83% | green | saw teeth along both edges |
 | **Disruptor** | **ignores shields and armor** (hull only) | 36% | orange V-shots | two stripes either side of the spine |
-| **Scrambler** | **EMP**: each hit switches the target's shields off for 5 s (no blocking, no recharge; they return at the value they had). A ship can EMP once per 4 s divided by its gun count (corvette 4 s, destroyer 2 s, cruiser 1.3 s, carrier 1 s). Works on ships, starbases, constructs, worlds and Radiation Sail Arrays | 83% | purple lasers | a row of V chevrons |
+| **Inhibitor** | **EMP**: each hit switches the target's shields off for 5 s (no blocking, no recharge; they return at the value they had). A ship can EMP once per 4 s divided by its gun count (corvette 4 s, destroyer 2 s, cruiser 1.3 s, carrier 1 s). Works on ships, starbases, constructs, worlds and Radiation Sail Arrays | 83% | purple lasers | a row of V chevrons |
 
 Hull markings are always drawn in the owner's player color, so the pattern alone
 names the variant (one line, two ribs, saw teeth, two stripes, chevrons); the
 shot color names the layer it hits. Cruisers fire
 torpedoes in the same colors (only lasers get the V shape). Against planets,
-piercing (Disruptor) shots skip the planetary shield, a Scrambler's EMP switches it off, Plasma hits it harder, and Ravager kills
+piercing (Disruptor) shots skip the planetary shield, a Inhibitor's EMP switches it off, Plasma hits it harder, and Ravager kills
 population faster.
 
 ## Which variant against what
@@ -55,19 +55,19 @@ population faster.
 Base damage needed to destroy a target, relative to a generalist
 (1.00 = the same, lower = kills faster):
 
-| Target | Plasma | Breacher | Ravager | Disruptor | Scrambler |
+| Target | Plasma | Breacher | Ravager | Disruptor | Inhibitor |
 |---|---|---|---|---|---|
 | Corvette (hull-heavy) | 1.08 | 1.14 | **0.91** | 1.47 | see note |
 | Destroyer (shield-heavy) | **0.93** | 1.16 | 1.01 | 1.00 | see note |
 | Cruiser (armor-heavy) | 1.12 | **0.93** | 1.06 | **0.82** | see note |
 | Starbase | 1.06 | 1.10 | **0.95** | 1.27 | see note |
 
-Scrambler: its EMP keeps shields off after the first hit, so it behaves roughly
+Inhibitor: its EMP keeps shields off after the first hit, so it behaves roughly
 like an 80%-damage shot that skips shields; the in-game Codex table computes
 this live (Defs.kill_cost).
 
 - Ravager: corvette swarms, starbases.
-- Plasma / Scrambler: shield-heavy fleets; a Scrambler's EMP also opens the shields for the rest of the fleet.
+- Plasma / Inhibitor: shield-heavy fleets; a Inhibitor's EMP also opens the shields for the rest of the fleet.
 - Breacher / Disruptor: armor-heavy fleets (Cruisers). Disruptor also ignores shield regeneration.
 - Wrong target: 5-46% worse than a plain generalist, so scouting decides.
 

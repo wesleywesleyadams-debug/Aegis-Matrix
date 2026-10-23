@@ -8,8 +8,8 @@ reaver_destroyer:1,world:1
 reaver_destroyer:1,world:1
 disruptor_destroyer:1,world:1
 disruptor_destroyer:1,world:1
-scrambler_destroyer:1,world:1
-scrambler_destroyer:1,world:1
+inhibitor_destroyer:1,world:1
+inhibitor_destroyer:1,world:1
 cruiser:1,world:1
 cruiser:1,world:1
 plasma_cruiser:1,world:1
@@ -20,8 +20,8 @@ reaver_cruiser:1,world:1
 reaver_cruiser:1,world:1
 disruptor_cruiser:1,world:1
 disruptor_cruiser:1,world:1
-scrambler_cruiser:1,world:1
-scrambler_cruiser:1,world:1
+inhibitor_cruiser:1,world:1
+inhibitor_cruiser:1,world:1
 destroyer:1,world:3
 destroyer:1,world:3
 plasma_destroyer:1,world:3
@@ -32,8 +32,8 @@ reaver_destroyer:1,world:3
 reaver_destroyer:1,world:3
 disruptor_destroyer:1,world:3
 disruptor_destroyer:1,world:3
-scrambler_destroyer:1,world:3
-scrambler_destroyer:1,world:3
+inhibitor_destroyer:1,world:3
+inhibitor_destroyer:1,world:3
 cruiser:1,world:3
 cruiser:1,world:3
 plasma_cruiser:1,world:3
@@ -44,5 +44,5 @@ reaver_cruiser:1,world:3
 reaver_cruiser:1,world:3
 disruptor_cruiser:1,world:3
 disruptor_cruiser:1,world:3
-scrambler_cruiser:1,world:3
-scrambler_cruiser:1,world:3
+inhibitor_cruiser:1,world:3
+inhibitor_cruiser:1,world:3

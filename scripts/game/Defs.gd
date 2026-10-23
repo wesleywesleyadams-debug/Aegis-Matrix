@@ -737,7 +737,7 @@ static func marked_name(ship_type: String, level: int) -> String:
 ##            biggest layer on most ships)
 ##   pierce - skip layers entirely: 2 = shields and armor (Disruptor, 35% base
 ##            damage)
-##   emp    - Scrambler (80% base damage): hits switch the target's shields
+##   emp    - Inhibitor (80% base damage): hits switch the target's shields
 ##            off for Abilities.EMP_TIME (see Abilities.emp_try)
 ## All variants cost the same as their generalist. Balance: vs the
 ## generalists' distinct profiles (corvette hull-heavy, destroyer
@@ -762,15 +762,15 @@ const VARIANTS := {
 		"desc": "83% base damage, x2.2 against hull."},
 	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.36, "cost": 1.0, "color": Color("ff7a14"),
 		"desc": "Shots skip shields and armor and hit the hull, at 36% base damage."},
-	"scrambler": {"label": "Scrambler", "vs": {}, "pierce": 0, "damage": 0.83, "emp": true, "cost": 1.0, "color": Color("b06cff"),
+	"inhibitor": {"label": "Inhibitor", "vs": {}, "pierce": 0, "damage": 0.83, "emp": true, "cost": 1.0, "color": Color("b06cff"),
 		"desc": "83% base damage. Each hit EMPs the target: its shields go down for 5 s (they block nothing and don't recharge), then come back at the value they had. A ship can EMP once per 4 s divided by its gun count (corvette 4 s, carrier 1 s)."},
 }
 ## Which variants each generalist has so far.
 const VARIANTS_OF := {
-	"corvette": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
-	"destroyer": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
-	"cruiser": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
-	"carrier": ["plasma", "breacher", "reaver", "disruptor", "scrambler"],
+	"corvette": ["plasma", "breacher", "reaver", "disruptor", "inhibitor"],
+	"destroyer": ["plasma", "breacher", "reaver", "disruptor", "inhibitor"],
+	"cruiser": ["plasma", "breacher", "reaver", "disruptor", "inhibitor"],
+	"carrier": ["plasma", "breacher", "reaver", "disruptor", "inhibitor"],
 }
 
 static func _with_variants() -> Dictionary:
@@ -868,7 +868,7 @@ static func kill_cost(shield: float, armor_v: float, hull: float, variant: Strin
 	var vd: Dictionary = VARIANTS.get(variant, {"vs": {}, "pierce": 0, "damage": 1.0})
 	var vs: Dictionary = vd["vs"]
 	var need := hull / float(vs.get("hull", 1.0))
-	# Scrambler: after its first hit the EMP keeps the shields off, so (as an
+	# Inhibitor: after its first hit the EMP keeps the shields off, so (as an
 	# approximation) its fire goes to armor and hull as if shields were skipped.
 	var pr := int(vd["pierce"])
 	if vd.get("emp", false):

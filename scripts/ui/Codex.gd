@@ -527,7 +527,7 @@ func _page_variants() -> void:
 	_pic("variants", "Every variant costs the same as its generalist; its chevrons and shots share its color.", Vector2(460, 160))
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
-		"disruptor": "orange V-shot", "scrambler": "purple laser"}
+		"disruptor": "orange V-shot", "inhibitor": "purple laser"}
 	for v in Defs.VARIANTS:
 		var vd: Dictionary = Defs.VARIANTS[v]
 		var effect := ""
@@ -566,11 +566,11 @@ func _page_variants() -> void:
 	vgrid.add_theme_constant_override("h_separation", 16)
 	vgrid.add_theme_constant_override("v_separation", 12)
 	for vu in [["generalist", "Generalist", "No weak matchup: the safe pick when you don't know the enemy. Against starbases every variant is about even."],
-			["plasma", "Plasma", "Cruiser- and carrier-heavy fleets of uncertain mix: by the layer math it gives up less than Disruptor or Scrambler when the guess is wrong."],
+			["plasma", "Plasma", "Cruiser- and carrier-heavy fleets of uncertain mix: by the layer math it gives up less than Disruptor or Inhibitor when the guess is wrong."],
 			["breacher", "Breacher", "Destroyers: the best pick against them by the layer math."],
 			["reaver", "Ravager", "Corvette swarms, and bombarding worlds (it hits population hardest)."],
 			["disruptor", "Disruptor", "Cruisers, then carriers. Weak against corvettes and destroyers, which need clearly more damage to kill."],
-			["scrambler", "Scrambler", "Carriers and cruisers. Weakest of all against corvettes, and poor against destroyers."]]:
+			["inhibitor", "Inhibitor", "Carriers and cruisers. Weakest of all against corvettes, and poor against destroyers."]]:
 		var cell := VBoxContainer.new()
 		var vn := _label(vu[1], Defs.GENERALIST_SHOT if vu[0] == "generalist" else Defs.VARIANTS[vu[0]]["color"], 16)
 		cell.add_child(vn)
@@ -842,7 +842,7 @@ func _tech_caption(id: String) -> String:
 			var why3: String = {"autoloaders": "Worth about as much as a damage tech; take whichever is cheaper first.", "heavy_mounts": "Best with many small guns: corvette swarms, Kinetic Repeaters, Flak.", "scatter_arrays": "The fast-gun end of the tier-3 choice (Lance Batteries is the heavy-gun end)."}[id]
 			var mid3 := " It speeds the reload of ships, drones and starbases (outposts and Mining Stations keep theirs); more shots also means more Point-Defense needles." if int(t["tier"]) == 1 else ""
 			return "+%d%% rate of fire%s.%s %s" % [_pct(id, "fire_rate"), _cum_text(id, "fire_rate"), mid3, why3]
-		"overcharged_coils": return "%d%% of each hit ignores enemy shields and goes straight on to armor. Strongest against cruisers, carriers and starbases (shield-heavy); no help once a target's shields are down. Disruptor already skips shields, and a Scrambler's EMP switches them off, so it adds little to those." % _pct(id, "shield_pierce")
+		"overcharged_coils": return "%d%% of each hit ignores enemy shields and goes straight on to armor. Strongest against cruisers, carriers and starbases (shield-heavy); no help once a target's shields are down. Disruptor already skips shields, and a Inhibitor's EMP switches them off, so it adds little to those." % _pct(id, "shield_pierce")
 		"burst_cyclers": return "%d%% of what reaches the armor skips it and hits the hull. Best against destroyers and carriers, which carry the most armor. With Overcharged Coils a laser shot gets a quarter past each of the first two layers." % _pct(id, "armor_pierce")
 		"hullbreaker_rounds": return "Damage that reaches the hull is x%.2f. Every kill ends on the hull, so it helps against everything, most against hull-heavy corvettes and anything already stripped. Pairs with the two piercing techs, which push more of each shot onto the hull." % (1.0 + float(e["hull_damage"]))
 		"target_prediction": return "Unguided shots aim where a moving target will be, not where it is, led on its smoothed course: a ship braking hard is expected to stop, and one coming straight at the shooter is led less. Without it fast ships (corvettes, speed %d) dodge much of the fire aimed at them at range. Homing weapons don't need it. Cheap: worth it whenever you fight anything fast." % int(Defs.SHIPS["corvette"]["speed"])
@@ -865,7 +865,7 @@ func _tech_caption(id: String) -> String:
 		"garrison_guns": return "Construct guns hit +%d%%: starbases, Mining Stations and Frontier Outposts (world batteries are on the Worlds tab). It multiplies with Weapons damage: with all of both, a starbase shot is x%.2f. Worth it if raiders keep reaching your base or stations." % [_pct(id, "structure_damage"), (1.0 + float(e["structure_damage"])) * (1.0 + _tot("damage"))]
 		"reinforced_docks": return "+%d%% hull and armor on every construct: starbases, depots, stations, outposts and gates. Also multiplies the Defense hull and armor lines' added amounts. Buy it when your starbase is what the enemy is aiming for." % _pct(id, "structure")
 		"citadel_protocols": return "+%d%% construct shields (also applied to the Defense shield line's added amount) and +%d%% range for construct guns: starbases, outposts and Mining Stations (multiplied with Weapons range). A turtling pick: a starbase that outranges besiegers and refills its shields between waves." % [_pct(id, "structure_shield"), _pct(id, "structure_range")]
-		"depots": return "Unlocks the Weapons Depot (%s), which refits generalist warships into a specialist variant: Plasma, Breacher, Ravager, Disruptor or Scrambler. Needed for any variant at all. Leads to Outposts." % Defs.cost_text(Defs.WEAPONS_DEPOT["cost"])
+		"depots": return "Unlocks the Weapons Depot (%s), which refits generalist warships into a specialist variant: Plasma, Breacher, Ravager, Disruptor or Inhibitor. Needed for any variant at all. Leads to Outposts." % Defs.cost_text(Defs.WEAPONS_DEPOT["cost"])
 		"outposts": return "Unlocks the Frontier Outpost (%s): a lighter starbase - its shields, armor and hull cut down, and half its guns. It builds nothing and takes no cargo, but holds ground; construct gun research applies to it. Upkeep weighs as a cruiser. Use it to claim a belt or a choke point." % Defs.cost_text(Defs.FRONTIER_OUTPOST["cost"])
 		"warp_gates": return "Unlocks the Warp Gate (%s, no gun): garrison any number of ships inside, then fling them all %d-%d px at %dx speed, fog or not, every %d s. Ships inside still cost upkeep and die with the gate, which weighs as a starbase in the upkeep multiplier. Late-game reach for surprise strikes." % [Defs.cost_text(Defs.WARP_GATE["cost"]), int(Defs.WARP_GATE["warp_min"]), int(Defs.WARP_GATE["warp_max"]), int(Defs.WARP_GATE["warp_speed_mult"]), int(Defs.WARP_GATE["warp_cooldown"])]
 		"orbital_yards", "shipyard_networks":
@@ -1360,10 +1360,10 @@ func _page_terms() -> void:
 		["Class", "The hull a warship was built as, and keeps for life: Corvette, Destroyer, Cruiser or Carrier. You read it off the silhouette."],
 		["Mark", "How refined a class is, Mk I to Mk IV, bought on the Warships research tab. It applies to every ship of that class at once."],
 		["Generalist", "Any warship as built, before a refit: full damage to every defense layer."],
-		["Specialist / variant", "A refitted warship: Plasma, Breacher, Ravager, Disruptor or Scrambler. One refit only, and it is permanent."],
+		["Specialist / variant", "A refitted warship: Plasma, Breacher, Ravager, Disruptor or Inhibitor. One refit only, and it is permanent."],
 		["Layers", "Shields, armor and hull, in the order damage takes them."],
 		["Radiation", "Environmental damage inside a star's radiation zone (worst near the star) or a spice nebula (low, constant). Hits shields, armor and hull in turn and stops shield regeneration."],
-		["Pierce", "Skipping a layer entirely: Disruptor skips shields, Scrambler skips shields and armor."],
+		["Pierce", "Skipping a layer entirely: Disruptor skips shields, Inhibitor skips shields and armor."],
 		["Job", "What a ship is for beyond shooting: Deep Sensors, Radiation Sail, Field Repair."],
 		["Mod", "A research option that changes one ship class's weapon (Mods tab). One per class; another replaces it; click an active one to switch it off."],
 		["Blast", "The area an exploding shot hits: every enemy inside takes its full damage, the target included."],
@@ -1464,7 +1464,7 @@ const SHIP_NOTES := {
 	"constructor": "Builds stations and is used up doing it: a starbase to claim ground and produce ships, a Mining Station as a forward drop-off, or a Weapons Depot to refit warships. Starbase upkeep climbs steeply with each one, so the second and third are real economic decisions.",
 	"scout": "Cheap, fast and unarmed: its only purpose is sight. It sees far, into spice nebulae and through ion storms, and its beacons keep watching a spot after it has moved on.",
 	"tender": "Keeps a fleet alive between battles. Armor never comes back any other way, so a tender is what turns a worn-down fleet into a fresh one without going home.",
-	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there, charging a light-purple solar shield (100; each energy recharges 10% of it; full when built, charging even under fire) before any goes to your energy pool. The shield is a bubble nearly two carriers wide: one shared damage pillow that soaks enemy fire on every friendly ship, construct and world inside it, and while it is up nothing inside takes Radiation - friend or foe. Touching bubbles of your arrays merge into one mega shield that pools their points (three full arrays: 300); every hit is shared among the arrays in proportion to their charge, so the pool bursts for all of them at once when it hits 0. If they drift apart, each keeps its own share and becomes a separate bubble again. Shield techs on the Defense tab (Phase Shields, Crystal Prisms, Aegis Matrix) raise a solar shield's maximum like any other shield - all three: +90%, 190 points - and since each energy recharges 10% of the maximum, a bigger shield refills just as fast. Variant rules apply to solar shields as to any shield: Plasma hits them at x3.0, Disruptor and Scrambler shots pass straight through the bubble, and Overcharged Coils lets 25% of each hit through. The array itself is always immune to Radiation. A support ship with no weapon: it can't be refitted.",
+	"heatshield": "A support ship that lives where others can't: inside a star's radiation and spice nebulae. Its solar sail harvests 15 energy a minute there, charging a light-purple solar shield (100; each energy recharges 10% of it; full when built, charging even under fire) before any goes to your energy pool. The shield is a bubble nearly two carriers wide: one shared damage pillow that soaks enemy fire on every friendly ship, construct and world inside it, and while it is up nothing inside takes Radiation - friend or foe. Touching bubbles of your arrays merge into one mega shield that pools their points (three full arrays: 300); every hit is shared among the arrays in proportion to their charge, so the pool bursts for all of them at once when it hits 0. If they drift apart, each keeps its own share and becomes a separate bubble again. Shield techs on the Defense tab (Phase Shields, Crystal Prisms, Aegis Matrix) raise a solar shield's maximum like any other shield - all three: +90%, 190 points - and since each energy recharges 10% of the maximum, a bigger shield refills just as fast. Variant rules apply to solar shields as to any shield: Plasma hits them at x3.0, Disruptor and Inhibitor shots pass straight through the bubble, and Overcharged Coils lets 25% of each hit through. The array itself is always immune to Radiation. A support ship with no weapon: it can't be refitted.",
 	"corvette": "The cheap body of a fleet. Fast and short-ranged, it is bought in numbers.",
 	"destroyer": "An armored boat with two light turrets that track a target without turning the hull, and the longest reach of the small hulls.",
 	"cruiser": "Heavy shields and three laser turrets that outrange everything smaller. Slow to turn, so it is punished by anything that can stay off its nose, and it wants an escort of its own.",

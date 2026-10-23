@@ -58,7 +58,7 @@ static func allies_near(s: Node2D, r: float) -> Array:
 ## A Radiation Sail Array with a charged solar shield whose bubble
 ## (Defs.SAIL_RADIUS) contains `e`, or null. `owner_only` limits it to
 ## arrays of e's own side (for soaking enemy fire).
-## Scrambler EMP: a hit switches the target's shields off for EMP_TIME (each
+## Inhibitor EMP: a hit switches the target's shields off for EMP_TIME (each
 ## hit refreshes it). While off the shield blocks nothing and does not
 ## recharge, and it comes back at the value it had. Each ship can apply or
 ## refresh an EMP once per EMP_GUN_CD / its gun count (a 1-gun corvette every
@@ -152,7 +152,7 @@ static func sail_absorb(e: Node2D, amount: float, from: Node2D, profile: Diction
 		o.shield = 0.0 if soak >= total else o.shield - soak * o.shield / total
 		o.call("_solar_hit", from, before)
 		o.queue_redraw()
-	# A Scrambler hit soaked by the pool EMPs the arrays that took it.
+	# A Inhibitor hit soaked by the pool EMPs the arrays that took it.
 	if soak > 0.0 and profile.get("emp", false) and is_instance_valid(from):
 		emp_try(rsa, from, profile)
 	return past + rest - soak / m

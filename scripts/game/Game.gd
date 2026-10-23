@@ -2951,7 +2951,7 @@ func _enter_dev_capture() -> void:
 			var k: String = "cruiser" if i < 2 else ("destroyer" if i < 8 else "corvette")
 			# SL_MIXVARIANTS: every variant and mark on show, for the chevrons.
 			if OS.get_environment("SL_MIXVARIANTS") != "":
-				var vs9 := ["", "plasma_", "breacher_", "reaver_", "disruptor_", "scrambler_"]
+				var vs9 := ["", "plasma_", "breacher_", "reaver_", "disruptor_", "inhibitor_"]
 				k = vs9[i % 6] + k
 				for m9 in range(2, 5):
 					for c9 in ["corvette", "destroyer"]:
@@ -3137,7 +3137,7 @@ func _enter_dev_capture() -> void:
 		# Dev: shot colors. Rows of generalist, Ion, Breacher and Ravager corvettes
 		# fire at enemy destroyers.
 		var foe := 3 - player_id
-		var kinds := ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette", "disruptor_corvette", "scrambler_corvette"] if OS.get_environment("SL_SHOTS_ALL") != "" else ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette"]
+		var kinds := ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette", "disruptor_corvette", "inhibitor_corvette"] if OS.get_environment("SL_SHOTS_ALL") != "" else ["corvette", "plasma_corvette", "breacher_corvette", "reaver_corvette"]
 		for i in kinds.size():
 			var y := (420.0 if kinds.size() > 4 else 560.0) + i * 70.0
 			for j in 8:

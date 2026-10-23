@@ -151,7 +151,7 @@ func setup(from: Node2D, to: Node2D, weapon: String, dmg: float, spread: float =
 			modulate = Defs.VARIANTS[from.def["variant"]]["color"].lightened(0.15)
 			# Shots that bypass layers are colored by the layers they do hit:
 			# Disruptor (hull only) is orange, its lasers V-shaped; torpedoes stay
-			# round. Scrambler keeps its own purple.
+			# round. Inhibitor keeps its own purple.
 			if profile["pierce"] > 0:
 				if weapon == "laser":
 					texture = Defs.tex("bolt_v")

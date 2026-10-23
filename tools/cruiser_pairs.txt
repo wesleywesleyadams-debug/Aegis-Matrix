@@ -14,7 +14,7 @@ disruptor_cruiser:1,cruiser:1
 cruiser:1,disruptor_cruiser:1
 disruptor_cruiser:1,cruiser:1
 cruiser:1,disruptor_cruiser:1
-scrambler_cruiser:1,cruiser:1
-cruiser:1,scrambler_cruiser:1
-scrambler_cruiser:1,cruiser:1
-cruiser:1,scrambler_cruiser:1
+inhibitor_cruiser:1,cruiser:1
+cruiser:1,inhibitor_cruiser:1
+inhibitor_cruiser:1,cruiser:1
+cruiser:1,inhibitor_cruiser:1
