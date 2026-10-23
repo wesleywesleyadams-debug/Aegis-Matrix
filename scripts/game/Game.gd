@@ -4311,6 +4311,30 @@ const ARENA_RADIUS := 900.0
 
 ## A duel side's toughness: hull, armor and shields - or for a world, its
 ## population and planetary shield. `full` = at maximum.
+const DUEL_CONSTRUCTS := ["starbase", "outpost", "gate", "depot", "station"]
+
+## A construct's full price for duels: build cost plus the research chain
+## that unlocks it, every resource 1:1 (as ships are charged).
+func _duel_construct_cost(kind: String) -> float:
+	var d := Defs.construct_def(kind)
+	var tot := 0.0
+	for r in d["cost"]:
+		tot += float(d["cost"][r])
+	var tid: String = str(d.get("requires", ""))
+	while tid != "" and Defs.TECHS.has(tid):
+		for r in Defs.TECHS[tid]["cost"]:
+			tot += float(Defs.TECHS[tid]["cost"][r])
+		var rq: Array = Defs.TECHS[tid].get("requires", [])
+		tid = str(rq[0]) if not rq.is_empty() else ""
+	return tot
+
+func _duel_nearest(s: Node2D, foes: Array) -> Node:
+	var best: Node = null
+	for f in foes:
+		if is_instance_valid(f) and f.is_alive() and (best == null or s.global_position.distance_to(f.global_position) < s.global_position.distance_to(best.global_position)):
+			best = f
+	return best
+
 func _duel_tough(s: Node, full: bool) -> float:
 	if s is Planet:
 		return s.max_pop() + s.max_shield() if full else s.pop + s.shield
@@ -4607,6 +4631,14 @@ func _duel() -> void:
 			_on_tech_done(pair9[1], tid)
 	var budget := float(OS.get_environment("SL_DUEL_BUDGET")) if OS.get_environment("SL_DUEL_BUDGET") != "" else 2550.0
 	var specs := OS.get_environment("SL_DUEL").split(",")
+	# SL_DUEL_BUDGET=match: the ship side gets exactly what the construct
+	# side cost ("kind:N" = N constructs, build cost + research, 1:1).
+	if OS.get_environment("SL_DUEL_BUDGET") == "match":
+		for sp0 in specs:
+			var k0 := sp0.split(":")
+			if k0[0] in DUEL_CONSTRUCTS:
+				budget = _duel_construct_cost(k0[0]) * (int(k0[1]) if k0.size() > 1 else 1)
+		print("DUEL_BUDGET %d" % int(budget))
 	var c := Vector2(float(OS.get_environment("SL_DUEL_X")) if OS.get_environment("SL_DUEL_X") != "" else -900.0, -700.0)
 	# Default: the empty arena (SL_DUEL_MAP=1 fights on the map instead).
 	if OS.get_environment("SL_DUEL_MAP") == "":
@@ -4638,35 +4670,27 @@ func _duel() -> void:
 			print("DUEL_SIDE world: shield %d, pop %d, batteries %d" % [int(wn.shield), int(wn.pop), wn.count_building("battery")])
 			fleets[i].append(wn)
 			continue
-		# "outpost" / "gate": one finished Frontier Outpost or Warp Gate.
-		if t == "outpost" or t == "gate":
-			var fn: FortConstruct = FrontierOutpost.new() if t == "outpost" else WarpGate.new()
-			fn.owner_id = i + 1
-			fn.under_construction = false
-			fn.position = c + Vector2((-1.0 if i == 0 else 1.0) * 320.0, 0)
-			starbases_root.add_child(fn)
-			print("DUEL_SIDE %s: 1" % t)
-			fleets[i].append(fn)
-			continue
-		# "depot" / "station": one finished Weapons Depot or Mining Station.
-		if t == "depot" or t == "station":
-			var cn: Node2D = WeaponsDepot.new() if t == "depot" else MiningStation.new()
-			cn.owner_id = i + 1
-			cn.under_construction = false
-			if t == "station":
-				cn.construct_progress = Defs.MINING_STATION["build_time"]
-			cn.position = c + Vector2((-1.0 if i == 0 else 1.0) * 320.0, 0)
-			starbases_root.add_child(cn)
-			print("DUEL_SIDE %s: 1" % t)
-			fleets[i].append(cn)
-			continue
-		if t == "starbase":
-			var sbn: Starbase = STARBASE_SCENE.instantiate()
-			sbn.owner_id = i + 1
-			sbn.position = c + Vector2((-1.0 if i == 0 else 1.0) * 320.0, 0)
-			starbases_root.add_child(sbn)
-			print("DUEL_SIDE starbase: 1")
-			fleets[i].append(sbn)
+		# "outpost" / "gate" / "depot" / "station" / "starbase" (":N" for N of
+		# them, default 1): finished constructs, stacked vertically.
+		if t in DUEL_CONSTRUCTS:
+			var nc := int(sp[1]) if sp.size() > 1 else 1
+			for kc in nc:
+				var cn: Node2D
+				match t:
+					"outpost": cn = FrontierOutpost.new()
+					"gate": cn = WarpGate.new()
+					"depot": cn = WeaponsDepot.new()
+					"station": cn = MiningStation.new()
+					_: cn = STARBASE_SCENE.instantiate()
+				cn.owner_id = i + 1
+				if t != "starbase":
+					cn.under_construction = false
+				if t == "station":
+					cn.construct_progress = Defs.MINING_STATION["build_time"]
+				cn.position = c + Vector2((-1.0 if i == 0 else 1.0) * 320.0, (kc - (nc - 1) / 2.0) * 90.0)
+				starbases_root.add_child(cn)
+				fleets[i].append(cn)
+			print("DUEL_SIDE %s: %d at %d each (build + research)" % [t, nc, int(_duel_construct_cost(t))])
 			continue
 		var mk := int(sp[1]) if sp.size() > 1 else 1
 		var pid := i + 1
@@ -4750,9 +4774,9 @@ func _duel() -> void:
 		if not other.is_empty() and other[0] is Planet:
 			for s in fleets[si]:
 				s.order_bombard(other[0])
-		elif not other.is_empty() and (other[0] is WeaponsDepot or other[0] is MiningStation or other[0] is FortConstruct):
+		elif not other.is_empty() and not (other[0] is Ship):
 			for s in fleets[si]:
-				s.order_attack(other[0])
+				s.order_attack(_duel_nearest(s, other))
 	var next_report := 30.0
 	var side_max := [0.0, 0.0]
 	for si in 2:
@@ -4763,6 +4787,12 @@ func _duel() -> void:
 		var alive := [fleets[0].filter(func(x): return is_instance_valid(x) and x.is_alive()), fleets[1].filter(func(x): return is_instance_valid(x) and x.is_alive())]
 		if DuelStats.on:
 			DuelStats.sample(alive[0] + alive[1], 0.5)
+		# Ships facing constructs go straight for the next one left, never idle.
+		for si in 2:
+			if not alive[1 - si].is_empty() and not (alive[1 - si][0] is Ship) and not (alive[1 - si][0] is Planet):
+				for s in alive[si]:
+					if s is Ship and (not is_instance_valid(s.target) or not s.target.is_alive()):
+						s.order_attack(_duel_nearest(s, alive[1 - si]))
 		# Part-way result every 30 s, so a duel cut off early still says who was ahead.
 		if now() - t0 >= next_report:
 			next_report += 30.0
