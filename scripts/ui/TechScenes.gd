@@ -359,14 +359,17 @@ static func call_scene(id: String, img: Image) -> void:
 			_barrel(img, Vector2(26, 36), Vector2(52, 18), 4.0)
 			_barrel(img, Vector2(26, 44), Vector2(52, 26), 4.0)
 		"targeting_arrays":
-			# Quantum Lenses: a stack of glowing lenses stretching a beam far.
-			_beam(img, Vector2(4, 32), Vector2(60, 32), Color("b48aff", 0.5), 5.0)
+			# B: three lenses in a row, each a little smaller, stretching the beam
+			# further; faint quantum ghosts flicker beside each lens.
+			_line(img, Vector2(2, 34), Vector2(62, 34), 5.0, Color(QL[2], 0.3))
+			_line(img, Vector2(2, 34), Vector2(62, 34), 1.0, QL[4])
 			for k in 3:
-				var x := 14.0 + k * 14.0
-				_ellipse(img, Vector2(x, 32), Vector2(3.5, 15.0 - k * 3.0), Color("8fd8ff"))
-				_ellipse(img, Vector2(x - 1, 30), Vector2(1.2, 8.0 - k * 1.5), Color("eaf8ff"))
-			_beam(img, Vector2(46, 32), Vector2(62, 32), Color("ffd84a"), 1.5)
-			_disc(img, Vector2(60, 32), 2.5, Color("fff6cc"))
+				var c := Vector2(14 + k * 15, 34)
+				var h := 15.0 - k * 3.5
+				_ellipse(img, c + Vector2(3, -2), Vector2(3.0, h), Color(QCYAN, 0.25))
+				_lens(img, c, h, 3.4)
+			_disc(img, Vector2(60, 34), 2.4, QCYAN)
+			_disc(img, Vector2(60, 34), 1.0, QL[4])
 		"beam_focusing":
 			_beam(img, Vector2(6, 22), Vector2(28, 32), Color("ff6a4a", 0.6), 4.0)
 			_beam(img, Vector2(6, 42), Vector2(28, 32), Color("ff6a4a", 0.6), 4.0)
@@ -1137,3 +1140,19 @@ static func _sun(img: Image, c: Vector2, r: float) -> void:
 	_disc(img, c + Vector2(-0.2, -0.2) * r, r * 0.52, SF[3])
 	_disc(img, c + Vector2(-0.22, -0.22) * r, r * 0.26, SF[4])
 	_arc(img, c + Vector2(r * 0.7, -r * 0.6), r * 0.4, -PI * 0.9, PI * 0.1, 1.0, SF[3])
+
+## Quantum tones (violet): outline, deep, body, light, highlight.
+const QL := [Color("1a0a34"), Color("5a2aa8"), Color("9a6aff"), Color("d0b8ff"), Color("ffffff")]
+
+const QCYAN := Color("7ff0ff")
+
+## A biconvex lens seen edge-on: outline, glassy body, light crescent,
+## highlight streak, steel rim caps top and bottom.
+static func _lens(img: Image, c: Vector2, h: float, w: float) -> void:
+	_ellipse(img, c, Vector2(w + 1.0, h + 1.0), QL[0])
+	_ellipse(img, c, Vector2(w, h), QL[2])
+	_ellipse(img, c + Vector2(-w * 0.3, 0), Vector2(w * 0.5, h * 0.85), QL[3])
+	_line(img, c + Vector2(-w * 0.35, -h * 0.55), c + Vector2(-w * 0.35, -h * 0.15), 1.0, QL[4])
+	for s in [-1.0, 1.0]:
+		_box(img, c + Vector2(-w * 0.8, s * h - 1.5), c + Vector2(w * 0.8, s * h + 1.5), STEEL[0])
+		_box(img, c + Vector2(-w * 0.6, s * h - 0.8), c + Vector2(w * 0.6, s * h + 0.8), STEEL[3])
