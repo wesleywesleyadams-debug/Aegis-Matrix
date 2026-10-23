@@ -215,14 +215,6 @@ func _move(block: Array, into: VBoxContainer) -> void:
 		_body.remove_child(child)
 		into.add_child(child)
 
-## How wide a block insists on being.
-func _block_width(block: Array) -> float:
-	var w := 0.0
-	for child in block:
-		if child is Control:
-			w = maxf(w, (child as Control).get_combined_minimum_size().x)
-	return w
-
 func _label(text: String, color: Color = TEXT, size: int = 18) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -408,12 +400,6 @@ func _fit_sprite(name: String, box: float, team: bool = false) -> Control:
 		tm.modulate = Defs.team_color(1)
 		stack.add_child(tm)
 	return stack
-
-func _rule() -> void:
-	var r := ColorRect.new()
-	r.color = EDGE
-	r.custom_minimum_size = Vector2(0, 2)
-	_body.add_child(r)
 
 # ---------------------------------------------------------------- sections
 

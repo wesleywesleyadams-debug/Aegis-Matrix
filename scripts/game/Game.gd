@@ -1409,17 +1409,6 @@ func avg_rate(pid: int, key: String) -> float:
 		sum += v
 	return sum / h.size() * Defs.PER_MIN
 
-func ships_near(pos: Vector2, r: float) -> Array:
-	var out := []
-	var lo := Vector2i(((pos - Vector2(r, r)) / CELL).floor())
-	var hi := Vector2i(((pos + Vector2(r, r)) / CELL).floor())
-	for y in range(lo.y, hi.y + 1):
-		for x in range(lo.x, hi.x + 1):
-			for s in _grid.get(Vector2i(x, y), []):
-				if is_instance_valid(s) and s.global_position.distance_to(pos) <= r:
-					out.append(s)
-	return out
-
 ## Whether player `pid` can see `e` right now (fog of war, spice nebulae).
 ## Nothing may be targeted while hidden. True when that player has no fog.
 func sees(pid: int, e: Node2D) -> bool:
@@ -2389,13 +2378,6 @@ func found_fort(pid: int, pos: Vector2, kind: String) -> FortConstruct:
 		notify("%s construction started." % f.label(), "note_starbase", pos)
 	return f
 
-## The selected own Warp Gate, if one is selected.
-func selected_gate() -> WarpGate:
-	for e in selection:
-		if is_instance_valid(e) and e is WarpGate and e.owner_id == player_id:
-			return e
-	return null
-
 ## Warp Gate panel, Warp (or its hotkey): the next left-click picks where
 ## the garrison goes. HUD draws the reach rings while this is on.
 func start_warp_targeting(g: WarpGate) -> void:
@@ -2660,9 +2642,6 @@ func _visible_world_rect() -> Rect2:
 
 func _own_ships_selected() -> Array:
 	return selection.filter(func(e): return is_instance_valid(e) and e is Ship and e.owner_id == player_id)
-
-func _selected_role(role: String) -> bool:
-	return _own_ships_selected().any(func(s): return s.def["role"] == role)
 
 func selected_starbase() -> Starbase:
 	for e in selection:
@@ -4239,20 +4218,6 @@ func _place_depot(pos: Vector2) -> void:
 	builders[0].order_build_depot(pos, placing_depot_variant)
 	hud.ping(pos, Defs.VARIANTS[placing_depot_variant]["color"])
 	sfx.play_ui("click")
-
-## Sends every selected generalist of yours that can take variant `v` to a
-## depot of that variant (see Ship.order_refit).
-func refit_selected(v: String) -> void:
-	if nearest_depot(player_id, Vector2.ZERO, v) == null:
-		message.emit("You have no %s Depot. A Constructor builds one (E)." % Defs.VARIANTS[v]["label"], Color("ff8a5a"))
-		sfx.play_ui("deny")
-		return
-	var n := 0
-	for s in _own_ships_selected():
-		if s.can_refit(v):
-			s.order_refit(v)
-			n += 1
-	sfx.play_ui("click" if n > 0 else "deny")
 
 ## P: steps through your worlds, centering the camera on each and opening its
 ## panel (the same as clicking it).

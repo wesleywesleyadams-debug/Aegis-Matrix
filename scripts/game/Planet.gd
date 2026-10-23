@@ -134,12 +134,6 @@ var _econ_timer: float = 0.0
 func texture_name() -> String:
 	return kind + size_variant
 
-## Reserve multiplier by size: scales with the planet's area.
-func reserve_scale() -> float:
-	var w := float(Defs.tex(texture_name()).get_width())
-	var base := float(Defs.tex(kind).get_width())
-	return (w / base) * (w / base)
-
 func _ready() -> void:
 	$Sprite.texture = Defs.tex(texture_name())
 	# Planet art is drawn at Defs.ART_SCALE; its world radius comes from the

@@ -348,9 +348,6 @@ func stop_preview() -> void:
 func apply_volume() -> void:
 	player.volume_db = GameState.music_volume_db + TRACK_TRIM.get(_current, CUE_TRIM.get(_current.trim_prefix("cue:"), 0.0))
 
-func restart_current_track() -> void:
-	player.seek(0.0)
-
 ## Dev aid: SL_MUSIC_TEST=<path to a song> imports it, previews it, stops
 ## the preview, plays the playlist, disables and re-enables it (then deletes
 ## the test copy), printing each step.

@@ -351,32 +351,6 @@ func dock(top_y: float) -> float:
 	open()
 	return account_panel.offset_bottom
 
-## Back to the normal pop-up (used when leaving the title screen).
-func undock() -> void:
-	if not _docked:
-		return
-	_docked = false
-	background.color = Color(0, 0, 0, 0.6)
-	background.mouse_filter = Control.MOUSE_FILTER_STOP
-	account_panel.anchor_top = _saved_offsets[0]
-	account_panel.anchor_bottom = _saved_offsets[1]
-	account_panel.offset_top = _saved_offsets[2]
-	account_panel.offset_bottom = _saved_offsets[3]
-	account_panel.visible = true
-	for sub in _sub_saved:
-		var v: Array = _sub_saved[sub]
-		sub.anchor_left = v[0]
-		sub.anchor_right = v[1]
-		sub.anchor_top = v[2]
-		sub.anchor_bottom = v[3]
-		sub.offset_left = v[4]
-		sub.offset_right = v[5]
-		sub.offset_top = v[6]
-		sub.offset_bottom = v[7]
-	account_close_button.visible = true
-	(account_panel.get_node("OuterVBox/ScrollContainer") as Control).custom_minimum_size.y = 170.0
-	close()
-
 ## While docked, show either the account list or one of its forms, never
 ## both stacked on top of each other.
 func _process(_delta: float) -> void:

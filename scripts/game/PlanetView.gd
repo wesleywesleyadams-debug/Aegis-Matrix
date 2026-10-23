@@ -463,15 +463,6 @@ func _float_label(size: int, align: HorizontalAlignment) -> Label:
 	add_child(l)
 	return l
 
-## Spice reserve and mineral crust on one line, with a tooltip on both.
-func _reserves_line() -> String:
-	var parts: Array[String] = []
-	if planet.type_def().has("spice_reserve"):
-		parts.append("%s Reserve %s%s" % [_ic("spice"), _num(planet.spice_reserve), " (exhausted)" if planet.spice_reserve <= 0.0 else ""])
-	parts.append("%s Crust %s / %s%s" % [_ic("minerals"), _num(planet.mineral_reserve), _num(planet.max_mineral_reserve), " (paused)" if planet.mining_paused else ""])
-	var tip := "Reserve: spice stored in this world; Spice Extractors draw it down and it never refills.\nCrust: this world's remaining minerals (%s per size); Mining Complexes dig it out. At 0 crust the world implodes, %d s later, destroying everything on it and hitting everything nearby. Pause mining to stop." % [_num(Defs.WORLD_RESERVE_PER_SIZE), int(Defs.DOOM_SECONDS)]
-	return "[hint=%s]%s[/hint]" % [_hint(tip), "  ·  ".join(parts)]
-
 ## Thousands separators: 24,500.
 func _num(v: float) -> String:
 	var s := str(int(round(v)))

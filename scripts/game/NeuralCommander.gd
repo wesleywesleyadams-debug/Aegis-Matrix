@@ -239,9 +239,6 @@ func _valid(a: String, game: Game, base: Starbase) -> bool:
 					return base.can_queue("colony") == ""
 			return false
 		_:
-			var d: Dictionary = Defs.SHIPS[a]
-			if r["spice"] < d["cost"].get("spice", 0):
-				return false
 			return base.can_queue(a) == ""
 
 func _do(a: String, game: Game, base: Starbase, ai: AIController) -> void:

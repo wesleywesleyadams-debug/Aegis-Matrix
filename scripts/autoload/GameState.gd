@@ -222,10 +222,6 @@ func saves_dir() -> String:
 ## TitleMenu both call this rather than hardcoding "user://maps").
 const MAPS_ROOT: String = "user://maps"
 
-func maps_dir() -> String:
-	var key := _sanitize_for_path(active_account) if not active_account.is_empty() else GUEST_SAVES_KEY
-	return "%s/%s" % [MAPS_ROOT, key]
-
 ## Account names are free-form user text (spaces, unicode, ...) but folder
 ## names can't contain path separators or the handful of characters
 ## Windows forbids -- swap those out rather than letting DirAccess silently

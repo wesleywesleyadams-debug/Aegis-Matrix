@@ -1673,23 +1673,6 @@ static func _signed(v: float) -> String:
 	var body := ("%.1fk" % (a / 1000.0)) if a >= 1000.0 else (("%.1f" % a) if a < 10.0 else str(int(round(a))))
 	return ("+" if v > 0.0 else "-") + body
 
-func _planet_text(p: Planet) -> String:
-	if not p.is_habitable():
-		return "Uninhabitable gas giant · Mineral reserve %d / %d%s\nGas Skimmers mine it and haul the minerals to a starbase. It never refills: it shrinks as it is drained and explodes when empty." % [p.amount, Defs.GAS_RESERVE, _doom_text(p)]
-	# What this world's type does differently (e.g. a Molten world's plants).
-	var traits := "" if Defs.planet_traits(p.kind).is_empty() else "\n" + "  ·  ".join(Defs.planet_traits(p.kind))
-	if p.owner_id == 0:
-		return "Size %d · Pop cap %s · Spice reserve %d%s\nSend a Colony Ship (right-click) to settle it." % [p.fields, _fmt(p.max_pop()), int(p.spice_reserve), traits]
-	var lines := "Population %s / %s   (+%s/min)%s" % [_fmt(p.pop), _fmt(p.max_pop()), _fmt(p.growth_per_min), traits]
-	var net := p.net_per_min()
-	lines += "\nNet/min: food %s · energy %s · minerals %s · spice %s" % [_signed(net["food"]), _signed(net["energy"]), _signed(net["minerals"]), _signed(net["spice"])]
-	if p.blacked_out():
-		lines += "\nBLACKOUT: buildings on LOW POWER (%d%%). Deliver minerals to restart Power Plants. Restoring power: %d s" % [int(Defs.ENERGY_STARVED_FACTOR * 100.0), int(ceil(game.blackout_restore_left(p.owner_id)))]
-	lines += "\nMineral reserve %s / %s%s%s" % [_fmt(p.mineral_reserve), _fmt(p.max_mineral_reserve), "  (mining paused)" if p.mining_paused else "", _doom_text(p)]
-	if p.starving:
-		lines += "\nSTARVING: shrinking %d/min until food recovers" % int(-p.growth_per_min)
-	return lines
-
 # ---------------------------------------------------------------- per frame
 
 func _process(delta: float) -> void:
