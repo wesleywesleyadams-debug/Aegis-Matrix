@@ -215,7 +215,7 @@ const TOP_Y := 8
 const TOP_H := 62
 const TOP_GAP := 8
 const HUD_SIDE := 12
-const MENU_W := 150
+const MENU_W := 170
 ## Widest the research button gets; it shrinks (to RESEARCH_MIN_W) on
 ## narrow windows before the counters do.
 const RESEARCH_W := 306
@@ -432,6 +432,8 @@ func _build_menu_button(root: Control) -> void:
 	b.anchor_left = 1.0
 	b.anchor_right = 1.0
 	b.offset_left = -HUD_SIDE - MENU_W
+	# Wider text grows the button left, never off the screen edge.
+	b.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	b.offset_right = -HUD_SIDE
 	b.offset_top = TOP_Y
 	b.offset_bottom = TOP_Y + TOP_H
