@@ -206,7 +206,7 @@ static func construct_dps(d: Dictionary) -> float:
 	return float(d.get("guns", 0)) * LASER_DAMAGE / LASER_COOLDOWN
 
 const STARBASE := {
-	"name": "Starbase", "hp": 1092.0, "armor": 2090.0, "shield": 1568.0, "radius": 26.0,
+	"name": "Starbase", "hp": 1127.0, "armor": 2156.0, "shield": 1617.0, "radius": 26.0,
 	"weapon": "laser", "guns": 6, "range": 260.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 1200}, "build_time": 40.0,
@@ -273,7 +273,7 @@ const WARP_GATE := {
 const PLACEMENT_RING := 6.0
 
 const MINING_STATION := {
-	"name": "Mining Station", "hp": 178.0, "armor": 341.0, "shield": 256.0, "radius": 16.0,
+	"name": "Mining Station", "hp": 161.0, "armor": 308.0, "shield": 231.0, "radius": 16.0,
 	"weapon": "laser", "guns": 1, "range": 190.0,
 	"cost": {"minerals": 150}, "build_time": 20.0,
 	"upkeep": 1.0,
