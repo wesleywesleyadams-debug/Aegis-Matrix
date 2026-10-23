@@ -190,7 +190,7 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 ## and time (see SHIPS "refit"). A specialist can never be refitted again.
 ## Doesn't count as a starbase (losing it doesn't lose the match).
 const WEAPONS_DEPOT := {
-	"name": "Weapons Depot", "requires": "depots", "hp": 368.0, "armor": 704.0, "shield": 528.0, "radius": 22.0,
+	"name": "Weapons Depot", "requires": "depots", "hp": 345.0, "armor": 660.0, "shield": 495.0, "radius": 22.0,
 	"cost": {"minerals": 290}, "build_time": 30.0, "upkeep": 2.0,
 	"capacity": 10,
 }
@@ -260,7 +260,7 @@ const FRONTIER_OUTPOST := {
 ## die with the gate), then the gate flings them all at a point warp_min to
 ## warp_max px away at warp_speed_mult x their speed, every warp_cooldown s.
 const WARP_GATE := {
-	"name": "Warp Gate", "requires": "warp_gates", "hp": 345.0, "armor": 660.0, "shield": 495.0, "radius": 24.0,
+	"name": "Warp Gate", "requires": "warp_gates", "hp": 460.0, "armor": 880.0, "shield": 660.0, "radius": 24.0,
 	"cost": {"minerals": 2400}, "build_time": 60.0,
 	"upkeep": 3.3,
 	"warp_min": 1000.0, "warp_max": 2000.0, "warp_cooldown": 30.0, "warp_speed_mult": 10.0,
