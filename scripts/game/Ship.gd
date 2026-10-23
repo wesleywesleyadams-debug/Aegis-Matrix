@@ -891,9 +891,8 @@ func _apply_mark() -> void:
 	_mark_tag.color = Defs.VARIANTS[def["variant"]]["color"] if def.has("variant") else Defs.GENERALIST_COLOR
 	_mark_tag.queue_redraw()
 
-## One flame per thruster, found from the hull art itself: the stern column
-## is scanned for runs of solid pixels and a flame is placed behind the
-## middle of each. A carrier gets one per nacelle, a destroyer one per prong,
+## One flame per thruster, found from the hull art itself: each run of rows
+## whose rearmost pixel is nozzle glow gets a flame behind its middle. A carrier gets one per nacelle, a destroyer one per prong,
 ## a barge one on its keel â and nothing has to be told where its engines
 ## are when the art changes.
 func _rebuild_flames(tex: Texture2D, art_scale: Vector2) -> void:
@@ -910,32 +909,61 @@ func _rebuild_flames(tex: Texture2D, art_scale: Vector2) -> void:
 	var img := tex.get_image()
 	var w := img.get_width()
 	var h := img.get_height()
-	# The first column carrying any hull is the stern; step one in from it so
-	# a run is the member itself rather than its outline.
-	var sx := -1
-	for x in w:
-		for y in h:
-			if img.get_pixel(x, y).a > 0.0:
-				sx = x
-				break
-		if sx >= 0:
-			break
-	if sx < 0:
-		return
-	sx = mini(sx + 1, w - 1)
+	# Nozzles: a row whose rearmost hull pixels show the warm nozzle glow. Runs
+	# of such rows are one thruster each, and its flame starts at that run's
+	# rearmost glow (so a nozzle set in from the stern still gets one).
 	var centers: Array[float] = []
+	var xs: Array[int] = []
 	var start := -1
-	for y in h:
-		var is_solid: bool = img.get_pixel(sx, y).a > 0.0
-		if is_solid and start < 0:
-			start = y
-		elif not is_solid and start >= 0:
+	var run_x := w
+	for y in h + 1:
+		var gx := -1
+		if y < h:
+			# (Looking a couple of pixels past the outline for the glow.)
+			var x0 := -1
+			for x in w:
+				var c := img.get_pixel(x, y)
+				if c.a > 0.0 and x0 < 0:
+					x0 = x
+				if x0 >= 0:
+					if c.r > 0.78 and c.g > 0.55 and c.b < 0.47:
+						gx = x
+						break
+					if x > x0 + 2:
+						break
+		if gx >= 0:
+			if start < 0:
+				start = y
+				run_x = gx
+			run_x = mini(run_x, gx)
+		elif start >= 0:
 			centers.append((start + y - 1) / 2.0)
+			xs.append(run_x)
 			start = -1
-	if start >= 0:
-		centers.append((start + h - 1) / 2.0)
-	var back: float = -(w / 2.0) * art_scale.x - 2.0
-	for c in centers:
+	# No glow in the art: the old rule, solid runs one column in from the stern.
+	if centers.is_empty():
+		var sx := -1
+		for x in w:
+			for y in h:
+				if img.get_pixel(x, y).a > 0.0:
+					sx = x
+					break
+			if sx >= 0:
+				break
+		if sx < 0:
+			return
+		sx = mini(sx + 1, w - 1)
+		for y in h + 1:
+			var is_solid: bool = y < h and img.get_pixel(sx, y).a > 0.0
+			if is_solid and start < 0:
+				start = y
+			elif not is_solid and start >= 0:
+				centers.append((start + y - 1) / 2.0)
+				xs.append(sx - 1)
+				start = -1
+	for i in centers.size():
+		var c: float = centers[i]
+		var back: float = (xs[i] - w / 2.0) * art_scale.x - 2.0
 		var f: Sprite2D = tmpl.duplicate()
 		f.scale = art_scale
 		f.position = Vector2(back, (c - h / 2.0) * art_scale.y)
@@ -2115,13 +2143,14 @@ class MarkTag extends Node2D:
 		var z: float = get_viewport().get_canvas_transform().get_scale().x
 		scale = Vector2.ONE / maxf(z, 0.01) * 1.6
 		# Left of the hull art's actual extent at its current heading (the
-		# art reaches well past the radius), so it clears the thrusters.
+		# art reaches well past the radius), so it clears the thrusters and
+		# their flames.
 		var reach := host.radius
 		var hs: Sprite2D = host.hull_sprite
 		if hs and hs.texture:
 			var half := Vector2(hs.texture.get_width(), hs.texture.get_height()) * hs.scale.abs() * 0.5
 			reach = maxf(reach, absf(cos(host.rotation)) * half.x + absf(sin(host.rotation)) * half.y)
-		global_position = host.global_position + Vector2(-reach - 4.0, host.radius * 0.3)
+		global_position = host.global_position + Vector2(-reach - 9.0, host.radius * 0.3)
 		visible = host.visible
 
 	func _draw() -> void:
