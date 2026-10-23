@@ -27,9 +27,9 @@ const ARMOR_COLOR := Color("ff4a4a")
 
 var _last_hit_time: float = -100.0
 ## Disruptor EMP (Abilities.emp_try): shields off until this time.
-var emp_until: float = -100.0
-## This entity's guns' EMP cooldowns: gun key -> time it may EMP again.
-var emp_gun_cd: Dictionary = {}
+var shield_off_until: float = -100.0
+## When this entity may EMP again (one cooldown for all its weapons).
+var emp_ready_at: float = -100.0
 ## Inside a Weapons Depot: hidden, safe and not a target (see Ship.enter_depot).
 var docked: bool = false
 var _dead: bool = false

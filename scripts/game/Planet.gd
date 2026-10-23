@@ -57,7 +57,7 @@ var siege_start_pop: float = 0.0
 var shield: float = 0.0
 var last_hit_time: float = -1000.0
 ## Disruptor EMP (Abilities.emp_try): planetary shield off until this time.
-var emp_until: float = -100.0
+var shield_off_until: float = -100.0
 ## Last time a hit got past the shield and killed pops (halts growth).
 var last_pop_hit_time: float = -1000.0
 ## Colonization in progress: whose, how far, and the ship doing it.

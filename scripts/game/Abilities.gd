@@ -60,31 +60,31 @@ static func allies_near(s: Node2D, r: float) -> Array:
 ## arrays of e's own side (for soaking enemy fire).
 ## Disruptor EMP: a hit switches the target's shields off for EMP_TIME (each
 ## hit refreshes it). While off the shield blocks nothing and does not
-## recharge, and it comes back at the value it had. Each gun (shooter +
-## profile "gun") can apply or refresh an EMP only once per EMP_GUN_CD.
+## recharge, and it comes back at the value it had. Each ship (all its guns,
+## beams and drones together) can apply or refresh an EMP only once per
+## EMP_SHIP_CD.
 ## Transient: not saved (it lasts 5 s at most).
 const EMP_TIME := 5.0
-const EMP_GUN_CD := 4.0
+const EMP_SHIP_CD := 4.0
 
 static func emp_on(e: Object) -> bool:
-	var u = e.get("emp_until")
+	var u = e.get("shield_off_until")
 	return u != null and Game.now() < float(u)
 
 ## Call after the hit has landed (so the applying hit still hits the shield).
 static func emp_try(target: Object, from: Object, profile: Dictionary) -> void:
-	if not profile.get("emp", false) or not is_instance_valid(from) or from.get("emp_gun_cd") == null:
+	if not profile.get("emp", false) or not is_instance_valid(from) or from.get("emp_ready_at") == null:
 		return
-	if target.get("emp_until") == null:
+	if target.get("shield_off_until") == null:
 		return
 	var ms = target.call("max_shield") if target is Planet else target.get("max_shield")
 	if float(ms) <= 0.0:
 		return
-	var key = profile.get("gun", -1)
 	var now := Game.now()
-	if now < float(from.emp_gun_cd.get(key, -1.0e9)):
+	if now < float(from.emp_ready_at):
 		return
-	from.emp_gun_cd[key] = now + EMP_GUN_CD
-	target.set("emp_until", now + EMP_TIME)
+	from.emp_ready_at = now + EMP_SHIP_CD
+	target.set("shield_off_until", now + EMP_TIME)
 	target.call("queue_redraw")
 
 static func sail_cover(e: Node2D, owner_only: bool = true) -> Node2D:
@@ -147,13 +147,12 @@ static func sail_absorb(e: Node2D, amount: float, from: Node2D, profile: Diction
 		o.queue_redraw()
 	# A Disruptor hit soaked by the pool EMPs the arrays that took it.
 	if soak > 0.0 and profile.get("emp", false) and is_instance_valid(from):
-		var cd = from.get("emp_gun_cd")
-		var key = profile.get("gun", -1)
-		if cd != null and Game.now() >= float(cd.get(key, -1.0e9)):
+		var ready = from.get("emp_ready_at")
+		if ready != null and Game.now() >= float(ready):
 			for o in pool:
-				o.emp_until = Game.now() + EMP_TIME
+				o.shield_off_until = Game.now() + EMP_TIME
 				o.queue_redraw()
-			cd[key] = Game.now() + EMP_GUN_CD
+			from.emp_ready_at = Game.now() + EMP_SHIP_CD
 	return past + rest - soak / m
 
 ## Every charged array of the same side linked to `rsa` through touching
