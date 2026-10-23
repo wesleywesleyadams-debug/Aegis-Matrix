@@ -464,9 +464,23 @@ static func call_scene(id: String, img: Image) -> void:
 				_arc(img, c, 22.0 + k * 3.0, -0.9 - k * 0.2, 0.4 - k * 0.2, 1.4, Color(BR[3], 0.8 - k * 0.3))
 			_round(img, Vector2(54, 12), Vector2(0.5, -1).normalized(), 9.0, 1.8)
 		"heavy_mounts":
-			_box(img, Vector2(14, 40), Vector2(50, 52), Color("6a7596"))
-			_disc(img, Vector2(32, 38), 10.0, Color("8a95b8"))
-			_barrel(img, Vector2(32, 34), Vector2(54, 12), 6.0)
+			# C: twin heavy guns bolted to an armoured mount, firing in turn - one
+			# flashing, the other recoiled and reloading.
+			var dir := Vector2(1, -0.55).normalized()
+			var n := dir.orthogonal()
+			var base := Vector2(18, 40)
+			_disc(img, base, 13.0, STEEL[0])
+			_disc(img, base, 12.0, STEEL[1])
+			_disc(img, base + Vector2(-2, -2), 9.0, STEEL[2])
+			for k in 8:
+				_joint(img, base + Vector2.from_angle(k * TAU / 8.0) * 10.5, 1.1, STEEL)
+			var g1 := base + n * 4.0
+			var g2 := base - n * 4.0
+			_cannon(img, g1, g1 + dir * 26.0, 5.0, 2)
+			_cannon(img, g2 - dir * 4.0, g2 + dir * 20.0, 5.0, 2)
+			_burst(img, g1 + dir * 29.0, 4.0, BR[4])
+			_tracer(img, g1 + dir * 38.0, dir, 5.0)
+			_joint(img, base, 2.4, STEEL)
 		"scatter_arrays":
 			_barrel(img, Vector2(8, 32), Vector2(22, 32), 6.0)
 			for k in 5:
@@ -1238,3 +1252,9 @@ static func _round(img: Image, p: Vector2, dir: Vector2, len: float, w: float) -
 	_poly(img, [neck + n * w, tip, neck - n * w], Color("b5562a"))
 	_poly(img, [neck + n * w, tip, neck + n * w * 0.2], Color("e88a5a"))
 	_line(img, base + n * w, base - n * w, 1.2, BR[1])
+
+## A tracer round: short bright streak with a hot head.
+static func _tracer(img: Image, p: Vector2, dir: Vector2, len: float) -> void:
+	_line(img, p - dir * len, p, 2.2, Color(BR[2], 0.5))
+	_line(img, p - dir * len, p, 1.0, BR[3])
+	_disc(img, p, 1.0, BR[4])
