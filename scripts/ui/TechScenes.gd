@@ -224,12 +224,34 @@ static func call_scene(id: String, img: Image) -> void:
 			_line(img, Vector2(18, 18), Vector2(26, 18), 1.5, Color("ffffff", 0.7))
 			_frame(img, Vector2(12, 14), Vector2(52, 50), 2.0, Color("ff4a4a", 0.7))
 		"reinforced_frames":
+			# The X-braced frame as a chunky 3D block; a glowing green energy
+			# brace snapping into place across it.
+			var d := Vector2(7, -6)
+			var a := Vector2(10, 18)
+			var b := Vector2(46, 54)
+			var cs := [a, Vector2(b.x, a.y), b, Vector2(a.x, b.y)]
+			# back frame and depth edges
 			for k in 4:
-				_line(img, Vector2(10 + k * 14, 14), Vector2(10 + k * 14, 50), 2.0, Color("9aa6c4"))
-			_line(img, Vector2(10, 14), Vector2(52, 14), 2.0, Color("9aa6c4"))
-			_line(img, Vector2(10, 50), Vector2(52, 50), 2.0, Color("9aa6c4"))
+				_girder(img, cs[k] + d, cs[(k + 1) % 4] + d, 3.0, [STEEL[0], STEEL[0], STEEL[1], STEEL[2], STEEL[3]])
 			for k in 3:
-				_line(img, Vector2(10 + k * 14, 14), Vector2(24 + k * 14, 50), 1.5, Color("6fe07a"))
+				_girder(img, cs[k], cs[k] + d, 3.4, STEEL)
+			# the steel diagonal already fixed
+			_girder(img, cs[1], cs[3], 4.0, STEEL)
+			# the green energy brace locking in
+			_line(img, a, b, 7.0, Color(HU[2], 0.35))
+			_girder(img, a, b, 4.0, HU)
+			_line(img, a, b, 1.0, HU[4])
+			for k in 4:
+				_girder(img, cs[k], cs[(k + 1) % 4], 4.2, STEEL)
+			for q in cs:
+				_joint(img, q, 2.8, STEEL)
+			var m := a.lerp(b, 0.5)
+			_hex(img, m, 5.5, 2.0, HU[0])
+			_disc(img, m, 4.5, HU[2])
+			_disc(img, m, 2.2, HU[4])
+			for k in 4:
+				var dd := Vector2.from_angle(k * PI / 2 + PI / 4)
+				_line(img, m + dd * 7.0, m + dd * 10.0, 1.0, HU[3])
 		"living_metals":
 			# Living chrome: the droplet wraps tendrils round a hull fragment and
 			# draws it in; a faint cyan pulse at its heart says it is alive.
@@ -868,3 +890,28 @@ static func _crystal_rich(img: Image, c: Vector2, h: float, w: float, ang: float
 	var t := c + u * h
 	_line(img, t + Vector2(-2.5, 0), t + Vector2(2.5, 0), 1.0, Color.WHITE)
 	_line(img, t + Vector2(0, -2.5), t + Vector2(0, 2.5), 1.0, Color.WHITE)
+
+## Hull tones (58e07a): outline, deep, body, light, highlight.
+const HU := [Color("082414"), Color("1f7a3c"), Color("3fbf5f"), Color("8ff0a8"), Color("eaffee")]
+
+const STEEL := [Color("101318"), Color("3a414d"), Color("6a7486"), Color("a3adbd"), Color("e8eef8")]
+
+## A structural girder from a to b, w wide: outline, body, light top
+## edge, deep lower edge, highlight line.
+static func _girder(img: Image, a: Vector2, b: Vector2, w: float, t: Array) -> void:
+	var n := (b - a).normalized().orthogonal()
+	if n.y > 0:
+		n = -n
+	_line(img, a, b, w + 1.8, t[0])
+	_line(img, a, b, w, t[2])
+	_line(img, a + n * w * 0.3, b + n * w * 0.3, w * 0.3, t[3])
+	_line(img, a - n * w * 0.32, b - n * w * 0.32, w * 0.28, t[1])
+	_line(img, a + n * w * 0.42, b + n * w * 0.42, 1.0, t[4])
+
+## A gusset plate with a bolt at a joint.
+static func _joint(img: Image, c: Vector2, r: float, t: Array) -> void:
+	_disc(img, c, r + 0.9, t[0])
+	_disc(img, c, r, t[1])
+	_disc(img, c + Vector2(-0.3, -0.3) * r, r * 0.6, t[2])
+	_disc(img, c, r * 0.35, t[0])
+	_put(img, int(c.x - r * 0.5), int(c.y - r * 0.5), t[4])
