@@ -483,7 +483,7 @@ func _tractor(delta: float, rng: float, n: int, dmg: float) -> void:
 		if d > rng * TRACTOR_STOP:
 			var pm: float = TRACTOR_PULL_DRONE
 			if t is Ship:
-				pm = TRACTOR_PULL_CARRIER if (t as Ship).is_carrier() else float(TRACTOR_PULL_MULT.get(t.ship_type, 1.0))
+				pm = TRACTOR_PULL_CARRIER if (t as Ship).is_carrier() else float(TRACTOR_PULL_MULT.get(t.def.get("base", t.ship_type), 1.0))
 			var pull: float = float(tr[0]) * pm
 			t.global_position += (global_position - t.global_position).normalized() * pull * g.ship_speed_factor(owner_id) * delta
 			if t is Ship:
