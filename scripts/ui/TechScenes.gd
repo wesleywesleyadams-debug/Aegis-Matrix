@@ -228,9 +228,17 @@ static func call_scene(id: String, img: Image) -> void:
 			_line(img, Vector2(60, 4), imp + Vector2(2, -2), 2.0, Color("ff4a3a"))
 			_burst(img, imp, 4.0, Color("fff2b0"))
 		"glance_plates":
-			_sprite(img, "ship_corvette", C, 22.0)
-			for q in [Vector2(14, 14), Vector2(50, 18), Vector2(48, 48), Vector2(16, 46), Vector2(32, 10)]:
-				_burst(img, q, 4.5, Color("c9b6ff"))
+			# A wedge of two angled plates (a prow), shots glancing off both faces.
+			var tip := Vector2(20, 32)
+			var dv := Color("c9b6ff")
+			_poly(img, [tip, Vector2(50, 10), Vector2(56, 16), tip + Vector2(6, 0)], dv.darkened(0.3))
+			_poly(img, [tip, Vector2(50, 54), Vector2(56, 48), tip + Vector2(6, 0)], dv.darkened(0.55))
+			_line(img, tip, Vector2(50, 10), 1.6, dv.lightened(0.4))
+			_line(img, tip, Vector2(50, 54), 1.2, dv)
+			for sh in [[Vector2(4, 12), Vector2(32, 23), Vector2(40, 4)], [Vector2(4, 50), Vector2(32, 41), Vector2(42, 60)]]:
+				_line(img, sh[0], sh[1], 1.8, Color("ff4a3a"))
+				_dashes(img, sh[1], sh[2], Color("ff4a3a", 0.8))
+				_burst(img, sh[1], 4.0, Color("fff2b0"))
 		"graviton_shunts":
 			_sprite(img, "ship_destroyer", Vector2(20, 42), 24.0)
 			_beam(img, Vector2(26, 36), Vector2(48, 14), Color("c9b6ff"), 1.5)
