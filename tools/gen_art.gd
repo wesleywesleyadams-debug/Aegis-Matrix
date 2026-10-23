@@ -88,7 +88,13 @@ func _img(w: int, h: int) -> Image:
 	img.fill(Color(0, 0, 0, 0))
 	return img
 
+## Sprites drawn by hand (the D3 destroyer hull and its team mask): the
+## generator must never overwrite them.
+const HAND_ART := ["ship_destroyer", "ship_destroyer_team"]
+
 func _save(img: Image, name: String) -> void:
+	if name in HAND_ART:
+		return
 	img.save_png(OUT + name + ".png")
 	# Planets also get small and large versions, re-rendered from the same
 	# shading at other diameters (even sizes keep the sphere centered).
