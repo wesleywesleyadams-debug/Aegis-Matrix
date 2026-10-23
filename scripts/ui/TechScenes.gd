@@ -444,10 +444,16 @@ static func call_scene(id: String, img: Image) -> void:
 					_line(img, pts[k], pts[k + 1], 1.2, QCYAN)
 			_lead_pip(img, pts[10], 1.8)
 		"gyro_stabilizers":
-			_ring(img, Vector2(32, 32), 20.0, 2.5, Color("8a95b8"))
-			_ellipse(img, Vector2(32, 32), Vector2(20, 7), Color("6a7596"))
-			_ellipse(img, Vector2(32, 32), Vector2(7, 20), Color("6a7596"))
-			_disc(img, Vector2(32, 32), 5.0, Color("ffd84a"))
+			# A: a gyroscope - a spinning rotor held in two crossed gimbal rings,
+			# cyan spin arcs sweeping its rim.
+			var c := Vector2(30, 28)
+			_gimbal(img, c, 22.0, 8.0, -0.5, PI, TAU, 2.6)
+			_gimbal(img, c, 7.0, 21.0, 0.2, PI * 0.5, PI * 1.5, 2.6)
+			_rotor(img, c, 13.0, 5.0)
+			_gimbal(img, c, 22.0, 8.0, -0.5, 0.0, PI, 2.6)
+			_gimbal(img, c, 7.0, 21.0, 0.2, -PI * 0.5, PI * 0.5, 2.6)
+			for p in [c + Vector2(0, -21).rotated(0.2), c + Vector2(0, 21).rotated(0.2)]:
+				_joint(img, p, 2.0, STEEL)
 		"overkill_awareness":
 			# Two guns: one's bolts already converge on a crossed-out wreck
 			# (top), the other has switched to a fresh target (right).
@@ -1398,3 +1404,29 @@ static func _lead_pip(img: Image, p: Vector2, r: float) -> void:
 	_disc(img, p, r * 1.4, Color(QCYAN, 0.45))
 	_disc(img, p, r, QCYAN)
 	_disc(img, p, r * 0.45, Color.WHITE)
+
+## Part of a rotated elliptical gimbal ring (angles t0..t1 on the ellipse),
+## outlined steel with a lit band. Draw back half before contents, front after.
+static func _gimbal(img: Image, c: Vector2, rx: float, ry: float, rot: float, t0: float, t1: float, w: float) -> void:
+	var pts := []
+	for k in 41:
+		var t := lerpf(t0, t1, k / 40.0)
+		pts.append(c + Vector2(cos(t) * rx, sin(t) * ry).rotated(rot))
+	for k in 40:
+		_line(img, pts[k], pts[k + 1], w + 1.8, STEEL[0])
+	for k in 40:
+		_line(img, pts[k], pts[k + 1], w, STEEL[2])
+	for k in 40:
+		var mid: Vector2 = (pts[k] + pts[k + 1]) * 0.5
+		if (mid - c).y < 0:
+			_line(img, pts[k] + Vector2(0, -w * 0.25), pts[k + 1] + Vector2(0, -w * 0.25), 1.0, STEEL[4])
+
+## A spinning rotor disc seen at an angle: outlined, banded, hub, cyan spin arcs.
+static func _rotor(img: Image, c: Vector2, rx: float, ry: float) -> void:
+	_ellipse(img, c + Vector2(0, 1.5), Vector2(rx + 1, ry + 1), STEEL[0])
+	_ellipse(img, c + Vector2(0, 1.5), Vector2(rx, ry), STEEL[1])
+	_ellipse(img, c, Vector2(rx + 1, ry + 1), STEEL[0])
+	_ellipse(img, c, Vector2(rx, ry), STEEL[2])
+	_ellipse(img, c + Vector2(-rx * 0.15, -ry * 0.2), Vector2(rx * 0.7, ry * 0.6), STEEL[3])
+	_ellipse(img, c, Vector2(rx * 0.25, ry * 0.25), STEEL[0])
+	_ellipse(img, c, Vector2(rx * 0.15, ry * 0.15), QCYAN)
