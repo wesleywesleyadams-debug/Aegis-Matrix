@@ -139,14 +139,14 @@ const BASE_SHIPS := {
 		# About twice a cruiser in every dimension: slower across the map and
 		# far slower to come about, since turn rate falls with radius. It
 		# makes up for it with several mounts instead of one.
-		"hp": 552.0, "armor": 792.0, "shield": 1056.0, "speed": 38.0, "radius": 41.4, "size": 2.0,
+		"hp": 552.0, "armor": 792.0, "shield": 1056.0, "speed": 38.0, "radius": 41.4, "size": 0.81,
 		"cost": {"minerals": 600}, "build_time": 153.0, "upkeep": 8.0,
 		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
 		# stay off the bearing and flank it.
-		"turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 2.0, "turrets": [[0.535, -0.375], [0.535, 0.375], [0.186, -0.375], [0.186, 0.375]],
+		"turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 0.81, "turrets": [[0.242, -0.208], [0.242, 0.199], [0.52, -0.303], [0.52, 0.294]],
 		# Refitting a hull this size is proportionally dearer and slower than
 		# a cruiser's (15 / 35 s) — twice the hull, twice the yard time.
 		"refit": {"minerals": 30, "time": 14.0},

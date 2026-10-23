@@ -90,7 +90,7 @@ func _img(w: int, h: int) -> Image:
 
 ## Sprites drawn by hand (the D3 destroyer and B4 corvette hulls and their team masks): the
 ## generator must never overwrite them.
-const HAND_ART := ["ship_destroyer", "ship_destroyer_team", "ship_corvette", "ship_corvette_team", "ship_cruiser", "ship_cruiser_team"]
+const HAND_ART := ["ship_destroyer", "ship_destroyer_team", "ship_corvette", "ship_corvette_team", "ship_cruiser", "ship_cruiser_team", "ship_carrier", "ship_carrier_team"]
 
 func _save(img: Image, name: String) -> void:
 	if name in HAND_ART:
