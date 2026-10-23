@@ -376,7 +376,7 @@ func _fire_turrets(delta: float) -> void:
 				_t_beam_time[i] += delta
 				var ramp: float = lerpf(b[0], b[1], clampf(_t_beam_time[i] / b[2], 0.0, 1.0)) * float(weapon_mod.get("dmg", 1.0))
 				var dps: float = dmg / def["cooldown"] * g.mod(owner_id, "fire_rate") * g.mod(owner_id, "damage")
-				tgt.take_damage(dps * ramp * delta * Game.instance.ship_speed_factor(owner_id), self, Defs.damage_profile(def))
+				tgt.take_damage(dps * ramp * delta * Game.instance.ship_speed_factor(owner_id), self, _gun_profile(i))
 				_beams.append([_turret_sprites[i].global_position, tgt.global_position, ramp])
 			continue
 		# Tractor Beams: the turrets only aim; the beams (_tractor) do the damage.
@@ -402,7 +402,7 @@ func _fire_turrets(delta: float) -> void:
 				n_hit += 1
 				for j in n_proj:
 					var off := 0.0 if n_proj == 1 else lerpf(-spread, spread, float(j) / (n_proj - 1)) + randf_range(-0.06, 0.06)
-					g.fire(self, tgt, wpn, shot, off, _muzzle(i))
+					g.fire(self, tgt, wpn, shot, off, _muzzle(i), i)
 		if DuelStats.on:
 			DuelStats.tick(self, "fire")
 			DuelStats.pull(self, tgt, acc, per, n_hit, moving_frac())
@@ -552,6 +552,13 @@ func _fly_drones(delta: float) -> void:
 	# Each drone flies and fights on its own (Drone._physics_process).
 
 ## How far from the carrier its drones may range.
+## Defs.damage_profile tagged with which gun fired (for the per-gun EMP
+## cooldown, Abilities.emp_try).
+func _gun_profile(gun) -> Dictionary:
+	var p := Defs.damage_profile(def)
+	p["gun"] = gun
+	return p
+
 func drone_reach() -> float:
 	return float(weapon_mod.get("drones", [0, 0.0])[1])
 
@@ -1628,7 +1635,7 @@ func _physics_process(delta: float) -> void:
 					if wpn == "arc":
 						Game.instance.arc_strike(self, shoot, dmg, weapon_mod["chain"], weapon_mod["jump"])
 					else:
-						Game.instance.fire(self, shoot, wpn, dmg, 0.0, _nose())
+						Game.instance.fire(self, shoot, wpn, dmg, 0.0, _nose(), g)
 				if DuelStats.on:
 					DuelStats.tick(self, "fire")
 					DuelStats.pull(self, shoot, acc, int(def.get("guns", 1)), n_hit, moving_frac())
@@ -2542,7 +2549,8 @@ func _solar_tick(delta: float) -> void:
 	# Each point of energy charges Defs.SAIL_SHIELD_FRAC_PER_ENERGY of the
 	# maximum (10%), so shield techs don't slow the refill.
 	var per_energy := maxf(max_shield * Defs.SAIL_SHIELD_FRAC_PER_ENERGY, 0.001)
-	var into_shield := minf(gain, maxf(max_shield - shield, 0.0) / per_energy)
+	# EMP'd: the solar shield does not charge.
+	var into_shield := 0.0 if Abilities.emp_on(self) else minf(gain, maxf(max_shield - shield, 0.0) / per_energy)
 	if into_shield > 0.0:
 		_sail_mode = "charge"
 		shield = minf(max_shield, shield + into_shield * per_energy)

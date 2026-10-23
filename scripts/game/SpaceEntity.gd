@@ -26,6 +26,10 @@ var selected: bool = false:
 const ARMOR_COLOR := Color("ff4a4a")
 
 var _last_hit_time: float = -100.0
+## Disruptor EMP (Abilities.emp_try): shields off until this time.
+var emp_until: float = -100.0
+## This entity's guns' EMP cooldowns: gun key -> time it may EMP again.
+var emp_gun_cd: Dictionary = {}
 ## Inside a Weapons Depot: hidden, safe and not a target (see Ship.enter_depot).
 var docked: bool = false
 var _dead: bool = false
@@ -84,6 +88,9 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		_siege_frac -= floorf(_siege_frac)
 	var vs: Dictionary = profile.get("vs", {})
 	var pierce: int = profile.get("pierce", 0)
+	# EMP'd (Disruptor): the shield layer blocks nothing, for anyone's shots.
+	if Abilities.emp_on(self):
+		pierce = maxi(pierce, 1)
 	var rest := amount
 	var absorbed := 0.0
 	var g := Game.instance
@@ -120,6 +127,8 @@ func take_damage(amount: float, _from: SpaceEntity = null, profile: Dictionary =
 		hp -= rest * vs.get("hull", 1.0)
 	if absorbed > 0.0 and not (self is Ship and self.def.has("solar_sail")):
 		_shield_fx = Game.instance.spawn_shield_hit(global_position, radius, (_from.global_position if is_instance_valid(_from) else global_position + Vector2.RIGHT), call("shield_color") if has_method("shield_color") else Color("7fd8ff"), _shield_fx if is_instance_valid(_shield_fx) else null)
+	if src_ok:
+		Abilities.emp_try(self, _from, profile)
 	queue_redraw()
 	if hp <= 0.0:
 		_die()
@@ -170,6 +179,10 @@ func _regen_shields(delta: float) -> void:
 			if owner_id == Game.instance.player_id:
 				Game.instance.warn_nebula(global_position)
 			return
+	# EMP'd: no recharge; redraw every frame for the flicker.
+	if Abilities.emp_on(self):
+		queue_redraw()
+		return
 	if max_shield > 0.0 and shield < max_shield and Game.now() - _last_hit_time > Defs.SHIELD_REGEN_DELAY:
 		var gain := minf(max_shield - shield, max_shield * Defs.SHIELD_REGEN_PER_SEC * delta)
 		# Regeneration costs a little energy (spice covers any shortfall);
@@ -223,7 +236,8 @@ func _arc_points(arc_radius: float, mid: float, span: float, steps: int) -> Pack
 
 ## Draws the gauges into `on` (the overlay), not into this node.
 func draw_status(on: CanvasItem) -> void:
-	var damaged := hp < max_hp or (max_shield > 0.0 and shield < max_shield) or armor < max_armor
+	var emp := Abilities.emp_on(self)
+	var damaged := emp or hp < max_hp or (max_shield > 0.0 and shield < max_shield) or armor < max_armor
 	if not selected and not damaged:
 		return
 	var r := radius + 3.0
@@ -241,7 +255,11 @@ func draw_status(on: CanvasItem) -> void:
 	# right as the layer fills.
 	var up := -PI / 2.0
 	var ring := r + 1.5
-	for gauge in [[hp, max_hp, Color("58e07a")], [armor, max_armor, ARMOR_COLOR], [shield, max_shield, Color("7fd8ff")]]:
+	# EMP'd: a faint shield gauge and a faint purple flicker round the hull.
+	if emp:
+		var fa: float = 0.12 + 0.10 * absf(sin(Game.now() * 13.0)) * (0.6 + 0.4 * sin(Game.now() * 37.0))
+		on.draw_arc(Vector2.ZERO, radius + 1.0, 0.0, TAU, 32, Color(0.75, 0.45, 1.0, fa), 1.5, true)
+	for gauge in [[hp, max_hp, Color("58e07a")], [armor, max_armor, ARMOR_COLOR], [shield, max_shield, Color(0.5, 0.85, 1.0, 0.25) if emp else Color("7fd8ff")]]:
 		var full: float = gauge[1]
 		if full <= 0.0:
 			continue

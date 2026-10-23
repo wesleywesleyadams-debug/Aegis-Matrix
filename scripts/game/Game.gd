@@ -1636,10 +1636,11 @@ func found_starbase(pid: int, pos: Vector2) -> Starbase:
 
 ## `origin`: where the shot leaves (a turret's muzzle, a corvette's nose);
 ## the shooter's centre when left out.
-func fire(from: Node2D, to: Node2D, weapon: String, damage: float, spread: float = 0.0, origin: Vector2 = Vector2.INF) -> void:
+func fire(from: Node2D, to: Node2D, weapon: String, damage: float, spread: float = 0.0, origin: Vector2 = Vector2.INF, gun: int = -1) -> void:
 	var p := Projectile.new()
 	fx_root.add_child(p)
 	p.setup(from, to, weapon, damage * mod(from.owner_id, "damage"), spread, origin)
+	p.profile["gun"] = gun   # per-gun EMP cooldown (Abilities.emp_try)
 	if not sim_mode:
 		sfx.play_at("laser" if weapon in ["laser", "kinetic", "flak"] else "torpedo", p.global_position, -8.0)   # proton / missile / bomblet: torpedo sound
 
