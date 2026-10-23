@@ -131,6 +131,15 @@ static func stuck_report(g: Game, t: float) -> void:
 static func sample(t: float) -> Dictionary:
 	var g := Game.instance
 	var out := {"t": int(t)}
+	# Habitable worlds in the system, and how many nobody holds.
+	var hab := 0
+	var free := 0
+	for p in g.get_tree().get_nodes_in_group("planets"):
+		if p.is_habitable():
+			hab += 1
+			free += int(p.owner_id <= 0)
+	out["habitable"] = hab
+	out["free_habitable"] = free
 	for pid in g.players:
 		var pop := 0.0
 		var worlds := 0
