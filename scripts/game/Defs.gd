@@ -744,14 +744,14 @@ const SAIL_SHIELD_FRAC_PER_ENERGY := 0.10
 const GENERALIST_COLOR := Color("fff06a")
 
 const VARIANTS := {
-	"plasma": {"label": "Plasma", "vs": {"shield": 3.0}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
-		"desc": "80% base damage, x3.0 against shields."},
+	"plasma": {"label": "Plasma", "vs": {"shield": 3.0}, "pierce": 0, "damage": 0.79, "cost": 1.0, "color": Color("7fd8ff"),
+		"desc": "79% base damage, x3.0 against shields."},
 	"breacher": {"label": "Breacher", "vs": {"armor": 2.5}, "pierce": 0, "damage": 0.81, "cost": 1.0, "color": Color("ff4a4a"),
 		"desc": "81% base damage, x2.5 against armor."},
 	"reaver": {"label": "Ravager", "vs": {"hull": 2.2}, "pierce": 0, "damage": 0.85, "cost": 1.0, "color": Color("58e07a"),
 		"desc": "85% base damage, x2.2 against hull."},
-	"slip": {"label": "Slip", "vs": {}, "pierce": 2, "damage": 0.37, "cost": 1.0, "color": Color("ff7a14"),
-		"desc": "Shots skip shields and armor and hit the hull, at 37% base damage."},
+	"slip": {"label": "Slip", "vs": {}, "pierce": 2, "damage": 0.36, "cost": 1.0, "color": Color("ff7a14"),
+		"desc": "Shots skip shields and armor and hit the hull, at 36% base damage."},
 	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 0, "damage": 0.85, "emp": true, "cost": 1.0, "color": Color("b06cff"),
 		"desc": "85% base damage. Each hit EMPs the target: its shields go down for 5 s (they block nothing and don't recharge), then come back at the value they had. Each ship can EMP once per 4 s (all its weapons share it)."},
 }
