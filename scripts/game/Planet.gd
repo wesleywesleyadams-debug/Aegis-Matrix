@@ -390,7 +390,7 @@ func max_shield() -> float:
 	# Each Defense Battery thickens the planetary shield.
 	# Low power in a Blackout: the batteries' shield bonus drops to 25%.
 	var nb := count_building("battery") * power_factor("battery")
-	return (PLANET_SHIELD + nb * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "shield") * Game.instance.mod(owner_id, "planet_shield")
+	return (PLANET_SHIELD + nb * Defs.BATTERY_SHIELD) * Game.instance.mod(owner_id, "world_shield") * Game.instance.mod(owner_id, "planet_shield")
 
 func is_alive() -> bool:
 	return owner_id != 0 and pop > 0.0 and is_inside_tree()

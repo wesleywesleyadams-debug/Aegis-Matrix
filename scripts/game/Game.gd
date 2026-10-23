@@ -1024,6 +1024,12 @@ func mod(pid: int, key: String) -> float:
 		m += Defs.TECHS[t]["effects"].get(key, 0.0)
 	return m
 
+## Defense-line bonus for one layer ("hull"/"armor"/"shield"): a flat amount
+## equal to a % of the entity's total base HP (hull+armor+shield), added to
+## that layer.
+func layer_bonus(pid: int, key: String, base_total: float) -> float:
+	return base_total * (mod(pid, key + "_total") - 1.0)
+
 ## How many marks a warship class has earned for this player, 0-3 (see
 ## Defs.HULL_MARKS): Mk I through Mk IV.
 func mark_level(pid: int, ship_type: String) -> int:
