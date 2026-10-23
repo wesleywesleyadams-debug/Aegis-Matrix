@@ -753,7 +753,7 @@ const VARIANTS := {
 	"slip": {"label": "Slip", "vs": {}, "pierce": 2, "damage": 0.36, "cost": 1.0, "color": Color("ff7a14"),
 		"desc": "Shots skip shields and armor and hit the hull, at 36% base damage."},
 	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 0, "damage": 0.85, "emp": true, "cost": 1.0, "color": Color("b06cff"),
-		"desc": "85% base damage. Each hit EMPs the target: its shields go down for 5 s (they block nothing and don't recharge), then come back at the value they had. Each ship can EMP once per 4 s (all its weapons share it)."},
+		"desc": "85% base damage. Each hit EMPs the target: its shields go down for 5 s (they block nothing and don't recharge), then come back at the value they had. A ship can EMP once per 4 s divided by its gun count (corvette 4 s, carrier 1 s)."},
 }
 ## Which variants each generalist has so far.
 const VARIANTS_OF := {

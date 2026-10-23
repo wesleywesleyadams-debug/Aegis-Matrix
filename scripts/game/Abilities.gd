@@ -60,12 +60,12 @@ static func allies_near(s: Node2D, r: float) -> Array:
 ## arrays of e's own side (for soaking enemy fire).
 ## Disruptor EMP: a hit switches the target's shields off for EMP_TIME (each
 ## hit refreshes it). While off the shield blocks nothing and does not
-## recharge, and it comes back at the value it had. Each ship (all its guns,
-## beams and drones together) can apply or refresh an EMP only once per
-## EMP_SHIP_CD.
+## recharge, and it comes back at the value it had. Each ship can apply or
+## refresh an EMP once per EMP_GUN_CD / its gun count (a 1-gun corvette every
+## 4 s, a 4-gun carrier every 1 s): one shared timestamp, gun-scaled.
 ## Transient: not saved (it lasts 5 s at most).
 const EMP_TIME := 5.0
-const EMP_SHIP_CD := 4.0
+const EMP_GUN_CD := 4.0
 
 static func emp_on(e: Object) -> bool:
 	var u = e.get("shield_off_until")
@@ -83,7 +83,9 @@ static func emp_try(target: Object, from: Object, profile: Dictionary) -> void:
 	var now := Game.now()
 	if now < float(from.emp_ready_at):
 		return
-	from.emp_ready_at = now + EMP_SHIP_CD
+	var d = from.get("def")
+	var guns: int = maxi(1, int(d.get("guns", 1))) if d is Dictionary else 1
+	from.emp_ready_at = now + EMP_GUN_CD / float(guns)
 	# A Radiation Sail Array is EMP'd with its whole pool (touching bubbles).
 	var hit: Array = [target]
 	if target is Ship and target.def.has("solar_sail"):
