@@ -445,8 +445,24 @@ static func call_scene(id: String, img: Image) -> void:
 			_line(img, Vector2(52, 22), Vector2(52, 42), 1.0, Color("ff6a4a"))
 			_line(img, Vector2(42, 32), Vector2(62, 32), 1.0, Color("ff6a4a"))
 		"autoloaders":
-			for k in 5:
-				_shell(img, Vector2(10 + k * 10, 32))
+			# B: a spinning drum magazine seen end-on, rounds in every chamber, one
+			# kicked out of the loading gate.
+			var c := Vector2(28, 34)
+			_disc(img, c, 19.0, STEEL[0])
+			_disc(img, c, 17.6, STEEL[1])
+			_disc(img, c + Vector2(-1.5, -1.5), 15.0, STEEL[2])
+			for k in 6:
+				var q := c + Vector2.from_angle(k * TAU / 6.0 + 0.3) * 10.0
+				_disc(img, q, 4.2, STEEL[0])
+				_disc(img, q, 3.4, BR[1])
+				_disc(img, q + Vector2(-0.6, -0.6), 2.4, BR[2])
+				_disc(img, q, 1.0, BR[0])
+				_put(img, int(q.x - 1.5), int(q.y - 1.5), BR[4])
+			_disc(img, c, 3.0, STEEL[0])
+			_disc(img, c, 2.0, STEEL[3])
+			for k in 2:
+				_arc(img, c, 22.0 + k * 3.0, -0.9 - k * 0.2, 0.4 - k * 0.2, 1.4, Color(BR[3], 0.8 - k * 0.3))
+			_round(img, Vector2(54, 12), Vector2(0.5, -1).normalized(), 9.0, 1.8)
 		"heavy_mounts":
 			_box(img, Vector2(14, 40), Vector2(50, 52), Color("6a7596"))
 			_disc(img, Vector2(32, 38), 10.0, Color("8a95b8"))
@@ -1205,3 +1221,20 @@ static func _reticle(img: Image, c: Vector2, r: float, col: Color) -> void:
 		var d := Vector2.from_angle(k * PI / 2.0)
 		_line(img, c + d * (r - 1.5), c + d * (r + 2.5), 1.0, col)
 	_put(img, int(c.x), int(c.y), col)
+
+## Brass tones: outline, deep, body, light, highlight.
+const BR := [Color("2a1a04"), Color("8a5a14"), Color("d8a032"), Color("ffd870"), Color("fff6d0")]
+
+## A cartridge pointing along dir: outlined brass case, rim, copper ogive
+## tip, highlight along the lit side.
+static func _round(img: Image, p: Vector2, dir: Vector2, len: float, w: float) -> void:
+	var n := dir.orthogonal()
+	var base := p - dir * len * 0.5
+	var neck := p + dir * len * 0.15
+	var tip := p + dir * len * 0.5
+	_poly(img, [base + n * (w + 0.8) - dir * 0.8, neck + n * (w + 0.8), tip + dir * 0.9, neck - n * (w + 0.8), base - n * (w + 0.8) - dir * 0.8], BR[0])
+	_poly(img, [base + n * w, neck + n * w, neck - n * w, base - n * w], BR[2])
+	_poly(img, [base + n * w, neck + n * w, neck + n * w * 0.3, base + n * w * 0.3], BR[3])
+	_poly(img, [neck + n * w, tip, neck - n * w], Color("b5562a"))
+	_poly(img, [neck + n * w, tip, neck + n * w * 0.2], Color("e88a5a"))
+	_line(img, base + n * w, base - n * w, 1.2, BR[1])
