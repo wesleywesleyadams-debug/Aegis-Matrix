@@ -190,7 +190,7 @@ const BUILD_ORDER: Array[String] = ["miner", "skimmer", "colony", "constructor",
 ## and time (see SHIPS "refit"). A specialist can never be refitted again.
 ## Doesn't count as a starbase (losing it doesn't lose the match).
 const WEAPONS_DEPOT := {
-	"name": "Weapons Depot", "requires": "depots", "hp": 704.0, "armor": 368.0, "shield": 528.0, "radius": 22.0,
+	"name": "Weapons Depot", "requires": "depots", "hp": 368.0, "armor": 704.0, "shield": 528.0, "radius": 22.0,
 	"cost": {"minerals": 290}, "build_time": 30.0, "upkeep": 2.0,
 	"capacity": 10,
 }
@@ -206,7 +206,7 @@ static func construct_dps(d: Dictionary) -> float:
 	return float(d.get("guns", 0)) * LASER_DAMAGE / LASER_COOLDOWN
 
 const STARBASE := {
-	"name": "Starbase", "hp": 2376.0, "armor": 1242.0, "shield": 1782.0, "radius": 26.0,
+	"name": "Starbase", "hp": 1242.0, "armor": 2376.0, "shield": 1782.0, "radius": 26.0,
 	"weapon": "laser", "guns": 6, "range": 260.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 1200}, "build_time": 40.0,
@@ -250,7 +250,7 @@ const DOOM_SECONDS := 10.0
 ## laser fort for holding ground. Builds nothing, takes no deliveries, and is
 ## not a starbase for winning or losing.
 const FRONTIER_OUTPOST := {
-	"name": "Frontier Outpost", "requires": "outposts", "hp": 1760.0, "armor": 920.0, "shield": 1320.0, "radius": 20.0,
+	"name": "Frontier Outpost", "requires": "outposts", "hp": 920.0, "armor": 1760.0, "shield": 1320.0, "radius": 20.0,
 	"weapon": "laser", "guns": 3, "range": 260.0,
 	"cost": {"minerals": 535}, "build_time": 30.0,
 	"upkeep": 1.65,
@@ -260,7 +260,7 @@ const FRONTIER_OUTPOST := {
 ## die with the gate), then the gate flings them all at a point warp_min to
 ## warp_max px away at warp_speed_mult x their speed, every warp_cooldown s.
 const WARP_GATE := {
-	"name": "Warp Gate", "requires": "warp_gates", "hp": 660.0, "armor": 345.0, "shield": 495.0, "radius": 24.0,
+	"name": "Warp Gate", "requires": "warp_gates", "hp": 345.0, "armor": 660.0, "shield": 495.0, "radius": 24.0,
 	"cost": {"minerals": 2400}, "build_time": 60.0,
 	"upkeep": 3.3,
 	"warp_min": 1000.0, "warp_max": 2000.0, "warp_cooldown": 30.0, "warp_speed_mult": 10.0,
@@ -273,7 +273,7 @@ const WARP_GATE := {
 const PLACEMENT_RING := 6.0
 
 const MINING_STATION := {
-	"name": "Mining Station", "hp": 220.0, "armor": 115.0, "shield": 165.0, "radius": 16.0,
+	"name": "Mining Station", "hp": 115.0, "armor": 220.0, "shield": 165.0, "radius": 16.0,
 	"weapon": "laser", "guns": 1, "range": 190.0,
 	"cost": {"minerals": 150}, "build_time": 20.0,
 	"upkeep": 1.0,
