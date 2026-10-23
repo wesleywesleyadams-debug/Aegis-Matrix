@@ -38,10 +38,10 @@ its generalist.**
 |---|---|---|---|---|
 | Generalist | full damage to all layers | 100% | yellow lasers | none |
 | **Plasma** | x3.0 vs **shields** | 80% | light blue | one solid line down the spine |
-| **Breacher** | x2.5 vs **armor** | 80% | red | two ribs across the hull |
-| **Ravager** | x2.2 vs **hull** | 80% | green | saw teeth along both edges |
-| **Slip** | **ignores shields and armor** (hull only) | 35% | orange V-shots | two stripes either side of the spine |
-| **Disruptor** | **EMP**: each hit switches the target's shields off for 5 s (no blocking, no recharge; they return at the value they had). Each ship can EMP once per 4 s (all its guns, beams and drones share it). Works on ships, starbases, constructs, worlds and Radiation Sail Arrays | 80% | purple lasers | a row of V chevrons |
+| **Breacher** | x2.5 vs **armor** | 83% | red | two ribs across the hull |
+| **Ravager** | x2.2 vs **hull** | 92% | green | saw teeth along both edges |
+| **Slip** | **ignores shields and armor** (hull only) | 40% | orange V-shots | two stripes either side of the spine |
+| **Disruptor** | **EMP**: each hit switches the target's shields off for 5 s (no blocking, no recharge; they return at the value they had). Each ship can EMP once per 4 s (all its guns, beams and drones share it). Works on ships, starbases, constructs, worlds and Radiation Sail Arrays | 90% | purple lasers | a row of V chevrons |
 
 Hull markings are always drawn in the owner's player color, so the pattern alone
 names the variant (one line, two ribs, saw teeth, two stripes, chevrons); the

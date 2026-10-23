@@ -746,14 +746,14 @@ const GENERALIST_COLOR := Color("fff06a")
 const VARIANTS := {
 	"plasma": {"label": "Plasma", "vs": {"shield": 3.0}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
 		"desc": "80% base damage, x3.0 against shields."},
-	"breacher": {"label": "Breacher", "vs": {"armor": 2.5}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff4a4a"),
-		"desc": "80% base damage, x2.5 against armor."},
-	"reaver": {"label": "Ravager", "vs": {"hull": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("58e07a"),
-		"desc": "80% base damage, x2.2 against hull."},
-	"slip": {"label": "Slip", "vs": {}, "pierce": 2, "damage": 0.35, "cost": 1.0, "color": Color("ff7a14"),
-		"desc": "Shots skip shields and armor and hit the hull, at 35% base damage."},
-	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 0, "damage": 0.8, "emp": true, "cost": 1.0, "color": Color("b06cff"),
-		"desc": "80% base damage. Each hit EMPs the target: its shields go down for 5 s (they block nothing and don't recharge), then come back at the value they had. Each ship can EMP once per 4 s (all its weapons share it)."},
+	"breacher": {"label": "Breacher", "vs": {"armor": 2.5}, "pierce": 0, "damage": 0.83, "cost": 1.0, "color": Color("ff4a4a"),
+		"desc": "83% base damage, x2.5 against armor."},
+	"reaver": {"label": "Ravager", "vs": {"hull": 2.2}, "pierce": 0, "damage": 0.92, "cost": 1.0, "color": Color("58e07a"),
+		"desc": "92% base damage, x2.2 against hull."},
+	"slip": {"label": "Slip", "vs": {}, "pierce": 2, "damage": 0.40, "cost": 1.0, "color": Color("ff7a14"),
+		"desc": "Shots skip shields and armor and hit the hull, at 40% base damage."},
+	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 0, "damage": 0.9, "emp": true, "cost": 1.0, "color": Color("b06cff"),
+		"desc": "90% base damage. Each hit EMPs the target: its shields go down for 5 s (they block nothing and don't recharge), then come back at the value they had. Each ship can EMP once per 4 s (all its weapons share it)."},
 }
 ## Which variants each generalist has so far.
 const VARIANTS_OF := {
