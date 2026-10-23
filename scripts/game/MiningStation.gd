@@ -11,7 +11,6 @@ extends SpaceEntity
 var under_construction: bool = true
 var construct_progress: float = 0.0
 var build_stalled: bool = false
-var guns: ConstructGuns
 var _hull: Sprite2D
 var _team: Sprite2D
 
@@ -19,7 +18,6 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("mining_stations")
 	radius = Defs.MINING_STATION["radius"]
-	guns = ConstructGuns.new(self, Defs.MINING_STATION["guns"])
 	_hull = Sprite2D.new()
 	_hull.texture = Defs.tex("ship_mining_station")
 	_hull.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -69,12 +67,6 @@ func _physics_process(delta: float) -> void:
 		_construct(delta)
 		return
 	_regen_shields(delta)
-	_shoot(delta)
-
-## A token gun (one standard ship laser): enough to bother a lone raider,
-## not to hold a belt.
-func _shoot(delta: float) -> void:
-	guns.tick(Defs.MINING_STATION, delta)
 
 func _construct(delta: float) -> void:
 	var g := Game.instance

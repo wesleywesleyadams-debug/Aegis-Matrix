@@ -1201,7 +1201,7 @@ func _page_constructs() -> void:
 	_heading("Starbase")
 	_para("Your production station: it builds every ship, takes in harvesters' cargo, and defends itself. It generates nothing itself - no energy, no minerals: those come from your worlds and harvesters. Lose every starbase and Constructor and you lose the match. Its guns: %s, each picking its own target. Starbases cost the most upkeep of anything (x%.2f to the empire multiplier each). Keep them clear of nearly drained gas giants: their explosion wrecks anything close." % [_construct_guns(Defs.STARBASE), Defs.UPKEEP_WEIGHT["starbase"]])
 	_heading("Mining Station")
-	_para("A forward drop-off: harvesters unload here instead of flying home, so a station beside a far belt or nebula shortens every trip. It has a light gun for raiders: %s." % _construct_guns(Defs.MINING_STATION))
+	_para("A forward drop-off: harvesters unload here instead of flying home, so a station beside a far belt or nebula shortens every trip. It has no weapons: guard it with ships or a Frontier Outpost.")
 	_heading("Frontier Outpost")
 	_para("Half a starbase: %s instead of its %d, on a cheaper site (Outposts research). It builds nothing and takes no cargo; it only holds the space around it, and enemy ships attack it on sight like a starbase. Construct weapon research (damage, range, fire rate) applies to its guns. Upkeep weight x%.2f, as a cruiser." % [_construct_guns(Defs.FRONTIER_OUTPOST), int(Defs.STARBASE["guns"]), Defs.UPKEEP_WEIGHT["cruiser"]])
 	_heading("Warp Gate")

@@ -273,8 +273,7 @@ const WARP_GATE := {
 const PLACEMENT_RING := 6.0
 
 const MINING_STATION := {
-	"name": "Mining Station", "hp": 161.0, "armor": 308.0, "shield": 231.0, "radius": 16.0,
-	"weapon": "laser", "guns": 1, "range": 190.0,
+	"name": "Mining Station", "hp": 230.0, "armor": 440.0, "shield": 330.0, "radius": 16.0,
 	"cost": {"minerals": 150}, "build_time": 20.0,
 	"upkeep": 1.0,
 }
