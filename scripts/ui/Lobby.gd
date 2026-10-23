@@ -329,7 +329,7 @@ func _on_start_pressed() -> void:
 	if not GameState.load_on_start:
 		var sys := SystemGen.find(GameState.system_id)
 		GameState.system_seed = int(sys.get("seed", 0)) if GameState.system_id != "random" else randi()
-	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	MatchLoading.start(get_tree())
 
 func _on_back_pressed() -> void:
 	GameState.load_on_start = false

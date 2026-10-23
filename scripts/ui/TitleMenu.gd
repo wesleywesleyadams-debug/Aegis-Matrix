@@ -307,7 +307,7 @@ func _on_save_entry_pressed(path: String, mode: String, save_name: String) -> vo
 	if mode == "multi":
 		get_tree().change_scene_to_file("res://scenes/Lobby.tscn")
 	else:
-		get_tree().change_scene_to_file("res://scenes/Main.tscn")
+		MatchLoading.start(get_tree())
 
 func _on_close_load_list_pressed() -> void:
 	load_list_panel.visible = false

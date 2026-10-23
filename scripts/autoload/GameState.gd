@@ -61,6 +61,9 @@ var deathmatch: bool = false
 ## generated ones, the seed it was built from (set when the match starts).
 var system_id: String = "orion_reach"
 var system_seed: int = 0
+## Which match loading-screen picture was shown last (MatchLoading cycles
+## through them; -1 = none yet, start somewhere random).
+var loading_scene_index: int = -1
 
 ## The human player's own Paths progress -- see PathState/PathDefs' own
 ## doc comments for the actual mechanics. Lives here (not owned by
@@ -279,7 +282,7 @@ func _enforce_fullscreen() -> void:
 ## Dev and test runs (screenshots, sims, duels, training) never write the
 ## player's settings: they only read them.
 static func _dev_run() -> bool:
-	for k in ["SL_SHOT", "SL_SIM", "SL_DUEL", "SL_TITLE_SHOT", "SL_LOBBY_SHOT", "SL_CODEX_SHOT", "SL_OPTIONS_TAB", "SL_NN_WEIGHTS", "SL_HOVER_TEST", "SL_MIXVARIANTS", "SL_PLAYTEST"]:
+	for k in ["SL_SHOT", "SL_SIM", "SL_DUEL", "SL_TITLE_SHOT", "SL_LOBBY_SHOT", "SL_CODEX_SHOT", "SL_OPTIONS_TAB", "SL_NN_WEIGHTS", "SL_HOVER_TEST", "SL_MIXVARIANTS", "SL_PLAYTEST", "SL_BOOT_SHOT", "SL_LOADING_SHOT"]:
 		if OS.get_environment(k) != "":
 			return true
 	return false
@@ -300,6 +303,7 @@ func save_global_settings() -> void:
 	config.set_value("accounts", "list", accounts)
 	config.set_value("accounts", "stay_signed_in", stay_signed_in)
 	config.set_value("accounts", "remembered_account", remembered_account)
+	config.set_value("ui", "loading_scene_index", loading_scene_index)
 	config.save(GLOBAL_SETTINGS_PATH)
 
 func save_account_settings() -> void:
@@ -340,6 +344,7 @@ func load_global_settings() -> void:
 	accounts = config.get_value("accounts", "list", accounts)
 	stay_signed_in = config.get_value("accounts", "stay_signed_in", stay_signed_in)
 	remembered_account = config.get_value("accounts", "remembered_account", remembered_account)
+	loading_scene_index = int(config.get_value("ui", "loading_scene_index", loading_scene_index))
 	## Auto-restore whoever "Stay signed in" remembered, same as a browser
 	## or Steam staying logged in across a restart -- active_account is
 	## otherwise session-only (see its own doc comment), so without this a
