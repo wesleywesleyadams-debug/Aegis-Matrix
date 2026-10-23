@@ -2543,7 +2543,8 @@ func _solar_tick(delta: float) -> void:
 	# Each point of energy charges Defs.SAIL_SHIELD_FRAC_PER_ENERGY of the
 	# maximum (10%), so shield techs don't slow the refill.
 	var per_energy := maxf(max_shield * Defs.SAIL_SHIELD_FRAC_PER_ENERGY, 0.001)
-	var into_shield := minf(gain, maxf(max_shield - shield, 0.0) / per_energy)
+	# EMP'd: the solar shield does not charge.
+	var into_shield := 0.0 if Abilities.emp_on(self) else minf(gain, maxf(max_shield - shield, 0.0) / per_energy)
 	if into_shield > 0.0:
 		_sail_mode = "charge"
 		shield = minf(max_shield, shield + into_shield * per_energy)

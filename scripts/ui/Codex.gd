@@ -527,11 +527,13 @@ func _page_variants() -> void:
 	_pic("variants", "Every variant costs the same as its generalist; its chevrons and shots share its color.", Vector2(460, 160))
 	var vrows: Array = [["Generalist", "-", "100%", ["yellow laser", Defs.GENERALIST_SHOT], ["^ ^ ^", Defs.GENERALIST_COLOR]]]
 	var shots := {"plasma": "light blue laser", "breacher": "red laser", "reaver": "green laser",
-		"slip": "orange V-shot", "disruptor": "purple V-shot"}
+		"slip": "orange V-shot", "disruptor": "purple laser"}
 	for v in Defs.VARIANTS:
 		var vd: Dictionary = Defs.VARIANTS[v]
 		var effect := ""
-		if vd["pierce"] >= 2:
+		if vd.get("emp", false):
+			effect = "EMP: shields off 5 s"
+		elif vd["pierce"] >= 2:
 			effect = "ignores shields and armor"
 		elif vd["pierce"] == 1:
 			effect = "ignores shields"
@@ -840,7 +842,7 @@ func _tech_caption(id: String) -> String:
 			var why3: String = {"autoloaders": "Worth about as much as a damage tech; take whichever is cheaper first.", "heavy_mounts": "Best with many small guns: corvette swarms, Kinetic Repeaters, Flak.", "scatter_arrays": "The fast-gun end of the tier-3 choice (Lance Batteries is the heavy-gun end)."}[id]
 			var mid3 := " It speeds the reload of ships, drones and starbases (outposts and Mining Stations keep theirs); more shots also means more Point-Defense needles." if int(t["tier"]) == 1 else ""
 			return "+%d%% rate of fire%s.%s %s" % [_pct(id, "fire_rate"), _cum_text(id, "fire_rate"), mid3, why3]
-		"overcharged_coils": return "%d%% of each hit ignores enemy shields and goes straight on to armor. Strongest against cruisers, carriers and starbases (shield-heavy); no help once a target's shields are down. Plasma, Slip and Disruptor variants already pass shields, so it adds nothing to them." % _pct(id, "shield_pierce")
+		"overcharged_coils": return "%d%% of each hit ignores enemy shields and goes straight on to armor. Strongest against cruisers, carriers and starbases (shield-heavy); no help once a target's shields are down. Slip already skips shields, and a Disruptor's EMP switches them off, so it adds little to those." % _pct(id, "shield_pierce")
 		"burst_cyclers": return "%d%% of what reaches the armor skips it and hits the hull. Best against destroyers and carriers, which carry the most armor. With Overcharged Coils a laser shot gets a quarter past each of the first two layers." % _pct(id, "armor_pierce")
 		"hullbreaker_rounds": return "Damage that reaches the hull is x%.2f. Every kill ends on the hull, so it helps against everything, most against hull-heavy corvettes and anything already stripped. Pairs with the two piercing techs, which push more of each shot onto the hull." % (1.0 + float(e["hull_damage"]))
 		"target_prediction": return "Unguided shots aim where a moving target will be, not where it is. Without it fast ships (corvettes, speed %d) dodge much of the fire aimed at them at range. Homing weapons don't need it. Cheap: worth it whenever you fight anything fast." % int(Defs.SHIPS["corvette"]["speed"])

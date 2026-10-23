@@ -725,8 +725,10 @@ static func marked_name(ship_type: String, level: int) -> String:
 ## shields, armor and hull alike. Specialists are variants of a generalist:
 ##   bonus  - 80% base damage, x2.5-3.0 against one layer (x2.2 for hull, the
 ##            biggest layer on most ships)
-##   pierce - skip layers entirely: 1 = shields (70% base damage),
-##            2 = shields and armor (35% base damage)
+##   pierce - skip layers entirely: 2 = shields and armor (Slip, 35% base
+##            damage)
+##   emp    - Disruptor (80% base damage): hits switch the target's shields
+##            off for Abilities.EMP_TIME (see Abilities.emp_try)
 ## All variants cost the same as their generalist. Balance: vs the
 ## generalists' distinct profiles (corvette hull-heavy, destroyer
 ## shield-heavy, cruiser armor-heavy) each specialist kills its favored
@@ -742,16 +744,16 @@ const SAIL_SHIELD_FRAC_PER_ENERGY := 0.10
 const GENERALIST_COLOR := Color("fff06a")
 
 const VARIANTS := {
-	"plasma": {"label": "Plasma", "vs": {"shield": 3.0}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("7fd8ff"),
-		"desc": "80% base damage, x3.0 against shields."},
-	"breacher": {"label": "Breacher", "vs": {"armor": 2.5}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("ff4a4a"),
-		"desc": "80% base damage, x2.5 against armor."},
-	"reaver": {"label": "Ravager", "vs": {"hull": 2.2}, "pierce": 0, "damage": 0.8, "cost": 1.0, "color": Color("58e07a"),
-		"desc": "80% base damage, x2.2 against hull."},
-	"slip": {"label": "Slip", "vs": {}, "pierce": 1, "damage": 0.7, "cost": 1.0, "color": Color("ff7a14"),
-		"desc": "Shots skip shields and hit armor and hull, at 70% base damage."},
-	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 2, "damage": 0.35, "cost": 1.0, "color": Color("b06cff"),
-		"desc": "Shots skip shields and armor and hit the hull, at 35% base damage."},
+	"plasma": {"label": "Plasma", "vs": {"shield": 3.0}, "pierce": 0, "damage": 0.79, "cost": 1.0, "color": Color("7fd8ff"),
+		"desc": "79% base damage, x3.0 against shields."},
+	"breacher": {"label": "Breacher", "vs": {"armor": 2.5}, "pierce": 0, "damage": 0.81, "cost": 1.0, "color": Color("ff4a4a"),
+		"desc": "81% base damage, x2.5 against armor."},
+	"reaver": {"label": "Ravager", "vs": {"hull": 2.2}, "pierce": 0, "damage": 0.83, "cost": 1.0, "color": Color("58e07a"),
+		"desc": "83% base damage, x2.2 against hull."},
+	"slip": {"label": "Slip", "vs": {}, "pierce": 2, "damage": 0.36, "cost": 1.0, "color": Color("ff7a14"),
+		"desc": "Shots skip shields and armor and hit the hull, at 36% base damage."},
+	"disruptor": {"label": "Disruptor", "vs": {}, "pierce": 0, "damage": 0.83, "emp": true, "cost": 1.0, "color": Color("b06cff"),
+		"desc": "83% base damage. Each hit EMPs the target: its shields go down for 5 s (they block nothing and don't recharge), then come back at the value they had. A ship can EMP once per 4 s divided by its gun count (corvette 4 s, carrier 1 s)."},
 }
 ## Which variants each generalist has so far.
 const VARIANTS_OF := {
@@ -827,7 +829,7 @@ static func damage_profile(d: Dictionary) -> Dictionary:
 	if not d.has("variant"):
 		return {"vs": {}, "pierce": 0}
 	var v: Dictionary = VARIANTS[d["variant"]]
-	return {"vs": v["vs"], "pierce": v["pierce"]}
+	return {"vs": v["vs"], "pierce": v["pierce"], "emp": v.get("emp", false)}
 
 ## Ship jobs (see Abilities): what each ship is good at. Passive jobs always
 ## work; active ones are triggered with Q (or the ship panel's button) and
@@ -856,9 +858,14 @@ static func kill_cost(shield: float, armor_v: float, hull: float, variant: Strin
 	var vd: Dictionary = VARIANTS.get(variant, {"vs": {}, "pierce": 0, "damage": 1.0})
 	var vs: Dictionary = vd["vs"]
 	var need := hull / float(vs.get("hull", 1.0))
-	if int(vd["pierce"]) < 2:
+	# Disruptor: after its first hit the EMP keeps the shields off, so (as an
+	# approximation) its fire goes to armor and hull as if shields were skipped.
+	var pr := int(vd["pierce"])
+	if vd.get("emp", false):
+		pr = maxi(pr, 1)
+	if pr < 2:
 		need += armor_v / float(vs.get("armor", 1.0))
-	if int(vd["pierce"]) < 1:
+	if pr < 1:
 		need += shield / float(vs.get("shield", 1.0))
 	return need / float(vd["damage"])
 

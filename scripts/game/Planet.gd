@@ -56,6 +56,8 @@ var starving: bool = false
 var siege_start_pop: float = 0.0
 var shield: float = 0.0
 var last_hit_time: float = -1000.0
+## Disruptor EMP (Abilities.emp_try): planetary shield off until this time.
+var shield_off_until: float = -100.0
 ## Last time a hit got past the shield and killed pops (halts growth).
 var last_pop_hit_time: float = -1000.0
 ## Colonization in progress: whose, how far, and the ship doing it.
@@ -320,7 +322,9 @@ func _process(delta: float) -> void:
 	var ms := max_shield() if owner_id != 0 else 0.0
 	if shield > ms:
 		shield = ms # batteries on low power (Blackout) or lost
-	if shield < ms and Game.now() - last_hit_time > Defs.SHIELD_REGEN_DELAY:
+	if Abilities.emp_on(self):
+		queue_redraw()   # flicker; and no recharge while EMP'd
+	elif shield < ms and Game.now() - last_hit_time > Defs.SHIELD_REGEN_DELAY:
 		var gain := minf(ms - shield, ms * Defs.SHIELD_REGEN_PER_SEC * delta)
 		var paid := Game.instance.pay_over_time(owner_id, {"energy": gain * Defs.SHIELD_ENERGY_PER_POINT}, 1.0)
 		shield += gain * paid
@@ -417,7 +421,7 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	# Defense techs (Deflectors, layer lines) guard ships and constructs only;
 	# world defense comes from the Worlds tab.
 	# A Radiation Sail Array's bubble soaks fire on worlds inside it too.
-	amount = Abilities.sail_absorb(self, amount, from)
+	amount = Abilities.sail_absorb(self, amount, from, profile)
 	if amount <= 0.0:
 		return
 	if g.now() - last_hit_time > SIEGE_MEMORY or siege_start_pop <= 0.0:
@@ -428,12 +432,13 @@ func take_damage(amount: float, from: Node2D = null, profile: Dictionary = {}) -
 	# The planetary shield soaks damage first (shield-piercing shots slip past;
 	# Ion shots hit it harder; Ravagers hit the population harder).
 	var absorbed := 0.0
-	if profile.get("pierce", 0) < 1:
+	if profile.get("pierce", 0) < 1 and not Abilities.emp_on(self):
 		var m: float = profile.get("vs", {}).get("shield", 1.0)
 		absorbed = minf(shield, amount * m)
 		shield -= absorbed
 		amount -= absorbed / m
 	amount *= profile.get("vs", {}).get("hull", 1.0)
+	Abilities.emp_try(self, from, profile)
 	if absorbed > 0.0:
 		g.spawn_shield_hit(global_position, radius * 0.6, from.global_position if is_instance_valid(from) else global_position + Vector2.RIGHT)
 	if amount > 0.0:
@@ -530,9 +535,12 @@ func _draw() -> void:
 	# not full (or under fire).
 	if owner_id != 0 and in_sight:
 		var ms2 := max_shield()
-		if ms2 > 0.0 and (shield < ms2 - 0.5 or Game.now() - last_hit_time < SIEGE_MEMORY):
+		var emp := Abilities.emp_on(self)
+		if ms2 > 0.0 and (emp or shield < ms2 - 0.5 or Game.now() - last_hit_time < SIEGE_MEMORY):
 			draw_arc(Vector2.ZERO, r + 9.0, 0.0, TAU, 64, Color(0.5, 0.85, 1.0, 0.15), 2.0)
-			draw_arc(Vector2.ZERO, r + 9.0, -PI / 2.0, -PI / 2.0 + TAU * shield / ms2, 64, Color("7fd8ff"), 2.0)
+			draw_arc(Vector2.ZERO, r + 9.0, -PI / 2.0, -PI / 2.0 + TAU * shield / ms2, 64, Color(0.5, 0.85, 1.0, 0.25) if emp else Color("7fd8ff"), 2.0)
+			if emp:   # EMP'd: faint purple flicker
+				draw_arc(Vector2.ZERO, r + 11.0, 0.0, TAU, 64, Color(0.75, 0.45, 1.0, 0.1 + 0.12 * absf(sin(Game.now() * 13.0))), 1.5)
 	# Siege: ring showing the share of pops left since bombardment began.
 	if owner_id != 0 and in_sight and Game.now() - last_hit_time < SIEGE_MEMORY and siege_start_pop > 0.0:
 		var frac := clampf(pop / siege_start_pop, 0.0, 1.0)
