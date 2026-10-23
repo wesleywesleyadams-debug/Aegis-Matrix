@@ -355,9 +355,20 @@ static func call_scene(id: String, img: Image) -> void:
 			_molten_hole(img, h, 3.0)
 			_lance(img, Vector2(0, 56), h, 4.4)
 		"capital_batteries":
-			_disc(img, Vector2(26, 40), 12.0, Color("6a7596"))
-			_barrel(img, Vector2(26, 36), Vector2(52, 18), 4.0)
-			_barrel(img, Vector2(26, 44), Vector2(52, 26), 4.0)
+			# A domed twin-barrel capital turret firing heavy bolts straight
+			# down each barrel's line toward a far-off reticle.
+			var dir := Vector2(1, -0.62).normalized()
+			var base := Vector2(14, 50)
+			var tips := _turret(img, base, dir, 22.0)
+			for i in tips.size():
+				var t: Vector2 = tips[i]
+				_burst(img, t, 2.6, Color(QCYAN, 0.8))
+				for k in 2:
+					var c0: Vector2 = t + dir * (7.0 + k * 11.0 + i * 4.0)
+					_line(img, c0 - dir * 3.5, c0 + dir * 3.5, 3.4, Color(QCYAN, 0.4))
+					_line(img, c0 - dir * 3.0, c0 + dir * 3.0, 1.8, QCYAN)
+					_line(img, c0 - dir * 1.5, c0 + dir * 2.5, 1.0, QL[4])
+			_reticle(img, Vector2(12, 12), 4.5, QCYAN)
 		"targeting_arrays":
 			# B: three lenses in a row, each a little smaller, stretching the beam
 			# further; faint quantum ghosts flicker beside each lens.
@@ -1170,3 +1181,27 @@ static func _lens(img: Image, c: Vector2, h: float, w: float) -> void:
 	for s in [-1.0, 1.0]:
 		_box(img, c + Vector2(-w * 0.8, s * h - 1.5), c + Vector2(w * 0.8, s * h + 1.5), STEEL[0])
 		_box(img, c + Vector2(-w * 0.6, s * h - 0.8), c + Vector2(w * 0.6, s * h + 0.8), STEEL[3])
+
+## A heavy capital turret: domed armoured base with two long barrels.
+static func _turret(img: Image, base: Vector2, dir: Vector2, len: float) -> Array:
+	var n := dir.orthogonal()
+	var tips := []
+	for s in [-1.0, 1.0]:
+		var a: Vector2 = base + n * s * 3.2
+		_cannon(img, a, a + dir * len, 4.0, 2)
+		tips.append(a + dir * (len + 1.0))
+	_disc(img, base, 10.0, STEEL[0])
+	_disc(img, base, 9.0, STEEL[1])
+	_disc(img, base + Vector2(-1.5, -1.5), 7.0, STEEL[2])
+	_arc(img, base, 8.0, PI * 1.0, PI * 1.5, 1.4, STEEL[4])
+	_disc(img, base, 2.4, QL[2])
+	_disc(img, base + Vector2(-0.6, -0.6), 1.0, QL[4])
+	return tips
+
+## A far-off target reticle.
+static func _reticle(img: Image, c: Vector2, r: float, col: Color) -> void:
+	_ring(img, c, r, 1.0, col)
+	for k in 4:
+		var d := Vector2.from_angle(k * PI / 2.0)
+		_line(img, c + d * (r - 1.5), c + d * (r + 2.5), 1.0, col)
+	_put(img, int(c.x), int(c.y), col)
