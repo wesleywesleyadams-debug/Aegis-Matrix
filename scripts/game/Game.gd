@@ -903,9 +903,10 @@ func body_blast(pos: Vector2, damage: float, radius: float, source: Node2D, what
 		dealt += dmg2
 		if blast_log:
 			lines.append("  world %s P%d d=%.0f dmg=%.0f shield %.0f -> %.0f pop %.0f -> %.0f" % [p.planet_name, p.owner_id, d2, dmg2, b_sh, p.shield, b_pop, p.pop])
-	print("BLAST %s at (%d,%d) t=%.1fmin dmg=%.0f r=%.0f hits=%d total=%.0f" % [what, pos.x, pos.y, now() / 60.0, damage, radius, hits, dealt])
-	for l in lines:
-		print(l)
+	if blast_log:
+		print("BLAST %s at (%d,%d) t=%.1fmin dmg=%.0f r=%.0f hits=%d total=%.0f" % [what, pos.x, pos.y, now() / 60.0, damage, radius, hits, dealt])
+		for l in lines:
+			print(l)
 	if sim_mode or fx_hidden(pos):
 		return
 	var w := Shockwave.new()
