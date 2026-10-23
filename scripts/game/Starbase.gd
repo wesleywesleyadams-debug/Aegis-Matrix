@@ -23,7 +23,7 @@ var rally_target: Node2D
 var under_construction: bool = false
 var construct_progress: float = 0.0
 
-var _cooldown: float = 0.0
+var guns: ConstructGuns
 
 @onready var base_sprite: Sprite2D = $Base
 @onready var team_sprite: Sprite2D = $Team
@@ -38,6 +38,7 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("starbases")
 	radius = Defs.STARBASE["radius"]
+	guns = ConstructGuns.new(self, Defs.STARBASE["guns"])
 	refresh_stats()
 	hp = max_hp * (Game.instance.construct_start_frac(owner_id) if under_construction else 1.0)
 	if under_construction:
@@ -142,14 +143,7 @@ func _physics_process(delta: float) -> void:
 			_launch(queue.pop_front())
 			build_progress = 0.0
 
-	_cooldown -= delta
-	if _cooldown <= 0.0:
-		var e := g.nearest_enemy(self, Defs.STARBASE["range"] * g.mod(owner_id, "range") * g.mod(owner_id, "structure_range"), true)
-		if e:
-			g.fire(self, e, Defs.STARBASE["weapon"], Defs.STARBASE["damage"] * g.mod(owner_id, "structure_damage"))
-			_cooldown = Defs.STARBASE["cooldown"] / g.mod(owner_id, "fire_rate")
-		else:
-			_cooldown = 0.2
+	guns.tick(Defs.STARBASE, delta)
 
 func _construct(delta: float) -> void:
 	var g := Game.instance

@@ -2450,7 +2450,7 @@ func _add_constructor_buttons() -> void:
 	grid.add_child(sb)
 
 	var st := _panel_build_button("ship_mining_station", "Mining Station", Defs.MINING_STATION["cost"], Defs.MINING_STATION["build_time"],
-		"A drop-off: harvesters unload here instead of flying home. Builds no ships, %d hull / %d armor / %d shields and a token gun." % [
+		"A drop-off: harvesters unload here instead of flying home. Builds no ships, %d hull / %d armor / %d shields and one laser gun." % [
 			int(Defs.MINING_STATION["hp"]), int(Defs.MINING_STATION["armor"]), int(Defs.MINING_STATION["shield"])])
 	st.pressed.connect(game.start_station_placement)
 	_register_action(st)
@@ -2559,8 +2559,9 @@ func _build_outpost_panel(f: FrontierOutpost) -> void:
 	if f.under_construction:
 		return
 	var d: Dictionary = Defs.FRONTIER_OUTPOST
-	_sel_body.add_child(_label("Laser %.0f dmg / %.1fs, range %d. Holds the space around it; enemy ships will attack it." % [
-		d["damage"] * game.mod(f.owner_id, "structure_damage"), d["cooldown"], int(f.weapon_range())], DIM, 13))
+	_sel_body.add_child(_label("%d lasers, %.0f dmg / %.1fs each, range %d. Holds the space around it; enemy ships will attack it." % [
+		int(d["guns"]), Defs.LASER_DAMAGE * game.mod(f.owner_id, "structure_damage") * game.mod(f.owner_id, "damage"),
+		Defs.LASER_COOLDOWN / game.mod(f.owner_id, "fire_rate"), int(f.weapon_range())], DIM, 13))
 
 ## The gate panel's live parts, refreshed every tick (_tick_gate_panel):
 ## [gate, garrison size when built, construction?, cooldown label, warp button].

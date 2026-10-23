@@ -1745,7 +1745,7 @@ func _yard_besieged(pid: int, st: Dictionary, b: Starbase, v: Vision) -> bool:
 
 ## True if `war` plus the starbase's own guns should beat the enemies at `at`.
 func _can_hold(pid: int, war: Array, base: Starbase, at: Vector2, game: Game) -> bool:
-	var dps := Defs.STARBASE["damage"] / Defs.STARBASE["cooldown"] if base.global_position.distance_to(at) < 600.0 else 0.0
+	var dps := Defs.construct_dps(Defs.STARBASE) if base.global_position.distance_to(at) < 600.0 else 0.0
 	var tough := base.hp + base.armor + base.shield if dps > 0.0 else 0.0
 	for s in war:
 		dps += _ship_dps(s, game)
@@ -2227,12 +2227,12 @@ func _defence_at(pid: int, at: Vector2, game: Game) -> Vector2:
 	if v:
 		for sb in v.seen_bases:
 			if v.seen_bases[sb][0].distance_to(at) < SUPPORT_RANGE:
-				dps += Defs.STARBASE["damage"] / Defs.STARBASE["cooldown"]
+				dps += Defs.construct_dps(Defs.STARBASE)
 				tough += sbt * float(v.seen_bases[sb][1])
 	else:
 		for sb in game.get_tree().get_nodes_in_group("starbases"):
 			if game.is_hostile(pid, sb.owner_id) and sb.global_position.distance_to(at) < SUPPORT_RANGE:
-				dps += Defs.STARBASE["damage"] / Defs.STARBASE["cooldown"]
+				dps += Defs.construct_dps(Defs.STARBASE)
 				tough += sb.hp + sb.armor + sb.shield
 	# Enemy worlds' batteries and shields: with fog, as this player knows
 	# them (in sight: as they are; else as last seen, or a guess).
@@ -2256,12 +2256,12 @@ func _defence_at(pid: int, at: Vector2, game: Game) -> Vector2:
 		for id in v.seen_forts:
 			var fm: Array = v.seen_forts[id]
 			if game.is_hostile(pid, int(fm[2])) and fm[0].distance_to(at) < SUPPORT_RANGE:
-				dps += Defs.FRONTIER_OUTPOST["damage"] / Defs.FRONTIER_OUTPOST["cooldown"]
+				dps += Defs.construct_dps(Defs.FRONTIER_OUTPOST)
 				tough += ft * float(fm[1])
 	else:
 		for f in game.get_tree().get_nodes_in_group("forts"):
 			if f is FrontierOutpost and f.is_alive() and game.is_hostile(pid, f.owner_id) and f.global_position.distance_to(at) < SUPPORT_RANGE:
-				dps += Defs.FRONTIER_OUTPOST["damage"] / Defs.FRONTIER_OUTPOST["cooldown"]
+				dps += Defs.construct_dps(Defs.FRONTIER_OUTPOST)
 				tough += f.hp + f.armor + f.shield
 	if v:
 		# Only what we have seen recently.

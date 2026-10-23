@@ -114,13 +114,13 @@ const BASE_SHIPS := {
 		"name": "Corvette", "role": "warship",
 		"hp": 66.0, "armor": 50.0, "shield": 34.0, "speed": 125.0, "radius": 8.0,
 		"cost": {"minerals": 75}, "build_time": 15.0, "upkeep": 0.7,
-		"weapon": "laser", "damage": 10.0, "cooldown": 1.0, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 8.0},
+		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 140.0, "sensor": 280.0, "refit": {"minerals": 5, "time": 8.0},
 	},
 	"destroyer": {
 		"name": "Destroyer", "role": "warship", "requires": "destroyers",
 		"hp": 99.0, "armor": 132.0, "shield": 69.0, "speed": 85.0, "radius": 14.6, "size": 1.33,
 		"cost": {"minerals": 150}, "build_time": 38.0, "upkeep": 1.7,
-		"weapon": "laser", "damage": 10.0, "cooldown": 1.0, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
+		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 210.0, "sensor": 330.0, "refit": {"minerals": 10, "time": 10.0},
 		# Two light turrets on the prongs: they track a circling corvette
 		# without the hull coming about, and two smaller shots waste less on
 		# a light target than one big one.
@@ -130,7 +130,7 @@ const BASE_SHIPS := {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
 		"hp": 264.0, "armor": 184.0, "shield": 352.0, "speed": 55.0, "radius": 26.6, "size": 1.66,
 		"cost": {"minerals": 300}, "build_time": 80.0, "upkeep": 4.0,
-		"weapon": "laser", "damage": 10.0, "cooldown": 1.0, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
+		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
 		"guns": 3, "turret_rate": 6.0, "turret_scale": TURRET_ON_SCREEN / 1.66, "turrets": [[0.5, 0.0], [0.3, -0.28], [0.3, 0.28]],
 	},
@@ -141,7 +141,7 @@ const BASE_SHIPS := {
 		# makes up for it with several mounts instead of one.
 		"hp": 552.0, "armor": 792.0, "shield": 1056.0, "speed": 38.0, "radius": 64.0, "size": 2.0,
 		"cost": {"minerals": 600}, "build_time": 153.0, "upkeep": 8.0,
-		"weapon": "laser", "damage": 10.0, "cooldown": 1.0, "range": 260.0, "sensor": 460.0,
+		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 260.0, "sensor": 460.0,
 		"guns": 4,
 		# Turrets traverse on their own, so the hull does not have to come
 		# about to shoot - but slowly, so a corvette that keeps moving can
@@ -195,9 +195,19 @@ const WEAPONS_DEPOT := {
 	"capacity": 10,
 }
 
+## The standard laser gun: one shot of LASER_DAMAGE every LASER_COOLDOWN s.
+## Every warship laser and every construct gun (ConstructGuns) reads these,
+## so ships and constructs can't drift apart.
+const LASER_DAMAGE := 10.0
+const LASER_COOLDOWN := 1.0
+
+## A construct's base gun damage per second (its guns x the standard laser).
+static func construct_dps(d: Dictionary) -> float:
+	return float(d.get("guns", 0)) * LASER_DAMAGE / LASER_COOLDOWN
+
 const STARBASE := {
 	"name": "Starbase", "hp": 1800.0, "armor": 1800.0, "shield": 1800.0, "radius": 26.0,
-	"weapon": "laser", "damage": 34.0, "cooldown": 0.6, "range": 260.0,
+	"weapon": "laser", "guns": 6, "range": 260.0,
 	# Built on site by a Constructor, paid over build_time.
 	"cost": {"minerals": 1400}, "build_time": 40.0,
 	"upkeep": 3.3,
@@ -241,7 +251,7 @@ const DOOM_SECONDS := 10.0
 ## not a starbase for winning or losing.
 const FRONTIER_OUTPOST := {
 	"name": "Frontier Outpost", "requires": "outposts", "hp": 1333.0, "armor": 1333.0, "shield": 1333.0, "radius": 20.0,
-	"weapon": "laser", "damage": 17.0, "cooldown": 0.6, "range": 260.0,
+	"weapon": "laser", "guns": 3, "range": 260.0,
 	"cost": {"minerals": 510}, "build_time": 30.0,
 	"upkeep": 1.65,
 }
@@ -264,7 +274,7 @@ const PLACEMENT_RING := 6.0
 
 const MINING_STATION := {
 	"name": "Mining Station", "hp": 900.0, "armor": 300.0, "shield": 300.0, "radius": 16.0,
-	"weapon": "laser", "damage": 8.0, "cooldown": 1.4, "range": 190.0,
+	"weapon": "laser", "guns": 1, "range": 190.0,
 	"cost": {"minerals": 150}, "build_time": 20.0,
 	"upkeep": 1.0,
 }
@@ -462,7 +472,7 @@ const TECHS := {
 	"forward_bases": {"name": "Forward Bases", "group": "constructs", "tier": 2, "requires": ["orbital_yards"], "cost": {"spice": 60}, "time": 100.0,
 		"effects": {"build_speed": 0.15, "construct_speed": 0.15}, "desc": "Ships and constructs are built 15% faster."},
 	"citadel_protocols": {"name": "Citadel Protocols", "group": "constructs", "tier": 3, "requires": ["reinforced_docks"], "cost": {"spice": 240}, "time": 245.0,
-		"effects": {"structure_shield": 0.50, "structure_range": 0.15}, "desc": "+50% construct shields, +15% starbase and outpost weapon range."},
+		"effects": {"structure_shield": 0.50, "structure_range": 0.15}, "desc": "+50% construct shields, +15% construct weapon range."},
 
 	# --- Worlds: feeding, growing and holding colonies.
 	"colony_pods": {"name": "Colony Pods", "group": "worlds", "tier": 1, "requires": [], "cost": {"spice": 20}, "time": 40.0,
