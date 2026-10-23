@@ -1199,7 +1199,7 @@ func _expansion_colonize(cx: Ctx) -> void:
 	var colonists: Array = cx.colonists
 	for c in colonists:
 		if c.state == Ship.State.IDLE or c.state == Ship.State.MOVE:
-			var p := _nearest_planet(c.global_position, game, func(pl): return _known_free(pid, pl, game))
+			var p := _nearest_planet(c.global_position, game, func(pl): return _known_free(pid, pl, game) and pl.is_habitable())
 			if p:
 				c.order_colonize(p)
 
