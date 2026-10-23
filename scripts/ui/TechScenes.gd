@@ -48,10 +48,15 @@ static func call_scene(id: String, img: Image) -> void:
 		# ---------------------------------------------------------- mods
 		# The class's hull small in a corner, its new weapon doing its thing.
 		"mod_proton_torpedoes":
-			_sprite(img, "ship_corvette", Vector2(14, 48), 18.0)
-			_dashes(img, Vector2(20, 42), Vector2(40, 22), Color("ffb347", 0.7))
-			_disc(img, Vector2(44, 18), 5.0, Color("ff8a2a"))
-			_disc(img, Vector2(44, 18), 2.5, Color("fff0c0"))
+			# C: a torpedo in cutaway: steel casing open at the front, the proton
+			# core inside a hot round glow.
+			var dir := Vector2(1, -0.45).normalized()
+			var nose := Vector2(54, 20)
+			_torpedo(img, nose, dir, 42.0, 6.0)
+			var core := nose - dir * 14.0
+			_disc(img, core, 5.4, STEEL[0])
+			_disc(img, core, 4.6, Color("1a0a04"))
+			_glow(img, core, 5.6)
 		"mod_kinetic_repeaters":
 			_sprite(img, "ship_corvette", Vector2(12, 46), 18.0)
 			for k in 5:
@@ -730,24 +735,15 @@ static func _space(img: Image, seed_v: int) -> void:
 static func _sprite(img: Image, tex_name: String, c: Vector2, box: float) -> void:
 	c *= K
 	box *= K
-	var tex := Defs.tex(tex_name)
-	if tex == null:
+	var src := TechIcons.source(tex_name)
+	if src == null:
 		return
-	var src := tex.get_image().duplicate()
-	if src.is_compressed():
-		src.decompress()
-	src.convert(Image.FORMAT_RGBA8)
 	var k: float = box / maxf(src.get_width(), src.get_height())
 	var w := maxi(1, int(src.get_width() * k))
 	var h := maxi(1, int(src.get_height() * k))
 	src.resize(w, h, Image.INTERPOLATE_NEAREST)
-	var tim: Image = null
-	var team: Texture2D = Defs.tex(tex_name + "_team") if ResourceLoader.exists("res://assets/pixel/" + tex_name + "_team.png") else null
-	if team:
-		tim = team.get_image().duplicate()
-		if tim.is_compressed():
-			tim.decompress()
-		tim.convert(Image.FORMAT_RGBA8)
+	var tim := TechIcons.source(tex_name + "_team")
+	if tim:
 		tim.resize(w, h, Image.INTERPOLATE_NEAREST)
 	var o := Vector2i(int(c.x) - w / 2, int(c.y) - h / 2)
 	for y in h:
@@ -1477,3 +1473,36 @@ static func _brackets(img: Image, p: Vector2, s: float, col: Color) -> void:
 			var q := p + Vector2(sx, sy) * s
 			_line(img, q, q - Vector2(sx * s * 0.5, 0), 1.0, col)
 			_line(img, q, q - Vector2(0, sy * s * 0.5), 1.0, col)
+
+## A torpedo pointing along dir, nose at `nose`: bevelled steel body, glowing
+## proton warhead window, tail fins, soft round exhaust glow.
+static func _torpedo(img: Image, nose: Vector2, dir: Vector2, len: float, w: float, round_nose: bool = false) -> void:
+	var n := dir.orthogonal()
+	var tail := nose - dir * len
+	for s in [-1.0, 1.0]:
+		var f0: Vector2 = tail + dir * 5.0 + n * s * w
+		var f1: Vector2 = tail - dir * 3.0 + n * s * (w + 5.5)
+		var f2: Vector2 = tail + n * s * w
+		_poly(img, [f0 + n * s * 0.8, f1 + n * s * 1.0, f2 - dir * 1.0], STEEL[0])
+		_poly(img, [f0, f1, f2], STEEL[1] if s > 0 else STEEL[3])
+	_girder(img, tail, nose - dir * w * 1.2, w * 2.0, STEEL)
+	var cap := nose - dir * w * 1.2
+	if round_nose:
+		# A plain rounded steel nose.
+		_disc(img, cap, w + 0.9, STEEL[0])
+		_disc(img, cap, w, STEEL[2])
+		_disc(img, cap + (-dir + n).normalized() * w * 0.35, w * 0.45, STEEL[3])
+	else:
+		_poly(img, [cap + n * (w + 0.9), nose + dir * 1.0, cap - n * (w + 0.9)], STEEL[0])
+		_poly(img, [cap + n * w, nose, cap - n * w], PL[2])
+		_poly(img, [cap + n * w, nose, cap + n * w * 0.2], PL[3])
+	_disc(img, tail - dir * 4.5, w * 1.1, Color(PL[2], 0.3))
+	_disc(img, tail - dir * 3.5, w * 0.75, Color(PL[3], 0.8))
+	_disc(img, tail - dir * 3.0, w * 0.4, PL[4])
+	for k in 2:
+		var p := tail.lerp(cap, 0.3 + k * 0.12)
+		_line(img, p + n * w, p - n * w, 1.0, STEEL[0])
+	var win := tail.lerp(cap, 0.72)
+	_disc(img, win, w * 0.7, STEEL[0])
+	_disc(img, win, w * 0.52, PL[2])
+	_disc(img, win, w * 0.28, PL[4])
