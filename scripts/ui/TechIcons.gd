@@ -21,7 +21,7 @@ const GROUP_COLORS := {
 }
 
 ## Non-Mod techs whose (redesigned) art is shown in full colour.
-const COLOR_ICONS := ["aegis_matrix", "adaptive_hulls", "glance_plates", "graviton_shunts"]
+const COLOR_ICONS := ["aegis_matrix", "adaptive_hulls", "glance_plates", "graviton_shunts", "living_metals"]
 
 static var _cache := {}
 

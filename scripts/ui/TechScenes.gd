@@ -207,10 +207,20 @@ static func call_scene(id: String, img: Image) -> void:
 			for k in 3:
 				_line(img, Vector2(10 + k * 14, 14), Vector2(24 + k * 14, 50), 1.5, Color("6fe07a"))
 		"living_metals":
-			_sprite(img, "ship_destroyer", C, 30.0)
-			for k in 24:
-				var a := float(k) * 2.4
-				_put(img, int(32 + cos(a) * (10 + k % 9)), int(32 + sin(a) * (8 + k % 7)), Color("6fe07a"))
+			# Living chrome: the droplet wraps tendrils round a hull fragment and
+			# draws it in; a faint cyan pulse at its heart says it is alive.
+			var c := Vector2(24, 38)
+			var frag := [Vector2(40, 10), Vector2(54, 14), Vector2(56, 26), Vector2(44, 30), Vector2(38, 22)]
+			_poly(img, frag, Color("3a4150"))
+			_line(img, frag[0], frag[1], 1.2, Color("8a93a3"))
+			_line(img, Vector2(42, 18), Vector2(52, 20), 1.0, Color("58e07a"))
+			_chrome_ribbon(img, [c, Vector2(34, 30), Vector2(40, 26), Vector2(48, 30), Vector2(56, 22), Vector2(52, 12)], 3.6, 1.0)
+			_chrome_ribbon(img, [c, Vector2(28, 22), Vector2(36, 12), Vector2(46, 8)], 3.0, 0.8, 1.3)
+			_chrome_ribbon(img, [c, Vector2(38, 46), Vector2(50, 44), Vector2(56, 36)], 2.4, 0.6, 1.2)
+			_chrome_ribbon(img, [c, Vector2(12, 48), Vector2(8, 40)], 2.0, 0.6, 1.0)
+			_chrome_blob(img, c, 9.0, [[0.6, 3, 1.2], [0.3, 4, 0.2]])
+			_disc(img, c + Vector2(1.5, 1.5), 2.6, Color("7fe8ff", 0.55))
+			_disc(img, c + Vector2(1.5, 1.5), 1.2, Color("c8f8ff"))
 		"adaptive_hulls":
 			# Hull scales: small and flat far from the hit, swollen and bright at it.
 			var imp := Vector2(40, 22)
@@ -685,3 +695,84 @@ static func _bent(img: Image, start: Vector2, vel: Vector2, center: Vector2, g: 
 		if p.x < 5 or p.x > 59 or p.y < 5 or p.y > 59:
 			break
 	_disc(img, p, 1.6, col.lightened(0.4))
+
+# ------------------------------------------------ liquid chrome (Living Metals)
+const CHROME := [
+	[-1.0, 1.0, Color("15171d")],    # outline
+	[-0.78, 0.78, Color("5c6370")],  # gunmetal body
+	[-0.45, 0.0, Color("2a2e37")],   # dark reflection
+	[0.12, 0.62, Color("b9c1cd")],   # silver band
+	[0.66, 0.84, Color("ffffff")],   # edge highlight
+]
+
+static func _cr(a: Vector2, b: Vector2, c: Vector2, d: Vector2, t: float) -> Vector2:
+	var t2 := t * t
+	var t3 := t2 * t
+	return 0.5 * ((2.0 * b) + (-a + c) * t + (2.0 * a - 5.0 * b + 4.0 * c - d) * t2 + (-a + 3.0 * b - 3.0 * c + d) * t3)
+
+## A liquid-chrome ribbon through `pts` (64 grid), half-width w0 -> w1.
+## Each tone band is one continuous strip of quads (flat colour, so no
+## seams), painted whole-curve, darkest/widest first. Round start cap;
+## ends in a bead if `drop` > 0.
+static func _chrome_ribbon(img: Image, pts: Array, w0: float, w1: float, drop: float = 0.0) -> void:
+	var P := [pts[0]] + pts + [pts[-1]]
+	var cv := []
+	for s in range(1, P.size() - 2):
+		for k in 10:
+			cv.append(_cr(P[s - 1], P[s], P[s + 1], P[s + 2], k / 10.0))
+	cv.append(pts[-1])
+	var n := cv.size()
+	var nor := []
+	var hw := []
+	for k in n:
+		var tan: Vector2 = (cv[mini(k + 1, n - 1)] - cv[maxi(k - 1, 0)]).normalized()
+		nor.append(tan.orthogonal())
+		var t := float(k) / (n - 1)
+		hw.append(lerpf(w0, w1, smoothstep(0.0, 1.0, t)))
+	_bead(img, cv[0], w0, true)
+	for band in CHROME:
+		if band[0] > 0.6 and w0 < 1.6:
+			continue
+		for k in n - 1:
+			var a: Vector2 = cv[k]
+			var b: Vector2 = cv[k + 1]
+			var na: Vector2 = nor[k] * hw[k]
+			var nb: Vector2 = nor[k + 1] * hw[k + 1]
+			_poly(img, [a + na * band[0], b + nb * band[0], b + nb * band[1], a + na * band[1]], band[2])
+	if drop > 0.0:
+		_bead(img, pts[-1], drop)
+
+## A mercury bead: dark outline, gunmetal body, a dark reflection low-right,
+## a silver dome upper-left and a white glint.
+static func _bead(img: Image, c: Vector2, r: float, cap := false) -> void:
+	_disc(img, c, r, Color("15171d"))
+	_disc(img, c, r * 0.8, Color("5c6370"))
+	if cap:
+		return
+	if r >= 3.0:
+		_disc(img, c + Vector2(0.18, 0.22) * r, r * 0.45, Color("2a2e37"))
+	_disc(img, c + Vector2(-0.2, -0.22) * r, r * 0.5, Color("b9c1cd"))
+	_disc(img, c + Vector2(-0.36, -0.36) * r, maxf(r * 0.2, 0.6), Color.WHITE)
+
+## A blobby chrome body: radius wobbles with angle (lobes), stretched along
+## `axis` by `stretch`. Flat bands: outline, gunmetal, dark reflection
+## low-right, silver upper-left, glint, plus one surface ripple.
+static func _chrome_blob(img: Image, c: Vector2, r: float, lobes: Array, axis: Vector2 = Vector2.RIGHT, stretch: float = 1.0) -> void:
+	var shape := func(scale: float, off: Vector2) -> Array:
+		var out := []
+		for k in 96:
+			var a := TAU * k / 96.0
+			var rr := r
+			for l in lobes:
+				rr += l[0] * sin(a * l[1] + l[2])
+			var v := Vector2.from_angle(a) * rr * scale
+			var along := v.dot(axis) * stretch
+			var across := v.dot(axis.orthogonal())
+			out.append(c + off + axis * along + axis.orthogonal() * across)
+		return out
+	_poly(img, shape.call(1.0, Vector2.ZERO), Color("15171d"))
+	_poly(img, shape.call(0.82, Vector2.ZERO), Color("5c6370"))
+	_poly(img, shape.call(0.42, Vector2(0.2, 0.26) * r), Color("2a2e37"))
+	_poly(img, shape.call(0.46, Vector2(-0.22, -0.24) * r), Color("b9c1cd"))
+	_arc(img, c + Vector2(0.05, 0.1) * r, r * 0.62, 0.3, 1.5, 1.0, Color("8d95a3"))
+	_disc(img, c + Vector2(-0.4, -0.4) * r, r * 0.16, Color.WHITE)
