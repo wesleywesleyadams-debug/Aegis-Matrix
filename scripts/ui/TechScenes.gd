@@ -328,8 +328,17 @@ static func call_scene(id: String, img: Image) -> void:
 				_burst(img, p, 3.0, FLASH)
 				_disc(img, p, 1.2, Color.WHITE)
 		"ion_cannons":
-			_barrel(img, Vector2(8, 46), Vector2(30, 30), 6.0)
-			_beam(img, Vector2(32, 28), Vector2(56, 12), Color("7fd8ff"), 3.0)
+			# B: the muzzle charging: coil rings glowing, an ion sphere swelling at
+			# the mouth, sparks being pulled in.
+			_cannon(img, Vector2(4, 60), Vector2(30, 34), 9.0, 3)
+			var c := Vector2(38, 26)
+			_ion_orb(img, c, 9.0)
+			for k in 6:
+				var d := Vector2.from_angle(-2.4 + k * 0.62)
+				_zap(img, c + d * 10.0, c + d * 18.0, 20 + k, 1.6)
+			for k in 5:
+				var d := Vector2.from_angle(-1.8 + k * 0.7)
+				_put(img, int(c.x + d.x * 22.0), int(c.y + d.y * 22.0), IO[3])
 		"particle_lances":
 			_barrel(img, Vector2(6, 50), Vector2(22, 38), 5.0)
 			_beam(img, Vector2(24, 36), Vector2(60, 8), Color("ff6a4a"), 1.5)
@@ -993,3 +1002,42 @@ static func _umbrella_base(img: Image) -> void:
 	for q in [Vector2(19, 47), Vector2(39, 50)]:
 		_sprite(img, "ship_corvette", q, 17.0)
 	_canopy(img, UT, UH, URIM, 8)
+
+## Ion tones: outline, deep, body, light, highlight.
+const IO := [Color("06203c"), Color("1660a8"), Color("3fa8ff"), Color("9fe0ff"), Color("ffffff")]
+
+## A jagged electric arc a -> b: soft blue underlay, bright core.
+static func _zap(img: Image, a: Vector2, b: Vector2, seed_v: int, amp: float = 2.5) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	var pts := [a]
+	var n := (b - a).normalized().orthogonal()
+	for k in range(1, 5):
+		pts.append(a.lerp(b, k / 5.0) + n * rng.randf_range(-amp, amp))
+	pts.append(b)
+	for k in pts.size() - 1:
+		_line(img, pts[k], pts[k + 1], 2.4, Color(IO[2], 0.45))
+	for k in pts.size() - 1:
+		_line(img, pts[k], pts[k + 1], 1.0, IO[3] if k % 2 == 0 else IO[4])
+
+## A crackling ion orb: halo, banded body, white core, glint.
+static func _ion_orb(img: Image, c: Vector2, r: float) -> void:
+	_disc(img, c, r * 1.6, Color(IO[2], 0.25))
+	_disc(img, c, r + 0.9, IO[0])
+	_disc(img, c, r, IO[2])
+	_disc(img, c + Vector2(-0.2, -0.2) * r, r * 0.65, IO[3])
+	_disc(img, c, r * 0.35, IO[4])
+	_put(img, int(c.x - r * 0.5), int(c.y - r * 0.55), IO[4])
+
+## A beveled steel cannon barrel a -> b with a muzzle collar and coil bands.
+static func _cannon(img: Image, a: Vector2, b: Vector2, w: float, coils: int = 3) -> void:
+	_girder(img, a, b, w, STEEL)
+	var d := (b - a).normalized()
+	for k in coils:
+		var p := a.lerp(b, 0.35 + k * 0.15)
+		_line(img, p - d.orthogonal() * (w * 0.75), p + d.orthogonal() * (w * 0.75), 2.2, IO[0])
+		_line(img, p - d.orthogonal() * (w * 0.65), p + d.orthogonal() * (w * 0.65), 1.2, IO[2])
+	_line(img, b - d.orthogonal() * (w * 0.9), b + d.orthogonal() * (w * 0.9), 3.0, STEEL[0])
+	_line(img, b - d.orthogonal() * (w * 0.8), b + d.orthogonal() * (w * 0.8), 1.8, STEEL[3])
+
+
