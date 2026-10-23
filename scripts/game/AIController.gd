@@ -640,6 +640,9 @@ func _production_home_yard(cx: Ctx) -> void:
 		cands.append([w["support"], "tender"])
 	if war.size() >= 6 and _hazardous(game) and _count_type(ships, base, "heatshield") == 0 and base.can_queue("heatshield") == "":
 		cands.append([w["support"] * 0.8, "heatshield"])
+	# A colony ship waits on a free world inside a spice nebula: an escort.
+	elif st.get("want_escort", false) and _count_type(ships, base, "heatshield") == 0 and base.can_queue("heatshield") == "":
+		cands.append([w["expansion"] * 1.2, "heatshield"])
 	# Expansion: keep colonizing unless enemies are at our worlds.
 	var free_planet := _nearest_planet(base.global_position, game, func(p): return _known_free(pid, p, game) and p.is_habitable())
 	if free_planet and mode != "recover" and not st.get("threat", false) and colonists.size() + base.queue.count("colony") < 2:
@@ -1194,11 +1197,60 @@ func _expansion_colonize(cx: Ctx) -> void:
 	var pid: int = cx.pid
 	var game: Game = cx.game
 	var colonists: Array = cx.colonists
+	var st: Dictionary = cx.st
+	st["want_escort"] = false
 	for c in colonists:
+		var escorted: bool = c.has_meta("escort") and is_instance_valid(c.get_meta("escort"))
+		if escorted and c.state == Ship.State.COLONIZE:
+			# Keep the escort's radiation bubble over the colony ship.
+			var rsa: Ship = c.get_meta("escort")
+			rsa.order_move(c.global_position + (c.colonize_target.global_position - c.global_position).limit_length(20.0))
+			continue
 		if c.state == Ship.State.IDLE or c.state == Ship.State.MOVE:
 			var p := _nearest_planet(c.global_position, game, func(pl): return _known_free(pid, pl, game) and pl.is_habitable())
-			if p:
+			if p == null:
+				continue
+			# A world inside a spice nebula: its radiation kills a lone colony
+			# ship, so it goes under a Radiation Sail Array's bubble.
+			if not game.in_nebula(p.global_position):
 				c.order_colonize(p)
+				continue
+			var rsa := _escort_for(pid, c, game)
+			if rsa == null:
+				st["want_escort"] = true
+				continue
+			c.set_meta("escort", rsa)
+			rsa.set_meta("escorting", c)
+			if rsa.global_position.distance_to(c.global_position) > ESCORT_JOIN:
+				# Meet up outside the nebula first.
+				rsa.order_move(c.global_position)
+				if c.state != Ship.State.IDLE:
+					c.order_move(c.global_position)
+			else:
+				c.order_colonize(p)
+
+## Radiation Sail Array within this distance of its colony ship: they go in.
+const ESCORT_JOIN := 40.0
+
+## True while this Radiation Sail Array escorts a live colony ship.
+func _escorting(s: Ship) -> bool:
+	return s.has_meta("escorting") and is_instance_valid(s.get_meta("escorting"))
+
+## A Radiation Sail Array free to escort colony ship c (already on it, or
+## not with the fleet), nearest first.
+func _escort_for(pid: int, c: Ship, game: Game) -> Ship:
+	var best: Ship = null
+	for s in game.get_tree().get_nodes_in_group("ships"):
+		if s.owner_id != pid or not s.is_alive() or not s.ship_type.ends_with("heatshield"):
+			continue
+		var on = s.get_meta("escorting") if s.has_meta("escorting") else null
+		if on == c:
+			return s
+		if is_instance_valid(on):
+			continue
+		if best == null or s.global_position.distance_to(c.global_position) < best.global_position.distance_to(c.global_position):
+			best = s
+	return best
 
 ## ECONOMY protocol (harvesting): skimmers and miners to work, spice first
 ## while it is short, away from unstable gas giants.
@@ -2151,7 +2203,7 @@ func _military_protocol(cx: Ctx) -> void:
 				s.order_attack_move(goal + Vector2(randf_range(-40, 40), randf_range(-40, 40)))
 			# Radiation Sail Arrays (support, not warships) go with the wave to
 			# screen it from radiation and soak fire with their solar shield.
-			for rsa in ships.filter(func(s): return s.ship_type.ends_with("heatshield") and s.state == Ship.State.IDLE):
+			for rsa in ships.filter(func(s): return s.ship_type.ends_with("heatshield") and s.state == Ship.State.IDLE and not _escorting(s)):
 				rsa.order_move(goal + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
 			st["wave"] = mini(st["wave"] + 4, 30)
 	# Waves already out pull back if their target has become too strong.
@@ -2571,7 +2623,7 @@ func _press_attack(pid: int, st: Dictionary, game: Game, base: Starbase, war: Ar
 	if ready.size() >= wave_min:
 		for s in ready:
 			s.order_attack_move(goal + Vector2(randf_range(-50, 50), randf_range(-50, 50)))
-		for rsa in ships.filter(func(s): return s.ship_type.ends_with("heatshield") and s.state == Ship.State.IDLE):
+		for rsa in ships.filter(func(s): return s.ship_type.ends_with("heatshield") and s.state == Ship.State.IDLE and not _escorting(s)):
 			rsa.order_move(goal + Vector2(randf_range(-80, 80), randf_range(-80, 80)))
 
 ## Fortress assault on `goal` (not winnable by the usual measure, but far
