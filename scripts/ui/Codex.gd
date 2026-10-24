@@ -663,12 +663,6 @@ func _page_ships() -> void:
 		[["Mark", EDGE_LIT], "Warships research", "Every ship of that class, at once", "How many chevrons beside it"],
 		[["Variant", Defs.VARIANTS["reaver"]["color"]], "Refit at a Weapons Depot", "Once, permanently", "The color of its chevrons"],
 	])
-	_heading("Class — the shape")
-	var cls_plate: Array = []
-	for cls in Defs.MARK_LINES:
-		cls_plate.append(["ship_" + cls, Defs.SHIPS[cls]["name"], TEXT])
-	_plate(cls_plate, 104.0, true, "One shape per class, for life: corvette A, destroyer Y, cruiser X, carrier a winged arrowhead.")
-	_para("Shape says what a ship is, not how good it is. A corvette is a braced delta with its apex at the bow. A destroyer is a tail boom forking into two prongs. A cruiser is four wings crossed at a hub. A carrier is an arrowhead core with hangar wings, whose wingtips carry two outrigger nacelles with its turrets. Silhouettes show a fleet's makeup.")
 
 func _page_marks() -> void:
 	_heading("Mark — the rank")
