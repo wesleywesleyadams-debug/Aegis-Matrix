@@ -12,7 +12,7 @@ Every art or icon brief must start from this file. Each time the user corrects a
 
 ## Tech icons
 
-The reference set is the approved Defense and Weapons tab icons: aegis_matrix, adaptive_hulls, glance_plates, graviton_shunts, living_metals, phase_shields, crystal_prisms, reinforced_frames, iron_umbrella, ion_cannons, particle_lances, starfire_batteries, targeting_arrays, beam_focusing, capital_batteries, autoloaders, heavy_mounts, scatter_arrays, overcharged_coils, burst_cyclers, hullbreaker_rounds, target_prediction, gyro_stabilizers, overkill_awareness. Living Metals (I3) and the Target Prediction v3 X/Y/Z set are the quality bar. Don't use one unrelated icon, such as Proton Torpedoes, as the only style reference.
+The reference set is the approved Defense and Weapons tab icons: aegis_matrix, adaptive_hulls, glance_plates, graviton_shunts, living_metals, phase_shields, crystal_prisms, reinforced_frames, iron_umbrella, ion_cannons, particle_lances, starfire_batteries, targeting_arrays, beam_focusing, capital_batteries, autoloaders, heavy_mounts, scatter_arrays, overcharged_coils, burst_cyclers, hullbreaker_rounds, target_prediction, gyro_stabilizers, overkill_awareness. Living Metals (I3) and the Target Prediction v3 X/Y/Z set are the quality bar. Don't use one unrelated icon, such as Proton Torpedoes, as the only style reference. Every icon committed from now on joins this reference list, for as long as it stays in the game; drop an icon from the list when it is replaced. Added since: mod_kinetic_repeaters.
 
 **Look**
 - One large, clear, symbolic subject: crisp graphic shapes with a modest bevel, solid steel focal objects.
@@ -27,7 +27,6 @@ The reference set is the approved Defense and Weapons tab icons: aegis_matrix, a
 
 **Hard rules**
 - No overlaps between separate elements, and no stray dots.
-- Everything stays inside the plaque; nothing is clipped by the border.
 - Shots line up with their barrels. Each projectile matches its barrel's bore and leaves along the barrel's axis.
 - Proportions must be believable: long, slender barrels and parts in scale with each other.
 - Don't put a laser in every icon, and don't over-render icons the user already likes.
@@ -53,6 +52,8 @@ The reference set is the approved Defense and Weapons tab icons: aegis_matrix, a
   | Cruiser | ~6,138 |
   | Carrier | ~18,400 |
 
+  These counts follow toughness at the time the art is drawn. The user may change toughness afterwards, and the art does not have to follow. Never change a ship's pixel count or its toughness without the user's permission.
+
 - **Process:** show simple silhouettes first, then flat and depth versions. Check every design in game, including flames, turret mounts, team band and rank chevron, before committing.
 - **Never overwrite hand-drawn art:** add new hand-drawn sprites to `HAND_ART` in `tools/gen_art.gd` so the generator skips them.
 
@@ -63,7 +64,7 @@ The reference set is the approved Defense and Weapons tab icons: aegis_matrix, a
 3. Is there one clear focal subject at about 35–40%?
 4. Does depth recede (size and brightness)?
 5. Does lighting come from the effect, on a consistent side?
-6. No overlaps, no stray dots, nothing clipped?
+6. No overlaps, no stray dots?
 7. Do shots line up with their barrels and match their size?
 8. Are proportions believable?
 9. Is it in the approved icon family's style?
