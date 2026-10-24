@@ -34,7 +34,7 @@ The reference set is the approved Defense and Weapons tab icons: aegis_matrix, a
 - Use the game's real ship sprites (`assets/pixel/ship_*.png`) when ships appear.
 - Fire from where the ship's weapons really are. The corvette has a nose gun. The destroyer fires from the turrets on its two booms (`Defs.SHIPS[...]["turrets"]`), and the cruiser and carrier from their turret mounts. Never put a muzzle glow where there is no gun.
 - Before designing a Mod icon, look at the real in-game projectile or effect (`Projectile.gd`, `Defs.MOD_WEAPONS`, an in-game capture) and draw it faithfully.
-- A weapon Mod's icon is a scene: our ship that carries the Mod firing it at enemies. Not a standalone weapon object or an abstract symbol.
+- A weapon Mod's icon is a scene focused on the PROJECTILE and what it hits: leave the firing ship out. Show the projectile itself (drawn faithfully, large enough to read) and, if it has special behaviour (bouncing, homing, bursting, pulling, launching drones and so on), the targets that show that behaviour. Not a standalone gun or an abstract symbol. (Changed 2026-10-23; Kinetic through Rail were made under the older "firing ship" rule and stay as they are.)
 - Start from the current icon's idea. Each round includes at least one option that refines the current concept before reinventing it.
 - More action is welcome when it serves the mechanic. A busier scene, such as two flak bursts or a four-hit chain, is fine as long as the mechanic reads clearly.
 - When a ship appears, use the class that carries the Mod (corvette for Kinetic and Arc, destroyer for Flak, and so on), at its real proportions, firing from its real weapon mounts.
