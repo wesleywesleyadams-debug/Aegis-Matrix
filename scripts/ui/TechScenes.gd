@@ -25,7 +25,6 @@ static func has_method_scene(id: String) -> bool:
 
 ## id -> painter. Written as a lookup so a missing scene is just a missing key.
 const SCENES := [
-	"destroyers",
 	"garrison_guns", "orbital_yards", "modular_frames", "depots", "reinforced_docks", "forward_bases",
 	"outposts", "rapid_assembly", "citadel_protocols", "warp_gates", "shipyard_networks", "orbital_elevators",
 	"phase_shields", "crystal_prisms", "aegis_matrix", "composite_plating", "reactive_armor", "neutronium_armor",
@@ -47,10 +46,6 @@ const SCENES := [
 static func call_scene(id: String, img: Image) -> void:
 	match id:
 		# ---------------------------------------------------------- warships
-		"destroyers":
-			# The destroyer itself, its real hull art at 1:1 pixels in green,
-			# turrets on their plates, its two engines lit.
-			_ship_art(img, "destroyer", Vector2(34, 32), Color("6fe07a"))
 		# ---------------------------------------------------------- mods
 		# The class's hull small in a corner, its new weapon doing its thing.
 		"mod_proton_torpedoes":

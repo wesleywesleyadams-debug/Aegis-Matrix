@@ -166,6 +166,9 @@ static func _paint(id: String) -> Image:
 	var art := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
 	var fx: Dictionary = t.get("effects", {})
 	var main_fx: String = str(fx.keys()[0]) if not fx.is_empty() else ""
+	if main_fx.get_slice("_", 1) in SHIP_ICON_CLASSES and (main_fx.begins_with("unlock_") or main_fx.begins_with("mark_")):
+		_ship_icon(img, art, id, main_fx.get_slice("_", 1), int(t.get("tier", 1)))
+		return img
 	var drawn := TechScenes.paint(id, art)
 	if not drawn and (main_fx.begins_with("unlock_") or main_fx.begins_with("mark_") or main_fx.begins_with("mod_")):
 		_sprite(art, _sprite_for(main_fx))
@@ -228,6 +231,87 @@ static func _paint(id: String) -> Image:
 	for k in (0 if t.has("mod") else int(t.get("tier", 1))):
 		_disc(img, Vector2(56 - k * 7, 56), 2.4, Color("ffd84a"))
 	return img
+
+# ---------------------------------------------------------------- ship icons
+
+## Warship classes drawn as their own sprite on the flat black plaque.
+const SHIP_ICON_CLASSES := ["corvette", "destroyer", "cruiser", "carrier"]
+static var _ship_rects := {}
+
+## Where a class's sprite sits: the largest size that clears the border and
+## the tier dots (worst case, three), centred as far as that allows. Every
+## icon of the class (base and Mk II-IV) shares it. Chevrons are ignored and
+## may draw over the hull.
+static func _ship_rect(ship: String, src_size: Vector2i) -> Rect2i:
+	_mutex.lock()
+	var hit = _ship_rects.get(ship)
+	_mutex.unlock()
+	if hit != null:
+		return hit
+	var lo := 9
+	var hi := SIZE - 9
+	var dots := Rect2(55 * K - 14 * K - 2.4 * K, 55 * K - 2.4 * K, 14 * K + 4.8 * K, 4.8 * K).grow(3)
+	var best := Rect2i(lo, lo, 20, 10)
+	for w in range(hi - lo, 20, -1):
+		var h := int(round(w * float(src_size.y) / src_size.x))
+		if h > hi - lo:
+			continue
+		var cx := (SIZE - w) / 2
+		var cy := (SIZE - h) / 2
+		var up := int(dots.position.y) - h
+		var left := int(dots.position.x) - w
+		var found := false
+		for cand in [Vector2i(cx, cy), Vector2i(cx, up), Vector2i(left, cy), Vector2i(left, up)]:
+			var r := Rect2i(cand.x, cand.y, w, h)
+			if r.position.x >= lo and r.position.y >= lo and r.end.x <= hi and r.end.y <= hi and not Rect2(r).intersects(dots):
+				best = r
+				found = true
+				break
+		if found:
+			break
+	_mutex.lock()
+	_ship_rects[ship] = best
+	_mutex.unlock()
+	return best
+
+## One warship tech: its hull sprite (nearest-neighbour, crisp) on the black
+## plaque, Mk II-IV with 2-4 stacked gold chevrons top-left like the in-game
+## MarkTag, then the tier dots.
+static func _ship_icon(img: Image, art: Image, id: String, cls: String, tier: int) -> void:
+	_plaque(img, art, BORDER_COLORS["warships"], true)
+	var tex_name := "ship_" + cls
+	var src := source(tex_name)
+	if src != null:
+		var tim := source(tex_name + "_team")
+		var r := _ship_rect(cls, Vector2i(src.get_width(), src.get_height()))
+		src.resize(r.size.x, r.size.y, Image.INTERPOLATE_NEAREST)
+		if tim:
+			tim.resize(r.size.x, r.size.y, Image.INTERPOLATE_NEAREST)
+		for y in r.size.y:
+			for x in r.size.x:
+				var c := src.get_pixel(x, y)
+				if tim != null and tim.get_pixel(x, y).a > 0.0:
+					c = Defs.team_color(1) * tim.get_pixel(x, y).r
+					c.a = 1.0
+				if c.a > 0.0:
+					var p := r.position + Vector2i(x, y)
+					img.set_pixel(p.x, p.y, img.get_pixel(p.x, p.y).blend(c))
+	var mk := int(id.get_slice("_mk", 1)) if "_mk" in id else 1
+	if mk > 1:
+		# Upright ^ shapes stacked upward (lowest first), dark backing under gold.
+		var cs := 3.0
+		var origin := Vector2(10.0 + 3.0 * cs + 2.0, 10.0 + (mk - 1) * 3.5 * cs + 1.5 * cs + 2.0)
+		for k in mk:
+			var o := origin - Vector2(0, k * 3.5 * cs)
+			var a := o + Vector2(-3, 1.5) * cs
+			var b := o + Vector2(0, -1.5 * cs)
+			var c2 := o + Vector2(3, 1.5) * cs
+			_line(img, a, b, 2.6 * cs, Color(0, 0, 0, 0.8))
+			_line(img, b, c2, 2.6 * cs, Color(0, 0, 0, 0.8))
+			_line(img, a, b, 1.3 * cs, GOLD)
+			_line(img, b, c2, 1.3 * cs, GOLD)
+	for k in tier:
+		_disc(img, Vector2(55 - k * 7, 55) * K, 2.4 * K, GOLD)
 
 # ---------------------------------------------------------------- tile
 
