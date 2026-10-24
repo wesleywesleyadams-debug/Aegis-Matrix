@@ -90,11 +90,10 @@ static func call_scene(id: String, img: Image) -> void:
 			# streak (the real rail shot) at a far enemy carrier, in parallel.
 			_rail_scene(img, Vector2(52, 12), 22.0, [{"i": 0, "from": 0.2, "to": 0.7, "w": 0.9}, {"i": 1, "from": 0.35, "to": 0.85, "w": 0.9}, {"i": 2, "from": 0.1, "to": 0.6, "w": 0.9}])
 		"mod_point_defense_lattice":
-			_sprite(img, "ship_cruiser", Vector2(32, 40), 26.0)
-			for q in [Vector2(14, 14), Vector2(32, 10), Vector2(50, 14)]:
-				_hex(img, q, 5.0, 1.0, Color("7fd8ff", 0.8))
-				_line(img, q + Vector2(-3, -3), q + Vector2(3, 3), 1.2, Color("ff6a4a"))
-				_line(img, q + Vector2(-3, 3), q + Vector2(3, -3), 1.2, Color("ff6a4a"))
+			# G: the cruiser's hub turret needles three incoming missiles out of the
+			# sky in turn, the needle bouncing on from one to the next; each missile
+			# points its red warhead at the cruiser, plume trailing away.
+			_pd_scene(img, [Vector2(48, 38), Vector2(38, 28), Vector2(28, 18)], 10.0)
 		"mod_interceptor_drones":
 			_sprite(img, "ship_carrier", C, 26.0)
 			_ring(img, C, 22.0, 1.0, Color("7fd8ff", 0.35))
@@ -2037,3 +2036,62 @@ static func _rail_scene(img: Image, tgt: Vector2, tbox: float, shots: Array) -> 
 	for sh in shots:
 		var i: int = sh["i"]
 		_rail_needle(img, ms[i].lerp(hit, sh["from"]), ms[i].lerp(hit, sh["to"]), sh["w"])
+
+## Our cruiser at `ship` (box `box`) with its three turrets drawn at the game's
+## mounts, turret sprites scaled by `tscale`; returns the three muzzle points.
+static func _cr_turrets_at(img: Image, ship: Vector2, box: float, lit: Vector2, tscale: float) -> Array:
+	var ang := -PI / 4.0
+	var d := Vector2.from_angle(ang)
+	var rim := Color("cfe6ff")
+	_spr_rim(img, "ship_cruiser", ship, box, ang, ship + d * box * 0.5, box * 0.65, rim, 1.0, 0.0, false)
+	var k_px := box / 148.0
+	var tpos := [Vector2(38.8, -1.1), Vector2(23.7, -28.4), Vector2(23.7, 25.9)]
+	var out := []
+	for i in 3:
+		var tc: Vector2 = ship + (tpos[i] * k_px).rotated(ang)
+		_spr_rim(img, "ship_turret", tc, 22.0 * k_px * 0.82 * tscale, ang, lit, 45.0, rim, 1.0, 0.0, false)
+		out.append(tc + d * 22.0 * k_px * 0.82 * tscale * 0.5)
+	return out
+
+## An incoming enemy missile, nose at p heading down-left at our cruiser: steel body,
+## fins, a red warhead cone, and a short soft orange plume trailing away.
+static func _pd_missile(img: Image, p: Vector2, size: float) -> void:
+	var d := Vector2(-0.7071, 0.7071)
+	var n := d.orthogonal()
+	var w := size * 0.15
+	var tail := p - d * size
+	for sd in [-1.0, 1.0]:
+		_poly(img, [tail + d * size * 0.34 + n * sd * w, tail - d * 0.6 + n * sd * (w + size * 0.17), tail + n * sd * w + d * 0.4], STEEL[1] if sd > 0 else STEEL[3])
+	var cap := p - d * w * 3.4
+	_girder(img, tail, cap, w * 2.0, STEEL)
+	_line(img, tail.lerp(cap, 0.45) + n * w, tail.lerp(cap, 0.45) - n * w, 1.0, STEEL[0])
+	_poly(img, [cap + n * (w + 0.8), p + d * 1.0, cap - n * (w + 0.8)], STEEL[0])
+	_poly(img, [cap + n * w, p, cap - n * w], Color("d83a3a"))
+	_poly(img, [cap + n * w, p, cap + n * w * 0.05], Color("ff8a7a"))
+	for k in 3:
+		_disc(img, tail - d * (w * 0.9 + k * w * 1.5), w * (1.1 - k * 0.25), Color("ff8a2a", 0.4 - k * 0.1))
+	_disc(img, tail - d * w * 0.5, w * 0.8, Color("ffd890"))
+
+## Point-Defense Lattice: the cruiser's hub turret needles the missiles at `ps`
+## in turn (the real needle laser: a thin yellow polyline with a pale core).
+static func _pd_scene(img: Image, ps: Array, size: float) -> void:
+	var ms := _cr_turrets_at(img, Vector2(15, 46), 25.0, Vector2(30, 33), 1.4)
+	var d := Vector2(-0.7071, 0.7071)
+	var hits := []
+	for p in ps:
+		_pd_missile(img, p, size)
+		hits.append(p - d * size * 0.6 + d.orthogonal() * 1.9)
+	var pts := [ms[0]]
+	for h in hits:
+		pts.append(h)
+	for k in pts.size() - 1:
+		_line(img, pts[k], pts[k + 1], 2.2, Color("ffe14a", 0.25))
+	for k in pts.size() - 1:
+		_line(img, pts[k], pts[k + 1], 1.2, Color("ffe14a"))
+	for k in pts.size() - 1:
+		_line(img, pts[k], pts[k + 1], 0.5, Color(1, 1, 0.85))
+	_soft_glow(img, ms[0], 3.0, Color("ffe060"), Color.WHITE)
+	var k := 0
+	for h in hits:
+		_cb_blast(img, h, 1.9 if k < 2 else 2.4, 400 + k)
+		k += 1
