@@ -69,7 +69,8 @@ Win rates need far more duels: 180 duels per side is about ±7 points at 95% con
 ```bash
 gh workflow run balance.yml -f mode=round_robin -f runs=20 -f minutes=240 -f speed=4 -f tag=file=tools/rr_lasers.txt -f budget=2400 -f system=orion_reach
 ```
-- **Tuning one class:** a list with only that class's 3 pairings, 30 lines each (180 duels), `runs=5`. Four candidate values then run side by side in ~30–40 min. Confirm the pick with one full 720-duel run.
+- **Tuning one class:** a list with only that class's 3 pairings, 30 lines each (180 duels), `runs=5`. Four candidate values then run side by side in ~30–40 min.
+- **Confirming the pick:** a run of that class's pairings only, 60 lines each (360 duels), plus the other pairings reused from the last full run (valid only if nothing else changed). A class's precision depends only on how many of its own duels there are, so this matches a full 720-duel round robin at half the cost.
 - Fleet-size checks: budgets 1200 / 2400 / 6725.
 
 **Mods:** `tools/rr_mods_laser.txt` at 2400 (older fields: `rr_all16x3/x5/x9`, 16 loadouts = 4 lasers + 12 Mods). Lever: the Mod's own damage multiplier. Single-Mod sweeps: `mode=mod_grid -f mod="mod_id ours foe foe_n dmg1 dmg2 ..."` (`laser` = no Mod; `marks` carries `SL_DUEL_TECHS`; `minutes` < 45 is the duel length in seconds; `tag=amove` makes foes attack-move). Mod tests must fight laser ships with attack patterns against Mod ships with attack patterns, and check chase behaviour works.
