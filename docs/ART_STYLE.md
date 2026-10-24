@@ -23,14 +23,12 @@ The reference set is the approved Defense and Weapons tab icons: aegis_matrix, a
 **Perspective, focal point and lighting (apply to every option)**
 - **Focal point:** the main subject is large (about 35–40% of the plaque). Give it one strong secondary element and keep everything else quieter.
 - **Perspective and depth:** things further along recede, getting smaller and dimmer. Snap sprite rotations to 45° so the pixels stay crisp.
-- **Lighting:** the effect is the light source. A muzzle flash, arc or beam lights the nearby edges warm or violet, and the rest stays cool and shadowed. Keep the light side consistent and the glows soft and solid, never hollow rings.
+- **Lighting:** the effect is the light source. A muzzle flash, arc or beam lights the nearby edges warm or violet, and the rest stays cool and shadowed. Keep the light side consistent.
 
 **Hard rules**
 - No overlaps between separate elements, and no stray dots.
-- Nothing in the bottom-right corner: that is where the tier dots go.
 - Everything stays inside the plaque; nothing is clipped by the border.
 - Shots line up with their barrels. Each projectile matches its barrel's bore and leaves along the barrel's axis.
-- Muzzle flashes are soft, round, layered glows that flow into the projectile. The first projectile sits clear of the bloom.
 - Proportions must be believable: long, slender barrels and parts in scale with each other.
 - Don't put a laser in every icon, and don't over-render icons the user already likes.
 - The icon must show the mechanic described in the Codex. For example, Arc Emitters is one shooter firing a bolt that hits one target and then chains to three more.
@@ -65,8 +63,7 @@ The reference set is the approved Defense and Weapons tab icons: aegis_matrix, a
 3. Is there one clear focal subject at about 35–40%?
 4. Does depth recede (size and brightness)?
 5. Does lighting come from the effect, on a consistent side?
-6. Are glows soft and solid, with no rings?
-7. No overlaps, no stray dots, nothing bottom-right, nothing clipped?
-8. Do shots line up with their barrels and match their size?
-9. Are proportions believable?
-10. Is it in the approved icon family's style?
+6. No overlaps, no stray dots, nothing clipped?
+7. Do shots line up with their barrels and match their size?
+8. Are proportions believable?
+9. Is it in the approved icon family's style?
