@@ -82,9 +82,9 @@ static func call_scene(id: String, img: Image) -> void:
 			# along a curved path; the first has just hit, the second is closing.
 			_hm_scene(img, Vector2(48, 20), 13.0, 1.0, [{"i": 0, "bend": 10.0, "p": 1.0}, {"i": 1, "bend": -10.0, "p": 0.76}])
 		"mod_ion_lance":
-			_sprite(img, "ship_cruiser", Vector2(14, 48), 22.0)
-			_beam(img, Vector2(22, 40), Vector2(56, 10), Color("7fd8ff"), 3.5)
-			_disc(img, Vector2(56, 10), 4.0, Color("dff6ff"))
+			# D: the cruiser's three turrets each hold a beam on one big, distant
+			# enemy carrier; the beams converge on a bright melt spot.
+			_ion_scene(img, Vector2(50, 15), 26.0, "ship_carrier", [0.8, 1.0, 0.8], 5.0)
 		"mod_rail_cannons":
 			_sprite(img, "ship_cruiser", Vector2(12, 50), 20.0)
 			_line(img, Vector2(20, 44), Vector2(60, 6), 1.2, Color("e8eefc"))
@@ -1968,3 +1968,53 @@ static func _hm_scene(img: Image, tgt: Vector2, box: float, tdim: float, vols: A
 			var p0 := _quad(m, ctl, e, t)
 			var d := (p0 - _quad(m, ctl, e, maxf(t - 0.03, 0.0))).normalized()
 			_hm_missile(img, p0 + d * 4.5, d, 12.0, 2.0, tdim)
+
+## Our cruiser with its three turrets drawn where the game mounts them (the hub
+## and both forward wings); returns the three muzzle points. `lit` is where the
+## turrets' rim light comes from.
+static func _cr_turrets(img: Image, lit: Vector2) -> Array:
+	var ship := Vector2(15, 46)
+	var ang := -PI / 4.0
+	var d := Vector2.from_angle(ang)
+	var rim := Color("cfe6ff")
+	var box := 28.0
+	_spr_rim(img, "ship_cruiser", ship, box, ang, ship + d * 14.0, 18.0, rim, 1.0, 0.0, false)
+	var k_px := box / 148.0
+	var tpos := [Vector2(38.8, -1.1), Vector2(23.7, -28.4), Vector2(23.7, 25.9)]
+	var out := []
+	for i in 3:
+		var tc: Vector2 = ship + (tpos[i] * k_px).rotated(ang)
+		_spr_rim(img, "ship_turret", tc, 6.0, ang, lit, 45.0, rim, 1.0, 0.0, false)
+		out.append(tc + d * 3.0)
+	return out
+
+## A continuous ion beam a -> b of width w: halo, body, hot core.
+static func _ion_beam(img: Image, a: Vector2, b: Vector2, w: float) -> void:
+	_line(img, a, b, w * 2.6, Color(IO[2], 0.22))
+	_line(img, a, b, w * 1.6, Color(IO[2], 0.6))
+	_line(img, a, b, w * 0.9, IO[3])
+	_line(img, a, b, maxf(w * 0.35, 0.8), IO[4])
+
+## Where the beams meet: a soft blue-white melt glow and flung sparks.
+static func _ion_impact(img: Image, c: Vector2, r: float, seed_v: int) -> void:
+	_soft_glow(img, c, r, IO[2], Color.WHITE)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	for k in 7:
+		var an := rng.randf() * TAU
+		var dd := Vector2.from_angle(an)
+		var st := c + dd * (r * 0.9)
+		for q in 3:
+			var t0 := q / 3.0
+			var t1 := (q + 1) / 3.0
+			_line(img, st.lerp(st + dd * (3.0 + rng.randf() * 3.0), t0), st.lerp(st + dd * (3.0 + rng.randf() * 3.0), t1), 0.9, Color(IO[4], 0.9 - 0.3 * q))
+
+## Ion Lance: our cruiser's three beams on one enemy hull `tsprite` (box `tbox`).
+static func _ion_scene(img: Image, tgt: Vector2, tbox: float, tsprite: String, ws: Array, ir: float) -> void:
+	var hit := tgt + Vector2(-tbox * 0.28, tbox * 0.28)
+	var ms := _cr_turrets(img, hit)
+	_spr_rim(img, tsprite, tgt, tbox, -3.0 * PI / 4.0, hit, tbox * 1.2, Color("cfe6ff"), 1.0, 0.14, true)
+	for i in 3:
+		_ion_beam(img, ms[i], hit, ws[i])
+		_soft_glow(img, ms[i], 2.2 + ws[i] * 0.6, IO[2], Color.WHITE)
+	_ion_impact(img, hit, ir, 5)
