@@ -59,10 +59,9 @@ static func call_scene(id: String, img: Image) -> void:
 			_disc(img, core, 4.6, Color("1a0a04"))
 			_glow(img, core, 5.6)
 		"mod_kinetic_repeaters":
-			_sprite(img, "ship_corvette", Vector2(12, 46), 18.0)
-			for k in 5:
-				var p := Vector2(22 + k * 8, 40 - k * 6)
-				_line(img, p, p + Vector2(4, -3), 2.0, Color("ffd84a"))
+			# R1: a corvette at 45 degrees lit by its own muzzle bloom, a stream of
+			# brass slugs receding up the gun's axis (smaller and dimmer with distance).
+			_kin_scene(img, Vector2(17.5, 44.5), 26.0, [13.0, 22.0, 30.0, 37.0, 43.0], 2.5, 1.4, 4.6)
 		"mod_arc_emitters":
 			_sprite(img, "ship_corvette", Vector2(12, 48), 18.0)
 			var pts := [Vector2(18, 42), Vector2(26, 30), Vector2(22, 26), Vector2(34, 18), Vector2(44, 24), Vector2(52, 12)]
@@ -1566,3 +1565,67 @@ static func _torpedo(img: Image, nose: Vector2, dir: Vector2, len: float, w: flo
 	_disc(img, win, w * 0.7, STEEL[0])
 	_disc(img, win, w * 0.52, PL[2])
 	_disc(img, win, w * 0.28, PL[4])
+
+## A game sprite rotated to `ang`, lit by a warm source at `light` (scene
+## units): warm and brighter near it, cooler and darker away from it.
+static func _spr_lit(img: Image, tex_name: String, c: Vector2, box: float, ang: float, light: Vector2, reach: float) -> void:
+	var src := TechIcons.source(tex_name)
+	if src == null:
+		return
+	var tim := TechIcons.source(tex_name + "_team")
+	var k: float = box * K / maxf(src.get_width(), src.get_height())
+	var sc := Vector2(src.get_width(), src.get_height()) * 0.5
+	var r := int(box * K * 0.8)
+	var cc := c * K
+	var warm := Color("ffb060")
+	var cool := Color("6a86b8")
+	for y in range(-r, r):
+		for x in range(-r, r):
+			var q := Vector2(x + 0.5, y + 0.5).rotated(-ang) / k + sc
+			var sx := int(q.x)
+			var sy := int(q.y)
+			if sx < 0 or sy < 0 or sx >= src.get_width() or sy >= src.get_height():
+				continue
+			var col: Color = src.get_pixel(sx, sy)
+			if tim != null and tim.get_pixel(sx, sy).a > 0.0:
+				col = Defs.team_color(1) * tim.get_pixel(sx, sy).r
+				col.a = 1.0
+			if col.a <= 0.0:
+				continue
+			var f := clampf(1.0 - ((cc + Vector2(x, y)) / K).distance_to(light) / reach, 0.0, 1.0)
+			f *= f
+			var shade := col.lerp(cool, 0.14)
+			shade = Color(shade.r * 0.82, shade.g * 0.84, shade.b * 0.9, col.a)
+			var lit := Color(minf(col.r * 1.35 + 0.1, 1.0), minf(col.g * 1.25 + 0.05, 1.0), minf(col.b * 1.05, 1.0), col.a).lerp(warm, 0.35)
+			TechIcons._put(img, int(cc.x) + x, int(cc.y) + y, shade.lerp(lit, f))
+
+## A soft solid warm bloom (no ring).
+static func _kin_bloom(img: Image, p: Vector2, r: float) -> void:
+	_disc(img, p, r * 1.2, Color(SF[2], 0.14))
+	_disc(img, p, r, Color(SF[2], 0.4))
+	_disc(img, p, r * 0.68, Color("ffd878", 0.9))
+	_disc(img, p, r * 0.38, Color("fff6d8"))
+
+## Brass slugs at distances `ss` from `nose` along `ang`, sizes falling from
+## dia0 to dia1 and dimming with distance, each with a short soft trail.
+static func _kin_stream(img: Image, nose: Vector2, ang: float, ss: Array, dia0: float, dia1: float) -> void:
+	var d := Vector2.from_angle(ang)
+	var n := ss.size()
+	for k in n:
+		var t := float(k) / float(maxi(1, n - 1))
+		var dia := lerpf(dia0, dia1, t)
+		var p := nose + d * float(ss[k])
+		_line(img, p - d * dia * 2.2, p - d * dia * 1.3, dia * 0.6, Color(BR[2], 0.26 * (1.0 - t * 0.5)))
+		_round(img, p, d, dia * 2.7, dia * 0.5)
+		if t > 0.04:
+			_line(img, p - d * dia * 1.5, p + d * dia * 1.5, dia * 1.3, Color(0, 0, 0, t * 0.55))
+
+## Kinetic Repeaters: the ship at 45 degrees, its muzzle bloom, the slug stream.
+static func _kin_scene(img: Image, c: Vector2, box: float, ss: Array, dia0: float, dia1: float, bloom: float) -> void:
+	var ang := -PI / 4.0
+	var d := Vector2.from_angle(ang)
+	var nose := c + d * box * 0.5
+	var bl := nose + d * 2.2
+	_spr_lit(img, "ship_corvette", c, box, ang, bl, box * 0.75)
+	_kin_bloom(img, bl, bloom)
+	_kin_stream(img, nose, ang, ss, dia0, dia1)
