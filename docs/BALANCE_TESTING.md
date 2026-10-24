@@ -74,7 +74,7 @@ gh workflow run balance.yml -f mode=round_robin -f runs=20 -f minutes=240 -f spe
 
 **Mods:** `tools/rr_mods_laser.txt` at 2400 (older fields: `rr_all16x3/x5/x9`, 16 loadouts = 4 lasers + 12 Mods). Lever: the Mod's own damage multiplier. Single-Mod sweeps: `mode=mod_grid -f mod="mod_id ours foe foe_n dmg1 dmg2 ..."` (`laser` = no Mod; `marks` carries `SL_DUEL_TECHS`; `minutes` < 45 is the duel length in seconds; `tag=amove` makes foes attack-move). Mod tests must fight laser ships with attack patterns against Mod ships with attack patterns, and check chase behaviour works.
 
-**Variants:** `tools/rr_variants24x5.txt` (1,380 duels) or `x9` (2,484): 24 loadouts (4 classes × plain + 5 variants), 2400, no Mods. Score = variant weight minus its own class's plain weight, averaged over the classes. The lists still use old ids (reaver, slip, disruptor): check them against the current ids before running.
+**Variants:** `tools/rr_variants24x5.txt` (1,380 duels) or `x9` (2,484): 24 loadouts (4 classes × plain + 5 variants), 2400, no Mods. Score = variant weight minus its own class's plain weight, averaged over the classes. The lists use the current variant ids (`plazer`, `breacher`, `reaver` = Ravager, `disruptor`, `inhibitor`; checked 10-24). If variants are renamed again, update the lists.
 
 **Defense techs:** `tools/rr_defense20x5.txt` (1,900 duels; each class with no tech, then each full line as the 4th spec field), budget 2400, **with `system=SL_DUEL_FREE_TECHS=1`**. Paying research at 2400 makes every line negative (−0.60 to −0.82), because 420–520 of research costs 18–22% of the fleet, so that compares the wrong thing. Defense techs affect ships and constructs, not worlds.
 
