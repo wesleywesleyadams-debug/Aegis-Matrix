@@ -32,6 +32,8 @@ The reference set is the approved Defense and Weapons tab icons: aegis_matrix, a
 - Don't put a laser in every icon, and don't over-render icons the user already likes.
 - The icon must show the mechanic described in the Codex. For example, Arc Emitters is one shooter firing a bolt that hits one target and then chains to three more.
 - Use the game's real ship sprites (`assets/pixel/ship_*.png`) when ships appear.
+- Fire from where the ship's weapons really are. The corvette has a nose gun. The destroyer fires from the turrets on its two booms (`Defs.SHIPS[...]["turrets"]`), and the cruiser and carrier from their turret mounts. Never put a muzzle glow where there is no gun.
+- Explosions must look like what they are. Flak, for example, is a dark smoke puff with shrapnel streaks streaming out of it, not a spiked orb.
 
 **Tooling**
 - `tools/_icondump/one.tscn` renders an icon from the real code: `ICON_ID=<id> ICON_OUT=<png>`.
