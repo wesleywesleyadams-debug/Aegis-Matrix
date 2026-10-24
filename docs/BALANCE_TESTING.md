@@ -89,6 +89,12 @@ gh workflow run balance.yml -f mode=round_robin -f runs=20 -f minutes=240 -f spe
 
 **Other duel env vars:** `SL_DUEL_SCALE=class:k[:ha]` (scale a class's toughness; `ha` = hull and armor only), `SL_DUEL_SHIFT=class:N` (move N shield into hull), `SL_DUEL_FREE_TECHS=1`, `SL_DUEL_TECHS` / `_A` / `_B`, `SL_DUEL_MAP=1` (real map instead of an empty arena), `SL_DUEL_HOLD`, `SL_DUEL_NOMOVEPEN`, `SL_MOD_DMG`, `SL_MOD_VS`, `SL_DRONE_SPEED/_HULL/_R`.
 
+## Before launching a test branch
+
+- **Smoke-test one duel locally on the branch** (import, then one `SL_DUEL=...` run must print a `DUEL` line). A broken script makes every GitHub duel hang until its timeout and wastes the whole run. On 10-24 a stray Windows carriage return, written into `Defs.gd` by a shell edit, did exactly this to four runs.
+- Edit balance numbers with a script that writes the bytes directly, not with shell variables filled by Windows tools (they end lines with CR).
+- A healthy round robin finishes in about 6 minutes. One still running after 15 minutes is stuck: check its log.
+
 ## AI tests (full games)
 
 ```bash
