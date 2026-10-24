@@ -63,14 +63,10 @@ static func call_scene(id: String, img: Image) -> void:
 			# brass slugs receding up the gun's axis (smaller and dimmer with distance).
 			_kin_scene(img, Vector2(17.5, 44.5), 26.0, [13.0, 22.0, 30.0, 37.0, 43.0], 2.5, 1.4, 4.6)
 		"mod_arc_emitters":
-			_sprite(img, "ship_corvette", Vector2(12, 48), 18.0)
-			var pts := [Vector2(18, 42), Vector2(26, 30), Vector2(22, 26), Vector2(34, 18), Vector2(44, 24), Vector2(52, 12)]
-			for k in pts.size() - 1:
-				_line(img, pts[k], pts[k + 1], 3.0, Color("bfe6ff", 0.5))
-				_line(img, pts[k], pts[k + 1], 1.2, Color.WHITE)
-			for q in [Vector2(34, 18), Vector2(52, 12), Vector2(44, 34)]:
-				_disc(img, q, 2.5, Color("e85a5a"))
-			_line(img, Vector2(34, 18), Vector2(44, 34), 1.2, Color("dff3ff"))
+			# G: our corvette (violet muzzle-lit) arcs into a close enemy corvette,
+			# then the bolt chains on to three more, each further, smaller, dimmer
+			# and hit by a thinner bolt.
+			_arc_chain(img, [Vector2(42, 32), Vector2(33, 13), Vector2(48, 9), Vector2(55, 26)], [20.0, 13.0, 10.0, 7.5], [1.2, 0.85, 0.65, 0.5])
 		"mod_flak_cannons":
 			_sprite(img, "ship_destroyer", Vector2(14, 48), 22.0)
 			for b in [Vector2(36, 18), Vector2(50, 30), Vector2(30, 34)]:
@@ -1629,3 +1625,102 @@ static func _kin_scene(img: Image, c: Vector2, box: float, ss: Array, dia0: floa
 	_spr_lit(img, "ship_corvette", c, box, ang, bl, box * 0.75)
 	_kin_bloom(img, bl, bloom)
 	_kin_stream(img, nose, ang, ss, dia0, dia1)
+
+## A game sprite rotated to `ang`; its edges that face `light` (within `reach`)
+## get a bright `rimcol` rim, the rest stays cool and shadowed. `dim` darkens it,
+## `redmix` pulls it toward red, `is_enemy` swaps the team band for red.
+static func _spr_rim(img: Image, tex_name: String, c: Vector2, box: float, ang: float, light: Vector2, reach: float, rimcol: Color, dim: float, redmix: float, is_enemy: bool) -> void:
+	var src := TechIcons.source(tex_name)
+	if src == null:
+		return
+	var tim := TechIcons.source(tex_name + "_team")
+	var k: float = box * K / maxf(src.get_width(), src.get_height())
+	var sc := Vector2(src.get_width(), src.get_height()) * 0.5
+	var r := int(box * K * 0.8)
+	var tmp := Image.create(2 * r, 2 * r, false, Image.FORMAT_RGBA8)
+	for y in 2 * r:
+		for x in 2 * r:
+			var q := Vector2(x - r + 0.5, y - r + 0.5).rotated(-ang) / k + sc
+			var sx := int(q.x)
+			var sy := int(q.y)
+			if sx < 0 or sy < 0 or sx >= src.get_width() or sy >= src.get_height():
+				continue
+			var col: Color = src.get_pixel(sx, sy)
+			if tim != null and tim.get_pixel(sx, sy).a > 0.0:
+				col = (Color("e03030") if is_enemy else Defs.team_color(1)) * tim.get_pixel(sx, sy).r
+				col.a = 1.0
+			if col.a > 0.0:
+				tmp.set_pixel(x, y, col)
+	var cc := c * K
+	var cool := Color("6a86b8")
+	for y in 2 * r:
+		for x in 2 * r:
+			var col := tmp.get_pixel(x, y)
+			if col.a <= 0.0:
+				continue
+			var wp := (cc + Vector2(x - r, y - r)) / K
+			var f := clampf(1.0 - wp.distance_to(light) / reach, 0.0, 1.0)
+			var L := (light - wp).normalized()
+			var nb := Vector2(x, y) + L * 2.6
+			var nx := int(nb.x)
+			var ny := int(nb.y)
+			var edge := nx < 0 or ny < 0 or nx >= 2 * r or ny >= 2 * r or tmp.get_pixel(nx, ny).a <= 0.0
+			var base := col.lerp(Color("c04040"), redmix).lerp(cool, 0.14)
+			base = Color(minf(base.r * 1.25 * dim, 1.0), minf(base.g * 1.25 * dim, 1.0), minf(base.b * 1.35 * dim, 1.0), 1.0)
+			if edge and f > 0.04:
+				base = base.lerp(rimcol, clampf(0.35 + f * 0.9, 0.0, 1.0) * minf(dim + 0.2, 1.0))
+			else:
+				base = base.lerp(rimcol * 0.6, f * f * 0.22)
+			TechIcons._put(img, int(cc.x) - r + x, int(cc.y) - r + y, Color(base.r, base.g, base.b, 1.0))
+
+## A soft solid layered glow in any colour.
+static func _soft_glow(img: Image, c: Vector2, r: float, col: Color, hot: Color = Color.WHITE) -> void:
+	_disc(img, c, r, Color(col, 0.16))
+	_disc(img, c, r * 0.75, Color(col, 0.34))
+	_disc(img, c, r * 0.52, Color(col.lerp(hot, 0.5), 0.85))
+	_disc(img, c, r * 0.28, hot)
+
+## A jagged glowing bolt a -> b: soft violet underlay, bright core, `wm` scales its width.
+static func _arc_bolt(img: Image, a: Vector2, b: Vector2, seed_v: int, amp: float, under: Color, core: Color, wm: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	var pts := [a]
+	var n := (b - a).normalized().orthogonal()
+	var segs := maxi(3, int((b - a).length() / 5.0))
+	for k in range(1, segs):
+		pts.append(a.lerp(b, float(k) / segs) + n * rng.randf_range(-amp, amp))
+	pts.append(b)
+	for k in pts.size() - 1:
+		_line(img, pts[k], pts[k + 1], 3.6 * wm, Color(under, 0.45))
+	for k in pts.size() - 1:
+		_line(img, pts[k], pts[k + 1], 1.5 * wm, core)
+
+## Arc Emitters: our corvette lower-left, then a chain of four enemy corvettes
+## (centres `ts`, box sizes `tb`, bolt width scales `wms`), receding along it.
+static func _arc_chain(img: Image, ts: Array, tb: Array, wms: Array) -> void:
+	var violet := Color("b48cff")
+	var ship := Vector2(15, 46)
+	var ang := -PI / 4.0
+	var d := Vector2.from_angle(ang)
+	var bl := ship + d * 15.2
+	var rim := Color("e6d4ff")
+	_spr_rim(img, "ship_corvette", ship, 26.0, ang, bl, 18.0, rim, 1.0, 0.0, false)
+	var dims := [1.0, 0.86, 0.74, 0.62]
+	var prev := bl
+	var hits := []
+	for k in 4:
+		var to: Vector2 = ts[k]
+		var dd := (to - prev).normalized()
+		var hit: Vector2 = to - dd * float(tb[k]) * 0.45
+		hits.append(hit)
+		var face := roundf((prev - to).angle() / (PI / 4.0)) * (PI / 4.0)
+		_spr_rim(img, "ship_corvette", to, tb[k], face, hit, float(tb[k]) * 0.9, rim, dims[k], 0.12 + 0.12 * k, true)
+		prev = to + dd * float(tb[k]) * 0.45
+	prev = bl
+	for k in 4:
+		var h: Vector2 = hits[k]
+		_arc_bolt(img, prev, h, 80 + k, 1.8, Color(violet, 1.0 - 0.2 * k), Color.WHITE.lerp(violet, 0.2 * k), wms[k])
+		_soft_glow(img, h, 2.4 - 0.25 * k, violet)
+		var to: Vector2 = ts[k]
+		prev = to + (to - h).normalized() * float(tb[k]) * 0.1
+	_soft_glow(img, bl, 4.4, violet)
