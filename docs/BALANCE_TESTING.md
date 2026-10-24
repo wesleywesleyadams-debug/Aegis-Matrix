@@ -33,7 +33,7 @@ Earlier goals, all superseded: bigger class wins at medium (4300, then 6725) and
 
 ## Scoring
 
-- **Weight** = the winner's toughness left as a fraction: positive for the winner, negative for the loser, averaged per loadout or class. +1 means it wins without taking damage; −1 means it dies without dealing any.
+- **Weight** = the winner's toughness left as a fraction: positive for the winner, negative for the loser, averaged per loadout or class. **+1.0** = this side won with every ship alive at 100% toughness (took no damage). **−1.0** = this side lost every ship while the winner kept every ship at 100% (dealt no damage).
 - **One fight vs the average:** a single fight scores 0.0 only as a perfect draw, where both sides lose every ship. A class weight of ≈ 0.0 is an *average*: its wins and losses cancel out, so on average it trades evenly. Individual fights are usually far from 0.
 - `tools/rr_summary.sh <run id>` prints win % and weight per side and class. It scores a draw as 0.5 win and weight 0. The Codex definition scores a draw by the difference in toughness left. Draws are rare at 240 s limits, but fix one definition if they become common.
 - `DUELP` lines every 30 s say who leads if a duel is cut off. `SL_DUEL_STATS=1` adds DSTAT/DSTAT2/DTL lines (miss and dodge %, overkill, idle turrets, engaged share).
