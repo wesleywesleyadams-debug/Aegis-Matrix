@@ -128,7 +128,7 @@ const BASE_SHIPS := {
 	},
 	"cruiser": {
 		"name": "Cruiser", "role": "warship", "requires": "cruisers",
-		"hp": 264.0, "armor": 184.0, "shield": 352.0, "speed": 55.0, "radius": 26.6, "size": 0.81,
+		"hp": 250.8, "armor": 174.8, "shield": 334.4, "speed": 55.0, "radius": 26.6, "size": 0.81,
 		"cost": {"minerals": 300}, "build_time": 80.0, "upkeep": 4.0,
 		"weapon": "laser", "damage": LASER_DAMAGE, "cooldown": LASER_COOLDOWN, "range": 260.0, "sensor": 420.0, "refit": {"minerals": 15, "time": 12.0},
 		# Three laser turrets: the hub and both forward wings.
