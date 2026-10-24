@@ -73,12 +73,10 @@ static func call_scene(id: String, img: Image) -> void:
 			# of the puffs and spark on the corvettes caught in them.
 			_flak_scene(img, [[Vector2(31, 21), 8.0], [Vector2(51, 31), 4.5]], [[Vector2(44, 9), 12.0, 1.0], [Vector2(55, 19), 8.0, 0.8], [Vector2(58, 41), 5.5, 0.62]])
 		"mod_cluster_bombs":
-			_sprite(img, "ship_destroyer", Vector2(14, 48), 22.0)
-			for k in 6:
-				var a := -1.2 + k * 0.28
-				var q := Vector2(22, 40) + Vector2.from_angle(a) * (16.0 + (k % 2) * 8.0)
-				_disc(img, q, 2.2, Color("c8a04a"))
-				_disc(img, q, 0.9, Color("fff0c0"))
+			# A4: both of the destroyer's boom turrets lob a fan of three unguided
+			# bomblets at two distant corvettes; most have already burst in big
+			# blasts on them, one of each fan still in flight.
+			_cb_scene(img, [[Vector2(45, 11), 10.0, 1.0], [Vector2(52, 29), 8.0, 0.8]], [{"t": 0, "fly": [0.0, 24.0, 0.0], "hit": [true, false, true]}, {"t": 1, "fly": [0.0, 26.0, 0.0], "hit": [true, false, true]}], 5.8)
 		"mod_homing_missiles":
 			_sprite(img, "ship_destroyer", Vector2(12, 50), 20.0)
 			for k in 3:
@@ -1825,3 +1823,77 @@ static func _flak_scene(img: Image, puffs: Array, ships: Array) -> void:
 			var t1 := float(q + 1) / 5.0
 			_line(img, muz.lerp(tgt, t0), muz.lerp(tgt, t1), 1.3 - 0.5 * t0, Color(1.0, 0.85, 0.5, 0.95 - 0.55 * t0))
 		_soft_glow(img, muz + aim * 1.2, 2.6, Color("ff9a2a"), Color("fff0b0"))
+
+## A bomb blast: dark smoke skirt, orange fireball, white core, a few flung sparks.
+static func _cb_blast(img: Image, c: Vector2, r: float, seed_v: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	for k in 5:
+		var an := -PI / 2.0 + (k - 2) * 0.7 + rng.randf_range(-0.2, 0.2)
+		_disc(img, c + Vector2.from_angle(an) * r * 0.75, r * 0.5, Color("1e1814"))
+	_soft_glow(img, c + Vector2(0, 0.1 * r), r, Color("ff7a1a"), Color("fff2c0"))
+	for k in 5:
+		var an := rng.randf() * TAU
+		var dd := Vector2.from_angle(an)
+		_flak_streak(img, c + dd * (r * 1.2), c + dd * (r * 1.2 + 3.0 + rng.randf() * 2.0), 1.0)
+
+## An unguided bomblet in flight along d: soft trail, steel body, orange band, fins.
+static func _cb_bomblet(img: Image, p: Vector2, d: Vector2, dim: float) -> void:
+	var n := d.orthogonal()
+	_line(img, p - d * 6.5, p - d * 2.0, 1.4, Color(1.0, 0.7, 0.3, 0.28 * dim))
+	_poly(img, [p - d * 1.0 + n * 2.0, p - d * 3.2 + n * 2.4, p - d * 2.0], STEEL[2])
+	_poly(img, [p - d * 1.0 - n * 2.0, p - d * 3.2 - n * 2.4, p - d * 2.0], STEEL[2])
+	_disc(img, p, 2.9, STEEL[0])
+	_disc(img, p, 2.3, Color(0.7 * dim, 0.75 * dim, 0.85 * dim))
+	_line(img, p - n * 2.0 - d * 0.2, p + n * 2.0 - d * 0.2, 1.3, Color(1.0 * dim, 0.5 * dim, 0.15 * dim))
+	_disc(img, p + (-d + n).normalized() * 0.6, 0.7, Color(1, 1, 1, 0.8 * dim))
+
+## Cluster Bombs: our destroyer and its two boom turrets, each throwing a fan of
+## three bomblets at its target. tg: [[centre, box, dim]]; fans: per turret
+## {t: target index, fly: flight distances, hit: bool per bomblet}.
+static func _cb_scene(img: Image, tg: Array, fans: Array, blast_r: float) -> void:
+	var ship := Vector2(15, 46)
+	var ang := -PI / 4.0
+	var d := Vector2.from_angle(ang)
+	var rim := Color("ffd9a0")
+	_spr_rim(img, "ship_destroyer", ship, 25.0, ang, ship + d * 12.5, 17.0, rim, 1.0, 0.0, false)
+	var k_px := 25.0 / 95.0
+	var tpos := [Vector2(-16.0, -14.5), Vector2(-16.0, 11.5)]
+	var ms := []
+	for i in 2:
+		var tc: Vector2 = ship + (tpos[i] * k_px).rotated(ang)
+		_spr_rim(img, "ship_turret", tc, 7.0, ang, tg[0][0], 45.0, rim, 1.0, 0.0, false)
+		ms.append(tc + d * 3.6)
+	var spots := []
+	for i in 2:
+		var spec: Dictionary = fans[i]
+		var m: Vector2 = ms[i]
+		var tp: Vector2 = tg[spec["t"]][0]
+		var a0 := (tp - m).angle()
+		var dist := m.distance_to(tp)
+		for j in 3:
+			if spec["hit"][j]:
+				spots.append(m + Vector2.from_angle(a0 + (j - 1) * 0.24) * (dist - float(tg[spec["t"]][1]) * 0.3 + (j - 1) * 1.5))
+	for k in tg.size():
+		var e: Vector2 = tg[k][0]
+		var bx: float = tg[k][1]
+		var light := e + Vector2(-5, 5)
+		var bestd := 999.0
+		for sp in spots:
+			if e.distance_to(sp) < bestd:
+				bestd = e.distance_to(sp)
+				light = sp
+		_spr_rim(img, "ship_corvette", e, bx, -3.0 * PI / 4.0, light, bx * 1.6 + 6.0, rim, tg[k][2], 0.14, true)
+	for i in 2:
+		_soft_glow(img, ms[i], 2.8, Color("ff9a2a"), Color("fff0b0"))
+		var spec: Dictionary = fans[i]
+		var m: Vector2 = ms[i]
+		var a0 := (Vector2(tg[spec["t"]][0]) - m).angle()
+		for j in 3:
+			if not spec["hit"][j] and float(spec["fly"][j]) > 0.0:
+				var dd := Vector2.from_angle(a0 + (j - 1) * 0.24)
+				_cb_bomblet(img, m + dd * float(spec["fly"][j]), dd, tg[spec["t"]][2])
+	var n := 0
+	for sp in spots:
+		_cb_blast(img, sp, blast_r - 0.4 * (n % 3), 90 + n)
+		n += 1
