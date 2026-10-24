@@ -84,7 +84,7 @@ gh workflow run balance.yml -f mode=round_robin -f runs=20 -f minutes=240 -f spe
 
 **Target Prediction:** a lasers round robin twice, without and with TP for both sides (`SL_DUEL_TECHS`), plus small equal-cost fights (1 carrier vs 8 corvettes, 2 carriers vs 16, 2 carriers vs 4 cruisers, 1 cruiser vs 4 corvettes, 2 cruisers vs 4 destroyers, 4 destroyers vs 8 corvettes). On hold.
 
-**Marks** (pre-Symmetry, not re-tested since): `mode=mark_grid` (Mk N+1 vs the next class's Mk N at equal cost, aim for a near tie) and `mode=size_grid -f marks="1 2 3 4"`. Budget 6725 was chosen to field exactly 5 Mk IV carriers.
+**Marks (out of scope; don't run unless the user asks).** Balance covers Mk I only, and these results are from before the class rebalance: `mode=mark_grid` (Mk N+1 vs the next class's Mk N at equal cost, aim for a near tie) and `mode=size_grid -f marks="1 2 3 4"`. Budget 6725 was chosen to field exactly 5 Mk IV carriers.
 
 **Other duel env vars:** `SL_DUEL_SCALE=class:k[:ha]` (scale a class's toughness; `ha` = hull and armor only), `SL_DUEL_SHIFT=class:N` (move N shield into hull), `SL_DUEL_FREE_TECHS=1`, `SL_DUEL_TECHS` / `_A` / `_B`, `SL_DUEL_MAP=1` (real map instead of an empty arena), `SL_DUEL_HOLD`, `SL_DUEL_NOMOVEPEN`, `SL_MOD_DMG`, `SL_MOD_VS`, `SL_DRONE_SPEED/_HULL/_R`.
 
