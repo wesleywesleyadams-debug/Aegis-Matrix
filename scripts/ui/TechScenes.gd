@@ -68,10 +68,10 @@ static func call_scene(id: String, img: Image) -> void:
 			# and hit by a thinner bolt.
 			_arc_chain(img, [Vector2(42, 32), Vector2(33, 13), Vector2(48, 9), Vector2(55, 26)], [20.0, 13.0, 10.0, 7.5], [1.2, 0.85, 0.65, 0.5])
 		"mod_flak_cannons":
-			_sprite(img, "ship_destroyer", Vector2(14, 48), 22.0)
-			for b in [Vector2(36, 18), Vector2(50, 30), Vector2(30, 34)]:
-				_burst(img, b, 7.0, Color("ffb347"))
-				_disc(img, b, 2.0, Color("fff0c0"))
+			# D3: the destroyer's two boom turrets each tracer a flak shell onto its own
+			# smoke puff (a near big one and a far small one); shrapnel streaks fly out
+			# of the puffs and spark on the corvettes caught in them.
+			_flak_scene(img, [[Vector2(31, 21), 8.0], [Vector2(51, 31), 4.5]], [[Vector2(44, 9), 12.0, 1.0], [Vector2(55, 19), 8.0, 0.8], [Vector2(58, 41), 5.5, 0.62]])
 		"mod_cluster_bombs":
 			_sprite(img, "ship_destroyer", Vector2(14, 48), 22.0)
 			for k in 6:
@@ -1724,3 +1724,104 @@ static func _arc_chain(img: Image, ts: Array, tb: Array, wms: Array) -> void:
 		var to: Vector2 = ts[k]
 		prev = to + (to - h).normalized() * float(tb[k]) * 0.1
 	_soft_glow(img, bl, 4.4, violet)
+
+## A lumpy dark smoke puff with a hot flash core showing through.
+static func _flak_puff(img: Image, c: Vector2, r: float, seed_v: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	var lobes := []
+	for k in 10:
+		var an := k * TAU / 10.0 + rng.randf_range(-0.2, 0.2)
+		lobes.append([c + Vector2.from_angle(an) * r * rng.randf_range(0.5, 0.78), r * rng.randf_range(0.42, 0.58)])
+	lobes.append([c, r * 0.7])
+	for l in lobes:
+		_disc(img, l[0], l[1] + 0.8, Color("0f0c0a"))
+	for l in lobes:
+		_disc(img, l[0], l[1], Color("2a221d"))
+	for l in lobes:
+		_disc(img, l[0] + Vector2(-0.18, -0.2) * l[1], l[1] * 0.66, Color("3d332b"))
+	for l in lobes:
+		_disc(img, l[0] + Vector2(-0.3, -0.35) * l[1], l[1] * 0.3, Color("5a4b3e"))
+	_soft_glow(img, c + Vector2(0.15, 0.1) * r, r * 0.66, Color("ff8a2a"), Color("fff0c8"))
+	for k in 4:
+		var an := rng.randf() * TAU
+		_disc(img, c + Vector2.from_angle(an) * r * 0.42, r * 0.3, Color(0.12, 0.09, 0.07, 0.3))
+
+## One thin shrapnel streak a -> b, bright at the start and fading toward its tip.
+static func _flak_streak(img: Image, a: Vector2, b: Vector2, w: float) -> void:
+	var n := 4
+	for k in n:
+		var t0 := float(k) / n
+		var t1 := float(k + 1) / n
+		var f := 1.0 - t0
+		var col := Color("fff2c0").lerp(Color("ff9a2a"), t0)
+		col.a = 0.25 + 0.75 * f
+		_line(img, a.lerp(b, t0), a.lerp(b, t1), w * (0.55 + 0.45 * f), col)
+
+## Streaks fanning out of a puff, skipping the directions in `skips`.
+static func _flak_streaks(img: Image, c: Vector2, r: float, n: int, seed_v: int, skips: Array, lmin: float, lmax: float) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	for k in n:
+		var an := k * TAU / n + rng.randf_range(-0.1, 0.1)
+		var bad := false
+		for sk in skips:
+			if absf(angle_difference(an, sk)) < 0.45:
+				bad = true
+		if bad:
+			continue
+		var d := Vector2.from_angle(an)
+		var st := r * 1.25 + 1.8 + rng.randf() * 1.2
+		_flak_streak(img, c + d * st, c + d * (st + rng.randf_range(lmin, lmax)), 1.2)
+
+## Flak Cannons: our destroyer, two smoke puffs ([centre, radius]), enemy
+## corvettes ([centre, box, dim]) lit by the nearest puff, each boom turret
+## tracing onto its own puff.
+static func _flak_scene(img: Image, puffs: Array, ships: Array) -> void:
+	var ship := Vector2(15, 46)
+	var ang := -PI / 4.0
+	var d := Vector2.from_angle(ang)
+	var nose := ship + d * 12.5
+	var rim := Color("ffd9a0")
+	_spr_rim(img, "ship_destroyer", ship, 25.0, ang, nose, 17.0, rim, 1.0, 0.0, false)
+	for sh in ships:
+		var e: Vector2 = sh[0]
+		var best := 0
+		for i in 2:
+			if e.distance_to(puffs[i][0]) < e.distance_to(puffs[best][0]):
+				best = i
+		var face := roundf((ship - e).angle() / (PI / 4.0)) * (PI / 4.0)
+		var bx: float = sh[1]
+		_spr_rim(img, "ship_corvette", e, bx, face, puffs[best][0], bx * 1.8 + float(puffs[best][1]) * 1.2, rim, sh[2], 0.14, true)
+	for i in 2:
+		var pc: Vector2 = puffs[i][0]
+		_flak_streaks(img, pc, puffs[i][1], 12, 5 + i, [(ship - pc).angle(), (puffs[1 - i][0] - pc).angle()], 5.0, 9.0)
+	for sh in ships:
+		var e: Vector2 = sh[0]
+		var best := 0
+		for i in 2:
+			if e.distance_to(puffs[i][0]) < e.distance_to(puffs[best][0]):
+				best = i
+		var pc: Vector2 = puffs[best][0]
+		var dd := (e - pc).normalized()
+		var bx: float = sh[1]
+		_flak_streak(img, pc + dd * (float(puffs[best][1]) * 1.25 + 1.8), e - dd * bx * 0.42, 1.2)
+		_soft_glow(img, e - dd * bx * 0.42, 1.8, Color("ffb23a"), Color("fff6d8"))
+	for i in 2:
+		_flak_puff(img, puffs[i][0], puffs[i][1], 3 + 4 * i)
+	# The two boom turrets, placed as the game does (fractions of the sprite
+	# from the stern and off the keel), each tracing onto its own puff.
+	var k_px := 25.0 / 95.0
+	var tpos := [Vector2(-16.0, -14.5), Vector2(-16.0, 11.5)]
+	for i in 2:
+		var tc: Vector2 = ship + (tpos[i] * k_px).rotated(ang)
+		var pc: Vector2 = puffs[i][0]
+		_spr_rim(img, "ship_turret", tc, 7.0, ang, pc, 45.0, rim, 1.0, 0.0, false)
+		var muz := tc + d * 3.6
+		var aim := (pc - muz).normalized()
+		var tgt := pc - aim * (float(puffs[i][1]) * 1.6)
+		for q in 5:
+			var t0 := float(q) / 5.0
+			var t1 := float(q + 1) / 5.0
+			_line(img, muz.lerp(tgt, t0), muz.lerp(tgt, t1), 1.3 - 0.5 * t0, Color(1.0, 0.85, 0.5, 0.95 - 0.55 * t0))
+		_soft_glow(img, muz + aim * 1.2, 2.6, Color("ff9a2a"), Color("fff0b0"))
