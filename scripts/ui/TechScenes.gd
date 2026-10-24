@@ -78,12 +78,9 @@ static func call_scene(id: String, img: Image) -> void:
 			# blasts on them, one of each fan still in flight.
 			_cb_scene(img, [[Vector2(45, 11), 10.0, 1.0], [Vector2(52, 29), 8.0, 0.8]], [{"t": 0, "fly": [0.0, 24.0, 0.0], "hit": [true, false, true]}, {"t": 1, "fly": [0.0, 26.0, 0.0], "hit": [true, false, true]}], 5.8)
 		"mod_homing_missiles":
-			_sprite(img, "ship_destroyer", Vector2(12, 50), 20.0)
-			for k in 3:
-				var c := Vector2(30 + k * 6, 44 - k * 4)
-				_arc(img, c, 16.0, -2.2, -1.0, 1.4, Color("ff6a4a", 0.8))
-			_ring(img, Vector2(48, 16), 6.0, 1.5, Color("ff6a4a"))
-			_disc(img, Vector2(48, 16), 1.5, Color("ff6a4a"))
+			# D3: one missile from each boom turret steers onto one locked corvette
+			# along a curved path; the first has just hit, the second is closing.
+			_hm_scene(img, Vector2(48, 20), 13.0, 1.0, [{"i": 0, "bend": 10.0, "p": 1.0}, {"i": 1, "bend": -10.0, "p": 0.76}])
 		"mod_ion_lance":
 			_sprite(img, "ship_cruiser", Vector2(14, 48), 22.0)
 			_beam(img, Vector2(22, 40), Vector2(56, 10), Color("7fd8ff"), 3.5)
@@ -1897,3 +1894,77 @@ static func _cb_scene(img: Image, tg: Array, fans: Array, blast_r: float) -> voi
 	for sp in spots:
 		_cb_blast(img, sp, blast_r - 0.4 * (n % 3), 90 + n)
 		n += 1
+
+## Our destroyer with its two boom turrets drawn where the game mounts them
+## (fractions of the sprite from the stern and off the keel); returns the two
+## muzzle points. `lit` is where the turrets' rim light comes from.
+static func _ds_turrets(img: Image, lit: Vector2) -> Array:
+	var ship := Vector2(15, 46)
+	var ang := -PI / 4.0
+	var d := Vector2.from_angle(ang)
+	var rim := Color("ffd9a0")
+	_spr_rim(img, "ship_destroyer", ship, 25.0, ang, ship + d * 12.5, 17.0, rim, 1.0, 0.0, false)
+	var k_px := 25.0 / 95.0
+	var tpos := [Vector2(-16.0, -14.5), Vector2(-16.0, 11.5)]
+	var out := []
+	for i in 2:
+		var tc: Vector2 = ship + (tpos[i] * k_px).rotated(ang)
+		_spr_rim(img, "ship_turret", tc, 7.0, ang, lit, 45.0, rim, 1.0, 0.0, false)
+		out.append(tc + d * 3.6)
+	return out
+
+## A tapered glowing ribbon along `pts`: soft halo, body, hot core.
+static func _ribbon(img: Image, pts: Array, r0: float, r1: float, col: Color, hot: Color) -> void:
+	var n := pts.size()
+	for k in n:
+		var t := float(k) / float(n - 1)
+		_disc(img, pts[k], lerpf(r0, r1, t) * 1.7, Color(col, 0.10 + 0.12 * t))
+	for k in n:
+		var t := float(k) / float(n - 1)
+		_disc(img, pts[k], lerpf(r0, r1, t), Color(col, 0.35 + 0.4 * t))
+	for k in n:
+		var t := float(k) / float(n - 1)
+		_disc(img, pts[k], lerpf(r0, r1, t) * 0.45, Color(hot, 0.3 + 0.7 * t))
+
+static func _quad(a: Vector2, b: Vector2, c: Vector2, t: float) -> Vector2:
+	return a.lerp(b, t).lerp(b.lerp(c, t), t)
+
+## A small missile heading along d (nose at `nose`): steel body, fins, orange cone, exhaust glow.
+static func _hm_missile(img: Image, nose: Vector2, d: Vector2, len: float, w: float, dim: float) -> void:
+	var n := d.orthogonal()
+	var tail := nose - d * len
+	for s in [-1.0, 1.0]:
+		var f0: Vector2 = tail + d * len * 0.3 + n * s * w
+		var f1: Vector2 = tail - d * 0.8 + n * s * (w + 1.9)
+		var f2: Vector2 = tail + n * s * w
+		_poly(img, [f0, f1, f2], STEEL[1] if s > 0 else STEEL[3])
+	var cap := nose - d * w * 2.2
+	_girder(img, tail, cap, w * 2.0, STEEL)
+	_poly(img, [cap + n * (w + 0.7), nose + d * 0.8, cap - n * (w + 0.7)], STEEL[0])
+	_poly(img, [cap + n * w, nose, cap - n * w], Color("ff7a2a") * dim)
+	_poly(img, [cap + n * w, nose, cap + n * w * 0.1], Color("ffc880") * dim)
+	_soft_glow(img, tail - d * 1.6, w * 1.9, Color("ff8a2a"), Color("fff6e0"))
+
+## Homing Missiles: our destroyer, a locked corvette, one missile per turret
+## sweeping in along a curved path (control `bend`); p is how far along (1 = hit).
+static func _hm_scene(img: Image, tgt: Vector2, box: float, tdim: float, vols: Array) -> void:
+	var ms := _ds_turrets(img, tgt)
+	_spr_rim(img, "ship_corvette", tgt, box, -3.0 * PI / 4.0, tgt + Vector2(-6, 6), box * 1.7, Color("ffd9a0"), tdim, 0.14, true)
+	_brackets(img, tgt, box * 0.62, Color("ff5a4a"))
+	for i in 2:
+		_soft_glow(img, ms[i], 2.6, Color("ff9a2a"), Color("fff0b0"))
+	for v in vols:
+		var m: Vector2 = ms[v["i"]]
+		var e: Vector2 = tgt - (tgt - m).normalized() * box * 0.45
+		var ctl: Vector2 = (m + e) * 0.5 + (e - m).normalized().orthogonal() * float(v["bend"])
+		var t: float = v["p"]
+		var pts := []
+		for k in 48:
+			pts.append(_quad(m, ctl, e, t * float(k) / 47.0))
+		_ribbon(img, pts, 0.35, 1.0, Color("ff7a2a"), Color("ffe8b0"))
+		if t >= 1.0:
+			_cb_blast(img, e, 3.6, 150)
+		else:
+			var p0 := _quad(m, ctl, e, t)
+			var d := (p0 - _quad(m, ctl, e, maxf(t - 0.03, 0.0))).normalized()
+			_hm_missile(img, p0 + d * 4.5, d, 12.0, 2.0, tdim)
