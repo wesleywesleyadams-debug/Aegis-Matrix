@@ -12,7 +12,7 @@ Every art or icon brief must start from this file. Each time the user corrects a
 
 ## Tech icons
 
-The reference set is the approved Defense and Weapons tab icons: aegis_matrix, adaptive_hulls, glance_plates, graviton_shunts, living_metals, phase_shields, crystal_prisms, reinforced_frames, iron_umbrella, ion_cannons, particle_lances, starfire_batteries, targeting_arrays, beam_focusing, capital_batteries, autoloaders, heavy_mounts, scatter_arrays, overcharged_coils, burst_cyclers, hullbreaker_rounds, target_prediction, gyro_stabilizers, overkill_awareness. Living Metals (I3) and the Target Prediction v3 X/Y/Z set are the quality bar. Don't use one unrelated icon, such as Proton Torpedoes, as the only style reference. Every icon committed from now on joins this reference list, for as long as it stays in the game; drop an icon from the list when it is replaced. Added since: mod_kinetic_repeaters, mod_arc_emitters, mod_flak_cannons, mod_cluster_bombs, mod_homing_missiles, mod_ion_lance.
+The reference set is the approved Defense and Weapons tab icons: aegis_matrix, adaptive_hulls, glance_plates, graviton_shunts, living_metals, phase_shields, crystal_prisms, reinforced_frames, iron_umbrella, ion_cannons, particle_lances, starfire_batteries, targeting_arrays, beam_focusing, capital_batteries, autoloaders, heavy_mounts, scatter_arrays, overcharged_coils, burst_cyclers, hullbreaker_rounds, target_prediction, gyro_stabilizers, overkill_awareness. Living Metals (I3) and the Target Prediction v3 X/Y/Z set are the quality bar. Don't use one unrelated icon, such as Proton Torpedoes, as the only style reference. Every icon committed from now on joins this reference list, for as long as it stays in the game; drop an icon from the list when it is replaced. Added since: mod_kinetic_repeaters, mod_arc_emitters, mod_flak_cannons, mod_cluster_bombs, mod_homing_missiles, mod_ion_lance, mod_rail_cannons.
 
 **Look**
 - One large, clear, symbolic subject: crisp graphic shapes with a modest bevel, solid steel focal objects.
@@ -33,6 +33,7 @@ The reference set is the approved Defense and Weapons tab icons: aegis_matrix, a
 - The icon must show the mechanic described in the Codex. For example, Arc Emitters is one shooter firing a bolt that hits one target and then chains to three more.
 - Use the game's real ship sprites (`assets/pixel/ship_*.png`) when ships appear.
 - Fire from where the ship's weapons really are. The corvette has a nose gun. The destroyer fires from the turrets on its two booms (`Defs.SHIPS[...]["turrets"]`), and the cruiser and carrier from their turret mounts. Never put a muzzle glow where there is no gun.
+- Before designing a Mod icon, look at the real in-game projectile or effect (`Projectile.gd`, `Defs.MOD_WEAPONS`, an in-game capture) and draw it faithfully.
 - A weapon Mod's icon is a scene: our ship that carries the Mod firing it at enemies. Not a standalone weapon object or an abstract symbol.
 - Start from the current icon's idea. Each round includes at least one option that refines the current concept before reinventing it.
 - More action is welcome when it serves the mechanic. A busier scene, such as two flak bursts or a four-hit chain, is fine as long as the mechanic reads clearly.

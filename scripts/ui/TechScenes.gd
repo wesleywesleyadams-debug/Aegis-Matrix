@@ -86,10 +86,9 @@ static func call_scene(id: String, img: Image) -> void:
 			# enemy carrier; the beams converge on a bright melt spot.
 			_ion_scene(img, Vector2(50, 15), 26.0, "ship_carrier", [0.8, 1.0, 0.8], 5.0)
 		"mod_rail_cannons":
-			_sprite(img, "ship_cruiser", Vector2(12, 50), 20.0)
-			_line(img, Vector2(20, 44), Vector2(60, 6), 1.2, Color("e8eefc"))
-			for k in 4:
-				_ring(img, Vector2(20, 44).lerp(Vector2(60, 6), 0.2 + k * 0.2), 2.5, 1.0, Color("7fa8ff", 0.7))
+			# F: the cruiser's three turrets each loose a long, thin, bright needle
+			# streak (the real rail shot) at a far enemy carrier, in parallel.
+			_rail_scene(img, Vector2(52, 12), 22.0, [{"i": 0, "from": 0.2, "to": 0.7, "w": 0.9}, {"i": 1, "from": 0.35, "to": 0.85, "w": 0.9}, {"i": 2, "from": 0.1, "to": 0.6, "w": 0.9}])
 		"mod_point_defense_lattice":
 			_sprite(img, "ship_cruiser", Vector2(32, 40), 26.0)
 			for q in [Vector2(14, 14), Vector2(32, 10), Vector2(50, 14)]:
@@ -2018,3 +2017,23 @@ static func _ion_scene(img: Image, tgt: Vector2, tbox: float, tsprite: String, w
 		_ion_beam(img, ms[i], hit, ws[i])
 		_soft_glow(img, ms[i], 2.2 + ws[i] * 0.6, IO[2], Color.WHITE)
 	_ion_impact(img, hit, ir, 5)
+
+## A rail shot: a long, thin, straight yellow needle with a soft glow and a pale core.
+static func _rail_needle(img: Image, a: Vector2, b: Vector2, w: float) -> void:
+	var y := Color("fff06a")
+	_line(img, a, b, w * 3.4, Color(y, 0.16))
+	_line(img, a, b, w * 2.0, Color(y, 0.4))
+	_line(img, a, b, w * 1.1, y)
+	_line(img, a, b, w * 0.45, Color("fffbe0"))
+
+## Rail Cannons: our cruiser's three turrets each firing a needle (shots: turret
+## index `i`, `from`/`to` fractions of the way to the target, width `w`) at a far carrier.
+static func _rail_scene(img: Image, tgt: Vector2, tbox: float, shots: Array) -> void:
+	var hit := tgt + Vector2(-tbox * 0.28, tbox * 0.28)
+	var ms := _cr_turrets(img, hit)
+	_spr_rim(img, "ship_carrier", tgt, tbox, -3.0 * PI / 4.0, hit, tbox * 1.3, Color("fff0b0"), 0.9, 0.14, true)
+	for i in 3:
+		_soft_glow(img, ms[i], 3.4, Color("ffe060"), Color.WHITE)
+	for sh in shots:
+		var i: int = sh["i"]
+		_rail_needle(img, ms[i].lerp(hit, sh["from"]), ms[i].lerp(hit, sh["to"]), sh["w"])
